@@ -1,6 +1,7 @@
 "use client";
 
 import type { UseFormReturn } from "react-hook-form";
+import { Hash, Mail, Phone, User, Users } from "lucide-react";
 
 import { DateOfBirthField } from "@/components/date-of-birth-field";
 import { PhoneNumberInput } from "@/components/phone-number-input";
@@ -20,6 +21,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  FieldWithIcon,
+  fieldIconPaddingClassName,
+} from "@/features/customers/components/FieldWithIcon";
 import type { CreateCustomerFormValues } from "@/features/customers/schemas/customer.schema";
 import { appFont } from "@/lib/fonts";
 import { validateDateInput } from "@/lib/validate-date-input";
@@ -70,18 +75,21 @@ export function CustomerFormFields({
               <FormLabel>
                 First name <RequiredFieldMarker />
               </FormLabel>
-              <FormControl>
-                <Input
-                  autoComplete="given-name"
-                  disabled={disabled}
-                  data-testid={`${idPrefix}-first-name`}
-                  {...field}
-                  onBlur={(event) => {
-                    field.onBlur();
-                    handleNameBlur(event.target.value, field.onChange);
-                  }}
-                />
-              </FormControl>
+              <FieldWithIcon icon={User}>
+                <FormControl>
+                  <Input
+                    autoComplete="given-name"
+                    disabled={disabled}
+                    className={fieldIconPaddingClassName}
+                    data-testid={`${idPrefix}-first-name`}
+                    {...field}
+                    onBlur={(event) => {
+                      field.onBlur();
+                      handleNameBlur(event.target.value, field.onChange);
+                    }}
+                  />
+                </FormControl>
+              </FieldWithIcon>
               <FormMessage />
             </FormItem>
           )}
@@ -93,16 +101,19 @@ export function CustomerFormFields({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Middle name</FormLabel>
-              <FormControl>
-                <Input
-                  disabled={disabled}
-                  {...field}
-                  onBlur={(event) => {
-                    field.onBlur();
-                    handleNameBlur(event.target.value, field.onChange);
-                  }}
-                />
-              </FormControl>
+              <FieldWithIcon icon={User}>
+                <FormControl>
+                  <Input
+                    disabled={disabled}
+                    className={fieldIconPaddingClassName}
+                    {...field}
+                    onBlur={(event) => {
+                      field.onBlur();
+                      handleNameBlur(event.target.value, field.onChange);
+                    }}
+                  />
+                </FormControl>
+              </FieldWithIcon>
               <FormMessage />
             </FormItem>
           )}
@@ -117,18 +128,21 @@ export function CustomerFormFields({
             <FormLabel>
               Last name <RequiredFieldMarker />
             </FormLabel>
-            <FormControl>
-              <Input
-                autoComplete="family-name"
-                disabled={disabled}
-                data-testid={`${idPrefix}-last-name`}
-                {...field}
-                onBlur={(event) => {
-                  field.onBlur();
-                  handleNameBlur(event.target.value, field.onChange);
-                }}
-              />
-            </FormControl>
+            <FieldWithIcon icon={User}>
+              <FormControl>
+                <Input
+                  autoComplete="family-name"
+                  disabled={disabled}
+                  className={fieldIconPaddingClassName}
+                  data-testid={`${idPrefix}-last-name`}
+                  {...field}
+                  onBlur={(event) => {
+                    field.onBlur();
+                    handleNameBlur(event.target.value, field.onChange);
+                  }}
+                />
+              </FormControl>
+            </FieldWithIcon>
             <FormMessage />
           </FormItem>
         )}
@@ -143,22 +157,27 @@ export function CustomerFormFields({
               <FormLabel>
                 Gender <RequiredFieldMarker />
               </FormLabel>
-              <Select
-                disabled={disabled}
-                onValueChange={field.onChange}
-                value={field.value}
-              >
-                <FormControl>
-                  <SelectTrigger data-testid={`${idPrefix}-gender`}>
-                    <SelectValue placeholder="Select gender" />
-                  </SelectTrigger>
-                </FormControl>
+              <FieldWithIcon icon={Users}>
+                <Select
+                  disabled={disabled}
+                  onValueChange={field.onChange}
+                  value={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger
+                      className={fieldIconPaddingClassName}
+                      data-testid={`${idPrefix}-gender`}
+                    >
+                      <SelectValue placeholder="Select gender" />
+                    </SelectTrigger>
+                  </FormControl>
                 <SelectContent className={appFont.className}>
                   <SelectItem value="Male">Male</SelectItem>
                   <SelectItem value="Female">Female</SelectItem>
                   <SelectItem value="Other">Other</SelectItem>
                 </SelectContent>
-              </Select>
+                </Select>
+              </FieldWithIcon>
               <FormMessage />
             </FormItem>
           )}
@@ -217,14 +236,17 @@ export function CustomerFormFields({
           render={({ field, fieldState }) => (
             <FormItem>
               <FormLabel>Phone</FormLabel>
-              <FormControl>
-                <PhoneNumberInput
-                  value={field.value ?? ""}
-                  disabled={disabled}
-                  hasError={Boolean(fieldState.error)}
-                  onChange={field.onChange}
-                />
-              </FormControl>
+              <FieldWithIcon icon={Phone}>
+                <FormControl>
+                  <PhoneNumberInput
+                    value={field.value ?? ""}
+                    disabled={disabled}
+                    hasError={Boolean(fieldState.error)}
+                    onChange={field.onChange}
+                    className={fieldIconPaddingClassName}
+                  />
+                </FormControl>
+              </FieldWithIcon>
               <FormMessage />
             </FormItem>
           )}
@@ -236,14 +258,17 @@ export function CustomerFormFields({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Email</FormLabel>
-              <FormControl>
-                <Input
-                  type="email"
-                  autoComplete="email"
-                  disabled={disabled}
-                  {...field}
-                />
-              </FormControl>
+              <FieldWithIcon icon={Mail}>
+                <FormControl>
+                  <Input
+                    type="email"
+                    autoComplete="email"
+                    disabled={disabled}
+                    className={fieldIconPaddingClassName}
+                    {...field}
+                  />
+                </FormControl>
+              </FieldWithIcon>
               <FormMessage />
             </FormItem>
           )}
@@ -256,14 +281,17 @@ export function CustomerFormFields({
         render={({ field }) => (
           <FormItem>
             <FormLabel>Internal reference</FormLabel>
-            <FormControl>
-              <Input
-                disabled={disabled}
-                maxLength={255}
-                data-testid={`${idPrefix}-internal-reference`}
-                {...field}
-              />
-            </FormControl>
+            <FieldWithIcon icon={Hash}>
+              <FormControl>
+                <Input
+                  disabled={disabled}
+                  maxLength={255}
+                  className={fieldIconPaddingClassName}
+                  data-testid={`${idPrefix}-internal-reference`}
+                  {...field}
+                />
+              </FormControl>
+            </FieldWithIcon>
             <FormMessage />
           </FormItem>
         )}

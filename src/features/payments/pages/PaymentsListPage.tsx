@@ -1,6 +1,5 @@
 "use client";
 
-import { BarChart3 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -8,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { FabButton } from "@/components/ui/fab-button";
 import { ROUTES } from "@/constants/routes";
 import {
+  ListPageBlankState,
   ListPageDataSectionsStack,
   ListPageLayout,
   ListPagePagination,
@@ -34,7 +34,6 @@ import {
   DEFAULT_PAYMENT_LIST_FILTERS,
   type PaymentListFilterState,
 } from "@/features/payments/utils/payment-list-filters";
-import { cn } from "@/lib/utils";
 import { useUser } from "@/providers/user-provider";
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -67,7 +66,6 @@ export function PaymentsListPage() {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [remainingOpeningBalance, setRemainingOpeningBalance] = useState(0);
   const [isLoadingRemaining, setIsLoadingRemaining] = useState(false);
-  const [showStats, setShowStats] = useState(false);
   const [completedListStatsKey, setCompletedListStatsKey] = useState<string | null>(
     null,
   );
@@ -253,17 +251,6 @@ export function PaymentsListPage() {
       />
       )}
 
-      {!hasNoRecords ? (
-        <FabButton
-          label={showStats ? "Hide stats" : "Show stats"}
-          icon={BarChart3}
-          variant="outline"
-          className="bottom-24 bg-white"
-          onClick={() => setShowStats((current) => !current)}
-          data-testid="payments-show-stats-fab"
-        />
-      ) : null}
-
       <FabButton
         label="Record payment"
         onClick={() => setRecordPaymentOpen(true)}
@@ -272,7 +259,7 @@ export function PaymentsListPage() {
 
       <ListPageDataSectionsStack className="space-y-0">
         {!hasNoRecords ? (
-          <ListPageStatsSection className={cn(!showStats && "hidden sm:block")}>
+          <ListPageStatsSection>
             <PaymentSummaryStatsCards stats={stats} isLoading={isStatsLoading} />
           </ListPageStatsSection>
         ) : null}
@@ -281,36 +268,42 @@ export function PaymentsListPage() {
           {isLoading ? (
             <PaymentsTableSkeleton rows={8} />
           ) : error ? (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-6">
-              <h2 className="text-sm font-semibold text-red-800">Could not load payments</h2>
-              <p className="mt-2 text-sm text-red-700">{error}</p>
-              <Button
-                type="button"
-                variant="outline"
-                className="mt-4"
-                onClick={() => void reloadPayments()}
-              >
-                Try again
-              </Button>
-            </div>
+            <ListPageBlankState
+              compact
+              tone="error"
+              icon="file"
+              title="Could not load payments"
+              description={error}
+              action={
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-8 rounded-lg text-[13px]"
+                  onClick={() => void reloadPayments()}
+                >
+                  Try again
+                </Button>
+              }
+            />
           ) : hasNoRecords ? (
             <PaymentsEmptyState onRecordPayment={() => setRecordPaymentOpen(true)} />
           ) : isFilteredEmpty ? (
-            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-dash-border py-14 text-center">
-              <h2 className="text-base font-semibold text-brand-navy">No matching payments</h2>
-              <p className="mt-1 text-sm text-brand-muted">
-                Adjust your search or filters and try again.
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="mt-4"
-                onClick={handleClearSearchAndFilters}
-              >
-                Clear search & filters
-              </Button>
-            </div>
+            <ListPageBlankState
+              compact
+              icon="search"
+              title="No matching payments"
+              description="Adjust your search or filters and try again."
+              action={
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-8 rounded-lg text-[13px]"
+                  onClick={handleClearSearchAndFilters}
+                >
+                  Clear search and filters
+                </Button>
+              }
+            />
           ) : (
             <>
               <PaymentsTable

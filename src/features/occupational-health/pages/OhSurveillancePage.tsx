@@ -128,7 +128,7 @@ export function OhSurveillancePage() {
 
   return (
     <ListPageLayout data-testid="oh-surveillance-page">
-      <ListPageHeaderSection className="border-b border-brand-border bg-white px-4 py-5 md:px-6">
+      <ListPageHeaderSection className="bg-white">
         <ListPageHeaderTopRow>
           <ListPageHeaderTitleBlock
             title="OHS Surveillance"
@@ -157,7 +157,7 @@ export function OhSurveillancePage() {
       <ListPageTableSection className="space-y-8">
         {(fitnessAlertsQuery.data ?? []).length > 0 ? (
           <section
-            className="rounded-xl border border-amber-200 bg-amber-50 p-4"
+            className="border-b border-amber-200 bg-amber-50 px-4 py-3 md:px-6"
             data-testid="oh-fitness-validity-alerts"
           >
             <h2 className="mb-2 text-sm font-semibold text-amber-950">
@@ -183,7 +183,7 @@ export function OhSurveillancePage() {
           </section>
         ) : null}
 
-        <section className="grid gap-3 rounded-xl border border-brand-border bg-white p-4 md:grid-cols-4">
+        <section className="grid gap-3 border-b border-dash-border px-4 py-3 md:grid-cols-4 md:px-6">
           <div className="space-y-1.5">
             <Label htmlFor="oh-surv-site">Site</Label>
             <Input

@@ -24,7 +24,7 @@ export function ListPageToolbarSkeleton({
       data-testid="list-page-toolbar-skeleton"
     >
       <ListPageToolbarSearch className="flex">
-        <Skeleton className="h-10 w-full rounded-lg sm:max-w-sm" />
+        <Skeleton className="h-8 min-w-0 w-full rounded-lg sm:flex-1" />
         <ListPageToolbarActions>
           <Skeleton className="h-10 w-[4.5rem] rounded-lg" />
           {showFilter ? <Skeleton className="h-10 w-28 rounded-lg" /> : null}

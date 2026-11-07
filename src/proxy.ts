@@ -8,6 +8,7 @@ import {
   isAppHostname,
   isHostRoutingEnabled,
   isMarketingHostname,
+  isPrivateNetworkHostname,
   requestHostname,
 } from "@/constants/hosts";
 import { PROTECTED_ROUTES, ROUTES } from "@/constants/routes";
@@ -61,7 +62,9 @@ export function proxy(request: NextRequest) {
     request.headers.get("x-forwarded-host") ?? request.headers.get("host"),
   );
   const sessionActive = hasSession(request);
-  const hostRouting = isHostRoutingEnabled(appHost, marketingHost);
+  const hostRouting =
+    isHostRoutingEnabled(appHost, marketingHost) &&
+    !isPrivateNetworkHostname(host);
 
   if (hostRouting) {
     if (isMarketingHostname(host, marketingHost) && isAppRoute(pathname)) {

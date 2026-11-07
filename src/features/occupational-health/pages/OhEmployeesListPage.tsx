@@ -1,10 +1,8 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { BarChart3 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { FabButton } from "@/components/ui/fab-button";
 import { Button } from "@/components/ui/button";
 import { CustomerSummaryStatsCards } from "@/features/customers/components/CustomerSummaryStats";
 import { fetchCustomers } from "@/features/customers/services/customers.service";
@@ -44,7 +42,6 @@ import {
   ListPageStatsSection,
   ListPageTableSection,
 } from "@/features/app-shell/components/page-layout";
-import { cn } from "@/lib/utils";
 import { useUser } from "@/providers/user-provider";
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -75,8 +72,6 @@ export function OhEmployeesListPage() {
   const [isStatsLoading, setIsStatsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isUnauthorized, setIsUnauthorized] = useState(false);
-  const [showStats, setShowStats] = useState(false);
-
   const filters = useMemo(
     () => ({
       gender,
@@ -277,16 +272,22 @@ export function OhEmployeesListPage() {
   if (!hasAccess || isUnauthorized) {
     return (
       <ListPageLayout data-testid="oh-employees-page">
-        <div className="rounded-xl border border-brand-border bg-white p-8 text-center">
-          <h1 className="text-xl font-semibold text-brand-navy">Access denied</h1>
-          <p className="mt-2 text-sm text-brand-muted">
-            You do not have access to occupational health. Ask an administrator to
-            add you to the OccupationalHealth group.
-          </p>
-          <Button className="mt-6" onClick={() => router.push(ROUTES.auth)}>
-            Go to sign in
-          </Button>
-        </div>
+        <ListPageBlankState
+  compact
+  icon="shield"
+  title="Access denied"
+  description="You do not have access to occupational health. Ask an administrator to add you to the OccupationalHealth group."
+  action={
+    <Button
+      type="button"
+      variant="outline"
+      className="h-8 rounded-lg text-[13px]"
+      onClick={() => router.push(ROUTES.auth)}
+    >
+      Go to sign in
+    </Button>
+  }
+/>
       </ListPageLayout>
     );
   }
@@ -312,20 +313,13 @@ export function OhEmployeesListPage() {
         />
       )}
       {!hasNoEmployeeRecords ? (
-        <FabButton
-          label={showStats ? "Hide stats" : "Show stats"}
-          icon={BarChart3}
-          variant="outline"
-          className="bottom-24 bg-white"
-          onClick={() => setShowStats((current) => !current)}
-          data-testid="oh-employees-show-stats-fab"
-        />
-      ) : null}
-
-      {!hasNoEmployeeRecords ? (
         <ListPageDataSectionsStack className="space-y-0">
-          <ListPageStatsSection className={cn(!showStats && "hidden sm:block")}>
-            <CustomerSummaryStatsCards stats={stats} isLoading={isStatsLoading} />
+          <ListPageStatsSection>
+            <CustomerSummaryStatsCards
+              stats={stats}
+              isLoading={isStatsLoading}
+              countLabel="Employees"
+            />
           </ListPageStatsSection>
 
           <ListPageTableSection>

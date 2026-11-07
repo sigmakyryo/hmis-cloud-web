@@ -98,7 +98,7 @@ export function AppointmentsTable({
                   <UserIdenticon
                     seed={appointment.patient || appointment.patient_name}
                     name={appointment.patient_name}
-                    className="size-8 shrink-0 rounded-md"
+                    className="size-6 shrink-0 rounded-md"
                   />
                   <div className="min-w-0">
                     <span className="block truncate font-medium text-brand-navy transition-colors group-hover:text-brand-primary">

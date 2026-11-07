@@ -1,10 +1,9 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  DetailPageAsidePanelHeader,
   DetailPageAsidePanelSection,
-  DetailPageAsideSummaryField,
   DetailPageAsideSummarySection,
 } from "@/features/app-shell/components/page-layout";
 import { CustomerAccountSummaryCard } from "@/features/customers/components/detail/CustomerAccountSummaryCard";
@@ -28,6 +27,23 @@ type CustomerSummaryPanelProps = {
   className?: string;
 };
 
+function RecordLine({
+  label,
+  value,
+}: {
+  label: string;
+  value: ReactNode;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-4 border-b border-dash-border/70 py-2.5 last:border-b-0">
+      <dt className="shrink-0 text-[12px] text-dash-muted">{label}</dt>
+      <dd className="min-w-0 text-right text-[13px] font-medium text-brand-navy">
+        {value}
+      </dd>
+    </div>
+  );
+}
+
 export function CustomerSummaryPanel({
   customer,
   onUpdateClick,
@@ -42,11 +58,6 @@ export function CustomerSummaryPanel({
 
   return (
     <DetailPageAsidePanelSection className={className}>
-      <DetailPageAsidePanelHeader
-        title="Client Summary"
-        description="Account and profile details"
-      />
-
       <CustomerAccountSummaryCard
         customer={customer}
         refreshKey={billingRefreshKey}
@@ -56,6 +67,7 @@ export function CustomerSummaryPanel({
 
       <DetailPageAsideSummarySection
         title="Personal"
+        layout="ledger"
         action={
           <Button
             type="button"
@@ -69,34 +81,30 @@ export function CustomerSummaryPanel({
           </Button>
         }
       >
-        <DetailPageAsideSummaryField label="Name" value={fullName} />
-        <DetailPageAsideSummaryField
+        <RecordLine label="Name" value={fullName} />
+        <RecordLine
           label="Client ID"
           value={
-            <span className="inline-flex items-center rounded border border-dash-border/80 bg-dash-canvas px-1.5 py-0.5 font-mono text-xs font-semibold text-brand-navy">
-              {customer.customer_identifier}
-            </span>
+            <span className="font-mono text-[12px]">{customer.customer_identifier}</span>
           }
         />
-        <DetailPageAsideSummaryField
+        <RecordLine
           label="Internal reference"
           value={
             customer.internal_reference ? (
-              <span className="font-mono text-xs text-brand-slate">
-                {customer.internal_reference}
-              </span>
+              <span className="font-mono text-[12px]">{customer.internal_reference}</span>
             ) : (
               "—"
             )
           }
         />
-        <DetailPageAsideSummaryField
+        <RecordLine
           label="Phone"
           value={
             customer.phone_number ? (
               <a
                 href={`tel:${customer.phone_number}`}
-                className="text-brand-slate hover:text-brand-navy hover:underline"
+                className="hover:text-brand-primary"
               >
                 {customer.phone_number}
               </a>
@@ -105,13 +113,13 @@ export function CustomerSummaryPanel({
             )
           }
         />
-        <DetailPageAsideSummaryField
+        <RecordLine
           label="Email"
           value={
             customer.email ? (
               <a
                 href={`mailto:${customer.email}`}
-                className="break-all text-brand-slate hover:text-brand-navy hover:underline"
+                className="break-all hover:text-brand-primary"
               >
                 {customer.email}
               </a>
@@ -120,19 +128,19 @@ export function CustomerSummaryPanel({
             )
           }
         />
-        <DetailPageAsideSummaryField label="Gender" value={customer.gender} />
-        <DetailPageAsideSummaryField
-          label="Date of Birth"
+        <RecordLine label="Gender" value={customer.gender} />
+        <RecordLine
+          label="Date of birth"
           value={
             <>
               {formatDisplayDate(customer.dob)}
               {customer.dob_is_estimated ? (
-                <span className="ml-1 text-xs text-brand-muted">(estimated)</span>
+                <span className="ml-1 font-normal text-dash-muted">(estimated)</span>
               ) : null}
             </>
           }
         />
-        <DetailPageAsideSummaryField label="Age" value={ageDisplay} />
+        <RecordLine label="Age" value={ageDisplay} />
       </DetailPageAsideSummarySection>
 
       <DetailPageAsideSummarySection
@@ -157,23 +165,17 @@ export function CustomerSummaryPanel({
         />
       </DetailPageAsideSummarySection>
 
-      <DetailPageAsideSummarySection title="System">
-        <DetailPageAsideSummaryField
+      <DetailPageAsideSummarySection title="System" layout="ledger">
+        <RecordLine
           label="Patient UUID"
           value={
-            <span className="break-all font-mono text-xs text-brand-muted">
+            <span className="break-all font-mono text-[11px] font-normal text-dash-muted">
               {customer.patient_uuid}
             </span>
           }
         />
-        <DetailPageAsideSummaryField
-          label="Registered"
-          value={formatDisplayDate(customer.created_at)}
-        />
-        <DetailPageAsideSummaryField
-          label="Last Updated"
-          value={formatDisplayDate(customer.updated_at)}
-        />
+        <RecordLine label="Registered" value={formatDisplayDate(customer.created_at)} />
+        <RecordLine label="Last updated" value={formatDisplayDate(customer.updated_at)} />
       </DetailPageAsideSummarySection>
     </DetailPageAsidePanelSection>
   );

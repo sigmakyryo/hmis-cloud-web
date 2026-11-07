@@ -37,7 +37,7 @@ export function ListPageSearchField({
   "data-testid": dataTestId,
 }: ListPageSearchFieldProps) {
   return (
-    <div className="relative w-full sm:max-w-sm">
+    <div className="relative min-w-0 w-full sm:flex-1">
       <AppIcon
         name="search"
         className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-dash-muted"

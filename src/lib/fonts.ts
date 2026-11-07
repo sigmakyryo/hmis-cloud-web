@@ -1,7 +1,7 @@
-import { Figtree, Fraunces, Plus_Jakarta_Sans } from "next/font/google";
+import { Figtree, Fraunces, IBM_Plex_Sans } from "next/font/google";
 
 /** Authenticated app UI font (sidebar, pages, filter sheets). */
-export const appFont = Plus_Jakarta_Sans({
+export const appFont = IBM_Plex_Sans({
   subsets: ["latin"],
   weight: ["400", "500", "600"],
   display: "swap",

@@ -1,38 +1,56 @@
 import { HMIS_API_URL } from "@/constants/api";
+import { isPrivateNetworkHostname } from "@/constants/hosts";
+
+const LOCAL_MEDIA_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0"]);
+
+function sameOriginMediaPath(url: string) {
+  if (url.startsWith("/media/")) {
+    return url;
+  }
+
+  try {
+    const parsed = new URL(url);
+    if (
+      parsed.pathname.startsWith("/media/") &&
+      (LOCAL_MEDIA_HOSTS.has(parsed.hostname) ||
+        isPrivateNetworkHostname(parsed.hostname))
+    ) {
+      return `${parsed.pathname}${parsed.search}`;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
 
 /**
- * Django stores uploaded files as `/media/...`. The browser is on the web
- * origin, so those paths have to point at the API host that serves media.
+ * Django stores uploaded files as `/media/...`. The browser loads them from
+ * this app, which proxies `/media` to the API. That keeps images working on
+ * a LAN address such as http://192.168.1.45:3000, where `localhost` is the
+ * wrong machine.
  */
 export function absoluteMediaUrl(
   url: string | null | undefined,
-  apiUrl: string | undefined = HMIS_API_URL,
+  _apiUrl: string | undefined = HMIS_API_URL,
 ): string {
   if (!url) {
     return "";
   }
 
-  if (!url.startsWith("/media/") || !apiUrl) {
-    return url;
-  }
-
-  const baseUrl = apiUrl.replace(/\/api\/v\d+\/?$/, "");
-  if (!baseUrl) {
-    return url;
-  }
-
-  return `${baseUrl}${url}`;
+  return sameOriginMediaPath(url) ?? url;
 }
 
 export function withBrowserAvatar<T extends { avatar_url?: string | null }>(
   user: T,
 ): T {
-  if (!user.avatar_url?.startsWith("/media/")) {
+  const avatarUrl = absoluteMediaUrl(user.avatar_url);
+  if (!avatarUrl || avatarUrl === user.avatar_url) {
     return user;
   }
 
   return {
     ...user,
-    avatar_url: absoluteMediaUrl(user.avatar_url),
+    avatar_url: avatarUrl,
   };
 }

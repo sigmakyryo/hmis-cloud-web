@@ -16,7 +16,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Stethoscope } from "lucide-react";
 
 import {
-  OhFormFooter,
   OhPanelSection,
   OhRecordItem,
   OhRecordList,
@@ -78,47 +77,46 @@ export function OhExamForm({ encounterId, onCreated }: OhExamFormProps) {
   }
 
   return (
-    <OhPanelSection description="Each examination anchors the fitness assessment and findings recorded against it.">
-      <form
-        onSubmit={(event) => void handleSubmit(event)}
-        onKeyDown={submitOnModEnter}
-        className="space-y-4"
-        data-testid="oh-exam-form"
-      >
-        <div className="space-y-1.5">
-          <Label htmlFor="oh-exam-type">
-            Exam type <RequiredFieldMarker />
-          </Label>
-          <Select value={examType} onValueChange={setExamType}>
-            <SelectTrigger id="oh-exam-type" className="w-full">
-              <SelectValue placeholder="Select type" />
-            </SelectTrigger>
-            <SelectContent className={appFont.className}>
-              {EXAM_TYPES.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="oh-exam-notes">Notes</Label>
-          <Textarea
-            id="oh-exam-notes"
-            value={notes}
-            onChange={(event) => setNotes(event.target.value)}
-            rows={4}
-            placeholder="Reason for attendance, history, observations"
-          />
-        </div>
-        <OhFormFooter>
-          <PrimaryButton type="submit" className="w-full" disabled={isSubmitting}>
-            {isSubmitting ? "Saving…" : "Add examination"}
-          </PrimaryButton>
-        </OhFormFooter>
-      </form>
-    </OhPanelSection>
+    <form
+      onSubmit={(event) => void handleSubmit(event)}
+      onKeyDown={submitOnModEnter}
+      className="space-y-4"
+      data-testid="oh-exam-form"
+    >
+      <div className="space-y-1.5">
+        <Label htmlFor="oh-exam-type" className="text-[13px] font-medium text-brand-navy">
+          Exam type <RequiredFieldMarker />
+        </Label>
+        <Select value={examType} onValueChange={setExamType}>
+          <SelectTrigger id="oh-exam-type" className="h-10 w-full rounded-lg border-dash-border bg-white">
+            <SelectValue placeholder="Select type" />
+          </SelectTrigger>
+          <SelectContent className={appFont.className}>
+            {EXAM_TYPES.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="oh-exam-notes" className="text-[13px] font-medium text-brand-navy">
+          Notes
+        </Label>
+        <Textarea
+          id="oh-exam-notes"
+          value={notes}
+          onChange={(event) => setNotes(event.target.value)}
+          rows={4}
+          placeholder="Reason for attendance, history, observations"
+          className="min-h-24 rounded-lg border-dash-border bg-white text-[13.5px] shadow-none"
+        />
+      </div>
+      <PrimaryButton type="submit" className="h-10 w-full" disabled={isSubmitting}>
+        {isSubmitting ? "Saving…" : "Add examination"}
+      </PrimaryButton>
+    </form>
   );
 }
 

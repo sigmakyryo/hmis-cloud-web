@@ -1,13 +1,12 @@
 "use client";
 
-import { BarChart3 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { FabButton } from "@/components/ui/fab-button";
 import { ROUTES } from "@/constants/routes";
 import {
+  ListPageBlankState,
   ListPageDataSectionsStack,
   ListPageLayout,
   ListPagePagination,
@@ -31,8 +30,6 @@ import {
   DEFAULT_REJECTION_LIST_FILTERS,
   type RejectionListFilterState,
 } from "@/features/claims/utils/rejection-list-filters";
-import { cn } from "@/lib/utils";
-
 const DEFAULT_PAGE_SIZE = 20;
 
 export function RejectionsListPage() {
@@ -48,7 +45,6 @@ export function RejectionsListPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showStats, setShowStats] = useState(false);
   const [completedListStatsKey, setCompletedListStatsKey] = useState<string | null>(
     null,
   );
@@ -184,20 +180,9 @@ export function RejectionsListPage() {
         onFiltersApply={handleFiltersApply}
       />
 
-      {!hasNoRecords ? (
-        <FabButton
-          label={showStats ? "Hide stats" : "Show stats"}
-          icon={BarChart3}
-          variant="outline"
-          className="bottom-24 bg-white"
-          onClick={() => setShowStats((current) => !current)}
-          data-testid="rejections-show-stats-fab"
-        />
-      ) : null}
-
       <ListPageDataSectionsStack className="space-y-0">
         {!hasNoRecords ? (
-          <ListPageStatsSection className={cn(!showStats && "hidden sm:block")}>
+          <ListPageStatsSection>
             <RejectionSummaryStatsCards stats={stats} isLoading={isStatsLoading} />
           </ListPageStatsSection>
         ) : null}
@@ -206,40 +191,42 @@ export function RejectionsListPage() {
           {isLoading ? (
             <RejectionsTableSkeleton rows={8} />
           ) : error ? (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-6">
-              <h2 className="text-sm font-semibold text-red-800">
-                Could not load rejections
-              </h2>
-              <p className="mt-2 text-sm text-red-700">{error}</p>
-              <Button
-                type="button"
-                variant="outline"
-                className="mt-4"
-                onClick={() => void reload()}
-              >
-                Try again
-              </Button>
-            </div>
+            <ListPageBlankState
+              compact
+              tone="error"
+              icon="file"
+              title="Could not load rejections"
+              description={error}
+              action={
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-8 rounded-lg text-[13px]"
+                  onClick={() => void reload()}
+                >
+                  Try again
+                </Button>
+              }
+            />
           ) : hasNoRecords ? (
             <RejectionsEmptyState />
           ) : isFilteredEmpty ? (
-            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-dash-border py-14 text-center">
-              <h2 className="text-base font-semibold text-brand-navy">
-                No matching rejections
-              </h2>
-              <p className="mt-1 text-sm text-brand-muted">
-                Adjust your search or filters and try again.
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="mt-4"
-                onClick={handleClearSearchAndFilters}
-              >
-                Clear search & filters
-              </Button>
-            </div>
+            <ListPageBlankState
+              compact
+              icon="search"
+              title="No matching rejections"
+              description="Adjust your search or filters and try again."
+              action={
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-8 rounded-lg text-[13px]"
+                  onClick={handleClearSearchAndFilters}
+                >
+                  Clear search and filters
+                </Button>
+              }
+            />
           ) : (
             <>
               <RejectionsTable

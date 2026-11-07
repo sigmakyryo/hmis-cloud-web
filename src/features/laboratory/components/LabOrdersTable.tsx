@@ -78,7 +78,7 @@ export function LabOrdersTable({
                   <UserIdenticon
                     seed={identiconSeed}
                     name={name}
-                    className="size-8 shrink-0 rounded-md"
+                    className="size-6 shrink-0 rounded-md"
                   />
                   <div className="min-w-0 space-y-0.5">
                     <p className="truncate text-[13px] font-medium text-brand-navy transition-colors group-hover:text-brand-primary">

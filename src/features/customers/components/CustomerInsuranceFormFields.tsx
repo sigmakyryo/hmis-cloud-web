@@ -1,9 +1,14 @@
 "use client";
 
 import type { UseFormReturn } from "react-hook-form";
+import { Hash, Shield, User, Users } from "lucide-react";
 
 import { DateOfBirthField } from "@/components/date-of-birth-field";
 import { CustomerInsuranceEmptyState } from "@/features/customers/components/CustomerInsuranceEmptyState";
+import {
+  FieldWithIcon,
+  fieldIconPaddingClassName,
+} from "@/features/customers/components/FieldWithIcon";
 import { InsuranceSchemeSearchableSelect } from "@/features/customers/components/InsuranceSchemeSearchableSelect";
 import {
   FormControl,
@@ -88,16 +93,19 @@ export function CustomerInsuranceFormFields({
             <FormLabel>
               Insurance scheme <RequiredFieldMarker />
             </FormLabel>
-            <FormControl>
-              <InsuranceSchemeSearchableSelect
-                id={`${idPrefix}-scheme`}
-                schemes={schemes}
-                value={field.value > 0 ? field.value : null}
-                onChange={field.onChange}
-                disabled={isSubmitting}
-                data-testid={`${idPrefix}-scheme`}
-              />
-            </FormControl>
+            <FieldWithIcon icon={Shield}>
+              <FormControl>
+                <InsuranceSchemeSearchableSelect
+                  id={`${idPrefix}-scheme`}
+                  schemes={schemes}
+                  value={field.value > 0 ? field.value : null}
+                  onChange={field.onChange}
+                  disabled={isSubmitting}
+                  data-testid={`${idPrefix}-scheme`}
+                  triggerClassName={fieldIconPaddingClassName}
+                />
+              </FormControl>
+            </FieldWithIcon>
             <FormMessage />
           </FormItem>
         )}
@@ -112,13 +120,16 @@ export function CustomerInsuranceFormFields({
               <FormLabel>
                 Membership number <RequiredFieldMarker />
               </FormLabel>
-              <FormControl>
-                <Input
-                  disabled={isSubmitting}
-                  data-testid={`${idPrefix}-membership-number`}
-                  {...field}
-                />
-              </FormControl>
+              <FieldWithIcon icon={Hash}>
+                <FormControl>
+                  <Input
+                    disabled={isSubmitting}
+                    className={fieldIconPaddingClassName}
+                    data-testid={`${idPrefix}-membership-number`}
+                    {...field}
+                  />
+                </FormControl>
+              </FieldWithIcon>
               <FormMessage />
             </FormItem>
           )}
@@ -226,12 +237,15 @@ export function CustomerInsuranceFormFields({
                   </>
                 ) : null}
               </FormLabel>
-              <FormControl>
-                <Input
-                  disabled={isSubmitting || isPrincipalMember}
-                  {...field}
-                />
-              </FormControl>
+              <FieldWithIcon icon={User}>
+                <FormControl>
+                  <Input
+                    disabled={isSubmitting || isPrincipalMember}
+                    className={fieldIconPaddingClassName}
+                    {...field}
+                  />
+                </FormControl>
+              </FieldWithIcon>
               <FormMessage />
             </FormItem>
           )}
@@ -244,20 +258,27 @@ export function CustomerInsuranceFormFields({
             <FormItem>
               <FormLabel>Relationship to principal member</FormLabel>
               {isPrincipalMember ? (
-                <FormControl>
-                  <Input disabled value="Self" />
-                </FormControl>
-              ) : (
-                <Select
-                  disabled={isSubmitting}
-                  onValueChange={field.onChange}
-                  value={field.value || undefined}
-                >
+                <FieldWithIcon icon={Users}>
                   <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select relationship" />
-                    </SelectTrigger>
+                    <Input
+                      disabled
+                      value="Self"
+                      className={fieldIconPaddingClassName}
+                    />
                   </FormControl>
+                </FieldWithIcon>
+              ) : (
+                <FieldWithIcon icon={Users}>
+                  <Select
+                    disabled={isSubmitting}
+                    onValueChange={field.onChange}
+                    value={field.value || undefined}
+                  >
+                    <FormControl>
+                      <SelectTrigger className={fieldIconPaddingClassName}>
+                        <SelectValue placeholder="Select relationship" />
+                      </SelectTrigger>
+                    </FormControl>
                   <SelectContent className={appFont.className}>
                     {availableRelationships.map((relationship) => (
                       <SelectItem key={relationship} value={relationship}>
@@ -265,7 +286,8 @@ export function CustomerInsuranceFormFields({
                       </SelectItem>
                     ))}
                   </SelectContent>
-                </Select>
+                  </Select>
+                </FieldWithIcon>
               )}
               <FormMessage />
             </FormItem>

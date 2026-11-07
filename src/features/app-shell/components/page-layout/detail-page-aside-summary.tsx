@@ -53,6 +53,8 @@ type DetailPageAsideSummarySectionProps = {
   action?: ReactNode;
   children: ReactNode;
   className?: string;
+  "data-testid"?: string;
+  layout?: "stack" | "ledger";
 };
 
 export function DetailPageAsideSummarySection({
@@ -60,16 +62,18 @@ export function DetailPageAsideSummarySection({
   action,
   children,
   className,
+  "data-testid": dataTestId,
+  layout = "stack",
 }: DetailPageAsideSummarySectionProps) {
   return (
-    <div className={cn("border-t border-dash-border/80 pt-4", className)}>
+    <div className={cn("border-t border-dash-border/80 pt-4", className)} data-testid={dataTestId}>
       <div className="mb-3 flex items-center justify-between gap-2">
         <h3 className="text-[11px] font-medium uppercase tracking-wide text-brand-muted">
           {title}
         </h3>
         {action}
       </div>
-      <dl className="space-y-3">{children}</dl>
+      <dl className={layout === "ledger" ? undefined : "space-y-3"}>{children}</dl>
     </div>
   );
 }

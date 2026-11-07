@@ -24,6 +24,7 @@ type OhEncounterContextPanelProps = {
   customer: Customer | null;
   episodes: EmploymentEpisode[];
   workspace: ReturnType<typeof useOhEncounterWorkspaceData>;
+  onManageEmployment: () => void;
 };
 
 export function OhEncounterContextPanel({
@@ -32,6 +33,7 @@ export function OhEncounterContextPanel({
   customer,
   episodes,
   workspace,
+  onManageEmployment,
 }: OhEncounterContextPanelProps) {
   if (activePanel === "medical-examinations") {
     return (
@@ -39,6 +41,7 @@ export function OhEncounterContextPanel({
         encounter={encounter}
         episodes={episodes}
         workspace={workspace}
+        onManageEmployment={onManageEmployment}
       />
     );
   }

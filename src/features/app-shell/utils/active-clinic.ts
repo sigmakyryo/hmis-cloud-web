@@ -6,7 +6,12 @@ export function readActiveClinicId(): number | null {
     return null;
   }
 
-  const stored = window.localStorage.getItem(ACTIVE_CLINIC_STORAGE_KEY);
+  const storage = window.localStorage;
+  if (!storage) {
+    return null;
+  }
+
+  const stored = storage.getItem(ACTIVE_CLINIC_STORAGE_KEY);
   if (!stored) {
     return null;
   }
@@ -16,7 +21,12 @@ export function readActiveClinicId(): number | null {
 }
 
 export function writeActiveClinicId(clinicId: number): void {
-  window.localStorage.setItem(ACTIVE_CLINIC_STORAGE_KEY, String(clinicId));
+  const storage = window.localStorage;
+  if (!storage) {
+    return;
+  }
+
+  storage.setItem(ACTIVE_CLINIC_STORAGE_KEY, String(clinicId));
   window.dispatchEvent(
     new CustomEvent<number>(ACTIVE_CLINIC_CHANGE_EVENT, {
       detail: clinicId,

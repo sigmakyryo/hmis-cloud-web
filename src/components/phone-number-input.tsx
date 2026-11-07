@@ -30,9 +30,9 @@ export function PhoneNumberInput({
   return (
     <div
       className={cn(
-        "customer-phone-input relative flex h-10 w-full rounded-md border border-input bg-background transition-[border-color,box-shadow] focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/25",
+        "customer-phone-input relative flex h-10 w-full rounded-lg bg-background shadow-[0_1px_2px_rgba(16,24,40,0.05)] ring-1 ring-inset ring-dash-border transition-shadow duration-100 ease-linear focus-within:ring-2 focus-within:ring-brand-primary",
         hasError &&
-          "border-destructive focus-within:border-destructive focus-within:ring-destructive/25",
+          "ring-destructive/40 focus-within:ring-destructive",
         disabled && "cursor-not-allowed opacity-50",
         className,
       )}

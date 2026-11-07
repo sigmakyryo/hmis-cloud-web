@@ -70,7 +70,7 @@ export function PharmacyQueueTable({
                   <UserIdenticon
                     seed={patientName}
                     name={patientName}
-                    className="size-8 shrink-0 rounded-md"
+                    className="size-6 shrink-0 rounded-md"
                   />
                   <span className="truncate font-medium text-brand-navy">
                     {patientName}
@@ -91,7 +91,7 @@ export function PharmacyQueueTable({
                   <UserIdenticon
                     seed={ordererName}
                     name={ordererName}
-                    className="size-8 shrink-0 rounded-md"
+                    className="size-6 shrink-0 rounded-md"
                   />
                   <span className="truncate font-medium text-brand-navy">
                     {ordererName}

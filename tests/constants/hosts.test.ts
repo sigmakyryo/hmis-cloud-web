@@ -4,6 +4,7 @@ import {
   isAppHostname,
   isHostRoutingEnabled,
   isMarketingHostname,
+  isPrivateNetworkHostname,
   requestHostname,
 } from "@/constants/hosts";
 import { appHref } from "@/lib/app-url";
@@ -40,6 +41,13 @@ describe("host routing", () => {
     expect(isMarketingHostname("sigmahmis.com")).toBe(true);
     expect(isAppHostname("sigmahmis.com")).toBe(false);
     expect(appHref("/auth")).toBe("https://app.sigmahmis.com/auth");
+  });
+
+  it("treats LAN addresses as a local network host", () => {
+    expect(isPrivateNetworkHostname("192.168.1.45:3000")).toBe(true);
+    expect(isPrivateNetworkHostname("10.0.0.8")).toBe(true);
+    expect(isPrivateNetworkHostname("localhost:3000")).toBe(false);
+    expect(isPrivateNetworkHostname("app.localhost")).toBe(false);
   });
 
   it("reads the first forwarded host", () => {

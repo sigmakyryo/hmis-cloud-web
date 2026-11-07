@@ -1,12 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
 
 import {
-  LIST_PAGE_INSIGHT_CELL_CLASS,
-  LIST_PAGE_INSIGHT_LABEL_CLASS,
-  LIST_PAGE_INSIGHT_VALUE_CLASS,
+  PAGE_STAT_LABEL_CLASS,
+  PAGE_STAT_VALUE_CLASS,
 } from "@/features/app-shell/components/page-layout";
 import {
   CustomerActivityTimeline,
@@ -27,11 +25,10 @@ import {
   formatCompactAmount,
   formatCompactNumber,
 } from "@/utils/format-compact-number";
-import { formatSalesOrderAmount } from "@/features/sales-orders/utils/format-sales-order";
+import { cn } from "@/lib/utils";
 import type { CustomerBillingTotals } from "@/features/customers/types/customer-billing.types";
 
 const ACTIVITY_PAGE_SIZE = 20;
-const STAT_CURRENCY = "MWK";
 
 type CustomerDetailSummaryTabProps = {
   customer: Customer;
@@ -48,35 +45,22 @@ type SummaryStats = {
   isBillingLoading: boolean;
 };
 
-function formatBillingTotal(value: number | string | null | undefined) {
-  if (value === null || value === undefined) {
-    return "—";
-  }
-  return formatSalesOrderAmount(value, STAT_CURRENCY);
-}
-
-function StatCurrencyValue({
+function RecordStat({
+  label,
   value,
-  amountClassName,
+  accent = false,
 }: {
-  value: number | string | null | undefined;
-  amountClassName?: string;
+  label: string;
+  value: string;
+  accent?: boolean;
 }) {
-  const amount = formatCompactAmount(value);
-  if (amount === "—") {
-    return <span className={amountClassName}>—</span>;
-  }
-
   return (
-    <span
-      className="inline-flex items-baseline gap-1.5"
-      title={formatBillingTotal(value)}
-    >
-      <span className={amountClassName}>{amount}</span>
-      <span className="text-[0.45em] font-medium uppercase tracking-[0.08em] text-brand-muted">
-        {STAT_CURRENCY}
-      </span>
-    </span>
+    <div className="min-w-0 px-4 py-4 sm:px-6">
+      <dt className={PAGE_STAT_LABEL_CLASS}>{label}</dt>
+      <dd className={cn(PAGE_STAT_VALUE_CLASS, "text-xl", accent && "text-brand-primary")}>
+        {value}
+      </dd>
+    </div>
   );
 }
 
@@ -288,9 +272,9 @@ export function CustomerDetailSummaryTab({
 
   if (loadError && !hasLoaded) {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-6 text-sm text-red-700">
+      <p className="px-1 py-6 text-sm text-red-700" role="alert">
         {loadError}
-      </div>
+      </p>
     );
   }
 
@@ -299,91 +283,51 @@ export function CustomerDetailSummaryTab({
   const isBillingLoading = Boolean(stats?.isBillingLoading);
 
   return (
-    <div className="space-y-5" data-testid="customer-detail-summary-tab">
+    <div className="space-y-0" data-testid="customer-detail-summary-tab">
       <dl
-        className="grid grid-cols-2 divide-y divide-dash-border/60 border-b border-dash-border/80 sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4 lg:divide-x"
+        className="-mx-4 -mt-4 grid grid-cols-2 border-b border-dash-border sm:-mx-6 sm:grid-cols-4 sm:divide-x sm:divide-dash-border"
         data-testid="customer-detail-stats"
+        aria-label="Client activity"
       >
-        <div className={LIST_PAGE_INSIGHT_CELL_CLASS}>
-          <dt className={LIST_PAGE_INSIGHT_LABEL_CLASS}>Visits</dt>
-          <dd className={LIST_PAGE_INSIGHT_VALUE_CLASS}>
-            {stats?.visits != null ? (
-              <span title={String(stats.visits)}>
-                {formatCompactNumber(stats.visits)}
-              </span>
-            ) : (
-              "—"
-            )}
-          </dd>
-          <p className="mt-0.5 text-xs text-brand-muted">Recorded encounters</p>
-        </div>
-
-        <div className={LIST_PAGE_INSIGHT_CELL_CLASS}>
-          <dt className={LIST_PAGE_INSIGHT_LABEL_CLASS}>Sales orders</dt>
-          <dd className={LIST_PAGE_INSIGHT_VALUE_CLASS}>
-            {isBillingLoading ? (
-              <span className="inline-flex items-center gap-1.5 text-brand-muted">
-                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                <span className="sr-only">Loading</span>
-              </span>
-            ) : (
-              <StatCurrencyValue value={stats?.totals?.total_sales} />
-            )}
-          </dd>
-          <p className="mt-0.5 text-xs text-brand-muted">Total order volume</p>
-        </div>
-
-        <div className={LIST_PAGE_INSIGHT_CELL_CLASS}>
-          <dt className={LIST_PAGE_INSIGHT_LABEL_CLASS}>Invoiced</dt>
-          <dd className={LIST_PAGE_INSIGHT_VALUE_CLASS}>
-            {isBillingLoading ? (
-              <span className="inline-flex items-center gap-1.5 text-brand-muted">
-                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                <span className="sr-only">Loading</span>
-              </span>
-            ) : (
-              <StatCurrencyValue value={stats?.totals?.total_invoiced} />
-            )}
-          </dd>
-          <p className="mt-0.5 text-xs text-brand-muted">Total billed services</p>
-        </div>
-
-        <div className={LIST_PAGE_INSIGHT_CELL_CLASS}>
-          <dt className={LIST_PAGE_INSIGHT_LABEL_CLASS}>Outstanding balance</dt>
-          <dd className={LIST_PAGE_INSIGHT_VALUE_CLASS}>
-            {isBillingLoading ? (
-              <span className="inline-flex items-center gap-1.5 text-brand-muted">
-                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                <span className="sr-only">Loading</span>
-              </span>
-            ) : (
-              <StatCurrencyValue value={stats?.totals?.total_due} />
-            )}
-          </dd>
-          <p className="mt-0.5 text-xs text-brand-muted">
-            {hasDue ? "Payment required" : "Account settled"}
-          </p>
-        </div>
+        <RecordStat
+          label="Visits"
+          value={stats?.visits != null ? formatCompactNumber(stats.visits) : "—"}
+        />
+        <RecordStat
+          label="Ordered"
+          value={isBillingLoading ? "…" : formatCompactAmount(stats?.totals?.total_sales)}
+        />
+        <RecordStat
+          label="Invoiced"
+          value={isBillingLoading ? "…" : formatCompactAmount(stats?.totals?.total_invoiced)}
+        />
+        <RecordStat
+          label={hasDue ? "Outstanding" : "Due"}
+          value={isBillingLoading ? "…" : formatCompactAmount(stats?.totals?.total_due)}
+          accent={hasDue && !isBillingLoading}
+        />
       </dl>
 
-      <CustomerActivityTimeline
-        encounters={encounters}
-        pagination={{
-          page: activityPage,
-          pageSize: ACTIVITY_PAGE_SIZE,
-          totalCount: activityTotalCount,
-          hasPrevious: hasPreviousActivity,
-          hasNext: hasNextActivity,
-          onPageChange: (page) => {
-            void loadActivityPage(page);
-          },
-          isLoading: isActivityRefreshing,
-        }}
-      />
+      <div className="pt-4">
+        <CustomerActivityTimeline
+          encounters={encounters}
+          pagination={{
+            page: activityPage,
+            pageSize: ACTIVITY_PAGE_SIZE,
+            totalCount: activityTotalCount,
+            hasPrevious: hasPreviousActivity,
+            hasNext: hasNextActivity,
+            onPageChange: (page) => {
+              void loadActivityPage(page);
+            },
+            isLoading: isActivityRefreshing,
+          }}
+        />
 
-      {loadError && hasLoaded ? (
-        <p className="text-xs text-red-600">{loadError}</p>
-      ) : null}
+        {loadError && hasLoaded ? (
+          <p className="mt-2 text-xs text-red-600">{loadError}</p>
+        ) : null}
+      </div>
     </div>
   );
 }

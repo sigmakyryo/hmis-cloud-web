@@ -209,8 +209,9 @@ export function CustomerAccountSummaryCard({
   return (
     <>
       <DetailPageAsideSummarySection
-        title="Financial Summary"
+        title="Account"
         action={manageAction}
+        className="border-t-0 pt-0"
         data-testid="customer-account-summary"
       >
         {isLoading && !totals ? (
@@ -221,45 +222,25 @@ export function CustomerAccountSummaryCard({
         ) : loadError && !totals ? (
           <p className="py-2 text-xs text-red-600">{loadError}</p>
         ) : (
-          <div className="space-y-3">
-            {/* Outstanding Balance Banner */}
-            {hasOutstanding ? (
-              <div className="rounded-xl border border-red-200/90 bg-red-50/70 p-3.5 shadow-2xs">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-red-700">
-                    Outstanding Balance
-                  </span>
-                  <span className="inline-flex items-center rounded-md bg-red-100/90 px-1.5 py-0.5 text-[10px] font-semibold text-red-800">
-                    Payment required
-                  </span>
-                </div>
-                <div className="mt-1 text-lg font-semibold tracking-tight text-red-700 tabular-nums">
-                  <SidebarCurrencyAmount
-                    value={totals?.total_due}
-                    amountClassName="text-red-700"
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/60 p-3 shadow-2xs">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <span className="size-2 rounded-full bg-emerald-500" />
-                    <span className="text-xs font-semibold text-emerald-800">
-                      Account Settled
-                    </span>
-                  </div>
-                  <SidebarCurrencyAmount
-                    value={0}
-                    className="font-mono text-xs font-semibold text-emerald-700"
-                    amountClassName="text-emerald-700"
-                  />
-                </div>
-              </div>
-            )}
+          <div className="space-y-4">
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-dash-muted">
+                {hasOutstanding ? "Outstanding" : "Balance"}
+              </p>
+              <p
+                className={cn(
+                  "mt-1 text-2xl font-semibold tracking-tight tabular-nums",
+                  hasOutstanding ? "text-brand-primary" : "text-brand-navy",
+                )}
+              >
+                <SidebarCurrencyAmount
+                  value={hasOutstanding ? totals?.total_due : 0}
+                  amountClassName={hasOutstanding ? "text-brand-primary" : "text-brand-navy"}
+                />
+              </p>
+            </div>
 
-            {/* Financial Breakdown */}
-            <div className="space-y-2 pt-1 text-xs sm:text-sm">
+            <div className="divide-y divide-dash-border/70 border-t border-dash-border/70 [&>div]:py-2.5">
               <DetailPageAsideSummaryAmountRow
                 label="Opening balance"
                 value={<SidebarCurrencyAmount value={openingBalance} />}

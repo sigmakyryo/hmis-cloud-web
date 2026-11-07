@@ -197,6 +197,7 @@ export function OhEncounterWorkspacePage({
                 customer={customer}
                 episodes={episodes}
                 workspace={workspace}
+                onManageEmployment={() => setActivePanel("employment")}
               />
             )}
           </section>

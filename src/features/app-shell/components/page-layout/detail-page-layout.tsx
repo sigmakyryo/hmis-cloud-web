@@ -19,7 +19,7 @@ export function DetailPageLayout({
       className={cn("flex min-h-0 w-full flex-1 flex-col", className)}
       data-testid={dataTestId}
     >
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-dash-border bg-dash-panel">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white">
         <div className="min-h-0 flex-1 overflow-auto pb-20 xl:pb-0">
           {children}
         </div>

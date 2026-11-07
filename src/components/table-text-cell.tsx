@@ -95,9 +95,9 @@ export function TableEntityCell({
 }: TableEntityCellProps) {
   const display = unassigned ? unassignedLabel : (label ?? name);
   const avatar = unassigned ? (
-    <UnassignedAvatar className="size-7 shrink-0 text-[10px]" />
+    <UnassignedAvatar className="size-6 shrink-0 text-[10px]" />
   ) : (
-    <ClientAvatar name={name} className="size-7 shrink-0 text-[10px]" />
+    <ClientAvatar name={name} className="size-6 shrink-0 text-[10px]" />
   );
 
   const body = (

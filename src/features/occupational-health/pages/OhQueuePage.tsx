@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
+  ListPageBlankState,
   ListPageLayout,
   ListPagePagination,
   ListPageTableSection,
@@ -77,42 +78,42 @@ export function OhQueuePage() {
         {isFetching && data.length === 0 ? (
           <OhQueueTableSkeleton rows={8} />
         ) : error ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-6">
-            <h2 className="text-sm font-semibold text-red-800">
-              Could not load OHS Queue
-            </h2>
-            <p className="mt-2 text-sm text-red-700">
-              Failed to load occupational health encounters.
-            </p>
-            <Button
-              type="button"
-              variant="outline"
-              className="mt-4"
-              onClick={() => void refetch()}
-            >
-              Try again
-            </Button>
-          </div>
+          <ListPageBlankState
+  compact
+  tone="error"
+  icon="file"
+  title="Could not load OHS Queue"
+  description="Failed to load occupational health encounters."
+  action={
+    <Button
+      type="button"
+      variant="outline"
+      className="h-8 rounded-lg text-[13px]"
+      onClick={() => void refetch()}
+    >
+      Try again
+    </Button>
+  }
+/>
         ) : hasNoRecords ? (
           <OhQueueEmptyState onRefresh={() => void refetch()} />
         ) : isFilteredEmpty ? (
-          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-dash-border py-14 text-center">
-            <h2 className="text-base font-semibold text-brand-navy">
-              No matching encounters
-            </h2>
-            <p className="mt-1 text-sm text-brand-muted">
-              Adjust your search and try again.
-            </p>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="mt-4"
-              onClick={handleClearSearch}
-            >
-              Clear search
-            </Button>
-          </div>
+          <ListPageBlankState
+  compact
+  icon="search"
+  title="No matching encounters"
+  description="Adjust your search and try again."
+  action={
+    <Button
+      type="button"
+      variant="outline"
+      className="h-8 rounded-lg text-[13px]"
+      onClick={handleClearSearch}
+    >
+      Clear search
+    </Button>
+  }
+/>
         ) : (
           <>
             <OhQueueTable encounters={paginated} />

@@ -7,36 +7,15 @@ import { cn } from "@/lib/utils";
 type AppButtonProps = ComponentProps<typeof Button>;
 
 export function PrimaryButton({ className, ...props }: AppButtonProps) {
-  return (
-    <Button
-      variant="primary"
-      className={cn("rounded-full px-5", className)}
-      {...props}
-    />
-  );
+  return <Button variant="primary" className={className} {...props} />;
 }
 
 export function SecondaryButton({ className, ...props }: AppButtonProps) {
-  return (
-    <Button
-      variant="outline"
-      className={cn(
-        "rounded-full border-dash-border bg-white text-brand-slate hover:bg-white hover:text-brand-slate",
-        className,
-      )}
-      {...props}
-    />
-  );
+  return <Button variant="outline" className={className} {...props} />;
 }
 
 export function DestructiveButton({ className, ...props }: AppButtonProps) {
-  return (
-    <Button
-      variant="destructive"
-      className={cn("rounded-full px-5", className)}
-      {...props}
-    />
-  );
+  return <Button variant="destructive" className={className} {...props} />;
 }
 
 type AddActionButtonProps = AppButtonProps & {
@@ -91,10 +70,7 @@ export function PageActionButton({ className, ...props }: AppButtonProps) {
   return (
     <Button
       variant="primary"
-      className={cn(
-        "h-8 gap-1.5 rounded-lg px-3 text-[13px] font-medium shadow-xs transition-[transform,box-shadow] active:scale-[0.98]",
-        className,
-      )}
+      className={cn("h-8 gap-1.5 px-3 text-[13px] active:scale-[0.98]", className)}
       {...props}
     />
   );

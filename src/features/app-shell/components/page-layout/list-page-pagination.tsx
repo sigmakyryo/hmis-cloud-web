@@ -9,6 +9,7 @@ type ListPagePaginationProps = {
   hasNext: boolean;
   onPageChange: (page: number) => void;
   isLoading?: boolean;
+  className?: string;
 };
 
 function buildPageItems(page: number, totalPages: number): Array<number | "ellipsis"> {
@@ -44,6 +45,7 @@ export function ListPagePagination({
   hasNext,
   onPageChange,
   isLoading = false,
+  className,
 }: ListPagePaginationProps) {
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   const start = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
@@ -51,7 +53,12 @@ export function ListPagePagination({
   const pageItems = buildPageItems(page, totalPages);
 
   return (
-    <div className="flex flex-col gap-2 pt-3 sm:flex-row sm:items-center sm:justify-between">
+    <div
+      className={cn(
+        "flex flex-col gap-2 border-t border-dash-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between md:px-6",
+        className,
+      )}
+    >
       <p className="text-[13px] text-dash-muted">
         Showing{" "}
         <span className="font-medium tabular-nums text-brand-navy">

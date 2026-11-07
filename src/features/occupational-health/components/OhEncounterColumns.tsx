@@ -45,7 +45,7 @@ export function OhEncounterColumns({
       </section>
       <section
         key={`records-${sectionKey}`}
-        className={cn("min-h-64 min-w-0 bg-white", COLUMN_SCROLL_CLASS)}
+        className={cn("min-h-64 min-w-0 bg-dash-canvas", COLUMN_SCROLL_CLASS)}
         aria-label="This encounter"
         data-testid="oh-encounter-records-column"
       >
@@ -81,11 +81,11 @@ export function OhColumnPanel({
   children,
 }: OhColumnPanelProps) {
   return (
-    <div className={cn("flex flex-1 flex-col bg-white", className)}>
-      <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-dash-border bg-white px-4 py-2.5 sm:px-5">
+    <div className={cn("flex flex-1 flex-col", className)}>
+      <header className="flex items-center justify-between gap-3 px-5 pb-1 pt-5">
         <div className="flex min-w-0 items-baseline gap-2">
-          <p className="shrink-0 text-[12px] text-dash-muted">{eyebrow}</p>
-          <h2 className="truncate text-[13.5px] font-semibold tracking-tight text-brand-navy">
+          <p className="sr-only">{eyebrow}</p>
+          <h2 className="truncate text-[13.5px] font-semibold text-brand-navy">
             {title}
           </h2>
           {count !== undefined && count > 0 ? (

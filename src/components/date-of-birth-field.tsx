@@ -4,7 +4,6 @@ import { format, isValid, parseISO } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import {
@@ -72,7 +71,14 @@ export function DateOfBirthField({
   }
 
   return (
-    <div className={cn("flex gap-2", className)}>
+    <div
+      className={cn(
+        "flex h-10 w-full items-center rounded-lg bg-background shadow-[0_1px_2px_rgba(16,24,40,0.05)] ring-1 ring-inset ring-dash-border transition-shadow duration-100 ease-linear focus-within:ring-2 focus-within:ring-brand-primary",
+        hasError && "ring-destructive/40 focus-within:ring-destructive",
+        disabled && "cursor-not-allowed opacity-50",
+        className,
+      )}
+    >
       <Input
         id={id}
         type="text"
@@ -82,27 +88,19 @@ export function DateOfBirthField({
         disabled={disabled}
         aria-invalid={hasError}
         onChange={(event) => handleInputChange(event.target.value)}
-        className={cn(
-          hasError &&
-            "border-destructive focus-visible:ring-destructive/30",
-        )}
+        className="h-full flex-1 bg-transparent px-3 shadow-none ring-0 focus-visible:ring-0 aria-invalid:ring-0"
         data-testid={dataTestId}
       />
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button
+          <button
             type="button"
-            variant="outline"
-            size="icon"
             disabled={disabled}
             aria-label="Open calendar"
-            className={cn(
-              "shrink-0",
-              hasError && "border-destructive focus-visible:ring-destructive/30",
-            )}
+            className="mr-1 flex size-8 shrink-0 items-center justify-center rounded-md text-dash-muted hover:bg-dash-canvas hover:text-brand-navy disabled:pointer-events-none disabled:opacity-50"
           >
             <CalendarIcon className="size-4" />
-          </Button>
+          </button>
         </PopoverTrigger>
         <PopoverContent
           className={cn("w-auto p-0", appFont.className)}

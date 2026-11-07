@@ -74,6 +74,29 @@ export function isAppHostname(host: string, appHost = getAppHost()) {
   return stripHostPort(host) === stripHostPort(appHost);
 }
 
+/** RFC1918 addresses used to open the dev server from another device. */
+export function isPrivateNetworkHostname(host: string) {
+  const hostname = stripHostPort(host);
+  const parts = hostname.split(".");
+  if (parts.length !== 4 || parts.some((part) => !/^\d{1,3}$/.test(part))) {
+    return false;
+  }
+
+  const octets = parts.map((part) => Number(part));
+  if (octets.some((octet) => octet > 255)) {
+    return false;
+  }
+
+  const [first, second] = octets;
+  if (first === 10) {
+    return true;
+  }
+  if (first === 192 && second === 168) {
+    return true;
+  }
+  return first === 172 && second >= 16 && second <= 31;
+}
+
 export function isMarketingHostname(
   host: string,
   marketingHost = getMarketingHost(),

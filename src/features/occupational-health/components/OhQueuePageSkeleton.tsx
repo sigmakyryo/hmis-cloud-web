@@ -54,7 +54,7 @@ export function OhQueueTableSkeleton({ rows = 8 }: OhQueueTableSkeletonProps) {
           <ListPageDataTableRow key={index} className="hover:bg-transparent">
             <ListPageDataTableCell>
               <div className="flex min-w-0 items-center gap-3">
-                <Skeleton className="size-8 shrink-0 rounded-md" />
+                <Skeleton className="size-6 shrink-0 rounded-md" />
                 <Skeleton className="h-3.5 w-32" />
               </div>
             </ListPageDataTableCell>

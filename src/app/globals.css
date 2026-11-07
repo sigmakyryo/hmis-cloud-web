@@ -35,11 +35,11 @@
   --color-brand-green: #2f5e46;
   --color-brand-green-tint: #eaf2ed;
   --color-brand-amber: #b86a1f;
-  --color-dash-canvas: #f5f5f4;
+  --color-dash-canvas: #f3f4f6;
   --color-dash-panel: #ffffff;
-  --color-dash-border: #e8e8e8;
+  --color-dash-border: #e6e8eb;
   --color-dash-muted: #6b7280;
-  --color-sidebar: #f5f5f4;
+  --color-sidebar: #ffffff;
   --color-sidebar-foreground: #1f2a24;
   --color-sidebar-primary: #0b6e6e;
   --color-sidebar-primary-foreground: #ffffff;
@@ -694,34 +694,38 @@
     height: 2.5rem !important;
     width: 100% !important;
     align-items: center !important;
-    border: 1px solid var(--color-input) !important;
-    border-radius: 0.375rem !important;
+    border: 0 !important;
+    border-radius: 0.5rem !important;
     background: var(--color-background) !important;
     padding-inline: 0.75rem !important;
     font-size: 0.875rem !important;
     line-height: 1.25rem !important;
     color: var(--color-foreground) !important;
-    transition:
-      border-color 150ms ease,
-      box-shadow 150ms ease;
+    box-shadow:
+      0 1px 2px rgba(16, 24, 40, 0.05),
+      inset 0 0 0 1px var(--color-dash-border) !important;
+    transition: box-shadow 100ms linear;
   }
 
   .country-select-field .country-select-field-button:focus,
   .country-select-field .country-select-field-button:focus-visible {
-    border-color: var(--color-ring) !important;
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-ring) 25%, transparent) !important;
+    box-shadow:
+      0 1px 2px rgba(16, 24, 40, 0.05),
+      inset 0 0 0 2px var(--color-brand-primary) !important;
     outline: none !important;
   }
 
   .country-select-field.has-error .country-select-field-button {
-    border-color: var(--color-destructive) !important;
+    box-shadow:
+      0 1px 2px rgba(16, 24, 40, 0.05),
+      inset 0 0 0 1px color-mix(in srgb, var(--color-destructive) 40%, transparent) !important;
   }
 
   .country-select-field.has-error .country-select-field-button:focus,
   .country-select-field.has-error .country-select-field-button:focus-visible {
-    border-color: var(--color-destructive) !important;
-    box-shadow: 0 0 0 2px
-      color-mix(in srgb, var(--color-destructive) 20%, transparent) !important;
+    box-shadow:
+      0 1px 2px rgba(16, 24, 40, 0.05),
+      inset 0 0 0 2px var(--color-destructive) !important;
   }
 
   .brand-calendar .rdp-selected .rdp-day_button {
@@ -736,7 +740,64 @@
   }
 
   .brand-calendar .rdp-chevron {
+    width: 1rem;
+    height: 1rem;
     fill: var(--color-brand-primary);
+  }
+
+  .brand-calendar .rdp-month {
+    display: grid;
+    grid-template-columns: 1.75rem minmax(0, 1fr) 1.75rem;
+    grid-template-areas:
+      "prev caption next"
+      "grid grid grid";
+    align-items: center;
+    column-gap: 0.25rem;
+  }
+
+  .brand-calendar .rdp-month_caption {
+    grid-area: caption;
+    justify-content: center;
+    margin: 0;
+  }
+
+  .brand-calendar .rdp-nav {
+    position: static;
+    display: contents;
+    height: auto;
+  }
+
+  .brand-calendar .rdp-button_previous,
+  .brand-calendar .rdp-button_next {
+    position: static;
+    top: auto;
+    display: inline-flex;
+    width: 1.75rem;
+    height: 1.75rem;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .brand-calendar .rdp-button_previous {
+    grid-area: prev;
+    inset-inline-start: auto;
+  }
+
+  .brand-calendar .rdp-button_next {
+    grid-area: next;
+    inset-inline-end: auto;
+  }
+
+  .brand-calendar .rdp-month_grid {
+    grid-area: grid;
+  }
+
+  .brand-calendar .rdp-dropdown_root .rdp-caption_label {
+    display: inline-flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.25rem;
   }
 
   .brand-calendar .rdp-month_caption,
@@ -923,6 +984,93 @@
     border-color: rgb(226 232 240) !important;
     margin-top: 0.35rem !important;
   }
+}
+
+/* Unlayered so these beat react-day-picker's own stylesheet. */
+.brand-calendar .rdp-chevron {
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  color: var(--color-dash-muted);
+}
+
+.brand-calendar .rdp-month {
+  display: grid;
+  grid-template-columns: 1.75rem minmax(0, 1fr) 1.75rem;
+  align-items: center;
+  column-gap: 0.375rem;
+}
+
+.brand-calendar .rdp-month_caption {
+  grid-column: 2;
+  grid-row: 1;
+  justify-content: center;
+  margin: 0;
+  min-width: 0;
+}
+
+.brand-calendar .rdp-nav {
+  position: static;
+  display: contents;
+  height: auto;
+  inset: auto;
+}
+
+.brand-calendar .rdp-button_previous,
+.brand-calendar .rdp-button_next {
+  position: static;
+  top: auto;
+  inset-inline: auto;
+  display: inline-flex;
+  width: 1.75rem;
+  height: 1.75rem;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-brand-navy);
+}
+
+.brand-calendar .rdp-button_previous .rdp-chevron,
+.brand-calendar .rdp-button_next .rdp-chevron {
+  color: var(--color-brand-navy);
+}
+
+.brand-calendar .rdp-button_previous {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.brand-calendar .rdp-button_next {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.brand-calendar .rdp-month_grid {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.brand-calendar .rdp-dropdowns {
+  width: 100%;
+  min-width: 0;
+}
+
+.brand-calendar .rdp-dropdown_root {
+  min-width: 0;
+  flex: 1 1 0;
+}
+
+.brand-calendar .rdp-dropdown_root .rdp-caption_label {
+  display: inline-flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem;
+}
+
+.brand-calendar .rdp-dropdown_root .rdp-chevron {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex-shrink: 0;
 }
 
 /*

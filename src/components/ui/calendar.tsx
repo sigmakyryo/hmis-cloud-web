@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import * as React from "react";
 import { DayPicker } from "react-day-picker";
 
@@ -7,6 +8,25 @@ import { appFont } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
 
 import "react-day-picker/style.css";
+
+function CalendarChevron({
+  orientation = "left",
+  className,
+}: {
+  className?: string;
+  orientation?: "up" | "down" | "left" | "right";
+  size?: number;
+  disabled?: boolean;
+}) {
+  const Icon =
+    orientation === "right"
+      ? ChevronRight
+      : orientation === "left"
+        ? ChevronLeft
+        : ChevronDown;
+
+  return <Icon className={className} strokeWidth={2} aria-hidden />;
+}
 
 function Calendar({
   className,
@@ -36,6 +56,7 @@ function Calendar({
           ...style,
         } as React.CSSProperties
       }
+      components={{ Chevron: CalendarChevron }}
       {...props}
     />
   );

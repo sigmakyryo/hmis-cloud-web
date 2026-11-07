@@ -11,7 +11,11 @@ export function ListPageTableSection({
   children,
   className,
 }: ListPageTableSectionProps) {
-  return <div className={cn(className)}>{children}</div>;
+  return (
+    <div data-list-band className={cn(className)}>
+      {children}
+    </div>
+  );
 }
 
 type ListPageDataSectionsStackProps = {
@@ -24,5 +28,9 @@ export function ListPageDataSectionsStack({
   children,
   className,
 }: ListPageDataSectionsStackProps) {
-  return <div className={cn("space-y-3", className)}>{children}</div>;
+  return (
+    <div data-list-band className={cn(className)}>
+      {children}
+    </div>
+  );
 }

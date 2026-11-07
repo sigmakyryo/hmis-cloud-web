@@ -32,6 +32,21 @@ describe("proxy host routing", () => {
     expect(response.headers.get("location")).toBe("http://localhost:3000/auth");
   });
 
+  it("keeps a LAN address on the same origin", () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXT_PUBLIC_APP_HOST", "");
+    vi.stubEnv("NEXT_PUBLIC_MARKETING_HOST", "");
+
+    const response = proxy(
+      request("http://192.168.1.45:3000/customers", "192.168.1.45:3000"),
+    );
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(
+      "http://192.168.1.45:3000/auth",
+    );
+  });
+
   it("sends localhost dashboard URLs to app.localhost in development", () => {
     vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("NEXT_PUBLIC_APP_HOST", "");

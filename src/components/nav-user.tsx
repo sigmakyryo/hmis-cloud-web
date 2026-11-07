@@ -74,8 +74,8 @@ export function NavUser() {
                 className="size-8"
               />
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold text-brand-navy">
-                  Account
+                <span className="truncate font-medium text-brand-navy">
+                  {displayName}
                 </span>
                 {email ? (
                   <span className="truncate text-xs text-dash-muted">{email}</span>

@@ -17,7 +17,7 @@ import { useUser } from "@/providers/user-provider";
 
 const SidebarTeamSwitcher = memo(function SidebarTeamSwitcher() {
   return (
-    <SidebarHeader className="pt-3">
+    <SidebarHeader className="h-12 justify-center gap-0 border-b border-dash-border px-2.5 py-0">
       <TeamSwitcher />
     </SidebarHeader>
   );
@@ -26,9 +26,7 @@ const SidebarTeamSwitcher = memo(function SidebarTeamSwitcher() {
 const SidebarAccount = memo(function SidebarAccount() {
   return (
     <SidebarFooter className="p-2">
-      <div className="rounded-xl border border-dash-border">
-        <NavUser />
-      </div>
+      <NavUser />
     </SidebarFooter>
   );
 });
@@ -48,7 +46,7 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
   );
 
   return (
-    <Sidebar collapsible="icon" className="border-r-transparent" {...props}>
+    <Sidebar collapsible="icon" className="border-r border-dash-border" {...props}>
       <SidebarTeamSwitcher />
       <SidebarContent>
         <NavMain items={navItems} />

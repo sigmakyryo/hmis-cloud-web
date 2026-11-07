@@ -28,8 +28,8 @@ import {
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
-const SIDEBAR_WIDTH = "14rem"
-const SIDEBAR_WIDTH_MOBILE = "14rem"
+const SIDEBAR_WIDTH = "15rem"
+const SIDEBAR_WIDTH_MOBILE = "15rem"
 const SIDEBAR_WIDTH_ICON = "3.25rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
@@ -530,7 +530,7 @@ const SidebarMenuItem = React.forwardRef<
 SidebarMenuItem.displayName = "SidebarMenuItem"
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-2.5 overflow-hidden rounded-full px-3 py-2 text-left text-sm text-dash-muted outline-none ring-sidebar-ring transition-[width,height,padding] hover:text-brand-navy focus-visible:ring-2 active:text-brand-navy disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:font-semibold data-[active=true]:text-brand-primary data-[state=open]:hover:text-brand-navy group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!rounded-full group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-[18px] [&>svg]:shrink-0",
+  "peer/menu-button flex w-full items-center gap-2.5 overflow-hidden rounded-md px-2.5 py-2 text-left text-[13px] text-brand-slate outline-none ring-sidebar-ring transition-[width,height,padding,background-color,color] hover:bg-dash-canvas hover:text-brand-navy focus-visible:ring-2 active:bg-dash-canvas disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-brand-primary data-[active=true]:font-medium data-[active=true]:text-white data-[active=true]:hover:bg-brand-primary-hover data-[active=true]:hover:text-white data-[state=open]:hover:text-brand-navy group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!rounded-md group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-[18px] [&>svg]:shrink-0 data-[active=true]:[&_svg]:text-white",
   {
     variants: {
       variant: {
@@ -738,8 +738,8 @@ const SidebarMenuSubButton = React.forwardRef<
       data-size={size}
       data-active={isActive}
       className={cn(
-        "flex h-8 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-full px-2.5 text-dash-muted outline-none ring-sidebar-ring hover:text-brand-navy focus-visible:ring-2 active:text-brand-navy disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
-        "data-[active=true]:font-semibold data-[active=true]:text-brand-primary",
+        "flex h-8 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2.5 text-brand-slate outline-none ring-sidebar-ring hover:bg-dash-canvas hover:text-brand-navy focus-visible:ring-2 active:bg-dash-canvas disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+        "data-[active=true]:font-medium data-[active=true]:text-brand-primary data-[active=true]:hover:text-brand-primary",
         size === "sm" && "text-xs",
         size === "md" && "text-sm",
         "group-data-[collapsible=icon]:hidden",

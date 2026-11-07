@@ -6,6 +6,7 @@ import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { FabButton } from "@/components/ui/fab-button";
 import {
+  ListPageBlankState,
   ListPageLayout,
   ListPagePagination,
   ListPageTableSection,
@@ -142,18 +143,23 @@ export function BatchesListPage() {
         {isLoading ? (
           <InventoryTableSkeleton columns={BATCHES_TABLE_SKELETON_COLUMNS} />
         ) : error ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-6">
-            <h2 className="text-sm font-semibold text-red-800">Could not load batches</h2>
-            <p className="mt-2 text-sm text-red-700">{error}</p>
-            <Button
-              type="button"
-              variant="outline"
-              className="mt-4"
-              onClick={() => void reload()}
-            >
-              Try again
-            </Button>
-          </div>
+          <ListPageBlankState
+  compact
+  tone="error"
+  icon="file"
+  title="Could not load batches"
+  description={error}
+  action={
+    <Button
+      type="button"
+      variant="outline"
+      className="h-8 rounded-lg text-[13px]"
+      onClick={() => void reload()}
+    >
+      Try again
+    </Button>
+  }
+/>
         ) : hasNoRecords ? (
           <InventoryListEmptyState
             icon={Layers}

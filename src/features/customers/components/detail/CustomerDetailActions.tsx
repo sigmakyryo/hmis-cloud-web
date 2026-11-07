@@ -118,7 +118,7 @@ export function CustomerDetailActions({
               type="button"
               variant="outline"
               size="icon"
-              className="rounded-full"
+              className="size-8 rounded-lg"
               disabled={isVoiding}
               aria-label="Client actions"
               data-testid="customer-actions-menu-button"

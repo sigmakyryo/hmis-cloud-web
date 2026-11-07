@@ -20,6 +20,7 @@ type InsuranceSchemeSearchableSelectProps = {
   onChange: (schemeId: number) => void;
   disabled?: boolean;
   placeholder?: string;
+  triggerClassName?: string;
   "data-testid"?: string;
 };
 
@@ -30,6 +31,7 @@ export function InsuranceSchemeSearchableSelect({
   onChange,
   disabled = false,
   placeholder = "Select an insurance scheme",
+  triggerClassName,
   "data-testid": dataTestId,
 }: InsuranceSchemeSearchableSelectProps) {
   const [open, setOpen] = useState(false);
@@ -187,7 +189,7 @@ export function InsuranceSchemeSearchableSelect({
       minSearchLength={0}
       emptySearchMessage=""
       noResultsMessage="No insurance schemes found."
-      triggerClassName="w-full"
+      triggerClassName={cn("w-full", triggerClassName)}
       headerExtra={payerBadges}
       data-testid={dataTestId}
     >

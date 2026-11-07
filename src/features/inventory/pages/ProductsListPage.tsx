@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { FabButton } from "@/components/ui/fab-button";
 import { ROUTES } from "@/constants/routes";
 import {
+  ListPageBlankState,
   ListPageLayout,
   ListPagePagination,
   ListPageTableSection,
@@ -54,11 +55,24 @@ export function ProductsListPage() {
     if (searchParams.get("add") !== "product") {
       return;
     }
-    setCreateOpen(true);
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete("add");
-    const query = params.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+
+    let cancelled = false;
+    async function openCreate() {
+      await Promise.resolve();
+      if (cancelled) {
+        return;
+      }
+      setCreateOpen(true);
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("add");
+      const query = params.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    }
+
+    void openCreate();
+    return () => {
+      cancelled = true;
+    };
   }, [pathname, router, searchParams]);
   const fetchFn = useCallback(
     (f: InventoryListFilters) => fetchProducts(f),
@@ -154,18 +168,23 @@ export function ProductsListPage() {
         {isLoading ? (
           <ProductsTableSkeleton rows={8} />
         ) : error ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-6">
-            <h2 className="text-sm font-semibold text-red-800">Could not load products</h2>
-            <p className="mt-2 text-sm text-red-700">{error}</p>
-            <Button
-              type="button"
-              variant="outline"
-              className="mt-4"
-              onClick={() => void reload()}
-            >
-              Try again
-            </Button>
-          </div>
+          <ListPageBlankState
+  compact
+  tone="error"
+  icon="file"
+  title="Could not load products"
+  description={error}
+  action={
+    <Button
+      type="button"
+      variant="outline"
+      className="h-8 rounded-lg text-[13px]"
+      onClick={() => void reload()}
+    >
+      Try again
+    </Button>
+  }
+/>
         ) : hasNoRecords ? (
           <InventoryListEmptyState
             icon={Package}
@@ -175,21 +194,22 @@ export function ProductsListPage() {
             onAction={handleCreate}
           />
         ) : isFilteredEmpty ? (
-          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-dash-border py-14 text-center">
-            <h2 className="text-base font-semibold text-brand-navy">No matching products</h2>
-            <p className="mt-1 text-sm text-brand-muted">
-              Adjust your search or filters and try again.
-            </p>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="mt-4"
-              onClick={handleClearSearchAndFilters}
-            >
-              Clear search & filters
-            </Button>
-          </div>
+          <ListPageBlankState
+  compact
+  icon="search"
+  title="No matching products"
+  description="Adjust your search or filters and try again."
+  action={
+    <Button
+      type="button"
+      variant="outline"
+      className="h-8 rounded-lg text-[13px]"
+      onClick={handleClearSearchAndFilters}
+    >
+      Clear search and filters
+    </Button>
+  }
+/>
         ) : (
           <>
             <ProductsTable products={items} onRowClick={handleRowClick} />

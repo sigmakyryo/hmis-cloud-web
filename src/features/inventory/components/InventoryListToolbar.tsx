@@ -50,7 +50,7 @@ export function InventoryListToolbar({
             placeholder={searchPlaceholder}
             value={search}
             disabled={isLoading}
-            className={compact ? "h-9 w-full text-sm sm:max-w-sm" : "w-full sm:max-w-md"}
+            className={compact ? "h-9 min-w-0 w-full text-sm sm:flex-1" : "min-w-0 w-full sm:flex-1"}
             onChange={(event) => onSearchChange(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") {

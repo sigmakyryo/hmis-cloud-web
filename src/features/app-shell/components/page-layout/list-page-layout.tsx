@@ -8,10 +8,6 @@ type ListPageLayoutProps = {
   "data-testid"?: string;
 };
 
-/** Horizontal inset aligned with settings pages (`SettingsPageLayout`). */
-const LIST_PAGE_INSET_CLASS =
-  "mx-auto w-full px-4 md:px-6";
-
 export function ListPageLayout({
   children,
   className,
@@ -20,8 +16,8 @@ export function ListPageLayout({
   return (
     <div
       className={cn(
-        LIST_PAGE_INSET_CLASS,
-        "flex h-full min-h-0 flex-col overflow-auto space-y-3 pb-20 pt-3 sm:pb-4",
+        "flex h-full min-h-0 w-full flex-col overflow-auto bg-white pb-20 sm:pb-4",
+        "[&>*:not([data-list-band])]:px-4 [&>*:not([data-list-band])]:py-4 [&>*:not([data-list-band])]:md:px-6",
         className,
       )}
       data-testid={dataTestId}

@@ -60,7 +60,12 @@ describe("page-layout", () => {
 
     const listPage = screen.getByTestId("list-page");
     expect(listPage).toBeInTheDocument();
-    expect(listPage).toHaveClass("px-4", "md:px-6", "space-y-3");
+    expect(listPage).toHaveClass("bg-white", "overflow-auto");
+    expect(listPage).not.toHaveClass("space-y-3");
+    const listHeader = screen.getByRole("heading", { name: "Clients" })
+      .parentElement?.parentElement;
+    expect(listHeader).toHaveAttribute("data-list-band");
+    expect(listHeader).toHaveClass("border-b", "px-4");
     const listTitle = screen.getByRole("heading", { name: "Clients" });
     expect(listTitle).toBeInTheDocument();
     expect(listTitle).toHaveClass(...PAGE_TITLE_CLASS.split(" "));

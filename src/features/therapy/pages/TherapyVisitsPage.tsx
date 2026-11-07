@@ -3,13 +3,12 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { CalendarX2, SearchX } from "lucide-react";
-
 import { PageLoader } from "@/components/page-loader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ROUTES } from "@/constants/routes";
 import {
+  ListPageBlankState,
   ListPageDataSectionsStack,
   ListPageHeaderMobileSearch,
   ListPageHeaderSection,
@@ -85,14 +84,26 @@ export function TherapyVisitsPage({
       return;
     }
 
-    const fallbackClinicId =
-      userData?.clinics?.find((clinic) => clinic.is_primary && clinic.is_active)
-        ?.clinic ??
-      userData?.clinics?.find((clinic) => clinic.is_active)?.clinic ??
-      userData?.primary_clinic?.id ??
-      null;
+    let cancelled = false;
+    async function applyClinic() {
+      await Promise.resolve();
+      if (cancelled) {
+        return;
+      }
+      const fallbackClinicId =
+        userData?.clinics?.find((clinic) => clinic.is_primary && clinic.is_active)
+          ?.clinic ??
+        userData?.clinics?.find((clinic) => clinic.is_active)?.clinic ??
+        userData?.primary_clinic?.id ??
+        null;
 
-    setActiveClinicId((current) => current ?? fallbackClinicId);
+      setActiveClinicId((current) => current ?? fallbackClinicId);
+    }
+
+    void applyClinic();
+    return () => {
+      cancelled = true;
+    };
   }, [isUserLoading, userData]);
 
   useEffect(() => {
@@ -108,33 +119,39 @@ export function TherapyVisitsPage({
   }, []);
 
   useEffect(() => {
-    if (isUserLoading || !hasAccess || !activeClinicId) {
-      setDepartments([]);
-      setDepartmentUuid("");
-      setIsLoadingDepartments(false);
-      return;
-    }
-
     let cancelled = false;
-    setIsLoadingDepartments(true);
-    setError(null);
-        setVisits([]);
-        setStats(null);
-        setPage(1);
-    setTotalCount(0);
-    setHasNext(false);
-    setHasPrevious(false);
-    setDepartmentUuid("");
 
-    void fetchTherapyDepartments(discipline, activeClinicId)
-      .then((records) => {
+    async function loadDepartments() {
+      await Promise.resolve();
+      if (cancelled) {
+        return;
+      }
+
+      if (isUserLoading || !hasAccess || !activeClinicId) {
+        setDepartments([]);
+        setDepartmentUuid("");
+        setIsLoadingDepartments(false);
+        return;
+      }
+
+      setIsLoadingDepartments(true);
+      setError(null);
+      setVisits([]);
+      setStats(null);
+      setPage(1);
+      setTotalCount(0);
+      setHasNext(false);
+      setHasPrevious(false);
+      setDepartmentUuid("");
+
+      try {
+        const records = await fetchTherapyDepartments(discipline, activeClinicId);
         if (cancelled) {
           return;
         }
         setDepartments(records);
         setDepartmentUuid((current) => current || records[0]?.uuid || "");
-      })
-      .catch((fetchError: unknown) => {
+      } catch (fetchError: unknown) {
         if (!cancelled) {
           setError(
             fetchError instanceof Error
@@ -142,46 +159,54 @@ export function TherapyVisitsPage({
               : "Could not load therapy departments.",
           );
         }
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) {
           setIsLoadingDepartments(false);
         }
-      });
+      }
+    }
 
+    void loadDepartments();
     return () => {
       cancelled = true;
     };
   }, [activeClinicId, discipline, hasAccess, isUserLoading]);
 
   useEffect(() => {
-    if (!hasAccess || !activeClinicId || !departmentUuid) {
-      setVisits([]);
-      return;
-    }
-
     let cancelled = false;
-    setIsLoadingVisits(true);
-    setError(null);
 
-    void fetchTherapyVisits({
-      discipline,
-      activeClinicId,
-      departmentUuid,
-      page,
-      pageSize: DEFAULT_PAGE_SIZE,
-      search: activeSearch,
-      status: activeTab === "active" ? "active" : "all",
-    })
-      .then((response) => {
-        if (!cancelled) {
-          setVisits(response.results);
-          setTotalCount(response.pagination?.count ?? response.results.length);
-          setHasNext(Boolean(response.pagination?.next));
-          setHasPrevious(Boolean(response.pagination?.previous));
+    async function loadVisits() {
+      await Promise.resolve();
+      if (cancelled) {
+        return;
+      }
+
+      if (!hasAccess || !activeClinicId || !departmentUuid) {
+        setVisits([]);
+        return;
+      }
+
+      setIsLoadingVisits(true);
+      setError(null);
+
+      try {
+        const response = await fetchTherapyVisits({
+          discipline,
+          activeClinicId,
+          departmentUuid,
+          page,
+          pageSize: DEFAULT_PAGE_SIZE,
+          search: activeSearch,
+          status: activeTab === "active" ? "active" : "all",
+        });
+        if (cancelled) {
+          return;
         }
-      })
-      .catch((fetchError: unknown) => {
+        setVisits(response.results);
+        setTotalCount(response.pagination?.count ?? response.results.length);
+        setHasNext(Boolean(response.pagination?.next));
+        setHasPrevious(Boolean(response.pagination?.previous));
+      } catch (fetchError: unknown) {
         if (!cancelled) {
           setError(
             fetchError instanceof Error
@@ -189,13 +214,14 @@ export function TherapyVisitsPage({
               : "Could not load therapy visits.",
           );
         }
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) {
           setIsLoadingVisits(false);
         }
-      });
+      }
+    }
 
+    void loadVisits();
     return () => {
       cancelled = true;
     };
@@ -210,31 +236,38 @@ export function TherapyVisitsPage({
   ]);
 
   useEffect(() => {
-    if (!hasAccess || !departmentUuid) {
-      setStats(null);
-      return;
-    }
-
     let cancelled = false;
-    setIsStatsLoading(true);
 
-    void fetchVisitQueueSummary({ departmentUuid })
-      .then((summary) => {
+    async function loadStats() {
+      await Promise.resolve();
+      if (cancelled) {
+        return;
+      }
+
+      if (!hasAccess || !departmentUuid) {
+        setStats(null);
+        return;
+      }
+
+      setIsStatsLoading(true);
+
+      try {
+        const summary = await fetchVisitQueueSummary({ departmentUuid });
         if (!cancelled) {
           setStats(summary);
         }
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) {
           setStats(null);
         }
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) {
           setIsStatsLoading(false);
         }
-      });
+      }
+    }
 
+    void loadStats();
     return () => {
       cancelled = true;
     };
@@ -247,15 +280,17 @@ export function TherapyVisitsPage({
   if (!hasAccess) {
     return (
       <ListPageLayout data-testid="therapy-access-denied">
-        <div className="rounded-xl border border-brand-border bg-white p-8 text-center">
-          <h1 className="text-xl font-semibold text-brand-navy">Access denied</h1>
-          <p className="mt-2 text-sm text-brand-muted">
-            You must belong to the {config.group} group to access {config.label}.
-          </p>
-          <Button asChild variant="outline" className="mt-6">
-            <Link href={ROUTES.settingsAccount}>Back to account</Link>
-          </Button>
-        </div>
+        <ListPageBlankState
+          compact
+          icon="shield"
+          title="Access denied"
+          description={`You must belong to the ${config.group} group to access ${config.label}.`}
+          action={
+            <Button asChild variant="outline" className="h-8 rounded-lg text-[13px]">
+              <Link href={ROUTES.settingsAccount}>Back to account</Link>
+            </Button>
+          }
+        />
       </ListPageLayout>
     );
   }
@@ -342,25 +377,20 @@ export function TherapyVisitsPage({
         {isLoadingDepartments || isLoadingVisits ? (
           <PageLoader message="Loading therapy visits..." />
         ) : error ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-6">
-            <h2 className="text-sm font-semibold text-red-800">
-              Could not load therapy visits
-            </h2>
-            <p className="mt-2 text-sm text-red-700">{error}</p>
-          </div>
+          <ListPageBlankState
+            compact
+            tone="error"
+            icon="file"
+            title="Could not load therapy visits"
+            description={error}
+          />
         ) : departments.length === 0 ? (
-          <div className="rounded-xl border border-brand-border bg-white px-6 py-14 text-center">
-            <span className="mx-auto flex size-12 items-center justify-center rounded-xl bg-brand-tint text-brand-primary">
-              <CalendarX2 className="size-6" />
-            </span>
-            <h2 className="mt-4 text-lg font-semibold text-brand-navy">
-              No {config.label.toLowerCase()} queue available
-            </h2>
-            <p className="mx-auto mt-2 max-w-md text-sm text-brand-muted">
-              The active clinic does not have an available{" "}
-              {config.label.toLowerCase()} department.
-            </p>
-          </div>
+          <ListPageBlankState
+            compact
+            icon="calendar"
+            title={`No ${config.label.toLowerCase()} queue available`}
+            description={`The active clinic does not have an available ${config.label.toLowerCase()} department.`}
+          />
         ) : visits.length > 0 ? (
           <div className="space-y-4">
             <TherapyVisitsTable
@@ -380,29 +410,24 @@ export function TherapyVisitsPage({
             />
           </div>
         ) : (
-          <div className="rounded-xl border border-brand-border bg-white px-6 py-14 text-center">
-            <span className="mx-auto flex size-12 items-center justify-center rounded-xl bg-brand-tint text-brand-primary">
-              {activeSearch ? (
-                <SearchX className="size-6" />
-              ) : (
-                <CalendarX2 className="size-6" />
-              )}
-            </span>
-            <h2 className="mt-4 text-lg font-semibold text-brand-navy">
-              {activeSearch
+          <ListPageBlankState
+            compact
+            icon={activeSearch ? "search" : "calendar"}
+            title={
+              activeSearch
                 ? "No visits found"
                 : activeTab === "active"
                   ? "No active visits"
-                  : "No visits yet"}
-            </h2>
-            <p className="mx-auto mt-2 max-w-md text-sm text-brand-muted">
-              {activeSearch
+                  : "No visits yet"
+            }
+            description={
+              activeSearch
                 ? `No visits match "${activeSearch}". Try a different search.`
                 : activeTab === "active"
                   ? `There are no active ${config.label.toLowerCase()} visits in this clinic.`
-                  : `${config.label} visits will appear here when they are created.`}
-            </p>
-          </div>
+                  : `${config.label} visits will appear here when they are created.`
+            }
+          />
         )}
       </ListPageTableSection>
     </ListPageLayout>

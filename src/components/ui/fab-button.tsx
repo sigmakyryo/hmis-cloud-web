@@ -34,6 +34,7 @@ export function FabButton({
       type="button"
       variant={variant}
       size="icon"
+      data-list-band
       aria-label={label}
       className={cn(
         "fixed bottom-6 right-6 z-40 size-14 rounded-full shadow-lg",
