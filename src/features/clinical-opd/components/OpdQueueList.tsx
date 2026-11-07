@@ -133,7 +133,7 @@ function OpdQueueListRow({
         <UserIdenticon
           seed={encounter.customer_uuid || encounter.customer_name}
           name={encounter.customer_name}
-          className="size-8 shrink-0 rounded-md"
+          className="size-6 shrink-0 rounded-md"
         />
 
         <div className="min-w-0 flex-1 space-y-0.5">

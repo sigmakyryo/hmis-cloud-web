@@ -38,7 +38,7 @@ export function ListPageToolbarSearch({
   return (
     <div
       className={cn(
-        "hidden flex-1 flex-col gap-2 sm:flex sm:flex-row sm:items-center",
+        "hidden min-w-0 flex-1 flex-col gap-2 sm:flex sm:flex-row sm:items-center",
         className,
       )}
     >
@@ -57,7 +57,7 @@ export function ListPageToolbarActions({
   className,
 }: ListPageToolbarActionsProps) {
   return (
-    <div className={cn("flex flex-wrap items-center gap-2", className)}>
+    <div className={cn("flex w-fit shrink-0 flex-wrap items-center gap-2", className)}>
       {children}
     </div>
   );

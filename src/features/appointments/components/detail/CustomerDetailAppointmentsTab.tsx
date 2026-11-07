@@ -4,12 +4,13 @@ import { CalendarPlus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { TabAddActionButton } from "@/components/ui/app-buttons";
-import {
-  LIST_PAGE_INSIGHT_CELL_CLASS,
-  LIST_PAGE_INSIGHT_LABEL_CLASS,
-  LIST_PAGE_INSIGHT_VALUE_CLASS,
-} from "@/features/app-shell/components/page-layout";
 import { Button } from "@/components/ui/button";
+import {
+  CustomerTabError,
+  CustomerTabActions,
+  CustomerTabStat,
+  CustomerTabStatBand,
+} from "@/features/customers/components/detail/customer-tab-chrome";
 import {
   AppointmentActionConfirmDialog,
   type AppointmentTableAction,
@@ -203,14 +204,10 @@ export function CustomerDetailAppointmentsTab({
 
   if (loadError && !hasLoaded) {
     return (
-      <div className="space-y-3">
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-6 text-sm text-red-700">
-          {loadError}
-        </div>
-        <Button type="button" variant="outline" onClick={() => void loadAppointments()}>
-          Try again
-        </Button>
-      </div>
+      <CustomerTabError
+        message={loadError}
+        onRetry={() => void loadAppointments()}
+      />
     );
   }
 
@@ -225,7 +222,7 @@ export function CustomerDetailAppointmentsTab({
   ).length;
 
   return (
-    <div className="space-y-5" data-testid="customer-detail-appointments-tab">
+    <div className="space-y-6" data-testid="customer-detail-appointments-tab">
       <CreateAppointmentDialog
         customer={customer}
         open={createOpen}
@@ -289,42 +286,33 @@ export function CustomerDetailAppointmentsTab({
         }}
       />
 
-      <dl
-        className="grid grid-cols-2 divide-y divide-dash-border/60 border-b border-dash-border/80 sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4 lg:divide-x"
-        data-testid="customer-appointments-stats"
-      >
-        <div className={LIST_PAGE_INSIGHT_CELL_CLASS}>
-          <dt className={LIST_PAGE_INSIGHT_LABEL_CLASS}>Total appointments</dt>
-          <dd className={LIST_PAGE_INSIGHT_VALUE_CLASS}>
-            {formatCompactNumber(appointments.length)}
-          </dd>
-          <p className="mt-0.5 text-xs text-brand-muted">All scheduled bookings</p>
-        </div>
+      {appointments.length > 0 ? (
+        <CustomerTabActions>{scheduleButton}</CustomerTabActions>
+      ) : null}
 
-        <div className={LIST_PAGE_INSIGHT_CELL_CLASS}>
-          <dt className={LIST_PAGE_INSIGHT_LABEL_CLASS}>Upcoming</dt>
-          <dd className={LIST_PAGE_INSIGHT_VALUE_CLASS}>
-            {formatCompactNumber(upcomingCount)}
-          </dd>
-          <p className="mt-0.5 text-xs text-brand-muted">Future bookings</p>
-        </div>
-
-        <div className={LIST_PAGE_INSIGHT_CELL_CLASS}>
-          <dt className={LIST_PAGE_INSIGHT_LABEL_CLASS}>Completed</dt>
-          <dd className={LIST_PAGE_INSIGHT_VALUE_CLASS}>
-            {formatCompactNumber(completedCount)}
-          </dd>
-          <p className="mt-0.5 text-xs text-brand-muted">Concluded sessions</p>
-        </div>
-
-        <div className={LIST_PAGE_INSIGHT_CELL_CLASS}>
-          <dt className={LIST_PAGE_INSIGHT_LABEL_CLASS}>Cancelled</dt>
-          <dd className={LIST_PAGE_INSIGHT_VALUE_CLASS}>
-            {formatCompactNumber(cancelledCount)}
-          </dd>
-          <p className="mt-0.5 text-xs text-brand-muted">Voided appointments</p>
-        </div>
-      </dl>
+      <CustomerTabStatBand data-testid="customer-appointments-stats">
+        <CustomerTabStat
+          label="Total"
+          value={formatCompactNumber(appointments.length)}
+          hint="All scheduled bookings"
+        />
+        <CustomerTabStat
+          label="Upcoming"
+          value={formatCompactNumber(upcomingCount)}
+          hint="Future bookings"
+          accent={upcomingCount > 0}
+        />
+        <CustomerTabStat
+          label="Completed"
+          value={formatCompactNumber(completedCount)}
+          hint="Concluded sessions"
+        />
+        <CustomerTabStat
+          label="Cancelled"
+          value={formatCompactNumber(cancelledCount)}
+          hint="Voided appointments"
+        />
+      </CustomerTabStatBand>
 
       {appointments.length === 0 ? (
         <CustomerDetailTabEmptyState
@@ -336,9 +324,7 @@ export function CustomerDetailAppointmentsTab({
         />
       ) : (
         <CustomerDetailRecordList
-          title="Appointments"
-          description="Upcoming and recent appointments for this client."
-          action={scheduleButton}
+          plain
           data-testid="customer-appointments-list"
         >
           {appointments.map((appointment) => (

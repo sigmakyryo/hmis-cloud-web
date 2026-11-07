@@ -29,7 +29,7 @@ export function OhEncounterModuleNav({
       )}
       data-testid="oh-encounter-module-nav"
     >
-      <p className="hidden px-4 pb-1 pt-4 text-[12px] font-medium text-dash-muted xl:block">
+      <p className="hidden px-4 pb-1 pt-4 text-[13px] font-semibold text-brand-navy xl:block">
         This visit
       </p>
       <div className="scrollbar-hide flex gap-1 overflow-x-auto px-2 py-2 xl:min-h-0 xl:flex-1 xl:flex-col xl:gap-0.5 xl:overflow-y-auto xl:px-2 xl:pb-3">
@@ -79,8 +79,8 @@ function NavButton({
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30",
         "xl:w-full",
         selected
-          ? "bg-brand-tint/70 font-medium text-brand-navy"
-          : "text-brand-slate hover:bg-slate-50 hover:text-brand-navy",
+          ? "bg-brand-tint font-medium text-brand-navy"
+          : "text-brand-slate hover:bg-dash-canvas hover:text-brand-navy",
       )}
     >
       <span className={cn("shrink-0", selected ? "text-brand-primary" : "text-dash-muted")}>

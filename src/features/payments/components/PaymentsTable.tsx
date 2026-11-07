@@ -92,7 +92,7 @@ export function PaymentsTable({ payments, onRowClick, className }: PaymentsTable
                     <UserIdenticon
                       seed={customerName}
                       name={customerName}
-                      className="size-8 shrink-0 rounded-md"
+                      className="size-6 shrink-0 rounded-md"
                     />
                     <span className="truncate font-medium text-brand-navy hover:text-brand-primary">
                       {customerName}
@@ -103,7 +103,7 @@ export function PaymentsTable({ payments, onRowClick, className }: PaymentsTable
                     <UserIdenticon
                       seed={customerName}
                       name={customerName}
-                      className="size-8 shrink-0 rounded-md"
+                      className="size-6 shrink-0 rounded-md"
                     />
                     <span className="truncate font-medium text-brand-navy">
                       {customerName}

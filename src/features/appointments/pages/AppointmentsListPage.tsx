@@ -1,6 +1,5 @@
 "use client";
 
-import { BarChart3 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
@@ -94,7 +93,6 @@ export function AppointmentsListPage() {
   const [visibleMonth, setVisibleMonth] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [dayPanelOpen, setDayPanelOpen] = useState(false);
-  const [showStats, setShowStats] = useState(false);
   const [stats, setStats] = useState<AppointmentSummaryStats | null>(null);
   const [isStatsLoading, setIsStatsLoading] = useState(true);
 
@@ -335,17 +333,6 @@ export function AppointmentsListPage() {
           />
         )}
 
-        {isListView && !hasNoRecords ? (
-          <FabButton
-            label={showStats ? "Hide stats" : "Show stats"}
-            icon={BarChart3}
-            variant="outline"
-            className="bottom-24 bg-white"
-            onClick={() => setShowStats((current) => !current)}
-            data-testid="appointments-show-stats-fab"
-          />
-        ) : null}
-
         <FabButton
           label="New appointment"
           onClick={() => {
@@ -362,7 +349,7 @@ export function AppointmentsListPage() {
           )}
         >
           {isListView && !hasNoRecords ? (
-            <ListPageStatsSection className={cn(!showStats && "hidden sm:block")}>
+            <ListPageStatsSection>
               <AppointmentSummaryStatsCards
                 stats={stats}
                 isLoading={isStatsLoading}

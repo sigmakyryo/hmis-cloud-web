@@ -9,6 +9,11 @@ import { AddCustomerInsuranceDialog } from "@/features/customers/components/deta
 import { CustomerDetailTabEmptyState } from "@/features/customers/components/detail/CustomerDetailTabEmptyState";
 import { CustomerInsuranceTable } from "@/features/customers/components/detail/CustomerInsuranceTable";
 import { CustomerTabSkeleton } from "@/features/customers/components/detail/CustomerTabSkeleton";
+import {
+  CUSTOMER_TAB_BLEED_CLASS,
+  CustomerTabError,
+  CustomerTabActions,
+} from "@/features/customers/components/detail/customer-tab-chrome";
 import { UpdateCustomerInsuranceDialog } from "@/features/customers/components/detail/UpdateCustomerInsuranceDialog";
 import { fetchCustomerInsurance } from "@/features/customers/services/customer-insurance.service";
 import type { CustomerInsurance } from "@/features/customers/types/customer-insurance.types";
@@ -111,11 +116,7 @@ export function CustomerDetailInsuranceTab({
   }
 
   if (loadError && !hasLoaded) {
-    return (
-      <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-6 text-sm text-red-700">
-        {loadError}
-      </div>
-    );
+    return <CustomerTabError message={loadError} />;
   }
 
   const addButton = (
@@ -176,20 +177,23 @@ export function CustomerDetailInsuranceTab({
 
   return (
     <>
-      <div className="space-y-4" data-testid="customer-detail-insurance-tab">
-        <div className="flex justify-end">{addButton}</div>
-        <CustomerInsuranceTable
-          insurance={paged.items}
-          onUpdate={setEditingInsurance}
-        />
-        <ListPagePagination
-          page={paged.page}
-          pageSize={INSURANCE_PAGE_SIZE}
-          totalCount={paged.totalCount}
-          hasNext={paged.hasNext}
-          hasPrevious={paged.hasPrevious}
-          onPageChange={setPage}
-        />
+      <div className="space-y-6" data-testid="customer-detail-insurance-tab">
+        <CustomerTabActions>{addButton}</CustomerTabActions>
+        <div className={CUSTOMER_TAB_BLEED_CLASS}>
+          <CustomerInsuranceTable
+            insurance={paged.items}
+            onUpdate={setEditingInsurance}
+          />
+          <ListPagePagination
+            page={paged.page}
+            pageSize={INSURANCE_PAGE_SIZE}
+            totalCount={paged.totalCount}
+            hasNext={paged.hasNext}
+            hasPrevious={paged.hasPrevious}
+            onPageChange={setPage}
+            className="border-t-0"
+          />
+        </div>
       </div>
       {dialogs}
     </>

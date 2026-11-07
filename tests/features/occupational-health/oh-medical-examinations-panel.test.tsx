@@ -17,34 +17,6 @@ vi.mock("@/providers/toast-provider", () => ({
   useToast: () => ({ toast: vi.fn(() => "toast-id"), dismiss: vi.fn() }),
 }));
 
-vi.mock("@/features/occupational-health/components/OhExamTypeDialog", () => ({
-  OhExamTypeDialog: ({
-    open,
-    onConfirm,
-  }: {
-    open: boolean;
-    onConfirm: (examType: string) => void;
-  }) =>
-    open ? (
-      <div data-testid="oh-exam-type-dialog">
-        <button
-          type="button"
-          data-testid="oh-exam-type-confirm-admission"
-          onClick={() => onConfirm("pre_employment")}
-        >
-          Confirm admission
-        </button>
-        <button
-          type="button"
-          data-testid="oh-exam-type-confirm-periodic"
-          onClick={() => onConfirm("periodic")}
-        >
-          Confirm periodic
-        </button>
-      </div>
-    ) : null,
-}));
-
 vi.mock("@/features/occupational-health/components/OhExamTemplateCaptureForm", () => ({
   OhExamTemplateCaptureForm: ({
     value,
@@ -195,33 +167,37 @@ afterEach(() => {
 });
 
 describe("OhMedicalExaminationsPanel", () => {
-  it("opens the exam type dialog before creating an examination", async () => {
+  it("asks for the exam type and note before the template", async () => {
     renderPanel();
 
-    expect(await screen.findByTestId("oh-exam-type-dialog")).toBeInTheDocument();
+    expect(await screen.findByTestId("oh-exam-details-step")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Exam type/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Note")).toBeInTheDocument();
+    expect(screen.getByTestId("oh-exam-details-continue")).toBeDisabled();
+    expect(screen.queryByTestId("oh-exam-template-capture")).not.toBeInTheDocument();
     expect(ohService.createOhExamination).not.toHaveBeenCalled();
   });
 
-  it("creates an examination only after a type is chosen", async () => {
+  it("keeps the type and note in state, then shows the template", async () => {
     renderPanel();
 
-    fireEvent.click(await screen.findByTestId("oh-exam-type-confirm-admission"));
+    fireEvent.click(await screen.findByRole("combobox", { name: /Exam type/ }));
+    fireEvent.click(await screen.findByRole("option", { name: "Admission exam" }));
+    fireEvent.change(screen.getByLabelText("Note"), {
+      target: { value: "Annual review" },
+    });
+    fireEvent.click(screen.getByTestId("oh-exam-details-continue"));
 
-    await waitFor(() =>
-      expect(ohService.createOhExamination).toHaveBeenCalledWith(
-        expect.objectContaining({
-          encounter: 7,
-          exam_type: "pre_employment",
-          employment_episode: 9,
-          occupational_attendance: true,
-        }),
-      ),
-    );
-    expect(ohService.createOhExamination.mock.calls[0][0]).not.toHaveProperty(
-      "responses_json",
-    );
-    expect(await screen.findByText("Admission exam")).toBeInTheDocument();
+    expect(await screen.findByTestId("oh-exam-template-capture")).toBeInTheDocument();
+    expect(screen.getByText("Admission exam")).toBeInTheDocument();
+    expect(screen.getByText("Annual review")).toBeInTheDocument();
     expect(screen.getByTestId("oh-exam-change-type")).toBeInTheDocument();
+    expect(ohService.createOhExamination).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId("oh-exam-change-type"));
+    expect(screen.getByTestId("oh-exam-details-step")).toBeInTheDocument();
+    expect(screen.getByLabelText("Note")).toHaveValue("Annual review");
+    expect(screen.queryByTestId("oh-exam-template-capture")).not.toBeInTheDocument();
   });
 
   it("loads an existing exam without prompting for type again", async () => {
@@ -247,7 +223,7 @@ describe("OhMedicalExaminationsPanel", () => {
     });
 
     expect(await screen.findByText("Periodic exam")).toBeInTheDocument();
-    expect(screen.queryByTestId("oh-exam-type-dialog")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("oh-exam-details-step")).not.toBeInTheDocument();
     await waitFor(() =>
       expect(screen.getByTestId("oh-exam-answer-bp")).toHaveTextContent("120/80"),
     );

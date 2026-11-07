@@ -11,12 +11,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Separator } from "@/components/ui/separator";
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "@/components/ui/sidebar";
 import { ROUTES } from "@/constants/routes";
 import { getActiveClinics } from "@/features/app-shell/utils/workspace-clinics";
 import type { UserClinic } from "@/features/app-shell/utils/workspace-clinics";
@@ -59,87 +53,93 @@ export function TeamSwitcher() {
   }
 
   return (
-    <SidebarMenu>
-      <SidebarMenuItem>
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <SidebarMenuButton
-              size="lg"
-              tooltip="Switch workspace"
-              data-testid="sidebar-team-switcher-trigger"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-            >
-              <WorkspaceAvatar name={activeClinicLabel} className="size-8" />
-              <div className="grid min-w-0 flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium text-brand-navy">
-                  {isLoading ? "Loading..." : activeClinicLabel}
-                </span>
-                <span className="truncate text-xs text-dash-muted">
-                  {tenantName}
-                </span>
-              </div>
-              <AppIcon
-                name="chevronUpDown"
-                size={16}
-                className="ml-auto shrink-0 text-sidebar-foreground/50"
-              />
-            </SidebarMenuButton>
-          </PopoverTrigger>
-          <PopoverContent
-            data-testid="sidebar-team-switcher-popover"
-            side="right"
-            align="start"
-            sideOffset={8}
-            className={cn(
-              appFont.className,
-              "w-56 rounded-xl border border-brand-border/80 p-1.5 shadow-[0_12px_40px_-16px_rgba(15,23,42,0.28)]",
-            )}
-          >
-            {clinics.length > 0 ? (
-              clinics.map((clinic) => {
-                const isActive = clinic.clinic === resolvedClinicId;
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          data-testid="sidebar-team-switcher-trigger"
+          aria-label={`Switch workspace, ${activeClinicLabel}`}
+          className="flex h-8 w-full items-center gap-2 rounded-md px-1 text-left outline-none transition-colors hover:bg-dash-canvas focus-visible:ring-2 focus-visible:ring-brand-primary/25 data-[state=open]:bg-dash-canvas group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+        >
+          <WorkspaceAvatar name={tenantName} tone="primary" className="size-6 rounded-md text-[10px]" />
+          <span className="grid min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
+            <span className="truncate text-[13px] font-medium leading-tight text-brand-navy">
+              {isLoading ? "Loading..." : activeClinicLabel}
+            </span>
+            <span className="truncate text-[11px] leading-tight text-dash-muted">
+              {tenantName}
+            </span>
+          </span>
+          <AppIcon
+            name="chevronUpDown"
+            size={14}
+            className="shrink-0 text-dash-muted group-data-[collapsible=icon]:hidden"
+          />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        data-testid="sidebar-team-switcher-popover"
+        side="right"
+        align="start"
+        sideOffset={10}
+        className={cn(appFont.className, "w-64 rounded-lg p-1.5")}
+      >
+        {clinics.length > 0 ? (
+          <ul className="space-y-0.5">
+            {clinics.map((clinic) => {
+              const isActive = clinic.clinic === resolvedClinicId;
 
-                return (
+              return (
+                <li key={clinic.id}>
                   <button
-                    key={clinic.id}
                     type="button"
                     data-testid={`clinic-option-${clinic.clinic}`}
                     onClick={() => handleClinicSelect(clinic)}
-                    className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-sm text-foreground outline-none hover:bg-accent"
+                    className={cn(
+                      "flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left outline-none hover:bg-brand-primary/5",
+                      isActive && "bg-brand-primary/10",
+                    )}
                   >
                     <WorkspaceAvatar
                       name={clinic.clinic_name}
+                      tone="primary"
                       className="size-7 text-[10px]"
                     />
-                    <span className="min-w-0 flex-1 truncate font-medium text-brand-navy">
-                      {clinic.clinic_name}
+                    <span className="min-w-0 flex-1">
+                      <span
+                        className={cn(
+                          "block truncate text-[13px] font-medium",
+                          isActive ? "text-brand-primary" : "text-brand-navy",
+                        )}
+                      >
+                        {clinic.clinic_name}
+                      </span>
+                      <span className="block truncate text-[11px] text-dash-muted">
+                        {clinic.is_primary ? "Primary" : clinic.role}
+                      </span>
                     </span>
                     {isActive ? (
-                      <Check
-                        className="size-4 shrink-0 text-emerald-600"
-                        aria-hidden
-                      />
+                      <Check className="size-4 shrink-0 text-brand-primary" aria-hidden />
                     ) : null}
                   </button>
-                );
-              })
-            ) : (
-              <p className="px-2 py-1.5 text-sm text-muted-foreground">
-                No clinics assigned
-              </p>
-            )}
-            <Separator className="my-1.5" />
-            <Link
-              href={ROUTES.settingsOrganization}
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-2.5 rounded-lg px-2 py-2 text-sm text-brand-navy outline-none hover:bg-accent"
-            >
-              <AppIcon name="settings" size={16} className="text-dash-muted" />
-              <span>Organization settings</span>
-            </Link>
-          </PopoverContent>
-        </Popover>
-      </SidebarMenuItem>
-    </SidebarMenu>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="px-2 py-1.5 text-sm text-dash-muted">No clinics assigned</p>
+        )}
+        <div className="mt-1 border-t border-dash-border pt-1">
+          <Link
+            href={ROUTES.settingsOrganization}
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2.5 rounded-md px-2 py-2 text-[13px] text-brand-navy outline-none hover:bg-brand-primary/5"
+          >
+            <AppIcon name="settings" size={16} className="text-dash-muted" />
+            <span>Organization settings</span>
+          </Link>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }

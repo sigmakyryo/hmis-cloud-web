@@ -1,6 +1,5 @@
 "use client";
 
-import { BarChart3 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -42,8 +41,6 @@ import {
   parseSalesOrderState,
   salesOrdersHref,
 } from "@/features/sales-orders/utils/sales-order-list-url";
-import { cn } from "@/lib/utils";
-
 const DEFAULT_PAGE_SIZE = 20;
 
 export function SalesOrdersListPage() {
@@ -72,7 +69,6 @@ export function SalesOrdersListPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isUnauthorized, setIsUnauthorized] = useState(false);
-  const [showStats, setShowStats] = useState(false);
   const [completedListStatsKey, setCompletedListStatsKey] = useState<string | null>(
     null,
   );
@@ -254,16 +250,22 @@ export function SalesOrdersListPage() {
   if (isUnauthorized) {
     return (
       <ListPageLayout data-testid="sales-orders-page">
-        <div className="rounded-xl border border-brand-border bg-white p-8 text-center">
-          <h1 className="text-xl font-semibold text-brand-navy">Access denied</h1>
-          <p className="mt-2 text-sm text-brand-muted">
-            You are not authorized to view sales orders. Sign in again or contact
-            your administrator.
-          </p>
-          <Button className="mt-6" onClick={() => router.push(ROUTES.auth)}>
-            Go to sign in
-          </Button>
-        </div>
+        <ListPageBlankState
+  compact
+  icon="shield"
+  title="Access denied"
+  description="You are not authorized to view sales orders. Sign in again or contact your administrator."
+  action={
+    <Button
+      type="button"
+      variant="outline"
+      className="h-8 rounded-lg text-[13px]"
+      onClick={() => router.push(ROUTES.auth)}
+    >
+      Go to sign in
+    </Button>
+  }
+/>
       </ListPageLayout>
     );
   }
@@ -290,17 +292,6 @@ export function SalesOrdersListPage() {
       />
       )}
 
-      {!hasNoRecords ? (
-        <FabButton
-          label={showStats ? "Hide stats" : "Show stats"}
-          icon={BarChart3}
-          variant="outline"
-          className="bottom-24 bg-white"
-          onClick={() => setShowStats((current) => !current)}
-          data-testid="sales-orders-show-stats-fab"
-        />
-      ) : null}
-
       <FabButton
         label="New order"
         onClick={handleNewOrder}
@@ -309,7 +300,7 @@ export function SalesOrdersListPage() {
 
       {!hasNoRecords ? (
         <ListPageDataSectionsStack className="space-y-0">
-          <ListPageStatsSection className={cn(!showStats && "hidden sm:block")}>
+          <ListPageStatsSection>
             <SalesOrderSummaryStatsCards
               stats={stats}
               isLoading={isStatsLoading}

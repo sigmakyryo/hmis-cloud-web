@@ -5,6 +5,7 @@ import { useCallback, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
+  ListPageBlankState,
   ListPageLayout,
   ListPagePagination,
   ListPageStatsSection,
@@ -133,20 +134,23 @@ export function MovementsListPage() {
         {isLoading ? (
           <InventoryTableSkeleton columns={MOVEMENTS_TABLE_SKELETON_COLUMNS} />
         ) : error ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-6">
-            <h2 className="text-sm font-semibold text-red-800">
-              Could not load movements
-            </h2>
-            <p className="mt-2 text-sm text-red-700">{error}</p>
-            <Button
-              type="button"
-              variant="outline"
-              className="mt-4"
-              onClick={() => void reload()}
-            >
-              Try again
-            </Button>
-          </div>
+          <ListPageBlankState
+  compact
+  tone="error"
+  icon="file"
+  title="Could not load movements"
+  description={error}
+  action={
+    <Button
+      type="button"
+      variant="outline"
+      className="h-8 rounded-lg text-[13px]"
+      onClick={() => void reload()}
+    >
+      Try again
+    </Button>
+  }
+/>
         ) : hasNoRecords ? (
           <InventoryListEmptyState
             icon={ArrowLeftRight}

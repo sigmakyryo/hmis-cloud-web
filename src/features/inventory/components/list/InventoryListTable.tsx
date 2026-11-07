@@ -31,28 +31,22 @@ export function InventoryListTable<T>({
   onRowClick,
   footer,
   className,
-  compact = false,
 }: InventoryListTableProps<T>) {
-  const cellPadding = compact ? "px-3.5 py-2" : "px-4 py-2.5";
+  const cellPadding = "px-3 py-1.5 align-middle";
 
   return (
-    <div
-      className={cn(
-        "overflow-hidden rounded-xl border border-dash-border/80 bg-white",
-        className,
-      )}
-    >
+    <div className={cn("w-full overflow-hidden", className)}>
       <div className="overflow-x-auto">
-        <table className="min-w-full">
+        <table className="min-w-full border-collapse text-left text-[13px] leading-tight">
           <thead>
-            <tr className="border-b border-dash-border/80 bg-white">
+            <tr className="border-b border-dash-border bg-white">
               {columns.map((column) => (
                 <th
                   key={column.key}
                   scope="col"
                   className={cn(
                     cellPadding,
-                    "text-left text-[11px] font-medium uppercase tracking-[0.08em] text-dash-muted",
+                    "h-8 whitespace-nowrap border-b border-dash-border text-left text-[12px] font-medium text-dash-muted",
                     column.headerClassName,
                   )}
                 >
@@ -61,13 +55,13 @@ export function InventoryListTable<T>({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-dash-border/60">
+          <tbody>
             {items.map((item) => (
               <tr
                 key={getRowKey(item)}
                 className={cn(
-                  onRowClick &&
-                    "cursor-pointer",
+                  "border-b border-dash-border/70 transition-colors last:border-b-0 hover:bg-brand-tint/50",
+                  onRowClick && "cursor-pointer",
                 )}
                 onClick={() => onRowClick?.(item)}
               >
@@ -89,7 +83,7 @@ export function InventoryListTable<T>({
         </table>
       </div>
       {footer ? (
-        <div className={cn("border-t border-dash-border/80", compact ? "px-3.5 py-2.5" : "px-4 py-3 sm:px-5")}>
+        <div className="border-t border-dash-border px-3 py-2">
           {footer}
         </div>
       ) : null}
@@ -116,22 +110,19 @@ export function InventoryListTableSkeleton({
 }: InventoryListTableSkeletonProps) {
   return (
     <div
-      className={cn(
-        "overflow-hidden rounded-xl border border-dash-border/80 bg-white",
-        className,
-      )}
+      className={cn("w-full overflow-hidden", className)}
       data-testid="inventory-list-table-skeleton"
     >
       <div className="overflow-x-auto">
-        <table className="min-w-full">
+        <table className="min-w-full border-collapse text-left text-[13px] leading-tight">
           <thead>
-            <tr className="border-b border-dash-border/80 bg-white">
+            <tr className="border-b border-dash-border bg-white">
               {columns.map((column) => (
                 <th
                   key={column.key}
                   scope="col"
                   className={cn(
-                    "px-4 py-2.5 text-left text-[11px] font-medium uppercase tracking-[0.08em] text-dash-muted",
+                    "h-8 whitespace-nowrap border-b border-dash-border px-3 text-left align-middle text-[12px] font-medium text-dash-muted",
                     column.headerClassName,
                   )}
                 >
@@ -140,11 +131,11 @@ export function InventoryListTableSkeleton({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-dash-border/60">
+          <tbody>
             {Array.from({ length: rows }).map((_, rowIndex) => (
-              <tr key={rowIndex}>
+              <tr key={rowIndex} className="border-b border-dash-border/70 last:border-b-0">
                 {columns.map((column) => (
-                  <td key={column.key} className="px-4 py-2.5">
+                  <td key={column.key} className="px-3 py-1.5 align-middle">
                     <Skeleton className="h-3.5 w-24" />
                   </td>
                 ))}

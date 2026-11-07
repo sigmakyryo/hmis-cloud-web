@@ -7,10 +7,20 @@ import { ClipboardList, FileWarning } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
+import { appFont } from "@/lib/fonts";
+import { OhCorporateWorkspace } from "@/features/occupational-health/components/OhCorporateWorkspace";
+import { PrimaryButton } from "@/components/ui/app-buttons";
+import { Label } from "@/components/ui/label";
+import { RequiredFieldMarker } from "@/components/ui/required-field-marker";
 import {
-  OhExamTypeDialog,
-  type MedicalExamStartType,
-} from "@/features/occupational-health/components/OhExamTypeDialog";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import type { MedicalExamStartType } from "@/features/occupational-health/components/OhExamTypeDialog";
 import { OhExamTemplateCaptureForm } from "@/features/occupational-health/components/OhExamTemplateCaptureForm";
 import { OhProcedureChecklistPanel } from "@/features/occupational-health/components/OhProcedureChecklistPanel";
 import type { useOhEncounterWorkspaceData } from "@/features/occupational-health/hooks/use-occupational-health";
@@ -45,6 +55,10 @@ type OhMedicalExaminationsPanelProps = {
   encounter: OhVisitEncounter;
   episodes: EmploymentEpisode[];
   workspace: ReturnType<typeof useOhEncounterWorkspaceData>;
+  onManageEmployment: () => void;
+  focusedExamUuid?: string | null;
+  examFocusRequest?: number;
+  onActiveExamChange?: (examUuid: string | null) => void;
 };
 
 function readEnvelope(
@@ -116,6 +130,9 @@ export function OhMedicalExaminationsPanel({
   encounter,
   episodes,
   workspace,
+  focusedExamUuid = null,
+  examFocusRequest = 0,
+  onActiveExamChange,
 }: OhMedicalExaminationsPanelProps) {
   const { toast } = useToast();
   const episode = resolveActiveRiskProfileEpisode(episodes);
@@ -171,11 +188,25 @@ export function OhMedicalExaminationsPanel({
       inferExamTypeFromExaminations(workspace.examinations, examTemplateUuid),
     [examTemplateUuid, workspace.examinations],
   );
+  const focusedExam = useMemo(
+    () =>
+      focusedExamUuid
+        ? (workspace.examinations.find((exam) => exam.uuid === focusedExamUuid) ?? null)
+        : null,
+    [focusedExamUuid, workspace.examinations],
+  );
+  const focusedStartType =
+    focusedExam && isMedicalExamStartType(focusedExam.exam_type)
+      ? focusedExam.exam_type
+      : null;
   const [examTypeOverride, setExamTypeOverride] = useState<MedicalExamStartType | null>(
     null,
   );
-  const selectedExamType = examTypeOverride ?? inferredExamType;
-  const [typeDialogOpen, setTypeDialogOpen] = useState(false);
+  const selectedExamType = examTypeOverride ?? focusedStartType ?? inferredExamType;
+  const [examNotes, setExamNotes] = useState("");
+  const [detailsConfirmed, setDetailsConfirmed] = useState(false);
+  const [editingDetails, setEditingDetails] = useState(false);
+  const examNotesRef = useRef("");
   const [examination, setExamination] = useState<OhExamination | null>(null);
   const [answers, setAnswers] = useState<ExamTemplateAnswers>(emptyExamTemplateAnswers());
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -185,52 +216,95 @@ export function OhMedicalExaminationsPanel({
   const answersHydratedKeyRef = useRef<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  examinationRef.current = examination;
+  useEffect(() => {
+    examinationRef.current = examination;
+  }, [examination]);
 
-  const needsExamType =
-    templateReady && !workspace.isLoading && !selectedExamType;
+  const onActiveExamChangeRef = useRef(onActiveExamChange);
+  useEffect(() => {
+    onActiveExamChangeRef.current = onActiveExamChange;
+  }, [onActiveExamChange]);
 
   useEffect(() => {
-    if (!selectedExamType) {
-      setExamination(null);
-      examinationRef.current = null;
-      setAnswers(emptyExamTemplateAnswers());
-      answersHydratedKeyRef.current = null;
+    if (!focusedExamUuid) {
       return;
     }
-    const matched = findExamForType(
-      workspace.examinations,
-      selectedExamType,
-      examTemplateUuid,
-    );
-    setExamination((current) => {
-      if (
-        current &&
-        matched &&
-        current.uuid === matched.uuid &&
-        (current.row_version ?? 0) >= (matched.row_version ?? 0)
-      ) {
-        return current;
+    let cancelled = false;
+    async function openFocusedExam() {
+      await Promise.resolve();
+      if (cancelled) {
+        return;
       }
-      return matched;
-    });
+      setExamTypeOverride(null);
+      setDetailsConfirmed(false);
+      setEditingDetails(false);
+    }
+    void openFocusedExam();
+    return () => {
+      cancelled = true;
+    };
+  }, [examFocusRequest, focusedExamUuid]);
 
-    const hydrateKey = `${matched?.uuid ?? `pending:${selectedExamType}`}:${examTemplateUuid ?? ""}`;
-    if (answersHydratedKeyRef.current === hydrateKey) {
-      return;
+  useEffect(() => {
+    let cancelled = false;
+    async function syncExamination() {
+      await Promise.resolve();
+      if (cancelled) {
+        return;
+      }
+      if (!selectedExamType) {
+        setExamination(null);
+        examinationRef.current = null;
+        setAnswers(emptyExamTemplateAnswers());
+        answersHydratedKeyRef.current = null;
+        onActiveExamChangeRef.current?.(null);
+        return;
+      }
+      const matched =
+        focusedExam && focusedExam.exam_type === selectedExamType
+          ? focusedExam
+          : findExamForType(
+              workspace.examinations,
+              selectedExamType,
+              examTemplateUuid,
+            );
+      setExamination((current) => {
+        if (
+          current &&
+          matched &&
+          current.uuid === matched.uuid &&
+          (current.row_version ?? 0) >= (matched.row_version ?? 0)
+        ) {
+          return current;
+        }
+        return matched;
+      });
+
+      const hydrateKey = `${matched?.uuid ?? `pending:${selectedExamType}`}:${examTemplateUuid ?? ""}`;
+      if (answersHydratedKeyRef.current === hydrateKey) {
+        return;
+      }
+      answersHydratedKeyRef.current = hydrateKey;
+      if (!detailsConfirmed) {
+        setExamNotes(matched?.notes ?? "");
+      }
+      onActiveExamChangeRef.current?.(matched?.uuid ?? null);
+      const envelope = readEnvelope(matched);
+      if (
+        envelope?.template_uuid &&
+        examTemplateUuid &&
+        envelope.template_uuid === examTemplateUuid
+      ) {
+        setAnswers(envelope.answers ?? emptyExamTemplateAnswers());
+      } else {
+        setAnswers(emptyExamTemplateAnswers());
+      }
     }
-    answersHydratedKeyRef.current = hydrateKey;
-    const envelope = readEnvelope(matched);
-    if (
-      envelope?.template_uuid &&
-      examTemplateUuid &&
-      envelope.template_uuid === examTemplateUuid
-    ) {
-      setAnswers(envelope.answers ?? emptyExamTemplateAnswers());
-    } else {
-      setAnswers(emptyExamTemplateAnswers());
-    }
-  }, [selectedExamType, examTemplateUuid, workspace.examinations]);
+    void syncExamination();
+    return () => {
+      cancelled = true;
+    };
+  }, [detailsConfirmed, focusedExam, selectedExamType, examTemplateUuid, workspace.examinations]);
 
   async function resolveExamination(
     examType: MedicalExamStartType,
@@ -258,7 +332,7 @@ export function OhMedicalExaminationsPanel({
         occupational_attendance: true,
         template_code: riskProfile?.exam_template_code || riskProfile?.code || "exam",
         examined_at: new Date().toISOString(),
-        notes: "",
+        notes: examNotesRef.current.trim(),
       });
       setExamination(created);
       examinationRef.current = created;
@@ -278,14 +352,12 @@ export function OhMedicalExaminationsPanel({
     }
   }
 
-  async function handleExamTypeConfirm(examType: MedicalExamStartType) {
+  function handleDetailsContinue(examType: MedicalExamStartType, notes: string) {
+    examNotesRef.current = notes;
     setExamTypeOverride(examType);
-    setTypeDialogOpen(false);
-    await resolveExamination(examType);
-  }
-
-  function openChangeTypeDialog() {
-    setTypeDialogOpen(true);
+    setExamNotes(notes);
+    setDetailsConfirmed(true);
+    setEditingDetails(false);
   }
 
   async function persistAnswers(next: ExamTemplateAnswers) {
@@ -349,128 +421,230 @@ export function OhMedicalExaminationsPanel({
 
   if (!episode || hazardProfileId == null) {
     return (
-      <PanelEmpty
-        icon={ClipboardList}
-        title="No risk profile on this visit"
-        description="Assign a risk profile on the Employment panel so the correct examination template can load."
+      <OhCorporateWorkspace
+        form={
+          <PanelEmpty
+            icon={ClipboardList}
+            title="No risk profile on this visit"
+            description="Assign a risk profile on the Employment panel so the correct examination template can load."
+          />
+        }
       />
     );
   }
 
   if (profilesQuery.isLoading || (examTemplateUuid && versionsQuery.isLoading)) {
     return (
-      <div className="space-y-3 p-5" aria-hidden>
-        <Skeleton className="h-6 w-1/3" />
-        <Skeleton className="h-4 w-1/2" />
-        <Skeleton className="h-24 w-full" />
-        <Skeleton className="h-24 w-full" />
-      </div>
+      <OhCorporateWorkspace
+        form={
+          <div className="space-y-3 p-5" aria-hidden>
+            <Skeleton className="h-6 w-1/3" />
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-24 w-full" />
+          </div>
+        }
+      />
     );
   }
 
   if (!riskProfile) {
     return (
-      <PanelEmpty
-        icon={FileWarning}
-        title="Risk profile could not be loaded"
-        description="The employment episode references a risk profile that is missing or inactive."
+      <OhCorporateWorkspace
+        form={
+          <PanelEmpty
+            icon={FileWarning}
+            title="Risk profile could not be loaded"
+            description="The employment episode references a risk profile that is missing or inactive."
+          />
+        }
       />
     );
   }
 
   if (!examTemplateUuid) {
     return (
-      <PanelEmpty
-        icon={ClipboardList}
-        title="No examination template on this risk profile"
-        description={`Attach and publish an exam template on “${riskProfile.name}” in Occupational Health settings.`}
+      <OhCorporateWorkspace
+        form={
+          <PanelEmpty
+            icon={ClipboardList}
+            title="No examination template on this risk profile"
+            description={`Attach and publish an exam template on “${riskProfile.name}” in Occupational Health settings.`}
+          />
+        }
       />
     );
   }
 
   if (!publishedVersion || !snapshot || snapshot.sections.length === 0) {
     return (
-      <PanelEmpty
-        icon={ClipboardList}
-        title="Examination template is not published"
-        description="Publish the exam template linked to this risk profile before completing medical examinations."
+      <OhCorporateWorkspace
+        form={
+          <PanelEmpty
+            icon={ClipboardList}
+            title="Examination template is not published"
+            description="Publish the exam template linked to this risk profile before completing medical examinations."
+          />
+        }
       />
     );
   }
 
-  const showCapture = Boolean(selectedExamType);
+  const resumedExistingExam =
+    inferredExamType != null && examTypeOverride == null && focusedStartType == null;
+  const openedFocusedExam = focusedStartType != null && examTypeOverride == null;
+  const showTemplate =
+    Boolean(selectedExamType) &&
+    !editingDetails &&
+    (detailsConfirmed || resumedExistingExam || openedFocusedExam);
+  const saveLabel =
+    isResolvingExam
+      ? "Starting"
+      : saveState === "saving"
+        ? "Saving"
+        : saveState === "saved"
+          ? "Saved"
+          : saveState === "error"
+            ? "Save failed"
+            : null;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <OhExamTypeDialog
-        open={typeDialogOpen || needsExamType}
-        onOpenChange={setTypeDialogOpen}
-        onConfirm={(examType) => {
-          void handleExamTypeConfirm(examType);
-        }}
-        required={needsExamType}
-        initialExamType={selectedExamType ?? ""}
-      />
-      {showCapture ? (
-        <>
-          <div className="flex h-11 items-center justify-between gap-3 border-b border-dash-border px-4 sm:px-5">
-            <div className="flex min-w-0 items-center gap-2">
-              <p className="truncate text-[13px] font-medium text-brand-navy">
-                {formatExamTypeLabel(selectedExamType!)}
-              </p>
-              {riskProfile.name ? (
-                <Badge variant="secondary" className="max-w-[12rem] truncate">
-                  {riskProfile.name}
-                </Badge>
-              ) : null}
-            </div>
-            <div className="flex shrink-0 items-center gap-3">
-              <span className="text-[12px] text-dash-muted" aria-live="polite">
-                {isResolvingExam
-                  ? "Starting"
-                  : saveState === "saving"
-                    ? "Saving"
-                    : saveState === "saved"
-                      ? "Saved"
-                      : saveState === "error"
-                        ? "Save failed"
-                        : null}
-              </span>
+    <OhCorporateWorkspace
+      form={
+        showTemplate ? (
+          <div className="space-y-8 px-5 py-5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex min-w-0 items-center gap-2">
+                  <h2 className="truncate text-[13.5px] font-semibold text-brand-navy">
+                    {formatExamTypeLabel(selectedExamType!)}
+                  </h2>
+                  <Badge variant="secondary" className="shrink-0">
+                    {riskProfile.name}
+                  </Badge>
+                </div>
+                {examNotes.trim() ? (
+                  <p className="mt-1 text-[13px] text-dash-muted">{examNotes.trim()}</p>
+                ) : null}
+              </div>
               <button
                 type="button"
-                onClick={openChangeTypeDialog}
+                onClick={() => setEditingDetails(true)}
                 data-testid="oh-exam-change-type"
-                className="text-[13px] font-medium text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
+                className="shrink-0 text-[13px] font-medium text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
               >
                 Change type
               </button>
             </div>
+            {saveLabel ? (
+              <p className="-mt-5 text-[12px] text-dash-muted" aria-live="polite">
+                {saveLabel}
+              </p>
+            ) : null}
+            <OhExamTemplateCaptureForm
+              snapshot={snapshot}
+              templateName={riskProfile.exam_template_name}
+              value={answers}
+              onChange={handleAnswersChange}
+            />
+            <OhProcedureChecklistPanel
+              examination={examination}
+              onChanged={workspace.refetchAll}
+            />
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
-            <div className="mx-auto max-w-3xl space-y-8">
-              <OhExamTemplateCaptureForm
-                snapshot={snapshot}
-                templateName={riskProfile.exam_template_name}
-                value={answers}
-                onChange={handleAnswersChange}
-              />
-              <OhProcedureChecklistPanel
-                examination={examination}
-                onChanged={workspace.refetchAll}
-              />
-            </div>
-          </div>
-        </>
-      ) : (
-        <div className="flex min-h-full flex-1 items-center justify-center bg-white px-6 py-16">
-          <EmptyState
-            icon={ClipboardList}
-            title="Select an examination type"
-            description="Choose Admission, Periodic, Change of function, Return to work, or Demissional to begin."
+        ) : (
+          <ExamDetailsStep
+            initialType={
+              selectedExamType && isMedicalExamStartType(selectedExamType)
+                ? selectedExamType
+                : null
+            }
+            initialNotes={examNotes}
+            onContinue={handleDetailsContinue}
           />
-        </div>
-      )}
-    </div>
+        )
+      }
+    />
+  );
+}
+
+function ExamDetailsStep({
+  initialType,
+  initialNotes,
+  onContinue,
+}: {
+  initialType: MedicalExamStartType | null;
+  initialNotes: string;
+  onContinue: (examType: MedicalExamStartType, notes: string) => void;
+}) {
+  const [examType, setExamType] = useState<MedicalExamStartType | "">(
+    initialType ?? "",
+  );
+  const [notes, setNotes] = useState(initialNotes);
+
+  function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!isMedicalExamStartType(examType)) {
+      return;
+    }
+    onContinue(examType, notes.trim());
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-4 px-5 py-5"
+      data-testid="oh-exam-details-step"
+    >
+      <div className="space-y-1.5">
+        <Label htmlFor="oh-exam-start-type" className="text-[13px] font-medium text-brand-navy">
+          Exam type <RequiredFieldMarker />
+        </Label>
+        <Select
+          value={examType}
+          onValueChange={(value) => {
+            if (isMedicalExamStartType(value)) {
+              setExamType(value);
+            }
+          }}
+        >
+          <SelectTrigger
+            id="oh-exam-start-type"
+            className="h-10 w-full rounded-lg border-dash-border bg-white"
+          >
+            <SelectValue placeholder="Select type" />
+          </SelectTrigger>
+          <SelectContent className={appFont.className}>
+            {MEDICAL_EXAM_START_TYPES.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="oh-exam-start-notes" className="text-[13px] font-medium text-brand-navy">
+          Note
+        </Label>
+        <Textarea
+          id="oh-exam-start-notes"
+          value={notes}
+          onChange={(event) => setNotes(event.target.value)}
+          rows={4}
+          placeholder="Reason for attendance, history, observations"
+          className="min-h-24 rounded-lg border-dash-border bg-white text-[13.5px] shadow-none"
+        />
+      </div>
+      <PrimaryButton
+        type="submit"
+        className="h-10"
+        disabled={!examType}
+        data-testid="oh-exam-details-continue"
+      >
+        Continue
+      </PrimaryButton>
+    </form>
   );
 }
 

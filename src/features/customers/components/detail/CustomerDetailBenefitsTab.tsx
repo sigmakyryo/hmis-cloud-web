@@ -3,11 +3,15 @@
 import { Loader2, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { DetailTabEmptyState } from "@/components/detail/detail-tab-empty-state";
 import { SecondaryButton } from "@/components/ui/app-buttons";
 import { StatusBanner } from "@/components/ui/status-banner";
 import { CustomerDetailTabEmptyState } from "@/features/customers/components/detail/CustomerDetailTabEmptyState";
 import { CustomerTabSkeleton } from "@/features/customers/components/detail/CustomerTabSkeleton";
+import {
+  CUSTOMER_TAB_BLEED_CLASS,
+  CustomerTabError,
+  CustomerTabActions,
+} from "@/features/customers/components/detail/customer-tab-chrome";
 import {
   checkCustomerMemberBenefits,
   fetchCustomerMemberBenefits,
@@ -149,11 +153,7 @@ export function CustomerDetailBenefitsTab({
   }
 
   if (loadError && !hasLoaded) {
-    return (
-      <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-6 text-sm text-red-700">
-        {loadError}
-      </div>
-    );
+    return <CustomerTabError message={loadError} />;
   }
 
   if (!snapshot && !checkInProgress) {
@@ -186,11 +186,11 @@ export function CustomerDetailBenefitsTab({
 
   if (!snapshot && checkInProgress) {
     return (
-      <div className="space-y-4" data-testid="customer-member-benefits-tab">
-        <div className="flex items-center gap-2 rounded-xl border border-brand-border bg-white px-4 py-8 text-sm text-brand-muted">
+      <div className="space-y-6" data-testid="customer-member-benefits-tab">
+        <p className="flex items-center gap-2 text-sm text-dash-muted">
           <Loader2 className="size-4 animate-spin" aria-hidden="true" />
           Checking member benefits from MASM...
-        </div>
+        </p>
       </div>
     );
   }
@@ -200,63 +200,55 @@ export function CustomerDetailBenefitsTab({
   }
 
   return (
-    <div className="space-y-4" data-testid="customer-member-benefits-tab">
-      <section className="rounded-xl border border-brand-border bg-white p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-sm font-medium text-brand-navy">Member benefits</p>
-            <p className="mt-1 text-xs text-brand-muted">
-              Membership {snapshot.membership_number}
-              {snapshot.requested_at
-                ? ` · Last checked ${formatDisplayDateTime(snapshot.requested_at)}`
-                : null}
-            </p>
-          </div>
-          <SecondaryButton
-            type="button"
-            disabled={isChecking || checkInProgress}
-            onClick={() => void handleCheck()}
-            data-testid="customer-member-benefits-recheck"
-          >
-            {isChecking || checkInProgress ? (
-              <>
-                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                Checking...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="size-4" aria-hidden="true" />
-                Recheck
-              </>
-            )}
-          </SecondaryButton>
-        </div>
+    <div className="space-y-6" data-testid="customer-member-benefits-tab">
+      <CustomerTabActions>
+        <SecondaryButton
+          type="button"
+          disabled={isChecking || checkInProgress}
+          onClick={() => void handleCheck()}
+          data-testid="customer-member-benefits-recheck"
+        >
+          {isChecking || checkInProgress ? (
+            <>
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              Checking...
+            </>
+          ) : (
+            <>
+              <RefreshCw className="size-4" aria-hidden="true" />
+              Recheck
+            </>
+          )}
+        </SecondaryButton>
+      </CustomerTabActions>
+      <p className="text-[13px] text-dash-muted">
+        Membership {snapshot.membership_number}
+        {snapshot.requested_at
+          ? ` · Last checked ${formatDisplayDateTime(snapshot.requested_at)}`
+          : null}
+      </p>
 
-        {checkInProgress ? (
-          <div className="mt-4 flex items-center gap-2 text-xs text-brand-muted">
-            <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-            Updating benefits from MASM...
-          </div>
-        ) : null}
+      {checkInProgress ? (
+        <p className="flex items-center gap-2 text-[13px] text-dash-muted">
+          <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+          Updating benefits from MASM...
+        </p>
+      ) : null}
 
-        {checkError ? (
-          <StatusBanner variant="error" message={checkError} className="mt-4" />
-        ) : null}
+      {checkError ? <StatusBanner variant="error" message={checkError} /> : null}
 
-        {snapshot.status === "failed" ? (
-          <StatusBanner
-            variant="error"
-            message={
-              snapshot.error_message ||
-              "Member benefits could not be loaded from MASM."
-            }
-            className="mt-4"
-          />
-        ) : null}
-      </section>
+      {snapshot.status === "failed" ? (
+        <StatusBanner
+          variant="error"
+          message={
+            snapshot.error_message ||
+            "Member benefits could not be loaded from MASM."
+          }
+        />
+      ) : null}
 
       {snapshot.status === "succeeded" && snapshot.benefits.length === 0 ? (
-        <DetailTabEmptyState
+        <CustomerDetailTabEmptyState
           icon={emptyStateIcon}
           title="No benefits returned"
           description="MASM did not return any active benefits for this membership number."
@@ -273,7 +265,9 @@ export function CustomerDetailBenefitsTab({
       ) : null}
 
       {snapshot.status === "succeeded" && snapshot.benefits.length > 0 ? (
-        <MemberBenefitsTable benefits={snapshot.benefits} />
+        <div className={CUSTOMER_TAB_BLEED_CLASS}>
+          <MemberBenefitsTable benefits={snapshot.benefits} />
+        </div>
       ) : null}
     </div>
   );

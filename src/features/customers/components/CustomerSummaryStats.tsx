@@ -1,108 +1,134 @@
 "use client";
 
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  LIST_PAGE_INSIGHT_CELL_CLASS,
-  LIST_PAGE_INSIGHT_LABEL_CLASS,
-  LIST_PAGE_INSIGHT_STRIP_CLASS,
-  LIST_PAGE_INSIGHT_VALUE_CLASS,
-} from "@/features/app-shell/components/page-layout";
 import type { CustomerSummaryStats as CustomerSummaryStatsData } from "@/features/customers/utils/customer-stats";
-import { formatGenderCounts } from "@/features/customers/utils/customer-stats";
+import { cn } from "@/lib/utils";
 import { formatCompactNumber } from "@/utils/format-compact-number";
 
 type CustomerSummaryStatsProps = {
   stats: CustomerSummaryStatsData | null;
   isLoading?: boolean;
+  /** Noun for the total, such as Clients or Employees. */
+  countLabel?: string;
 };
 
-function percentOfTotal(part: number, total: number): number | undefined {
+function sharePercent(part: number, total: number): number {
   if (total <= 0) {
-    return undefined;
+    return 0;
   }
 
   return Math.round((part / total) * 100);
 }
 
+function SummaryFigure({
+  value,
+  label,
+  accent = false,
+}: {
+  value: string;
+  label: string;
+  accent?: boolean;
+}) {
+  return (
+    <p className="flex items-baseline gap-1.5">
+      <span
+        className={cn(
+          "text-[15px] font-semibold tabular-nums leading-none",
+          accent ? "text-brand-primary" : "text-brand-navy",
+        )}
+      >
+        {value}
+      </span>
+      <span className="text-[13px] text-dash-muted">{label}</span>
+    </p>
+  );
+}
+
+function GenderMix({
+  male,
+  female,
+  other,
+}: {
+  male: number;
+  female: number;
+  other: number;
+}) {
+  const total = male + female + other;
+  if (total <= 0) {
+    return null;
+  }
+
+  return (
+    <div className="flex min-w-[14rem] flex-1 items-center gap-2.5 sm:ml-auto sm:max-w-sm">
+      <span className="shrink-0 text-[12px] tabular-nums text-dash-muted">
+        Male {sharePercent(male, total)}%
+      </span>
+      <div
+        className="flex h-1.5 min-w-16 flex-1 overflow-hidden rounded-full bg-dash-canvas"
+        aria-hidden="true"
+      >
+        <span className="h-full bg-brand-primary" style={{ flexGrow: male }} />
+        <span className="h-full bg-brand-navy/20" style={{ flexGrow: female }} />
+        {other > 0 ? (
+          <span className="h-full bg-dash-border" style={{ flexGrow: other }} />
+        ) : null}
+      </div>
+      <span className="shrink-0 text-[12px] tabular-nums text-dash-muted">
+        Female {sharePercent(female, total)}%
+      </span>
+    </div>
+  );
+}
+
 export function CustomerSummaryStatsCards({
   stats,
   isLoading = false,
+  countLabel = "Clients",
 }: CustomerSummaryStatsProps) {
-  const totalClients = stats?.totalClients ?? 0;
-  const newThisMonth = stats?.newThisMonth ?? 0;
-  const newPercentage = percentOfTotal(newThisMonth, totalClients);
-
   if (isLoading) {
     return (
       <div
-        className={LIST_PAGE_INSIGHT_STRIP_CLASS}
+        className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-dash-border px-4 py-3 md:px-6"
         data-testid="customer-summary-stats"
         aria-busy="true"
       >
-        {Array.from({ length: 4 }, (_, index) => (
-          <div key={index} className={LIST_PAGE_INSIGHT_CELL_CLASS}>
-            <Skeleton className="h-3.5 w-20" />
-            <Skeleton className="mt-2 h-6 w-14" />
-            <Skeleton className="mt-1.5 h-3 w-28" />
-          </div>
-        ))}
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-4 w-28" />
+        <Skeleton className="h-4 w-20" />
+        <Skeleton className="h-1.5 w-36 sm:ml-auto" />
       </div>
     );
   }
 
+  const totalClients = stats?.totalClients ?? 0;
+  const newThisMonth = stats?.newThisMonth ?? 0;
+  const monthValue =
+    newThisMonth > 0
+      ? `+${formatCompactNumber(newThisMonth)}`
+      : formatCompactNumber(newThisMonth);
+
   return (
-    <dl
-      className={LIST_PAGE_INSIGHT_STRIP_CLASS}
+    <div
+      className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-dash-border px-4 py-2.5 md:px-6"
       data-testid="customer-summary-stats"
+      role="group"
+      aria-label="Client summary"
     >
-      <div className={LIST_PAGE_INSIGHT_CELL_CLASS}>
-        <dt className={LIST_PAGE_INSIGHT_LABEL_CLASS}>
-          Total clients
-        </dt>
-        <dd className={LIST_PAGE_INSIGHT_VALUE_CLASS}>
-          {formatCompactNumber(totalClients)}
-        </dd>
-        <p className="mt-0.5 text-xs text-brand-muted">Registered and active</p>
-      </div>
-
-      <div className={LIST_PAGE_INSIGHT_CELL_CLASS}>
-        <dt className={LIST_PAGE_INSIGHT_LABEL_CLASS}>
-          New this month
-        </dt>
-        <dd className={LIST_PAGE_INSIGHT_VALUE_CLASS}>
-          {formatCompactNumber(newThisMonth)}
-        </dd>
-        <p className="mt-0.5 text-xs text-brand-muted">
-          {newPercentage !== undefined
-            ? `+${newPercentage}% of directory`
-            : "Recent registrations"}
-        </p>
-      </div>
-
-      <div className={LIST_PAGE_INSIGHT_CELL_CLASS}>
-        <dt className={LIST_PAGE_INSIGHT_LABEL_CLASS}>
-          Male / Female
-        </dt>
-        <dd className={LIST_PAGE_INSIGHT_VALUE_CLASS}>
-          {stats ? formatGenderCounts(stats) : "-"}
-        </dd>
-        <p className="mt-0.5 text-xs text-brand-muted">
-          {stats
-            ? `${stats.maleCount} male, ${stats.femaleCount} female`
-            : "Gender distribution"}
-        </p>
-      </div>
-
-      <div className={LIST_PAGE_INSIGHT_CELL_CLASS}>
-        <dt className={LIST_PAGE_INSIGHT_LABEL_CLASS}>
-          Average age
-        </dt>
-        <dd className={LIST_PAGE_INSIGHT_VALUE_CLASS}>
-          {stats ? `${stats.averageAge} yrs` : "-"}
-        </dd>
-        <p className="mt-0.5 text-xs text-brand-muted">Client population mean</p>
-      </div>
-    </dl>
+      <SummaryFigure
+        value={formatCompactNumber(totalClients)}
+        label={countLabel.toLowerCase()}
+      />
+      <SummaryFigure value={monthValue} label="this month" accent />
+      <SummaryFigure
+        value={stats ? `${stats.averageAge} yrs` : "—"}
+        label="average age"
+      />
+      <GenderMix
+        male={stats?.maleCount ?? 0}
+        female={stats?.femaleCount ?? 0}
+        other={stats?.otherCount ?? 0}
+      />
+    </div>
   );
 }
 

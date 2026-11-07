@@ -36,10 +36,10 @@ export function AppHeaderNotifications() {
           data-testid="app-header-notifications-trigger"
           aria-label={unreadLabel(unreadCount)}
           className={cn(
-            "relative flex size-8 items-center justify-center rounded-lg text-dash-muted",
-            "transition-colors hover:bg-white hover:text-brand-navy",
+            "relative flex size-9 items-center justify-center rounded-full text-dash-muted",
+            "transition-colors hover:bg-dash-canvas hover:text-brand-navy",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/25",
-            "data-[state=open]:bg-white data-[state=open]:text-brand-navy",
+            "data-[state=open]:bg-dash-canvas data-[state=open]:text-brand-navy",
           )}
         >
           <AppIcon name="notification" size={18} />

@@ -8,10 +8,22 @@ import {
 const API_URL = "http://localhost:8000/api/v1";
 
 describe("absoluteMediaUrl", () => {
-  it("points stored media paths at the API host", () => {
+  it("keeps stored media on this app so a LAN browser can load it", () => {
     expect(
       absoluteMediaUrl("/media/users/12/avatar/photo.png", API_URL),
-    ).toBe("http://localhost:8000/media/users/12/avatar/photo.png");
+    ).toBe("/media/users/12/avatar/photo.png");
+    expect(
+      absoluteMediaUrl(
+        "http://localhost:8000/media/users/12/avatar/photo.png",
+        API_URL,
+      ),
+    ).toBe("/media/users/12/avatar/photo.png");
+    expect(
+      absoluteMediaUrl(
+        "http://192.168.1.45:8000/media/users/12/avatar/photo.png",
+        API_URL,
+      ),
+    ).toBe("/media/users/12/avatar/photo.png");
   });
 
   it("leaves absolute and empty urls unchanged", () => {

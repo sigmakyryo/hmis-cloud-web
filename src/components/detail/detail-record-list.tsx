@@ -134,13 +134,15 @@ export function DetailRecordListItem({
 }
 
 type DetailRecordListProps = {
-  title: ReactNode;
+  title?: ReactNode;
   description?: string;
   action?: ReactNode;
   toolbar?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
   className?: string;
+  /** Drops the bordered card so the list sits on the page. */
+  plain?: boolean;
   "data-testid"?: string;
 };
 
@@ -152,22 +154,49 @@ export function DetailRecordList({
   children,
   footer,
   className,
+  plain = false,
   "data-testid": testId,
 }: DetailRecordListProps) {
   return (
     <section
-      className={cn("rounded-xl border border-dash-border/80 bg-white", className)}
+      className={cn(
+        plain
+          ? "bg-transparent [&>ol>li]:px-0"
+          : "rounded-xl border border-dash-border/80 bg-white",
+        className,
+      )}
       data-testid={testId}
     >
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-dash-border/80 px-4 py-3 sm:px-5">
-        <div>
-          <h3 className="text-sm font-semibold text-brand-navy">{title}</h3>
-          {description ? (
-            <p className="mt-0.5 text-xs text-brand-muted">{description}</p>
+      {title || description || action ? (
+        <div
+          className={cn(
+            "flex flex-wrap items-start justify-between gap-3",
+            plain ? "px-0 pb-3" : "border-b border-dash-border/80 px-4 py-3 sm:px-5",
+            !title && !description && "justify-end",
+          )}
+        >
+          {title || description ? (
+            <div>
+              {title ? (
+                <h3
+                  className={cn(
+                    "font-semibold text-brand-navy",
+                    plain ? "text-lg tracking-tight" : "text-sm",
+                  )}
+                >
+                  {title}
+                </h3>
+              ) : null}
+              {description ? (
+                <p className={cn("text-dash-muted", plain ? "mt-1 text-[13px]" : "mt-0.5 text-xs")}>
+                  {description}
+                </p>
+              ) : null}
+            </div>
           ) : null}
+          {action}
         </div>
-        {action}
-      </div>
+      ) : null}
       {toolbar ? (
         <div className="border-b border-dash-border/80 px-4 py-2.5 sm:px-5">
           {toolbar}

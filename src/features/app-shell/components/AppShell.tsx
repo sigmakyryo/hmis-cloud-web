@@ -15,14 +15,12 @@ import {
 import { AppBreadcrumbProvider } from "@/features/app-shell/providers/app-breadcrumb-provider";
 import { OverviewHomePrefetch } from "@/features/overview/components/OverviewHomePrefetch";
 import { WorkspaceUsageRecorder } from "@/features/overview/components/WorkspaceUsageRecorder";
-import { cn } from "@/lib/utils";
 
 const AUTHENTICATED_SHELL_CLASS = "app-authenticated-shell";
 
 /**
- * Authenticated app shell — sidebar is persistent layout chrome.
- * List pages sit on a white sheet; detail pages (`data-page-surface=card`)
- * supply their own card so they are not nested inside that sheet.
+ * Authenticated app shell. White sidebar and header, flush page body.
+ * Record wells inside a page use the gray canvas; the shell itself stays flat.
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -34,30 +32,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <div className={`${AUTHENTICATED_SHELL_CLASS} flex h-full min-h-0 w-full flex-col overflow-hidden bg-dash-canvas`}>
+    <div className={`${AUTHENTICATED_SHELL_CLASS} flex h-full min-h-0 w-full flex-col overflow-hidden bg-white`}>
       <WorkspaceSetupBanner />
-      <SidebarProvider className="min-h-0 w-full flex-1 overflow-hidden bg-dash-canvas">
+      <SidebarProvider className="min-h-0 w-full flex-1 overflow-hidden bg-white">
         <Suspense fallback={null}>
           <PageActivityBar />
         </Suspense>
         <WorkspaceUsageRecorder />
         <OverviewHomePrefetch />
         <AppSidebar />
-        <SidebarInset className="min-h-0 overflow-hidden bg-dash-canvas">
+        <SidebarInset className="min-h-0 overflow-hidden bg-white">
           <AppBreadcrumbProvider>
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
               <AppHeader />
-              <div className="flex min-h-0 flex-1 flex-col overflow-hidden pl-4 pr-0 pb-4">
-                <div
-                  className={cn(
-                    "flex min-h-0 flex-1 flex-col overflow-hidden rounded-l-2xl rounded-r-none bg-dash-panel shadow-[0_1px_2px_rgb(15_23_42/0.04),0_8px_24px_rgb(15_23_42/0.04)]",
-                    "has-[[data-page-surface=card]]:rounded-none has-[[data-page-surface=card]]:bg-transparent has-[[data-page-surface=card]]:shadow-none",
-                  )}
-                >
-                  <div className="relative flex min-h-0 flex-1 flex-col overflow-auto">
-                    <ModuleAccessGate>{children}</ModuleAccessGate>
-                  </div>
-                </div>
+              <div className="relative flex min-h-0 flex-1 flex-col overflow-auto bg-white">
+                <ModuleAccessGate>{children}</ModuleAccessGate>
               </div>
             </div>
           </AppBreadcrumbProvider>

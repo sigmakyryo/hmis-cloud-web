@@ -53,7 +53,7 @@ export function SalesOrdersTableSkeleton({
             {/* Client */}
             <ListPageDataTableCell>
               <div className="flex min-w-0 items-center gap-2.5">
-                <Skeleton className="size-8 shrink-0 rounded-md" />
+                <Skeleton className="size-6 shrink-0 rounded-md" />
                 <Skeleton className="h-3.5 w-32" />
               </div>
             </ListPageDataTableCell>

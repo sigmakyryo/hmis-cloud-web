@@ -1,22 +1,15 @@
 "use client";
 
-import { Calendar, Hash, Mail, Phone } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { UserIdenticon } from "@/components/UserIdenticon";
-import { Badge } from "@/components/ui/badge";
 import {
   DetailPageHeaderSection,
   DetailPageTitle,
 } from "@/features/app-shell/components/page-layout";
 import type { Customer } from "@/features/customers/types/customer.types";
 import { isCustomerVisitActive } from "@/features/customers/utils/customer-visit-status";
-import {
-  formatAdaptiveAge,
-  formatCustomerName,
-  formatDisplayDate,
-} from "@/features/customers/utils/format-customer";
-import { TagBadgeList } from "@/features/tags/components/TagBadgeList";
+import { formatCustomerName } from "@/features/customers/utils/format-customer";
 
 type CustomerDetailHeaderProps = {
   customer: Customer;
@@ -27,117 +20,43 @@ type CustomerDetailHeaderProps = {
 export function CustomerDetailHeader({
   customer,
   actions,
-  onManageTagsClick,
 }: CustomerDetailHeaderProps) {
   const fullName = formatCustomerName(customer);
-  const ageDisplay = formatAdaptiveAge(customer.dob);
   const hasActiveVisit = isCustomerVisitActive(customer.visit_status);
   const identiconSeed =
     customer.uuid || customer.customer_identifier || fullName;
 
   return (
-    <DetailPageHeaderSection className="border-b-0 bg-white px-4 py-4 sm:px-6 sm:py-5">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        {/* Left: Avatar & Patient Identity */}
-        <div className="flex min-w-0 flex-1 items-start gap-3.5 sm:gap-4">
+    <DetailPageHeaderSection className="bg-white px-4 py-3 sm:py-3 md:px-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <UserIdenticon
             seed={identiconSeed}
             name={fullName}
-            className="size-12 shrink-0 rounded-lg shadow-2xs sm:size-14"
-            fallbackClassName="text-base font-semibold sm:text-lg"
+            className="size-10 shrink-0 rounded-lg"
+            fallbackClassName="text-sm font-semibold"
           />
-
-          <div className="min-w-0 flex-1 space-y-2">
-            {/* Top Row: Name, ID, Badges */}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
-              <DetailPageTitle className="text-lg sm:text-xl">{fullName}</DetailPageTitle>
-
-              <span className="inline-flex items-center rounded-md border border-slate-200/90 bg-slate-50 px-2.5 py-0.5 font-mono text-xs font-semibold text-brand-navy shadow-2xs">
-                {customer.customer_identifier}
-              </span>
-
-              <Badge
-                variant={customer.gender === "Male" ? "default" : "secondary"}
-                className="rounded-full px-2.5 py-0.5 text-xs font-medium"
-              >
-                {customer.gender}
-              </Badge>
-
-              {!customer.is_active ? (
-                <Badge
-                  variant="outline"
-                  className="rounded-full border-red-200 bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-700"
-                >
-                  Inactive
-                </Badge>
-              ) : null}
-
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <DetailPageTitle className="text-xl">{fullName}</DetailPageTitle>
               {hasActiveVisit ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200/90 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-800 shadow-2xs">
-                  <span className="relative flex size-2 shrink-0">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
-                  </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-tint px-2 py-0.5 text-[12px] font-medium text-brand-primary">
+                  <span className="size-1.5 rounded-full bg-brand-primary" />
                   Active visit
                 </span>
               ) : null}
-
-              <TagBadgeList
-                tags={customer.tags}
-                onTagClick={onManageTagsClick}
-              />
-            </div>
-
-            {/* Middle Row: Demographics & Contact Chips */}
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] text-brand-slate">
-              <span className="font-medium text-brand-navy">
-                {ageDisplay}
-                {customer.dob_is_estimated ? " (est.)" : ""}
-                <span className="ml-1 font-normal text-brand-muted">
-                  · DOB: {formatDisplayDate(customer.dob)}
-                </span>
-              </span>
-
-              {customer.phone_number ? (
-                <a
-                  href={`tel:${customer.phone_number}`}
-                  className="inline-flex items-center gap-1.5 text-brand-slate transition-colors hover:text-brand-primary hover:underline"
-                >
-                  <Phone className="size-3.5 text-brand-muted" aria-hidden="true" />
-                  <span>{customer.phone_number}</span>
-                </a>
-              ) : null}
-
-              {customer.email ? (
-                <a
-                  href={`mailto:${customer.email}`}
-                  className="inline-flex items-center gap-1.5 text-brand-slate transition-colors hover:text-brand-primary hover:underline"
-                >
-                  <Mail className="size-3.5 text-brand-muted" aria-hidden="true" />
-                  <span>{customer.email}</span>
-                </a>
-              ) : null}
-
-              {customer.internal_reference ? (
-                <span className="inline-flex items-center gap-1 font-mono text-xs text-brand-muted">
-                  <Hash className="size-3.5" aria-hidden="true" />
-                  <span>{customer.internal_reference}</span>
+              {!customer.is_active ? (
+                <span className="rounded-full bg-red-50 px-2 py-0.5 text-[12px] font-medium text-red-700">
+                  Inactive
                 </span>
               ) : null}
             </div>
-
-            {/* Bottom Row: Registration Meta */}
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-brand-muted">
-              <span className="inline-flex items-center gap-1.5">
-                <Calendar className="size-3.5 shrink-0 text-brand-muted" aria-hidden="true" />
-                <span>Registered {formatDisplayDate(customer.created_at)}</span>
-              </span>
-            </div>
+            <p className="mt-0.5 font-mono text-[12px] tracking-wide text-dash-muted">
+              {customer.customer_identifier}
+            </p>
           </div>
         </div>
-
-        {/* Right: Actions */}
-        {actions ? <div className="ml-auto shrink-0">{actions}</div> : null}
+        {actions ? <div className="shrink-0">{actions}</div> : null}
       </div>
     </DetailPageHeaderSection>
   );

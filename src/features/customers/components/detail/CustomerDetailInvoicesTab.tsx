@@ -4,13 +4,16 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Receipt } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { ROUTES } from "@/constants/routes";
 import { ListPagePagination } from "@/features/app-shell/components/page-layout";
 import { CustomerInvoicePaymentStatsCards } from "@/features/customers/components/detail/CustomerInvoicePaymentStatsCards";
 import { CustomerDetailTabEmptyState } from "@/features/customers/components/detail/CustomerDetailTabEmptyState";
 import { CustomerInvoicesTable } from "@/features/customers/components/detail/CustomerInvoicesTable";
 import { CustomerTabSkeleton } from "@/features/customers/components/detail/CustomerTabSkeleton";
+import {
+  CUSTOMER_TAB_BLEED_CLASS,
+  CustomerTabError,
+} from "@/features/customers/components/detail/customer-tab-chrome";
 import { fetchCustomerInvoices } from "@/features/customers/services/customer-billing.service";
 import type {
   CustomerInvoiceRecord,
@@ -130,19 +133,15 @@ export function CustomerDetailInvoicesTab({
 
   if (loadError && !hasLoaded) {
     return (
-      <div className="space-y-3">
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-6 text-sm text-red-700">
-          {loadError}
-        </div>
-        <Button type="button" variant="outline" onClick={() => void loadInvoices(1)}>
-          Try again
-        </Button>
-      </div>
+      <CustomerTabError
+        message={loadError}
+        onRetry={() => void loadInvoices(1)}
+      />
     );
   }
 
   return (
-    <div className="space-y-5" data-testid="customer-detail-invoices-tab">
+    <div className="space-y-6" data-testid="customer-detail-invoices-tab">
       <CustomerInvoicePaymentStatsCards stats={invoicesStats} />
 
       {totalCount === 0 ? (
@@ -153,7 +152,7 @@ export function CustomerDetailInvoicesTab({
           data-testid="customer-invoices-empty-state"
         />
       ) : (
-        <>
+        <div className={CUSTOMER_TAB_BLEED_CLASS}>
           <CustomerInvoicesTable
             invoices={invoices}
             onRowClick={(invoice) => router.push(ROUTES.invoiceDetail(invoice.id))}
@@ -166,8 +165,9 @@ export function CustomerDetailInvoicesTab({
             hasPrevious={hasPrevious}
             isLoading={isRefreshing}
             onPageChange={setPage}
+            className="border-t-0"
           />
-        </>
+        </div>
       )}
     </div>
   );

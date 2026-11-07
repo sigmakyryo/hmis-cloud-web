@@ -4,10 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import { Stethoscope } from "lucide-react";
 
 import {
-  LIST_PAGE_INSIGHT_CELL_CLASS,
-  LIST_PAGE_INSIGHT_LABEL_CLASS,
-  LIST_PAGE_INSIGHT_VALUE_CLASS,
-} from "@/features/app-shell/components/page-layout";
+  CustomerTabError,
+  CustomerTabStat,
+  CustomerTabStatBand,
+  CUSTOMER_TAB_BLEED_CLASS,
+} from "@/features/customers/components/detail/customer-tab-chrome";
 import { CustomerDetailTabEmptyState } from "@/features/customers/components/detail/CustomerDetailTabEmptyState";
 import { CustomerTabSkeleton } from "@/features/customers/components/detail/CustomerTabSkeleton";
 import { CustomerVisitsTable } from "@/features/customers/components/detail/CustomerVisitsTable";
@@ -101,11 +102,7 @@ export function CustomerDetailVisitsTab({
   }
 
   if (loadError && !hasLoaded) {
-    return (
-      <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-6 text-sm text-red-700">
-        {loadError}
-      </div>
-    );
+    return <CustomerTabError message={loadError} onRetry={() => void loadVisits()} />;
   }
 
   const totalVisits = countCustomerVisits(visits);
@@ -148,42 +145,30 @@ export function CustomerDetailVisitsTab({
   );
 
   return (
-    <div className="space-y-5" data-testid="customer-detail-visits-tab">
-      <dl className="grid grid-cols-2 divide-y divide-dash-border/60 border-b border-dash-border/80 sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4 lg:divide-x">
-        <div className={LIST_PAGE_INSIGHT_CELL_CLASS}>
-          <dt className={LIST_PAGE_INSIGHT_LABEL_CLASS}>Total visits</dt>
-          <dd className={LIST_PAGE_INSIGHT_VALUE_CLASS}>
-            {formatCompactNumber(totalVisits)}
-          </dd>
-          <p className="mt-0.5 text-xs text-brand-muted">Recorded client visits</p>
-        </div>
-
-        <div className={LIST_PAGE_INSIGHT_CELL_CLASS}>
-          <dt className={LIST_PAGE_INSIGHT_LABEL_CLASS}>Active visits</dt>
-          <dd className={LIST_PAGE_INSIGHT_VALUE_CLASS}>
-            {formatCompactNumber(activeVisits)}
-          </dd>
-          <p className="mt-0.5 text-xs text-brand-muted">
-            {activeVisits > 0 ? "Currently in clinic" : "None in progress"}
-          </p>
-        </div>
-
-        <div className={LIST_PAGE_INSIGHT_CELL_CLASS}>
-          <dt className={LIST_PAGE_INSIGHT_LABEL_CLASS}>Completed</dt>
-          <dd className={LIST_PAGE_INSIGHT_VALUE_CLASS}>
-            {formatCompactNumber(completedVisits)}
-          </dd>
-          <p className="mt-0.5 text-xs text-brand-muted">Discharged encounters</p>
-        </div>
-
-        <div className={LIST_PAGE_INSIGHT_CELL_CLASS}>
-          <dt className={LIST_PAGE_INSIGHT_LABEL_CLASS}>Cancelled</dt>
-          <dd className={LIST_PAGE_INSIGHT_VALUE_CLASS}>
-            {formatCompactNumber(cancelledVisits)}
-          </dd>
-          <p className="mt-0.5 text-xs text-brand-muted">Voided encounters</p>
-        </div>
-      </dl>
+    <div className="space-y-6" data-testid="customer-detail-visits-tab">
+      <CustomerTabStatBand>
+        <CustomerTabStat
+          label="Total visits"
+          value={formatCompactNumber(totalVisits)}
+          hint="Recorded client visits"
+        />
+        <CustomerTabStat
+          label="Active"
+          value={formatCompactNumber(activeVisits)}
+          hint={activeVisits > 0 ? "Currently in clinic" : "None in progress"}
+          accent={activeVisits > 0}
+        />
+        <CustomerTabStat
+          label="Completed"
+          value={formatCompactNumber(completedVisits)}
+          hint="Discharged encounters"
+        />
+        <CustomerTabStat
+          label="Cancelled"
+          value={formatCompactNumber(cancelledVisits)}
+          hint="Voided encounters"
+        />
+      </CustomerTabStatBand>
 
       {visits.length === 0 ? (
         <CustomerDetailTabEmptyState
@@ -193,11 +178,13 @@ export function CustomerDetailVisitsTab({
           data-testid="customer-visits-empty-state"
         />
       ) : (
-        <CustomerVisitsTable
-          visits={visits}
-          onEdit={setEditingVisit}
-          onView={(visit) => setSelectedVisitUuid(visit.uuid)}
-        />
+        <div className={CUSTOMER_TAB_BLEED_CLASS}>
+          <CustomerVisitsTable
+            visits={visits}
+            onEdit={setEditingVisit}
+            onView={(visit) => setSelectedVisitUuid(visit.uuid)}
+          />
+        </div>
       )}
 
       {loadError && hasLoaded ? (

@@ -7,8 +7,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { ROUTES } from "@/constants/routes";
-import { TabbedDialog } from "@/components/ui/tabbed-dialog";
 import { NextStepOptionsList } from "@/components/ui/next-step-options-list";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { CreateAppointmentDialog } from "@/features/appointments/components/CreateAppointmentDialog";
 import type { Appointment } from "@/features/appointments/types/appointment.types";
 import { CustomerFormFields } from "@/features/customers/components/CustomerFormFields";
@@ -39,6 +46,7 @@ import type { InsuranceScheme } from "@/features/customers/types/customer-insura
 import { BffError } from "@/lib/bff-client";
 import { formatBffErrorMessage, mapBffErrorsToForm } from "@/lib/bff-field-errors";
 import { appFont } from "@/lib/fonts";
+import { cn } from "@/lib/utils";
 import { useToast } from "@/providers/toast-provider";
 
 type CreateCustomerDialogProps = {
@@ -329,7 +337,11 @@ export function CreateCustomerDialog({
     }
   }
 
-  const tabs =
+  const tabs: Array<{
+    id: CreateCustomerTab;
+    label: string;
+    disabled?: boolean;
+  }> =
     mode === "quick"
       ? [{ id: "personal", label: "Client" }]
       : [
@@ -502,88 +514,128 @@ export function CreateCustomerDialog({
 
   return (
     <>
-      <TabbedDialog
-      open={open}
-      onOpenChange={handleOpenChange}
-      title="Register client"
-      description={
-        mode === "quick"
-          ? "Add the client's name and required details. You can add insurance later."
-          : "Save the client, then start a visit, book an appointment, or add extras."
-      }
-      tabs={tabs}
-      activeTab={activeTab}
-      onTabChange={(tabId) => {
-        if (
-          tabId === "personal" ||
-          tabId === "insurance" ||
-          tabId === "whats-next"
-        ) {
-          handleTabChange(tabId);
-        }
-      }}
-      className={appFont.className}
-      data-testid="create-customer-dialog"
-      footer={renderFooter()}
-    >
-      {activeTab === "personal" ? (
-        <Form {...personalForm}>
-          <form
-            id="create-customer-personal-form"
-            className="space-y-4"
-            onSubmit={personalForm.handleSubmit(handleCreateCustomer)}
-            data-testid="create-customer-form"
-          >
-            {isCustomerCreated ? (
-              <p
-                className="rounded-lg border border-brand-primary/30 bg-brand-tint px-3 py-2.5 text-sm text-brand-slate"
-                data-testid="create-customer-locked-notice"
-              >
-                Client created. Personal details are locked while you add
-                insurance or choose what to do next.
-              </p>
+      <Sheet open={open} onOpenChange={handleOpenChange}>
+        <SheetContent
+          className={cn(
+            appFont.className,
+            "flex w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-xl",
+          )}
+          data-testid="create-customer-dialog"
+        >
+          <SheetHeader className="space-y-1 border-b border-dash-border px-5 py-4 pr-12 text-left">
+            <SheetTitle className="text-[16px] font-semibold tracking-tight text-brand-navy">
+              Register client
+            </SheetTitle>
+            <SheetDescription className="text-[13px] text-dash-muted">
+              {mode === "quick"
+                ? "Add the client's name and required details. You can add insurance later."
+                : "Save the client, then start a visit, book an appointment, or add extras."}
+            </SheetDescription>
+          </SheetHeader>
+
+          {tabs.length > 1 ? (
+            <nav
+              aria-label="Registration sections"
+              className="flex gap-6 overflow-x-auto border-b border-dash-border px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              {tabs.map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    disabled={tab.disabled}
+                    aria-current={isActive ? "page" : undefined}
+                    onClick={() => {
+                      if (
+                        !tab.disabled &&
+                        (tab.id === "personal" ||
+                          tab.id === "insurance" ||
+                          tab.id === "whats-next")
+                      ) {
+                        handleTabChange(tab.id);
+                      }
+                    }}
+                    className={cn(
+                      "-mb-px shrink-0 border-b-2 py-2.5 text-[13px] disabled:cursor-not-allowed disabled:opacity-40",
+                      isActive
+                        ? "border-brand-primary font-medium text-brand-primary"
+                        : "border-transparent text-dash-muted hover:text-brand-navy",
+                    )}
+                    data-testid={`tabbed-dialog-tab-${tab.id}`}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </nav>
+          ) : null}
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+            {activeTab === "personal" ? (
+              <Form {...personalForm}>
+                <form
+                  id="create-customer-personal-form"
+                  className="space-y-4"
+                  onSubmit={personalForm.handleSubmit(handleCreateCustomer)}
+                  data-testid="create-customer-form"
+                >
+                  {isCustomerCreated ? (
+                    <p
+                      className="rounded-lg border border-brand-primary/30 bg-brand-tint px-3 py-2.5 text-sm text-brand-slate"
+                      data-testid="create-customer-locked-notice"
+                    >
+                      Client created. Personal details are locked while you add
+                      insurance or choose what to do next.
+                    </p>
+                  ) : null}
+                  <CustomerFormFields
+                    form={personalForm}
+                    isSubmitting={isCreatingCustomer}
+                    fieldsDisabled={isCustomerCreated}
+                    idPrefix="create-customer"
+                  />
+                </form>
+              </Form>
             ) : null}
-            <CustomerFormFields
-              form={personalForm}
-              isSubmitting={isCreatingCustomer}
-              fieldsDisabled={isCustomerCreated}
-              idPrefix="create-customer"
-            />
-          </form>
-        </Form>
-      ) : null}
 
-      {activeTab === "insurance" && isCustomerCreated ? (
-        <Form {...insuranceForm}>
-          <form
-            id="create-customer-insurance-form"
-            className="space-y-4"
-            onSubmit={insuranceForm.handleSubmit(handleSaveInsurance)}
-            data-testid="create-customer-insurance-form"
-          >
-            <CustomerInsuranceFormFields
-              form={insuranceForm}
-              schemes={schemes}
-              isLoadingSchemes={isLoadingSchemes}
-              isSubmitting={isSavingInsurance}
-              customerFullName={customerFullName}
-            />
-          </form>
-        </Form>
-      ) : null}
+            {activeTab === "insurance" && isCustomerCreated ? (
+              <Form {...insuranceForm}>
+                <form
+                  id="create-customer-insurance-form"
+                  className="space-y-4"
+                  onSubmit={insuranceForm.handleSubmit(handleSaveInsurance)}
+                  data-testid="create-customer-insurance-form"
+                >
+                  <CustomerInsuranceFormFields
+                    form={insuranceForm}
+                    schemes={schemes}
+                    isLoadingSchemes={isLoadingSchemes}
+                    isSubmitting={isSavingInsurance}
+                    customerFullName={customerFullName}
+                  />
+                </form>
+              </Form>
+            ) : null}
 
-      {activeTab === "whats-next" && isCustomerCreated ? (
-        <div className="-mx-6 -my-4">
-          <p className="px-6 pb-2 pt-2 text-sm text-brand-muted">
-            What would you like to do next?
-          </p>
-          <NextStepOptionsList
-            options={whatsNextOptions}
-            testId="create-customer-next-step-options"
-          />
-        </div>
-      ) : null}
-      </TabbedDialog>
+            {activeTab === "whats-next" && isCustomerCreated ? (
+              <div className="-mx-5 -my-4">
+                <p className="px-5 pb-2 pt-4 text-sm text-dash-muted">
+                  What would you like to do next?
+                </p>
+                <NextStepOptionsList
+                  options={whatsNextOptions}
+                  testId="create-customer-next-step-options"
+                />
+              </div>
+            ) : null}
+          </div>
+
+          <SheetFooter className="mt-0 flex w-full shrink-0 flex-row gap-2 border-t border-dash-border bg-white px-5 py-3 sm:space-x-0 [&>button]:w-full [&>button]:flex-1">
+            {renderFooter()}
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
       {createdCustomer ? (
         <>
           <CustomerVisitDialog

@@ -23,15 +23,14 @@ describe("CustomerSummaryStatsCards", () => {
       />,
     );
 
-    expect(screen.getByText("Total clients")).toBeInTheDocument();
     expect(screen.getByText("1.3k")).toBeInTheDocument();
-    expect(screen.getByText("New this month")).toBeInTheDocument();
-    expect(screen.getByText("125")).toBeInTheDocument();
-    expect(screen.getByText("+10% of directory")).toBeInTheDocument();
-    expect(screen.getByText("Male / Female")).toBeInTheDocument();
-    expect(screen.getByText("600 / 650")).toBeInTheDocument();
-    expect(screen.getByText("Average age")).toBeInTheDocument();
+    expect(screen.getByText("clients")).toBeInTheDocument();
+    expect(screen.getByText("+125")).toBeInTheDocument();
+    expect(screen.getByText("this month")).toBeInTheDocument();
     expect(screen.getByText("34 yrs")).toBeInTheDocument();
+    expect(screen.getByText("average age")).toBeInTheDocument();
+    expect(screen.getByText("Male 48%")).toBeInTheDocument();
+    expect(screen.getByText("Female 52%")).toBeInTheDocument();
   });
 
   it("renders loading skeleton states when loading", () => {

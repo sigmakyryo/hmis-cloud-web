@@ -9,13 +9,13 @@ export function AppHeader() {
   return (
     <header
       data-testid="app-header"
-      className="flex h-12 shrink-0 items-center justify-between gap-3 pl-4 pr-4"
+      className="flex h-12 shrink-0 items-center gap-3 border-b border-dash-border bg-white px-3"
     >
       <div className="flex min-w-0 flex-1 items-center gap-2">
         <SidebarTrigger className="md:hidden" />
         <AppCommandMenu />
       </div>
-      <div className="flex items-center gap-1">
+      <div className="flex shrink-0 items-center justify-end gap-1">
         <MemberVisitAutomationStatus />
         <AppHeaderNotifications />
       </div>

@@ -7,36 +7,15 @@ import { cn } from "@/lib/utils";
 type AppButtonProps = ComponentProps<typeof Button>;
 
 export function PrimaryButton({ className, ...props }: AppButtonProps) {
-  return (
-    <Button
-      variant="primary"
-      className={cn("rounded-full px-5", className)}
-      {...props}
-    />
-  );
+  return <Button variant="primary" className={className} {...props} />;
 }
 
 export function SecondaryButton({ className, ...props }: AppButtonProps) {
-  return (
-    <Button
-      variant="outline"
-      className={cn(
-        "rounded-full border-dash-border bg-white text-brand-slate hover:bg-white hover:text-brand-slate",
-        className,
-      )}
-      {...props}
-    />
-  );
+  return <Button variant="outline" className={className} {...props} />;
 }
 
 export function DestructiveButton({ className, ...props }: AppButtonProps) {
-  return (
-    <Button
-      variant="destructive"
-      className={cn("rounded-full px-5", className)}
-      {...props}
-    />
-  );
+  return <Button variant="destructive" className={className} {...props} />;
 }
 
 type AddActionButtonProps = AppButtonProps & {
@@ -46,43 +25,24 @@ type AddActionButtonProps = AppButtonProps & {
   emptyState?: boolean;
 };
 
-/** Secondary tab action — ghost style so page-level primary actions stay prominent. */
+/** Tab create action. Outlined so it stays visible on a white page. */
 export function TabAddActionButton({
   label = "Add",
   showIcon = true,
-  emptyState = false,
+  emptyState: _emptyState = false,
   className,
   children,
   ...props
 }: AddActionButtonProps) {
-  const content = (
-    <>
-      {showIcon ? <AppIcon name="add" size={14} /> : null}
-      {children ?? label}
-    </>
-  );
-
-  if (emptyState) {
-    return (
-      <SecondaryButton
-        size="sm"
-        className={cn("h-8 gap-1.5 px-4", className)}
-        {...props}
-      >
-        {content}
-      </SecondaryButton>
-    );
-  }
-
   return (
-    <Button
-      variant="ghost"
+    <SecondaryButton
       size="sm"
-      className={cn("h-8 gap-1.5 px-2.5 text-brand-navy", className)}
+      className={cn("h-8 gap-1.5 px-3", className)}
       {...props}
     >
-      {content}
-    </Button>
+      {showIcon ? <AppIcon name="add" size={14} /> : null}
+      {children ?? label}
+    </SecondaryButton>
   );
 }
 
@@ -91,10 +51,7 @@ export function PageActionButton({ className, ...props }: AppButtonProps) {
   return (
     <Button
       variant="primary"
-      className={cn(
-        "h-8 gap-1.5 rounded-lg px-3 text-[13px] font-medium shadow-xs transition-[transform,box-shadow] active:scale-[0.98]",
-        className,
-      )}
+      className={cn("h-8 gap-1.5 px-3 text-[13px] active:scale-[0.98]", className)}
       {...props}
     />
   );

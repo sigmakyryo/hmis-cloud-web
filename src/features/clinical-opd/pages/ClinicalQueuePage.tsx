@@ -4,6 +4,7 @@ import { useState, useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
+  ListPageBlankState,
   ListPageLayout,
   ListPagePagination,
   ListPageTableSection,
@@ -132,12 +133,12 @@ export function ClinicalQueuePage({ routing }: ClinicalQueuePageProps) {
   if (!hasAccess) {
     return (
       <ListPageLayout data-testid="opd-queue-page">
-        <div className="rounded-xl border border-brand-border bg-white p-8 text-center">
-          <h1 className="text-xl font-semibold text-brand-navy">Access denied</h1>
-          <p className="mt-2 text-sm text-brand-muted">
-            You do not have access to the {specialty.label} module.
-          </p>
-        </div>
+        <ListPageBlankState
+  compact
+  icon="shield"
+  title="Access denied"
+  description={`You do not have access to the ${specialty.label} module.`}
+/>
       </ListPageLayout>
     );
   }
@@ -182,22 +183,23 @@ export function ClinicalQueuePage({ routing }: ClinicalQueuePageProps) {
         {isLoading ? (
           <OpdQueueTableSkeleton rows={8} />
         ) : error ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-6">
-            <h2 className="text-sm font-semibold text-red-800">
-              Could not load {specialty.label} queue
-            </h2>
-            <p className="mt-2 text-sm text-red-700">
-              Failed to load {specialty.label} queue.
-            </p>
-            <Button
-              type="button"
-              variant="outline"
-              className="mt-4"
-              onClick={() => void refetch()}
-            >
-              Try again
-            </Button>
-          </div>
+          <ListPageBlankState
+  compact
+  tone="error"
+  icon="file"
+  title={`Could not load ${specialty.label} queue`}
+  description={`Failed to load ${specialty.label} queue.`}
+  action={
+    <Button
+      type="button"
+      variant="outline"
+      className="h-8 rounded-lg text-[13px]"
+      onClick={() => void refetch()}
+    >
+      Try again
+    </Button>
+  }
+/>
         ) : hasNoRecords ? (
           <OpdQueueEmptyState
             onRefresh={() => void refetch()}
@@ -205,23 +207,22 @@ export function ClinicalQueuePage({ routing }: ClinicalQueuePageProps) {
             description={specialty.queueEmptyDescription}
           />
         ) : isFilteredEmpty ? (
-          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-dash-border py-14 text-center">
-            <h2 className="text-base font-semibold text-brand-navy">
-              No matching encounters
-            </h2>
-            <p className="mt-1 text-sm text-brand-muted">
-              Adjust your search and try again.
-            </p>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="mt-4"
-              onClick={handleClearSearch}
-            >
-              Clear search
-            </Button>
-          </div>
+          <ListPageBlankState
+  compact
+  icon="search"
+  title="No matching encounters"
+  description="Adjust your search and try again."
+  action={
+    <Button
+      type="button"
+      variant="outline"
+      className="h-8 rounded-lg text-[13px]"
+      onClick={handleClearSearch}
+    >
+      Clear search
+    </Button>
+  }
+/>
         ) : (
           <>
             {viewMode === "board" ? (

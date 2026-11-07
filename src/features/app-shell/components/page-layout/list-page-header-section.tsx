@@ -15,7 +15,17 @@ export function ListPageHeaderSection({
   children,
   className,
 }: ListPageHeaderSectionProps) {
-  return <div className={cn("space-y-3", className)}>{children}</div>;
+  return (
+    <div
+      data-list-band
+      className={cn(
+        "space-y-3 px-3 py-3",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
 }
 
 type ListPageHeaderTopRowProps = {

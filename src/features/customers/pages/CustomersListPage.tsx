@@ -1,7 +1,6 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { BarChart3 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { FabButton } from "@/components/ui/fab-button";
@@ -51,13 +50,10 @@ import {
 import { ROUTES } from "@/constants/routes";
 import {
   ListPageBlankState,
-  ListPageDataSectionsStack,
   ListPageLayout,
   ListPagePagination,
-  ListPageStatsSection,
   ListPageTableSection,
 } from "@/features/app-shell/components/page-layout";
-import { cn } from "@/lib/utils";
 
 const DEFAULT_PAGE_SIZE = 20;
 
@@ -99,7 +95,6 @@ export function CustomersListPage() {
     null,
   );
   const [editCustomer, setEditCustomer] = useState<Customer | null>(null);
-  const [showStats, setShowStats] = useState(false);
   const filters = useMemo(
     () => ({
       gender,
@@ -343,10 +338,10 @@ export function CustomersListPage() {
 
   if (isUnauthorized) {
     return (
-      <ListPageLayout data-testid="customers-page">
-        <div className="rounded-xl border border-brand-border bg-white p-8 text-center">
+      <ListPageLayout data-testid="customers-page" className="bg-white">
+        <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
           <h1 className="text-xl font-semibold text-brand-navy">Access denied</h1>
-          <p className="mt-2 text-sm text-brand-muted">
+          <p className="mt-2 max-w-sm text-sm text-brand-muted">
             You are not authorized to view clients. Sign in again or contact your
             administrator.
           </p>
@@ -365,24 +360,32 @@ export function CustomersListPage() {
   const isFilteredEmpty =
     !isLoading && !error && customers.length === 0 && hasActiveQuery;
 
+  const directoryHeader = (
+    <CustomersPageHeader
+      search={search}
+      filters={filters}
+      isLoading={isRefreshing}
+      onSearchChange={setSearch}
+      onSearchSubmit={handleSearchSubmit}
+      onClearSearch={handleClearSearch}
+      onFiltersApply={handleFiltersApply}
+      onAddClient={handleAddClient}
+      onSearchMembership={
+        membershipPayers.length > 0
+          ? () => setMembershipSearchOpen(true)
+          : undefined
+      }
+    />
+  );
+
   return (
-    <ListPageLayout data-testid="customers-page">
+    <ListPageLayout
+      data-testid="customers-page"
+      className="space-y-0 bg-white px-0 pt-0 md:px-0"
+    >
+      {hasNoCustomerRecords ? null : directoryHeader}
       {hasNoCustomerRecords ? null : (
-        <CustomersPageHeader
-          search={search}
-          filters={filters}
-          isLoading={isRefreshing}
-          onSearchChange={setSearch}
-          onSearchSubmit={handleSearchSubmit}
-          onClearSearch={handleClearSearch}
-          onFiltersApply={handleFiltersApply}
-          onAddClient={handleAddClient}
-          onSearchMembership={
-            membershipPayers.length > 0
-              ? () => setMembershipSearchOpen(true)
-              : undefined
-          }
-        />
+        <CustomerSummaryStatsCards stats={stats} isLoading={isStatsLoading} />
       )}
       <MembershipSearchDialog
         open={membershipSearchOpen}
@@ -446,28 +449,16 @@ export function CustomersListPage() {
           }}
         />
       ) : null}
-      {!hasNoCustomerRecords ? (
-        <FabButton
-          label={showStats ? "Hide stats" : "Show stats"}
-          icon={BarChart3}
-          variant="outline"
-          className="bottom-24 bg-white"
-          onClick={() => setShowStats((current) => !current)}
-          data-testid="customers-show-stats-fab"
-        />
-      ) : null}
       <FabButton
         label="Add client"
         onClick={handleAddClient}
         data-testid="add-client-fab"
       />
 
-      {!hasNoCustomerRecords ? (
-        <ListPageDataSectionsStack className="space-y-0">
-          <ListPageStatsSection className={cn(!showStats && "hidden sm:block")}>
-            <CustomerSummaryStatsCards stats={stats} isLoading={isStatsLoading} />
-          </ListPageStatsSection>
-
+      {hasNoCustomerRecords ? (
+        <CustomersEmptyState onAddClient={handleAddClient} />
+      ) : (
+        <>
           <ListPageTableSection>
             {isLoading ? (
               <CustomersTableSkeleton rows={10} />
@@ -507,31 +498,30 @@ export function CustomersListPage() {
                 }
               />
             ) : (
-              <>
-                <CustomersTable
-                  customers={customers}
-                  onRowClick={handleRowClick}
-                  onStartVisit={(customer) => setVisitCustomer(customer)}
-                  onBookAppointment={(customer) => setAppointmentCustomer(customer)}
-                  onEditCustomer={(customer) => setEditCustomer(customer)}
-                />
-                <ListPagePagination
-                  page={page}
-                  pageSize={DEFAULT_PAGE_SIZE}
-                  totalCount={totalCount}
-                  hasNext={hasNext}
-                  hasPrevious={hasPrevious}
-                  isLoading={isRefreshing}
-                  onPageChange={handlePageChange}
-                />
-              </>
+              <CustomersTable
+                customers={customers}
+                onRowClick={handleRowClick}
+                onStartVisit={(customer) => setVisitCustomer(customer)}
+                onBookAppointment={(customer) => setAppointmentCustomer(customer)}
+                onEditCustomer={(customer) => setEditCustomer(customer)}
+              />
             )}
           </ListPageTableSection>
-        </ListPageDataSectionsStack>
-      ) : (
-        <ListPageTableSection>
-          <CustomersEmptyState onAddClient={handleAddClient} />
-        </ListPageTableSection>
+          {!isLoading && !error && !isFilteredEmpty ? (
+            <div className="border-t border-dash-border px-4 py-3 md:px-6">
+              <ListPagePagination
+                page={page}
+                pageSize={DEFAULT_PAGE_SIZE}
+                totalCount={totalCount}
+                hasNext={hasNext}
+                hasPrevious={hasPrevious}
+                isLoading={isRefreshing}
+                onPageChange={handlePageChange}
+                className="pt-0"
+              />
+            </div>
+          ) : null}
+        </>
       )}
     </ListPageLayout>
   );

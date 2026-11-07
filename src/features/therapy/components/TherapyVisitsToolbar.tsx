@@ -32,13 +32,13 @@ export function TherapyVisitsToolbar({
   onTabChange,
 }: TherapyVisitsToolbarProps) {
   return (
-    <ListPageToolbarSection className="sm:flex-row sm:items-end sm:justify-between">
+    <ListPageToolbarSection className="px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
       <ListPageToolbarSearch>
         <Input
           id="therapy-visit-search"
           type="search"
           placeholder="Search by client, ID, service, or clinic..."
-          className="w-full sm:max-w-md"
+          className="min-w-0 w-full sm:flex-1"
           value={search}
           disabled={isLoading}
           onChange={(event) => onSearchChange(event.target.value)}

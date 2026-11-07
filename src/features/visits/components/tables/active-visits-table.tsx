@@ -82,7 +82,7 @@ export function ActiveVisitsTable({
                   <UserIdenticon
                     seed={visit.customer || clientName}
                     name={clientName}
-                    className="size-8 shrink-0 rounded-md"
+                    className="size-6 shrink-0 rounded-md"
                   />
                   <div className="min-w-0">
                     <span className="block truncate font-medium text-brand-navy group-hover:text-brand-primary">

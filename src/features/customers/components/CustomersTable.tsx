@@ -224,14 +224,14 @@ export function CustomersTable({
                   <HoverPreviewCard
                     className="w-[17.5rem] p-0"
                     trigger={
-                      <div className="flex min-w-0 items-center gap-2.5">
+                      <div className="flex min-w-0 items-center gap-2">
                         <UserIdenticon
                           seed={customer.uuid || identifier || name}
                           name={name}
-                          className="size-8 shrink-0 rounded-[0.55rem]"
-                          fallbackClassName="rounded-[0.55rem]"
+                          className="size-6 shrink-0 rounded-md"
+                          fallbackClassName="rounded-md"
                         />
-                        <div className="min-w-0 space-y-0.5">
+                        <div className="min-w-0">
                           <Link
                             href={ROUTES.customerDetail(customer.uuid)}
                             className="block truncate text-[13px] font-medium text-brand-navy transition-colors group-hover:text-brand-primary"
@@ -239,7 +239,7 @@ export function CustomersTable({
                           >
                             {name}
                           </Link>
-                          <div className="flex items-center gap-2 truncate text-[13px] text-brand-muted">
+                          <div className="mt-0.5 flex items-center gap-2 truncate text-[11px] text-dash-muted">
                             {customer.phone_number ? (
                               <span>{customer.phone_number}</span>
                             ) : customer.email ? (

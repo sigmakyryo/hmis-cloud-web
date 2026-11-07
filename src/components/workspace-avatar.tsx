@@ -3,6 +3,8 @@ import { cn } from "@/lib/utils";
 type WorkspaceAvatarProps = {
   name: string;
   className?: string;
+  /** Primary uses the brand teal. Color keeps the varied clinic tones. */
+  tone?: "color" | "primary";
 };
 
 const WORKSPACE_AVATAR_TONES = [
@@ -73,17 +75,26 @@ export function getWorkspaceAvatarTone(name: string) {
   return WORKSPACE_AVATAR_TONES[Math.abs(hash) % WORKSPACE_AVATAR_TONES.length];
 }
 
-export function WorkspaceAvatar({ name, className }: WorkspaceAvatarProps) {
+export function WorkspaceAvatar({
+  name,
+  className,
+  tone = "color",
+}: WorkspaceAvatarProps) {
   const initials = getWorkspaceInitials(name);
-  const tone = getWorkspaceAvatarTone(name);
+  const colorTone = getWorkspaceAvatarTone(name);
 
   return (
     <span
       className={cn(
-        "flex size-8 shrink-0 items-center justify-center rounded-[0.55rem] text-[11px] font-semibold tracking-[0.04em] shadow-[inset_0_1px_0_rgba(255,255,255,0.34),inset_0_-1px_0_rgba(0,0,0,0.12),0_1px_2px_rgba(31,42,36,0.14)] ring-1 ring-inset",
-        tone.bg,
-        tone.text,
-        tone.ring,
+        "flex size-8 shrink-0 items-center justify-center rounded-md text-[11px] font-semibold",
+        tone === "primary"
+          ? "bg-brand-primary text-white"
+          : cn(
+              "tracking-[0.04em] shadow-[inset_0_1px_0_rgba(255,255,255,0.34),inset_0_-1px_0_rgba(0,0,0,0.12),0_1px_2px_rgba(31,42,36,0.14)] ring-1 ring-inset",
+              colorTone.bg,
+              colorTone.text,
+              colorTone.ring,
+            ),
         className,
       )}
       aria-hidden="true"

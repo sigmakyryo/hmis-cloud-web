@@ -206,13 +206,13 @@ export function AppCommandMenu() {
         aria-label="Search"
         aria-keyshortcuts="Meta+K Control+K"
         data-testid="app-command-menu-trigger"
-        className="flex h-8 w-full max-w-md min-w-0 items-center gap-2 rounded-lg border border-dash-border/80 bg-white px-2.5 text-left text-[13px] text-dash-muted shadow-[0_1px_0_rgba(31,42,36,0.03)] transition-[border-color,color,box-shadow,transform] hover:border-dash-border hover:text-brand-navy hover:shadow-[0_1px_0_rgba(31,42,36,0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/25 active:scale-[0.99]"
+        className="flex h-8 w-full max-w-sm min-w-0 items-center gap-2 rounded-md bg-dash-canvas px-2.5 text-left text-[13px] text-dash-muted transition-colors hover:text-brand-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/25"
       >
         <span className="flex size-4 shrink-0 items-center justify-center text-dash-muted">
           <AppIcon name="search" size={14} />
         </span>
         <span className="min-w-0 flex-1 truncate">Search</span>
-        <kbd className="pointer-events-none hidden h-5 shrink-0 items-center rounded-md bg-dash-canvas px-1.5 font-sans text-[10px] font-medium text-dash-muted sm:inline-flex">
+        <kbd className="pointer-events-none hidden h-5 shrink-0 items-center rounded-md bg-white px-1.5 font-sans text-[10px] font-medium text-dash-muted sm:inline-flex">
           ⌘K
         </kbd>
       </button>

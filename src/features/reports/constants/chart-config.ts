@@ -35,3 +35,13 @@ export const REPORT_CHART_COLORS = {
   sky: "#2f5e46",
   amber: "#b86a1f",
 } as const;
+
+/** Ordered series colors for the reports workspace charts. */
+export const REPORT_CHART_PALETTE = [
+  "#0b6e6e",
+  "#2f5e46",
+  "#b86a1f",
+  "#3d6b99",
+  "#7a4e2d",
+  "#5b6b73",
+] as const;

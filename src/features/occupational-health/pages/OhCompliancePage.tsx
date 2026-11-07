@@ -5,6 +5,7 @@ import { RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
+  ListPageBlankState,
   ListPageHeaderActions,
   ListPageHeaderSection,
   ListPageHeaderTitleBlock,
@@ -80,7 +81,7 @@ export function OhCompliancePage() {
 
   return (
     <ListPageLayout data-testid="oh-compliance-page">
-      <ListPageHeaderSection className="border-b border-brand-border bg-white px-4 py-5 md:px-6">
+      <ListPageHeaderSection className="bg-white">
         <ListPageHeaderTopRow>
           <ListPageHeaderTitleBlock
             title="OHS Compliance"
@@ -114,34 +115,42 @@ export function OhCompliancePage() {
         {isLoading ? (
           <p className="text-sm text-brand-muted">Loading compliance…</p>
         ) : error ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-6">
-            <h2 className="text-sm font-semibold text-red-800">
-              Could not load compliance dashboard
-            </h2>
-            <Button
-              type="button"
-              variant="outline"
-              className="mt-4"
-              onClick={() => void refetch()}
-            >
-              Try again
-            </Button>
-          </div>
+          <ListPageBlankState
+            compact
+            tone="error"
+            icon="file"
+            title="Could not load compliance dashboard"
+            description="The compliance figures could not be loaded."
+            action={
+              <Button
+                type="button"
+                variant="outline"
+                className="h-8 rounded-lg text-[13px]"
+                onClick={() => void refetch()}
+              >
+                Try again
+              </Button>
+            }
+          />
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div
+            className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-dash-border px-4 py-2.5 md:px-6"
+            role="group"
+            aria-label="Compliance summary"
+          >
             {Object.entries(data ?? {}).map(([key, value]) => (
-              <div
+              <p
                 key={key}
-                className="rounded-xl border border-dash-border bg-white p-4"
+                className="flex items-baseline gap-1.5"
                 data-testid={`oh-compliance-metric-${key}`}
               >
-                <p className="text-sm text-brand-muted">
-                  {METRIC_LABELS[key] ?? key.replace(/_/g, " ")}
-                </p>
-                <p className="mt-2 text-2xl font-semibold tabular-nums text-brand-navy">
+                <span className="text-[15px] font-semibold tabular-nums leading-none text-brand-navy">
                   {value}
-                </p>
-              </div>
+                </span>
+                <span className="text-[13px] text-dash-muted">
+                  {METRIC_LABELS[key] ?? key.replace(/_/g, " ")}
+                </span>
+              </p>
             ))}
           </div>
         )}

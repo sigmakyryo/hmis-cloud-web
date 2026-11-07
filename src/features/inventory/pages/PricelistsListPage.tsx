@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { FabButton } from "@/components/ui/fab-button";
 import { ROUTES } from "@/constants/routes";
 import {
+  ListPageBlankState,
   ListPageLayout,
   ListPagePagination,
   ListPageTableSection,
@@ -58,11 +59,24 @@ export function PricelistsListPage() {
     if (searchParams.get("add") !== "pricelist") {
       return;
     }
-    setCreateOpen(true);
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete("add");
-    const query = params.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+
+    let cancelled = false;
+    async function openCreate() {
+      await Promise.resolve();
+      if (cancelled) {
+        return;
+      }
+      setCreateOpen(true);
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("add");
+      const query = params.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    }
+
+    void openCreate();
+    return () => {
+      cancelled = true;
+    };
   }, [pathname, router, searchParams]);
   const fetchFn = useCallback(
     (filters: InventoryListFilters) => fetchPricelists(filters),
@@ -149,20 +163,23 @@ export function PricelistsListPage() {
         {isLoading ? (
           <PricelistsTableSkeleton rows={8} />
         ) : error ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-6">
-            <h2 className="text-sm font-semibold text-red-800">
-              Could not load pricelists
-            </h2>
-            <p className="mt-2 text-sm text-red-700">{error}</p>
-            <Button
-              type="button"
-              variant="outline"
-              className="mt-4"
-              onClick={() => void reload()}
-            >
-              Try again
-            </Button>
-          </div>
+          <ListPageBlankState
+  compact
+  tone="error"
+  icon="file"
+  title="Could not load pricelists"
+  description={error}
+  action={
+    <Button
+      type="button"
+      variant="outline"
+      className="h-8 rounded-lg text-[13px]"
+      onClick={() => void reload()}
+    >
+      Try again
+    </Button>
+  }
+/>
         ) : hasNoRecords ? (
           <InventoryListEmptyState
             icon={Receipt}
@@ -172,23 +189,22 @@ export function PricelistsListPage() {
             onAction={handleCreate}
           />
         ) : isFilteredEmpty ? (
-          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-dash-border py-14 text-center">
-            <h2 className="text-base font-semibold text-brand-navy">
-              No matching pricelists
-            </h2>
-            <p className="mt-1 text-sm text-brand-muted">
-              Adjust your search and try again.
-            </p>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="mt-4"
-              onClick={handleClearSearch}
-            >
-              Clear search
-            </Button>
-          </div>
+          <ListPageBlankState
+  compact
+  icon="search"
+  title="No matching pricelists"
+  description="Adjust your search and try again."
+  action={
+    <Button
+      type="button"
+      variant="outline"
+      className="h-8 rounded-lg text-[13px]"
+      onClick={handleClearSearch}
+    >
+      Clear search
+    </Button>
+  }
+/>
         ) : (
           <>
             <PricelistsTable pricelists={items} onRowClick={handleRowClick} />

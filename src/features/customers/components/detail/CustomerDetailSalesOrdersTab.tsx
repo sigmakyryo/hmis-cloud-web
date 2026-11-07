@@ -4,17 +4,17 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ShoppingBag } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { ROUTES } from "@/constants/routes";
-import {
-  LIST_PAGE_INSIGHT_CELL_CLASS,
-  LIST_PAGE_INSIGHT_LABEL_CLASS,
-  LIST_PAGE_INSIGHT_VALUE_CLASS,
-  ListPagePagination,
-} from "@/features/app-shell/components/page-layout";
+import { ListPagePagination } from "@/features/app-shell/components/page-layout";
 import { CustomerDetailTabEmptyState } from "@/features/customers/components/detail/CustomerDetailTabEmptyState";
 import { CustomerSalesOrdersTable } from "@/features/customers/components/detail/CustomerSalesOrdersTable";
 import { CustomerTabSkeleton } from "@/features/customers/components/detail/CustomerTabSkeleton";
+import {
+  CUSTOMER_TAB_BLEED_CLASS,
+  CustomerTabError,
+  CustomerTabStat,
+  CustomerTabStatBand,
+} from "@/features/customers/components/detail/customer-tab-chrome";
 import {
   countCancelledCustomerSalesOrders,
   countConfirmedCustomerSalesOrders,
@@ -134,14 +134,10 @@ export function CustomerDetailSalesOrdersTab({
 
   if (loadError && !hasLoaded) {
     return (
-      <div className="space-y-3">
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-6 text-sm text-red-700">
-          {loadError}
-        </div>
-        <Button type="button" variant="outline" onClick={() => void loadOrders(1)}>
-          Try again
-        </Button>
-      </div>
+      <CustomerTabError
+        message={loadError}
+        onRetry={() => void loadOrders(1)}
+      />
     );
   }
 
@@ -150,50 +146,40 @@ export function CustomerDetailSalesOrdersTab({
   const cancelledCount = countCancelledCustomerSalesOrders(orders);
 
   return (
-    <div className="space-y-5" data-testid="customer-detail-sales-orders-tab">
-      <dl className="grid grid-cols-2 divide-y divide-dash-border/60 border-b border-dash-border/80 sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4 lg:divide-x">
-        <div className={LIST_PAGE_INSIGHT_CELL_CLASS}>
-          <dt className={LIST_PAGE_INSIGHT_LABEL_CLASS}>Total orders</dt>
-          <dd className={LIST_PAGE_INSIGHT_VALUE_CLASS}>
-            {formatCompactNumber(totalCount)}
-          </dd>
-          <p className="mt-0.5 text-xs text-brand-muted">All recorded orders</p>
-        </div>
-
-        <div className={LIST_PAGE_INSIGHT_CELL_CLASS}>
-          <dt className={LIST_PAGE_INSIGHT_LABEL_CLASS}>Open / Quotations</dt>
-          <dd className={LIST_PAGE_INSIGHT_VALUE_CLASS}>
-            {formatCompactNumber(openCount)}
-          </dd>
-          <p className="mt-0.5 text-xs text-brand-muted">Draft & pending orders</p>
-        </div>
-
-        <div className={LIST_PAGE_INSIGHT_CELL_CLASS}>
-          <dt className={LIST_PAGE_INSIGHT_LABEL_CLASS}>Confirmed</dt>
-          <dd className={LIST_PAGE_INSIGHT_VALUE_CLASS}>
-            {formatCompactNumber(confirmedCount)}
-          </dd>
-          <p className="mt-0.5 text-xs text-brand-muted">Approved sales</p>
-        </div>
-
-        <div className={LIST_PAGE_INSIGHT_CELL_CLASS}>
-          <dt className={LIST_PAGE_INSIGHT_LABEL_CLASS}>Cancelled</dt>
-          <dd className={LIST_PAGE_INSIGHT_VALUE_CLASS}>
-            {formatCompactNumber(cancelledCount)}
-          </dd>
-          <p className="mt-0.5 text-xs text-brand-muted">Voided orders</p>
-        </div>
-      </dl>
+    <div className="space-y-6" data-testid="customer-detail-sales-orders-tab">
+      <CustomerTabStatBand>
+        <CustomerTabStat
+          label="Total orders"
+          value={formatCompactNumber(totalCount)}
+          hint="All recorded orders"
+        />
+        <CustomerTabStat
+          label="Open"
+          value={formatCompactNumber(openCount)}
+          hint="Draft and pending"
+        />
+        <CustomerTabStat
+          label="Confirmed"
+          value={formatCompactNumber(confirmedCount)}
+          hint="Approved sales"
+          accent={confirmedCount > 0}
+        />
+        <CustomerTabStat
+          label="Cancelled"
+          value={formatCompactNumber(cancelledCount)}
+          hint="Voided orders"
+        />
+      </CustomerTabStatBand>
 
       {totalCount === 0 ? (
         <CustomerDetailTabEmptyState
           icon={ShoppingBag}
           title="No sales orders yet"
-          description="Sales orders for this client will appear here once created in ERP."
+          description="Sales orders for this client will appear here once created."
           data-testid="customer-sales-orders-empty-state"
         />
       ) : (
-        <>
+        <div className={CUSTOMER_TAB_BLEED_CLASS}>
           <CustomerSalesOrdersTable
             orders={orders}
             onRowClick={(order) => router.push(ROUTES.salesOrderDetail(order.id))}
@@ -206,8 +192,9 @@ export function CustomerDetailSalesOrdersTab({
             hasPrevious={hasPrevious}
             isLoading={isRefreshing}
             onPageChange={setPage}
+            className="border-t-0"
           />
-        </>
+        </div>
       )}
 
       {loadError && hasLoaded ? (

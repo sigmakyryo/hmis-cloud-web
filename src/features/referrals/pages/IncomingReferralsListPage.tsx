@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
+  ListPageBlankState,
   ListPageLayout,
   ListPageTableSection,
 } from "@/features/app-shell/components/page-layout";
@@ -75,7 +76,17 @@ export function IncomingReferralsListPage() {
   }, []);
 
   useEffect(() => {
-    void load();
+    let cancelled = false;
+    async function run() {
+      await Promise.resolve();
+      if (!cancelled) {
+        await load();
+      }
+    }
+    void run();
+    return () => {
+      cancelled = true;
+    };
   }, [load]);
 
   const filtered = useMemo(
@@ -117,40 +128,42 @@ export function IncomingReferralsListPage() {
           {isLoading ? (
             <IncomingReferralsTableSkeleton rows={8} />
           ) : error ? (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-6">
-              <h2 className="text-sm font-semibold text-red-800">
-                Could not load referrals
-              </h2>
-              <p className="mt-2 text-sm text-red-700">{error}</p>
-              <Button
-                type="button"
-                variant="outline"
-                className="mt-4"
-                onClick={() => void load()}
-              >
-                Try again
-              </Button>
-            </div>
+            <ListPageBlankState
+  compact
+  tone="error"
+  icon="file"
+  title="Could not load referrals"
+  description={error}
+  action={
+    <Button
+      type="button"
+      variant="outline"
+      className="h-8 rounded-lg text-[13px]"
+      onClick={() => void load()}
+    >
+      Try again
+    </Button>
+  }
+/>
           ) : hasNoRecords ? (
             <IncomingReferralsEmptyState />
           ) : isFilteredEmpty ? (
-            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-dash-border py-14 text-center">
-              <h2 className="text-base font-semibold text-brand-navy">
-                No matching referrals
-              </h2>
-              <p className="mt-1 text-sm text-brand-muted">
-                Adjust your search and try again.
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="mt-4"
-                onClick={handleClearSearch}
-              >
-                Clear search
-              </Button>
-            </div>
+            <ListPageBlankState
+  compact
+  icon="search"
+  title="No matching referrals"
+  description="Adjust your search and try again."
+  action={
+    <Button
+      type="button"
+      variant="outline"
+      className="h-8 rounded-lg text-[13px]"
+      onClick={handleClearSearch}
+    >
+      Clear search
+    </Button>
+  }
+/>
           ) : (
             <IncomingReferralsTable
               referrals={filtered}

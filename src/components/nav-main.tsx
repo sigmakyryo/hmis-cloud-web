@@ -96,7 +96,7 @@ export function NavMain({ items }: { items: SidebarNavItem[] }) {
   return (
     <>
       {workspaceItems.length > 0 ? (
-        <SidebarGroup className="pt-1">
+        <SidebarGroup className="pt-2">
           <NavMenuItems items={workspaceItems} />
         </SidebarGroup>
       ) : null}
@@ -104,7 +104,7 @@ export function NavMain({ items }: { items: SidebarNavItem[] }) {
         <SidebarGroup>
           <SidebarGroupLabel
             className={cn(
-              "h-7 px-3 text-[11px] font-medium uppercase tracking-[0.14em] text-dash-muted",
+              "h-7 px-3 text-[12px] font-medium text-dash-muted",
             )}
           >
             Admin

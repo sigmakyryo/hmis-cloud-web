@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { CustomerDetailHeader } from "@/features/customers/components/detail/CustomerDetailHeader";
+import { CustomerOverviewFacts } from "@/features/customers/components/detail/CustomerOverviewFacts";
 import { CustomerInvoicePaymentStatsCards } from "@/features/customers/components/detail/CustomerInvoicePaymentStatsCards";
 import type { CustomerInvoicesStats } from "@/features/customers/types/customer-billing.types";
 import type { Customer } from "@/features/customers/types/customer.types";
@@ -34,11 +35,27 @@ describe("CustomerDetailHeader", () => {
 
     expect(screen.getByText("Thoko Phiri")).toBeInTheDocument();
     expect(screen.getByText("MRN-1001")).toBeInTheDocument();
-    expect(screen.getByText("Female")).toBeInTheDocument();
     expect(screen.getByText(/Active visit/i)).toBeInTheDocument();
+    expect(screen.queryByText("Female")).not.toBeInTheDocument();
+    expect(screen.queryByText("REF-001")).not.toBeInTheDocument();
+  });
+});
+
+describe("CustomerOverviewFacts", () => {
+  it("renders the client profile on the overview", () => {
+    render(<CustomerOverviewFacts customer={mockCustomer} />);
+
+    expect(screen.getByText("Age")).toBeInTheDocument();
+    expect(screen.getByText("Gender")).toBeInTheDocument();
+    expect(screen.getByText("Female")).toBeInTheDocument();
+    expect(screen.getByText("Born")).toBeInTheDocument();
+    expect(screen.getByText("Phone")).toBeInTheDocument();
     expect(screen.getByText("+265991234567")).toBeInTheDocument();
+    expect(screen.getByText("Email")).toBeInTheDocument();
     expect(screen.getByText("thoko.phiri@example.com")).toBeInTheDocument();
+    expect(screen.getByText("Reference")).toBeInTheDocument();
     expect(screen.getByText("REF-001")).toBeInTheDocument();
+    expect(screen.getByText("Registered")).toBeInTheDocument();
   });
 });
 

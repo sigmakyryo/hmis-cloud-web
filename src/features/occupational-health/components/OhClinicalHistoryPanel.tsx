@@ -37,6 +37,8 @@ type OhClinicalHistoryPanelProps = {
   /** Default section focused for the active consult tab. */
   section?: OhHistorySectionId;
   embedded?: boolean;
+  /** Drops the column border when the panel sits inside a sheet. */
+  variant?: "column" | "sheet";
 };
 
 function HistoryEmptyState({ message }: { message: string }) {
@@ -243,6 +245,7 @@ export function OhClinicalHistoryPanel({
   encounterUuid,
   section: sectionProp = "exam",
   embedded = true,
+  variant = "column",
 }: OhClinicalHistoryPanelProps) {
   const [picked, setPicked] = useState<{
     forSection: OhHistorySectionId;
@@ -295,9 +298,11 @@ export function OhClinicalHistoryPanel({
     <aside
       className={cn(
         "flex min-h-0 flex-col bg-white",
-        embedded
-          ? "h-full border-t border-dash-border/70 xl:border-l xl:border-t-0"
-          : "border-t border-dash-border/70 xl:sticky xl:top-0 xl:max-h-[calc(100vh-4rem)] xl:border-l xl:border-t-0",
+        variant === "sheet"
+          ? "h-full"
+          : embedded
+            ? "h-full border-t border-dash-border/70 xl:border-l xl:border-t-0"
+            : "border-t border-dash-border/70 xl:sticky xl:top-0 xl:max-h-[calc(100vh-4rem)] xl:border-l xl:border-t-0",
       )}
       data-testid="oh-history-panel"
     >

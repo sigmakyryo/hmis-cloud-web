@@ -15,14 +15,26 @@ const assetPrefix =
     ? undefined
     : process.env.NEXT_PUBLIC_ASSET_PREFIX || undefined;
 
+function mediaProxyOrigin() {
+  const raw = process.env.HMIS_API_URL?.trim() || "http://127.0.0.1:8000/api/v1";
+  return raw.replace(/\/api\/v\d+\/?$/, "").replace(/\/$/, "");
+}
+
 const nextConfig: NextConfig = {
   output: "standalone",
-  allowedDevOrigins: ["app.localhost", "*.localhost"],
+  allowedDevOrigins: [
+    "app.localhost",
+    "*.localhost",
+    "192.168.*.*",
+    "10.*.*.*",
+    ...Array.from({ length: 16 }, (_, index) => `172.${16 + index}.*.*`),
+  ],
   experimental: {
     optimizePackageImports: ["@hugeicons/core-free-icons", "@hugeicons/react"],
   },
   assetPrefix,
   images: {
+    dangerouslyAllowLocalIP: process.env.NODE_ENV !== "production",
     qualities: [75, 90, 92],
     remotePatterns: [
       { protocol: "https", hostname: "**" },
@@ -33,6 +45,15 @@ const nextConfig: NextConfig = {
   },
   turbopack: {
     root: appRoot,
+  },
+  async rewrites() {
+    const origin = mediaProxyOrigin();
+    return [
+      {
+        source: "/media/:path*",
+        destination: `${origin}/media/:path*`,
+      },
+    ];
   },
   async redirects() {
     return [

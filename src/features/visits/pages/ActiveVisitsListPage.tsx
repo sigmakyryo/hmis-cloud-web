@@ -1,12 +1,11 @@
 "use client";
 
-import { BarChart3 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { FabButton } from "@/components/ui/fab-button";
 import {
+  ListPageBlankState,
   ListPageDataSectionsStack,
   ListPageLayout,
   ListPagePagination,
@@ -38,7 +37,6 @@ import {
   DEFAULT_ACTIVE_VISIT_FILTERS,
   type ActiveVisitListFilterState,
 } from "@/features/visits/utils/visit-list-filters";
-import { cn } from "@/lib/utils";
 import { useUser } from "@/providers/user-provider";
 
 export function ActiveVisitsListPage() {
@@ -50,7 +48,6 @@ export function ActiveVisitsListPage() {
     null,
   );
   const [isAddEncounterOpen, setIsAddEncounterOpen] = useState(false);
-  const [showStats, setShowStats] = useState(false);
   const [stats, setStats] = useState<VisitQueueSummary | null>(null);
   const [isStatsLoading, setIsStatsLoading] = useState(true);
   const [filters, setFilters] = useState<ActiveVisitListFilterState>(
@@ -197,20 +194,9 @@ export function ActiveVisitsListPage() {
           />
         )}
 
-        {!hasNoRecords ? (
-          <FabButton
-            label={showStats ? "Hide stats" : "Show stats"}
-            icon={BarChart3}
-            variant="outline"
-            className="bottom-24 bg-white"
-            onClick={() => setShowStats((current) => !current)}
-            data-testid="active-visits-show-stats-fab"
-          />
-        ) : null}
-
         <ListPageDataSectionsStack className="space-y-0">
           {!hasNoRecords ? (
-            <ListPageStatsSection className={cn(!showStats && "hidden sm:block")}>
+            <ListPageStatsSection>
               <VisitQueueSummaryCards stats={stats} isLoading={isStatsLoading} />
             </ListPageStatsSection>
           ) : null}
@@ -219,40 +205,42 @@ export function ActiveVisitsListPage() {
             {isLoading ? (
               <ActiveVisitsTableSkeleton rows={8} />
             ) : error ? (
-              <div className="rounded-xl border border-red-200 bg-red-50 p-6">
-                <h2 className="text-sm font-semibold text-red-800">
-                  Could not load active visits
-                </h2>
-                <p className="mt-2 text-sm text-red-700">{error}</p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="mt-4"
-                  onClick={() => void handleReload()}
-                >
-                  Try again
-                </Button>
-              </div>
+              <ListPageBlankState
+                compact
+                tone="error"
+                icon="file"
+                title="Could not load active visits"
+                description={error}
+                action={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-8 rounded-lg text-[13px]"
+                    onClick={() => void handleReload()}
+                  >
+                    Try again
+                  </Button>
+                }
+              />
             ) : hasNoRecords ? (
               <ActiveVisitsEmptyState />
             ) : isFilteredEmpty ? (
-              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-dash-border py-14 text-center">
-                <h2 className="text-base font-semibold text-brand-navy">
-                  No matching active visits
-                </h2>
-                <p className="mt-1 text-sm text-brand-muted">
-                  Adjust your search or filters and try again.
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="mt-4"
-                  onClick={handleClearSearchAndFilters}
-                >
-                  Clear search & filters
-                </Button>
-              </div>
+              <ListPageBlankState
+                compact
+                icon="search"
+                title="No matching active visits"
+                description="Adjust your search or filters and try again."
+                action={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-8 rounded-lg text-[13px]"
+                    onClick={handleClearSearchAndFilters}
+                  >
+                    Clear search and filters
+                  </Button>
+                }
+              />
             ) : (
               <>
                 <ActiveVisitsTable

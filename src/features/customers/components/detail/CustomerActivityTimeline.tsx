@@ -130,7 +130,7 @@ export function CustomerActivityTimeline({
         className,
       )}
       title="Activity"
-      description="A timeline of events recorded for this client."
+      description={null}
       items={encounters.map(mapEncounterToFeedItem)}
       pagination={pagination}
       emptyTitle="No activity yet"

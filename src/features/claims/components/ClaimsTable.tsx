@@ -82,7 +82,7 @@ export function ClaimsTable({ claims, onRowClick, className }: ClaimsTableProps)
                   <UserIdenticon
                     seed={identiconSeed}
                     name={displayName}
-                    className="size-8 shrink-0 rounded-md"
+                    className="size-6 shrink-0 rounded-md"
                   />
                   <TableTextCell
                     className={
