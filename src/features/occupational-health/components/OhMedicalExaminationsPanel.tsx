@@ -4,18 +4,23 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ClipboardList, FileWarning } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
+import { appFont } from "@/lib/fonts";
+import { OhCorporateWorkspace } from "@/features/occupational-health/components/OhCorporateWorkspace";
+import { PrimaryButton } from "@/components/ui/app-buttons";
+import { Label } from "@/components/ui/label";
+import { RequiredFieldMarker } from "@/components/ui/required-field-marker";
 import {
-  OhCorporateWorkspace,
-  OhEncounterSummaryRail,
-  OhExaminationLedger,
-} from "@/features/occupational-health/components/OhCorporateWorkspace";
-import { OhExamForm } from "@/features/occupational-health/components/OhExamTabPanel";
-import {
-  OhExamTypeDialog,
-  type MedicalExamStartType,
-} from "@/features/occupational-health/components/OhExamTypeDialog";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import type { MedicalExamStartType } from "@/features/occupational-health/components/OhExamTypeDialog";
 import { OhExamTemplateCaptureForm } from "@/features/occupational-health/components/OhExamTemplateCaptureForm";
 import { OhProcedureChecklistPanel } from "@/features/occupational-health/components/OhProcedureChecklistPanel";
 import type { useOhEncounterWorkspaceData } from "@/features/occupational-health/hooks/use-occupational-health";
@@ -51,6 +56,9 @@ type OhMedicalExaminationsPanelProps = {
   episodes: EmploymentEpisode[];
   workspace: ReturnType<typeof useOhEncounterWorkspaceData>;
   onManageEmployment: () => void;
+  focusedExamUuid?: string | null;
+  examFocusRequest?: number;
+  onActiveExamChange?: (examUuid: string | null) => void;
 };
 
 function readEnvelope(
@@ -122,7 +130,9 @@ export function OhMedicalExaminationsPanel({
   encounter,
   episodes,
   workspace,
-  onManageEmployment,
+  focusedExamUuid = null,
+  examFocusRequest = 0,
+  onActiveExamChange,
 }: OhMedicalExaminationsPanelProps) {
   const { toast } = useToast();
   const episode = resolveActiveRiskProfileEpisode(episodes);
@@ -178,11 +188,25 @@ export function OhMedicalExaminationsPanel({
       inferExamTypeFromExaminations(workspace.examinations, examTemplateUuid),
     [examTemplateUuid, workspace.examinations],
   );
+  const focusedExam = useMemo(
+    () =>
+      focusedExamUuid
+        ? (workspace.examinations.find((exam) => exam.uuid === focusedExamUuid) ?? null)
+        : null,
+    [focusedExamUuid, workspace.examinations],
+  );
+  const focusedStartType =
+    focusedExam && isMedicalExamStartType(focusedExam.exam_type)
+      ? focusedExam.exam_type
+      : null;
   const [examTypeOverride, setExamTypeOverride] = useState<MedicalExamStartType | null>(
     null,
   );
-  const selectedExamType = examTypeOverride ?? inferredExamType;
-  const [typeDialogOpen, setTypeDialogOpen] = useState(false);
+  const selectedExamType = examTypeOverride ?? focusedStartType ?? inferredExamType;
+  const [examNotes, setExamNotes] = useState("");
+  const [detailsConfirmed, setDetailsConfirmed] = useState(false);
+  const [editingDetails, setEditingDetails] = useState(false);
+  const examNotesRef = useRef("");
   const [examination, setExamination] = useState<OhExamination | null>(null);
   const [answers, setAnswers] = useState<ExamTemplateAnswers>(emptyExamTemplateAnswers());
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -196,8 +220,30 @@ export function OhMedicalExaminationsPanel({
     examinationRef.current = examination;
   }, [examination]);
 
-  const needsExamType =
-    templateReady && !workspace.isLoading && !selectedExamType;
+  const onActiveExamChangeRef = useRef(onActiveExamChange);
+  useEffect(() => {
+    onActiveExamChangeRef.current = onActiveExamChange;
+  }, [onActiveExamChange]);
+
+  useEffect(() => {
+    if (!focusedExamUuid) {
+      return;
+    }
+    let cancelled = false;
+    async function openFocusedExam() {
+      await Promise.resolve();
+      if (cancelled) {
+        return;
+      }
+      setExamTypeOverride(null);
+      setDetailsConfirmed(false);
+      setEditingDetails(false);
+    }
+    void openFocusedExam();
+    return () => {
+      cancelled = true;
+    };
+  }, [examFocusRequest, focusedExamUuid]);
 
   useEffect(() => {
     let cancelled = false;
@@ -211,13 +257,17 @@ export function OhMedicalExaminationsPanel({
         examinationRef.current = null;
         setAnswers(emptyExamTemplateAnswers());
         answersHydratedKeyRef.current = null;
+        onActiveExamChangeRef.current?.(null);
         return;
       }
-      const matched = findExamForType(
-        workspace.examinations,
-        selectedExamType,
-        examTemplateUuid,
-      );
+      const matched =
+        focusedExam && focusedExam.exam_type === selectedExamType
+          ? focusedExam
+          : findExamForType(
+              workspace.examinations,
+              selectedExamType,
+              examTemplateUuid,
+            );
       setExamination((current) => {
         if (
           current &&
@@ -235,6 +285,10 @@ export function OhMedicalExaminationsPanel({
         return;
       }
       answersHydratedKeyRef.current = hydrateKey;
+      if (!detailsConfirmed) {
+        setExamNotes(matched?.notes ?? "");
+      }
+      onActiveExamChangeRef.current?.(matched?.uuid ?? null);
       const envelope = readEnvelope(matched);
       if (
         envelope?.template_uuid &&
@@ -250,7 +304,7 @@ export function OhMedicalExaminationsPanel({
     return () => {
       cancelled = true;
     };
-  }, [selectedExamType, examTemplateUuid, workspace.examinations]);
+  }, [detailsConfirmed, focusedExam, selectedExamType, examTemplateUuid, workspace.examinations]);
 
   async function resolveExamination(
     examType: MedicalExamStartType,
@@ -278,7 +332,7 @@ export function OhMedicalExaminationsPanel({
         occupational_attendance: true,
         template_code: riskProfile?.exam_template_code || riskProfile?.code || "exam",
         examined_at: new Date().toISOString(),
-        notes: "",
+        notes: examNotesRef.current.trim(),
       });
       setExamination(created);
       examinationRef.current = created;
@@ -298,14 +352,12 @@ export function OhMedicalExaminationsPanel({
     }
   }
 
-  async function handleExamTypeConfirm(examType: MedicalExamStartType) {
+  function handleDetailsContinue(examType: MedicalExamStartType, notes: string) {
+    examNotesRef.current = notes;
     setExamTypeOverride(examType);
-    setTypeDialogOpen(false);
-    await resolveExamination(examType);
-  }
-
-  function openChangeTypeDialog() {
-    setTypeDialogOpen(true);
+    setExamNotes(notes);
+    setDetailsConfirmed(true);
+    setEditingDetails(false);
   }
 
   async function persistAnswers(next: ExamTemplateAnswers) {
@@ -367,17 +419,6 @@ export function OhMedicalExaminationsPanel({
     };
   }, []);
 
-  const summary = (
-    <OhEncounterSummaryRail
-      examinationCount={workspace.examinations.length}
-      findingCount={workspace.findings.length}
-      iodCount={workspace.iodCases.length}
-      episodes={episodes}
-      onManageEmployment={onManageEmployment}
-    />
-  );
-  const ledger = <OhExaminationLedger examinations={workspace.examinations} />;
-
   if (!episode || hazardProfileId == null) {
     return (
       <OhCorporateWorkspace
@@ -388,8 +429,6 @@ export function OhMedicalExaminationsPanel({
             description="Assign a risk profile on the Employment panel so the correct examination template can load."
           />
         }
-        body={ledger}
-        aside={summary}
       />
     );
   }
@@ -405,8 +444,6 @@ export function OhMedicalExaminationsPanel({
             <Skeleton className="h-24 w-full" />
           </div>
         }
-        body={ledger}
-        aside={summary}
       />
     );
   }
@@ -421,8 +458,6 @@ export function OhMedicalExaminationsPanel({
             description="The employment episode references a risk profile that is missing or inactive."
           />
         }
-        body={ledger}
-        aside={summary}
       />
     );
   }
@@ -437,8 +472,6 @@ export function OhMedicalExaminationsPanel({
             description={`Attach and publish an exam template on “${riskProfile.name}” in Occupational Health settings.`}
           />
         }
-        body={ledger}
-        aside={summary}
       />
     );
   }
@@ -453,13 +486,17 @@ export function OhMedicalExaminationsPanel({
             description="Publish the exam template linked to this risk profile before completing medical examinations."
           />
         }
-        body={ledger}
-        aside={summary}
       />
     );
   }
 
-  const showCapture = Boolean(selectedExamType);
+  const resumedExistingExam =
+    inferredExamType != null && examTypeOverride == null && focusedStartType == null;
+  const openedFocusedExam = focusedStartType != null && examTypeOverride == null;
+  const showTemplate =
+    Boolean(selectedExamType) &&
+    !editingDetails &&
+    (detailsConfirmed || resumedExistingExam || openedFocusedExam);
   const saveLabel =
     isResolvingExam
       ? "Starting"
@@ -472,65 +509,142 @@ export function OhMedicalExaminationsPanel({
             : null;
 
   return (
-    <>
-      <OhExamTypeDialog
-        open={typeDialogOpen || needsExamType}
-        onOpenChange={setTypeDialogOpen}
-        onConfirm={(examType) => {
-          void handleExamTypeConfirm(examType);
-        }}
-        required={needsExamType}
-        initialExamType={selectedExamType ?? ""}
-      />
-      <OhCorporateWorkspace
-        form={
-          showCapture ? (
-            <div className="space-y-8 px-5 py-5">
-              <OhExamForm
-                encounterId={encounter.id}
-                onCreated={() => workspace.refetchAll()}
-              />
-              <div className="flex items-baseline justify-between gap-3 border-t border-dash-border pt-5">
-                <h2 className="truncate text-[13.5px] font-semibold text-brand-navy">
-                  {formatExamTypeLabel(selectedExamType!)}
-                </h2>
-                <button
-                  type="button"
-                  onClick={openChangeTypeDialog}
-                  data-testid="oh-exam-change-type"
-                  className="shrink-0 text-[13px] font-medium text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
-                >
-                  Change type
-                </button>
+    <OhCorporateWorkspace
+      form={
+        showTemplate ? (
+          <div className="space-y-8 px-5 py-5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex min-w-0 items-center gap-2">
+                  <h2 className="truncate text-[13.5px] font-semibold text-brand-navy">
+                    {formatExamTypeLabel(selectedExamType!)}
+                  </h2>
+                  <Badge variant="secondary" className="shrink-0">
+                    {riskProfile.name}
+                  </Badge>
+                </div>
+                {examNotes.trim() ? (
+                  <p className="mt-1 text-[13px] text-dash-muted">{examNotes.trim()}</p>
+                ) : null}
               </div>
-              {saveLabel ? (
-                <p className="-mt-5 text-[12px] text-dash-muted" aria-live="polite">
-                  {saveLabel}
-                </p>
-              ) : null}
-              <OhExamTemplateCaptureForm
-                snapshot={snapshot}
-                templateName={riskProfile.exam_template_name}
-                value={answers}
-                onChange={handleAnswersChange}
-              />
-              <OhProcedureChecklistPanel
-                examination={examination}
-                onChanged={workspace.refetchAll}
-              />
+              <button
+                type="button"
+                onClick={() => setEditingDetails(true)}
+                data-testid="oh-exam-change-type"
+                className="shrink-0 text-[13px] font-medium text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
+              >
+                Change type
+              </button>
             </div>
-          ) : (
-            <PanelEmpty
-              icon={ClipboardList}
-              title="Select an examination type"
-              description="Choose Admission, Periodic, Change of function, Return to work, or Demissional to begin."
+            {saveLabel ? (
+              <p className="-mt-5 text-[12px] text-dash-muted" aria-live="polite">
+                {saveLabel}
+              </p>
+            ) : null}
+            <OhExamTemplateCaptureForm
+              snapshot={snapshot}
+              templateName={riskProfile.exam_template_name}
+              value={answers}
+              onChange={handleAnswersChange}
             />
-          )
-        }
-        body={ledger}
-        aside={summary}
-      />
-    </>
+            <OhProcedureChecklistPanel
+              examination={examination}
+              onChanged={workspace.refetchAll}
+            />
+          </div>
+        ) : (
+          <ExamDetailsStep
+            initialType={
+              selectedExamType && isMedicalExamStartType(selectedExamType)
+                ? selectedExamType
+                : null
+            }
+            initialNotes={examNotes}
+            onContinue={handleDetailsContinue}
+          />
+        )
+      }
+    />
+  );
+}
+
+function ExamDetailsStep({
+  initialType,
+  initialNotes,
+  onContinue,
+}: {
+  initialType: MedicalExamStartType | null;
+  initialNotes: string;
+  onContinue: (examType: MedicalExamStartType, notes: string) => void;
+}) {
+  const [examType, setExamType] = useState<MedicalExamStartType | "">(
+    initialType ?? "",
+  );
+  const [notes, setNotes] = useState(initialNotes);
+
+  function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!isMedicalExamStartType(examType)) {
+      return;
+    }
+    onContinue(examType, notes.trim());
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-4 px-5 py-5"
+      data-testid="oh-exam-details-step"
+    >
+      <div className="space-y-1.5">
+        <Label htmlFor="oh-exam-start-type" className="text-[13px] font-medium text-brand-navy">
+          Exam type <RequiredFieldMarker />
+        </Label>
+        <Select
+          value={examType}
+          onValueChange={(value) => {
+            if (isMedicalExamStartType(value)) {
+              setExamType(value);
+            }
+          }}
+        >
+          <SelectTrigger
+            id="oh-exam-start-type"
+            className="h-10 w-full rounded-lg border-dash-border bg-white"
+          >
+            <SelectValue placeholder="Select type" />
+          </SelectTrigger>
+          <SelectContent className={appFont.className}>
+            {MEDICAL_EXAM_START_TYPES.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="oh-exam-start-notes" className="text-[13px] font-medium text-brand-navy">
+          Note
+        </Label>
+        <Textarea
+          id="oh-exam-start-notes"
+          value={notes}
+          onChange={(event) => setNotes(event.target.value)}
+          rows={4}
+          placeholder="Reason for attendance, history, observations"
+          className="min-h-24 rounded-lg border-dash-border bg-white text-[13.5px] shadow-none"
+        />
+      </div>
+      <PrimaryButton
+        type="submit"
+        className="h-10"
+        disabled={!examType}
+        data-testid="oh-exam-details-continue"
+      >
+        Continue
+      </PrimaryButton>
+    </form>
   );
 }
 

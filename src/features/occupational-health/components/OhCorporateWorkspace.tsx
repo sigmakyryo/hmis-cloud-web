@@ -19,81 +19,94 @@ const COLUMN_SCROLL_CLASS = "min-h-0 xl:overflow-y-auto";
 
 type OhCorporateWorkspaceProps = {
   form: ReactNode;
-  body: ReactNode;
-  aside: ReactNode;
 };
 
-/** White entry column, gray record well, white facts rail. */
-export function OhCorporateWorkspace({
-  form,
-  body,
-  aside,
-}: OhCorporateWorkspaceProps) {
+/** One content column for the examination. */
+export function OhCorporateWorkspace({ form }: OhCorporateWorkspaceProps) {
   return (
     <div
-      className="grid min-h-0 flex-1 grid-cols-1 xl:h-full xl:grid-cols-[minmax(18rem,24rem)_minmax(0,1fr)_18.5rem] xl:grid-rows-[minmax(0,1fr)]"
+      className={cn("flex min-h-0 flex-1 flex-col bg-white", COLUMN_SCROLL_CLASS)}
       data-testid="oh-corporate-workspace"
     >
-      <section
-        className={cn(
-          "border-b border-dash-border bg-white xl:border-b-0 xl:border-r",
-          COLUMN_SCROLL_CLASS,
-        )}
-        aria-label="Record"
-      >
-        {form}
-      </section>
-      <section
-        className={cn("min-w-0 bg-dash-canvas", COLUMN_SCROLL_CLASS)}
-        aria-label="This encounter"
-      >
-        {body}
-      </section>
-      <aside
-        className={cn(
-          "border-t border-dash-border bg-white xl:border-t-0 xl:border-l",
-          COLUMN_SCROLL_CLASS,
-        )}
-        aria-label="Encounter summary"
-      >
-        {aside}
-      </aside>
+      <section aria-label="Record">{form}</section>
     </div>
   );
 }
 
 type OhExaminationLedgerProps = {
   examinations: OhExamination[];
+  activeExamUuid?: string | null;
+  onOpen?: (exam: OhExamination) => void;
+  onStart?: () => void;
 };
 
-export function OhExaminationLedger({ examinations }: OhExaminationLedgerProps) {
+export function OhExaminationLedger({
+  examinations,
+  activeExamUuid = null,
+  onOpen,
+  onStart,
+}: OhExaminationLedgerProps) {
   const sorted = newestFirst(
     examinations,
     (exam) => exam.examined_at ?? exam.created_at,
   );
 
   if (sorted.length === 0) {
-    return null;
+    return (
+      <div className="px-5 py-10 text-center" data-testid="oh-exam-ledger">
+        <p className="text-[13.5px] font-medium text-brand-navy">No examinations yet</p>
+        <p className="mx-auto mt-1 max-w-xs text-[13px] leading-relaxed text-dash-muted">
+          Record an exam type and a note, then complete the template.
+        </p>
+        {onStart ? (
+          <button
+            type="button"
+            onClick={onStart}
+            className="mt-4 text-[13px] font-medium text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
+          >
+            Record an examination
+          </button>
+        ) : null}
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-8 px-6 py-5" data-testid="oh-exam-ledger">
-      {sorted.map((exam) => (
-        <article key={exam.uuid}>
-          <h2 className="text-[13.5px] font-semibold text-brand-navy">
-            {formatExamTypeLabel(exam.exam_type)}
-          </h2>
-          <p className="mt-1 text-[13px] text-dash-muted">
-            {formatOhDate(exam.examined_at ?? exam.created_at)}
-          </p>
-          {exam.notes ? (
-            <p className="mt-3 max-w-xl text-[13.5px] leading-relaxed text-brand-slate">
-              {exam.notes}
-            </p>
-          ) : null}
-        </article>
-      ))}
-    </div>
+    <ul className="divide-y divide-dash-border" data-testid="oh-exam-ledger">
+      {sorted.map((exam) => {
+        const active = exam.uuid === activeExamUuid;
+        const label = formatExamTypeLabel(exam.exam_type);
+        const date = formatOhDate(exam.examined_at ?? exam.created_at);
+        return (
+          <li key={exam.uuid}>
+            <button
+              type="button"
+              onClick={() => onOpen?.(exam)}
+              aria-current={active ? "true" : undefined}
+              className={cn(
+                "flex w-full flex-col gap-1 px-5 py-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-primary/30",
+                active ? "bg-brand-tint/50" : "hover:bg-slate-50",
+              )}
+            >
+              <span className="flex items-baseline justify-between gap-3">
+                <span className="min-w-0 truncate text-[13.5px] font-semibold text-brand-navy">
+                  {label}
+                </span>
+                <span className="shrink-0 text-[12px] tabular-nums text-dash-muted">{date}</span>
+              </span>
+              {exam.notes ? (
+                <span className="line-clamp-2 text-[13px] leading-snug text-brand-slate">
+                  {exam.notes}
+                </span>
+              ) : null}
+              {active ? (
+                <span className="text-[11px] font-medium text-brand-primary">Open</span>
+              ) : null}
+            </button>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

@@ -199,7 +199,7 @@ afterEach(() => {
 });
 
 describe("OhEncounterWorkspacePage", () => {
-  it("renders the module nav and medical examinations dialog", async () => {
+  it("renders the module nav and the examination details step", async () => {
     renderPage();
 
     expect(await screen.findByTestId("oh-encounter-module-layout")).toBeInTheDocument();
@@ -207,7 +207,7 @@ describe("OhEncounterWorkspacePage", () => {
     expect(within(nav).getByText("Medical Examinations")).toBeInTheDocument();
     expect(within(nav).getByText("Occupational Health Certificate")).toBeInTheDocument();
     expect(within(nav).getByText("Injury on Duty Management")).toBeInTheDocument();
-    expect(await screen.findByTestId("oh-exam-type-dialog")).toBeInTheDocument();
+    expect(await screen.findByTestId("oh-exam-details-step")).toBeInTheDocument();
     expect(ohService.fetchOhEncounters).not.toHaveBeenCalled();
   });
 
@@ -251,6 +251,17 @@ describe("OhEncounterWorkspacePage", () => {
 
     expect(await screen.findByTestId("oh-fitness-certificate-form")).toBeInTheDocument();
     expect(screen.getByTestId("oh-certificate-records-empty")).toBeInTheDocument();
+    expect(screen.queryByTestId("oh-exam-ledger")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Examinations" }));
+    expect(await screen.findByTestId("oh-exam-ledger")).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toHaveTextContent("Periodic exam");
+    expect(screen.getByRole("dialog")).toHaveTextContent("1 on this encounter");
+    fireEvent.click(screen.getByRole("button", { name: /Periodic exam/ }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+    expect(await screen.findByTestId("oh-exam-template-capture")).toBeInTheDocument();
+    expect(screen.queryByTestId("oh-fitness-certificate-form")).not.toBeInTheDocument();
     const nav = screen.getByTestId("oh-encounter-module-nav");
     expect(within(nav).getByText("Occupational Health Certificate")).toBeInTheDocument();
   });

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FileQuestion, ShieldAlert } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 
 import { SecondaryButton } from "@/components/ui/app-buttons";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -13,6 +14,7 @@ import {
 } from "@/features/app-shell/components/page-layout";
 import { useAppBreadcrumb } from "@/features/app-shell/hooks/use-app-breadcrumb";
 import { OhEncounterContextPanel } from "@/features/occupational-health/components/OhEncounterContextPanel";
+import { OhEncounterEdgeRail } from "@/features/occupational-health/components/OhEncounterEdgeRail";
 import { OhEncounterHeader } from "@/features/occupational-health/components/OhEncounterHeader";
 import { OhEncounterModuleNav } from "@/features/occupational-health/components/OhEncounterModuleNav";
 import { OhRiskProfileRequiredEmptyState } from "@/features/occupational-health/components/OhRiskProfileRequiredEmptyState";
@@ -22,7 +24,7 @@ import {
   useOhEncounterWorkspaceData,
 } from "@/features/occupational-health/hooks/use-occupational-health";
 import { fetchOhEncounters } from "@/features/occupational-health/services/oh.service";
-import type { OhVisitEncounter } from "@/features/occupational-health/types";
+import type { OhExamination, OhVisitEncounter } from "@/features/occupational-health/types";
 import { canAccessOccupationalHealth } from "@/features/occupational-health/utils/oh-access";
 import { customerHasActiveRiskProfile } from "@/features/occupational-health/utils/customer-has-risk-profile";
 import { fetchCustomer } from "@/features/customers/services/customers.service";
@@ -72,6 +74,9 @@ export function OhEncounterWorkspacePage({
   const { userData, isLoading: isUserLoading } = useUser();
   const hasAccess = canAccessOccupationalHealth(userData);
   const [activePanel, setActivePanel] = useOhEncounterModuleParam();
+  const [focusedExamUuid, setFocusedExamUuid] = useState<string | null>(null);
+  const [examFocusRequest, setExamFocusRequest] = useState(0);
+  const [activeExamUuid, setActiveExamUuid] = useState<string | null>(null);
 
   const visitQuery = useQuery({
     queryKey: ["visit", visitUuid],
@@ -173,34 +178,58 @@ export function OhEncounterWorkspacePage({
           }
         />
 
-        <div
-          className="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[17.5rem_minmax(0,1fr)] xl:grid-rows-[minmax(0,1fr)] 2xl:grid-cols-[19rem_minmax(0,1fr)]"
-          data-testid="oh-encounter-module-layout"
-        >
-          <OhEncounterModuleNav
-            activePanel={activePanel}
-            onPanelChange={setActivePanel}
-          />
-          <section
-            className="flex min-h-0 min-w-0 flex-col bg-white"
-            aria-label="Occupational health content"
-            data-testid="oh-encounter-context-panel"
+        <div className="flex min-h-0 flex-1">
+          <div
+            className="grid min-h-0 min-w-0 flex-1 grid-cols-1 xl:grid-cols-[17.5rem_minmax(0,1fr)] xl:grid-rows-[minmax(0,1fr)] 2xl:grid-cols-[19rem_minmax(0,1fr)]"
+            data-testid="oh-encounter-module-layout"
           >
-            {showRiskProfileEmpty ? (
-              <OhRiskProfileRequiredEmptyState
-                onManageEmployment={() => setActivePanel("employment")}
-              />
-            ) : (
-              <OhEncounterContextPanel
-                activePanel={activePanel}
-                encounter={encounter}
-                customer={customer}
-                episodes={episodes}
-                workspace={workspace}
-                onManageEmployment={() => setActivePanel("employment")}
-              />
-            )}
-          </section>
+            <OhEncounterModuleNav
+              activePanel={activePanel}
+              onPanelChange={setActivePanel}
+            />
+            <section
+              className="flex min-h-0 min-w-0 flex-col bg-white"
+              aria-label="Occupational health content"
+              data-testid="oh-encounter-context-panel"
+            >
+              {showRiskProfileEmpty ? (
+                <OhRiskProfileRequiredEmptyState
+                  onManageEmployment={() => setActivePanel("employment")}
+                />
+              ) : (
+                <OhEncounterContextPanel
+                  activePanel={activePanel}
+                  encounter={encounter}
+                  customer={customer}
+                  episodes={episodes}
+                  workspace={workspace}
+                  onManageEmployment={() => setActivePanel("employment")}
+                  focusedExamUuid={focusedExamUuid}
+                  examFocusRequest={examFocusRequest}
+                  onActiveExamChange={setActiveExamUuid}
+                />
+              )}
+            </section>
+          </div>
+          <OhEncounterEdgeRail
+            visitUuid={visitUuid}
+            encounterUuid={encounter.uuid}
+            examinations={workspace.examinations}
+            activeExamUuid={activeExamUuid}
+            findingCount={workspace.findings.length}
+            iodCount={workspace.iodCases.length}
+            episodes={episodes}
+            onManageEmployment={() => setActivePanel("employment")}
+            onOpenExamination={(exam: OhExamination) => {
+              setFocusedExamUuid(exam.uuid);
+              setExamFocusRequest((current) => current + 1);
+              setActivePanel("medical-examinations");
+            }}
+            onStartExamination={() => {
+              setFocusedExamUuid(null);
+              setActivePanel("medical-examinations");
+            }}
+          />
         </div>
       </div>
     </DetailPageLayout>

@@ -14,30 +14,21 @@ type OhEncounterColumnsProps = {
   sectionKey: string;
 };
 
-/** Record on the left, this encounter in the middle, optional history on the right. */
+/** One content column: the record, then this encounter's list. */
 export function OhEncounterColumns({
   form,
   records,
   aside,
   sectionKey,
 }: OhEncounterColumnsProps) {
-  const hasAside = aside != null;
   return (
     <div
-      className={cn(
-        "grid flex-1 grid-cols-1 xl:min-h-0 xl:grid-rows-[minmax(0,1fr)]",
-        hasAside
-          ? "xl:grid-cols-[22rem_minmax(0,1fr)_20rem] 2xl:grid-cols-[25rem_minmax(0,1fr)_22rem]"
-          : "xl:grid-cols-[22rem_minmax(0,1fr)] 2xl:grid-cols-[25rem_minmax(0,1fr)]",
-      )}
+      className={cn("flex flex-1 flex-col bg-white", COLUMN_SCROLL_CLASS)}
       data-testid="oh-encounter-columns"
     >
       <section
         key={`form-${sectionKey}`}
-        className={cn(
-          "border-b border-dash-border/70 bg-white xl:border-b-0 xl:border-r",
-          COLUMN_SCROLL_CLASS,
-        )}
+        className="border-b border-dash-border bg-white"
         aria-label="Record"
         data-testid="oh-encounter-form-column"
       >
@@ -45,17 +36,14 @@ export function OhEncounterColumns({
       </section>
       <section
         key={`records-${sectionKey}`}
-        className={cn("min-h-64 min-w-0 bg-dash-canvas", COLUMN_SCROLL_CLASS)}
+        className="min-w-0 bg-white"
         aria-label="This encounter"
         data-testid="oh-encounter-records-column"
       >
         {records}
       </section>
-      {hasAside ? (
-        <div
-          className="flex min-h-0 min-w-0 flex-col xl:min-h-0"
-          data-testid="oh-encounter-history-column"
-        >
+      {aside != null ? (
+        <div className="border-t border-dash-border" data-testid="oh-encounter-history-column">
           {aside}
         </div>
       ) : null}

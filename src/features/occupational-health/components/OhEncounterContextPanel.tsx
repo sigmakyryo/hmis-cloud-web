@@ -25,6 +25,9 @@ type OhEncounterContextPanelProps = {
   episodes: EmploymentEpisode[];
   workspace: ReturnType<typeof useOhEncounterWorkspaceData>;
   onManageEmployment: () => void;
+  focusedExamUuid?: string | null;
+  examFocusRequest?: number;
+  onActiveExamChange?: (examUuid: string | null) => void;
 };
 
 export function OhEncounterContextPanel({
@@ -34,6 +37,9 @@ export function OhEncounterContextPanel({
   episodes,
   workspace,
   onManageEmployment,
+  focusedExamUuid = null,
+  examFocusRequest = 0,
+  onActiveExamChange,
 }: OhEncounterContextPanelProps) {
   if (activePanel === "medical-examinations") {
     return (
@@ -42,6 +48,9 @@ export function OhEncounterContextPanel({
         episodes={episodes}
         workspace={workspace}
         onManageEmployment={onManageEmployment}
+        focusedExamUuid={focusedExamUuid}
+        examFocusRequest={examFocusRequest}
+        onActiveExamChange={onActiveExamChange}
       />
     );
   }
