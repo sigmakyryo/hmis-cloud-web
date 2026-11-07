@@ -44,6 +44,10 @@ type ReportExportContextValue = {
   dismissSession: () => void;
   setFilterValue: (name: string, value: string) => void;
   startExport: () => Promise<void>;
+  startCsvExport: (
+    reportId: string,
+    filterValues: Record<string, string>,
+  ) => Promise<void>;
   retryExport: () => Promise<void>;
   downloadExport: () => void;
   handleAsideOpenChange: (open: boolean) => void;
@@ -136,17 +140,15 @@ export function ReportExportProvider({ children }: { children: ReactNode }) {
       }
 
       setIsSubmitting(true);
-      setSession((current) =>
-        current
-          ? {
-              ...current,
-              phase: "exporting",
-              errorMessage: null,
-              asideOpen: true,
-              job: null,
-            }
-          : current,
-      );
+      setSession({
+        reportId,
+        reportTitle: item.title,
+        filterValues,
+        job: null,
+        phase: "exporting",
+        errorMessage: null,
+        asideOpen: true,
+      });
 
       try {
         const job = await createReportJob({
@@ -276,6 +278,13 @@ export function ReportExportProvider({ children }: { children: ReactNode }) {
     await runExport(session.reportId, session.filterValues);
   }, [runExport, session]);
 
+  const startCsvExport = useCallback(
+    async (reportId: string, filterValues: Record<string, string>) => {
+      await runExport(reportId, filterValues);
+    },
+    [runExport],
+  );
+
   const retryExport = useCallback(async () => {
     if (!session) {
       return;
@@ -318,6 +327,7 @@ export function ReportExportProvider({ children }: { children: ReactNode }) {
       dismissSession,
       setFilterValue,
       startExport,
+      startCsvExport,
       retryExport,
       downloadExport,
       handleAsideOpenChange,
@@ -336,6 +346,7 @@ export function ReportExportProvider({ children }: { children: ReactNode }) {
       retryExport,
       session,
       setFilterValue,
+      startCsvExport,
       startExport,
     ],
   );

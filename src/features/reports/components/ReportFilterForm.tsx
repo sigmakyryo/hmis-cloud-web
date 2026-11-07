@@ -94,7 +94,7 @@ function PresetChip({
   );
 }
 
-function DatePresetChips({
+export function DatePresetChips({
   group,
   values,
   onChange,
@@ -146,6 +146,65 @@ function DatePresetChips({
   return null;
 }
 
+export function ReportFilterControl({
+  field,
+  value,
+  onChange,
+}: {
+  field: ReportFilterField;
+  value: string;
+  onChange: (name: string, value: string) => void;
+}) {
+  if (field.type === "resource" && field.resource) {
+    return (
+      <ReportResourceSelect
+        id={field.name}
+        label={field.label}
+        resource={field.resource}
+        value={value}
+        onChange={(next) => onChange(field.name, next)}
+      />
+    );
+  }
+
+  if (field.type === "select" && field.options) {
+    return (
+      <FilterField id={field.name} label={field.label}>
+        <Select
+          value={value || ALL_OPTION}
+          onValueChange={(next) =>
+            onChange(field.name, next === ALL_OPTION ? "" : next)
+          }
+        >
+          <SelectTrigger id={field.name} className={appFont.className}>
+            <SelectValue placeholder={`All ${field.label.toLowerCase()}`} />
+          </SelectTrigger>
+          <SelectContent position="popper" className={appFont.className}>
+            <SelectItem value={ALL_OPTION}>All</SelectItem>
+            {field.options.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </FilterField>
+    );
+  }
+
+  return (
+    <FilterField id={field.name} label={field.label}>
+      <Input
+        id={field.name}
+        type={field.type === "date" ? "date" : "text"}
+        value={value}
+        placeholder={field.placeholder}
+        onChange={(event) => onChange(field.name, event.target.value)}
+      />
+    </FilterField>
+  );
+}
+
 export function ReportFilterForm({
   fields,
   values,
@@ -156,54 +215,13 @@ export function ReportFilterForm({
   const otherFields = fields.filter((field) => field.type !== "date");
 
   function renderField(field: ReportFilterField) {
-    if (field.type === "resource" && field.resource) {
-      return (
-        <ReportResourceSelect
-          key={field.name}
-          id={field.name}
-          label={field.label}
-          resource={field.resource}
-          value={values[field.name] ?? ""}
-          onChange={(value) => onChange(field.name, value)}
-        />
-      );
-    }
-
-    if (field.type === "select" && field.options) {
-      return (
-        <FilterField key={field.name} id={field.name} label={field.label}>
-          <Select
-            value={values[field.name] || ALL_OPTION}
-            onValueChange={(value) =>
-              onChange(field.name, value === ALL_OPTION ? "" : value)
-            }
-          >
-            <SelectTrigger id={field.name} className={appFont.className}>
-              <SelectValue placeholder={`All ${field.label.toLowerCase()}`} />
-            </SelectTrigger>
-            <SelectContent position="popper" className={appFont.className}>
-              <SelectItem value={ALL_OPTION}>All</SelectItem>
-              {field.options.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </FilterField>
-      );
-    }
-
     return (
-      <FilterField key={field.name} id={field.name} label={field.label}>
-        <Input
-          id={field.name}
-          type={field.type === "date" ? "date" : "text"}
-          value={values[field.name] ?? ""}
-          placeholder={field.placeholder}
-          onChange={(event) => onChange(field.name, event.target.value)}
-        />
-      </FilterField>
+      <ReportFilterControl
+        key={field.name}
+        field={field}
+        value={values[field.name] ?? ""}
+        onChange={onChange}
+      />
     );
   }
 
