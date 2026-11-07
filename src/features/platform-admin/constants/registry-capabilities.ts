@@ -19,6 +19,12 @@ export const REGISTRY_CAPABILITIES = [
     label: "Close claim by invoice",
     description: "Close a claim when its invoice is settled.",
   },
+  {
+    id: "pricelist_sync",
+    label: "Pricelist sync",
+    description:
+      "Sync prices, tariffs, and products from the payer into linked clinic pricelists.",
+  },
 ] as const;
 
 export const REGISTRY_PAYER_STATUSES = [

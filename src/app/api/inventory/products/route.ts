@@ -21,6 +21,7 @@ export const PRODUCT_LIST_QUERY_KEYS = [
   "is_sundry",
   "is_drug",
   "procedure_context",
+  "insurance_scheme_uuid",
 ] as const;
 
 export async function GET(request: Request) {

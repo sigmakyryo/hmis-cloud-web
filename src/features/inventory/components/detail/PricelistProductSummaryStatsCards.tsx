@@ -4,25 +4,31 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   LIST_PAGE_INSIGHT_CELL_CLASS,
   LIST_PAGE_INSIGHT_LABEL_CLASS,
-  LIST_PAGE_INSIGHT_STRIP_CLASS,
   LIST_PAGE_INSIGHT_VALUE_CLASS,
 } from "@/features/app-shell/components/page-layout";
 import type { PricelistProductSummaryStats } from "@/features/catalog/services/catalog.service";
+import { cn } from "@/lib/utils";
 import { formatCompactNumber } from "@/utils/format-compact-number";
+
+/** Detail-tab strip: bottom hairline only; tabs nav supplies the top rule. */
+const PRICELIST_PRODUCT_INSIGHT_STRIP_CLASS =
+  "grid grid-cols-2 divide-y divide-dash-border/60 border-b border-dash-border/80 sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4 lg:divide-x";
 
 type PricelistProductSummaryStatsCardsProps = {
   stats: PricelistProductSummaryStats | null;
   isLoading?: boolean;
+  className?: string;
 };
 
 export function PricelistProductSummaryStatsCards({
   stats,
   isLoading = false,
+  className,
 }: PricelistProductSummaryStatsCardsProps) {
   if (isLoading) {
     return (
       <div
-        className={LIST_PAGE_INSIGHT_STRIP_CLASS}
+        className={cn(PRICELIST_PRODUCT_INSIGHT_STRIP_CLASS, className)}
         data-testid="pricelist-product-summary-stats"
         aria-busy="true"
       >
@@ -39,12 +45,12 @@ export function PricelistProductSummaryStatsCards({
 
   const totalProducts = stats?.totalProducts ?? 0;
   const medicines = stats?.medicines ?? 0;
-  const timeLimited = stats?.timeLimited ?? 0;
-  const addedThisMonth = stats?.addedThisMonth ?? 0;
+  const services = stats?.services ?? 0;
+  const procedures = stats?.procedures ?? 0;
 
   return (
     <dl
-      className={LIST_PAGE_INSIGHT_STRIP_CLASS}
+      className={cn(PRICELIST_PRODUCT_INSIGHT_STRIP_CLASS, className)}
       data-testid="pricelist-product-summary-stats"
     >
       <div className={LIST_PAGE_INSIGHT_CELL_CLASS}>
@@ -60,23 +66,23 @@ export function PricelistProductSummaryStatsCards({
         <dd className={LIST_PAGE_INSIGHT_VALUE_CLASS}>
           {formatCompactNumber(medicines)}
         </dd>
-        <p className="mt-0.5 text-xs text-brand-muted">Drug products</p>
+        <p className="mt-0.5 text-xs text-brand-muted">Stockable / drug products</p>
       </div>
 
       <div className={LIST_PAGE_INSIGHT_CELL_CLASS}>
-        <dt className={LIST_PAGE_INSIGHT_LABEL_CLASS}>Time-limited</dt>
+        <dt className={LIST_PAGE_INSIGHT_LABEL_CLASS}>Services</dt>
         <dd className={LIST_PAGE_INSIGHT_VALUE_CLASS}>
-          {formatCompactNumber(timeLimited)}
+          {formatCompactNumber(services)}
         </dd>
-        <p className="mt-0.5 text-xs text-brand-muted">Have an end date</p>
+        <p className="mt-0.5 text-xs text-brand-muted">Non-procedure services</p>
       </div>
 
       <div className={LIST_PAGE_INSIGHT_CELL_CLASS}>
-        <dt className={LIST_PAGE_INSIGHT_LABEL_CLASS}>Added this month</dt>
+        <dt className={LIST_PAGE_INSIGHT_LABEL_CLASS}>Procedures</dt>
         <dd className={LIST_PAGE_INSIGHT_VALUE_CLASS}>
-          {formatCompactNumber(addedThisMonth)}
+          {formatCompactNumber(procedures)}
         </dd>
-        <p className="mt-0.5 text-xs text-brand-muted">New memberships</p>
+        <p className="mt-0.5 text-xs text-brand-muted">Procedure products</p>
       </div>
     </dl>
   );

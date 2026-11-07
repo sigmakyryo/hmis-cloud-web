@@ -8,6 +8,7 @@ export type InsuranceScheme = {
   code: string;
   description: string;
   pricelist_id: number | null;
+  pricelist_uuid: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;

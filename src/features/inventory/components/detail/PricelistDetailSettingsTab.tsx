@@ -5,67 +5,38 @@ import { useCallback, useEffect, useState } from "react";
 
 import {
   PageActionButton,
-  PrimaryButton,
   SecondaryButton,
 } from "@/components/ui/app-buttons";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  fetchCatalogPricelistSettings,
-  startCatalogMasmCorePriceSync,
-} from "@/features/catalog/services/catalog.service";
+import { fetchCatalogPricelistSettings } from "@/features/catalog/services/catalog.service";
 import type {
   CatalogPricelist,
   CatalogPricelistSettings,
 } from "@/features/catalog/types/catalog.types";
-import { PricelistMasmSyncJobPanel } from "@/features/inventory/components/detail/PricelistMasmSyncJobPanel";
+import {
+  DEFAULT_PAYER_SYNC_DRAFT,
+  PricelistPayerSyncDialog,
+} from "@/features/inventory/components/detail/PricelistPayerSyncDialog";
 import {
   SettingsFieldRow,
   SettingsPanelSection,
 } from "@/features/settings/components/SettingsPageLayout";
-import { BffError } from "@/lib/bff-client";
-import { formatBffErrorMessage } from "@/lib/bff-field-errors";
-import { appFont } from "@/lib/fonts";
-import { cn } from "@/lib/utils";
-import { useToast } from "@/providers/toast-provider";
 import { useUser } from "@/providers/user-provider";
 
 type PricelistDetailSettingsTabProps = {
   pricelist: CatalogPricelist;
   isActive: boolean;
-};
-
-type SyncDraft = {
-  updateFixedPrice: boolean;
-  updateName: boolean;
-  importMissingTariffs: boolean;
-  updateValidity: boolean;
-  dateStart: string;
-  dateEnd: string;
-};
-
-const DEFAULT_SYNC_DRAFT: SyncDraft = {
-  updateFixedPrice: true,
-  updateName: false,
-  importMissingTariffs: false,
-  updateValidity: false,
-  dateStart: "",
-  dateEnd: "",
+  syncInProgress?: boolean;
+  syncReloadToken?: number;
+  onSyncStarted?: (jobUuid: string, toastId: string | number) => void;
 };
 
 export function PricelistDetailSettingsTab({
   pricelist,
   isActive,
+  syncInProgress = false,
+  syncReloadToken = 0,
+  onSyncStarted,
 }: PricelistDetailSettingsTabProps) {
-  const { toast } = useToast();
   const { userData } = useUser();
   const isTenantAdmin = Boolean(userData?.is_admin);
   const [settings, setSettings] = useState<CatalogPricelistSettings | null>(null);
@@ -73,10 +44,6 @@ export function PricelistDetailSettingsTab({
   const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [syncDraft, setSyncDraft] = useState<SyncDraft>(DEFAULT_SYNC_DRAFT);
-  const [isStarting, setIsStarting] = useState(false);
-  const [activeJobUuid, setActiveJobUuid] = useState<string | null>(null);
-  const [activeToastId, setActiveToastId] = useState<string | number | null>(null);
 
   const loadSettings = useCallback(async () => {
     setIsLoading(true);
@@ -100,69 +67,12 @@ export function PricelistDetailSettingsTab({
     void loadSettings();
   }, [isActive, loadSettings]);
 
-  async function handleStartSync() {
-    if (
-      !syncDraft.updateFixedPrice &&
-      !syncDraft.updateName &&
-      !syncDraft.importMissingTariffs &&
-      !syncDraft.updateValidity
-    ) {
-      toast({
-        variant: "error",
-        title: "Select at least one option",
-        description: "Choose what to update from MASM Core before starting.",
-      });
+  useEffect(() => {
+    if (!isActive || syncReloadToken <= 0) {
       return;
     }
-    if (
-      syncDraft.updateValidity &&
-      syncDraft.dateStart &&
-      syncDraft.dateEnd &&
-      syncDraft.dateStart > syncDraft.dateEnd
-    ) {
-      toast({
-        variant: "error",
-        title: "Invalid validity dates",
-        description: "Valid to must be on or after valid from.",
-      });
-      return;
-    }
-
-    setIsStarting(true);
-    try {
-      const job = await startCatalogMasmCorePriceSync(pricelist.uuid, {
-        update_fixed_price: syncDraft.updateFixedPrice,
-        update_name: syncDraft.updateName,
-        import_missing_tariffs: syncDraft.importMissingTariffs,
-        update_validity: syncDraft.updateValidity,
-        date_start: syncDraft.updateValidity
-          ? syncDraft.dateStart || null
-          : undefined,
-        date_end: syncDraft.updateValidity ? syncDraft.dateEnd || null : undefined,
-      });
-      setConfirmOpen(false);
-      const toastId = toast({
-        variant: "loading",
-        title: "Syncing from MASM Core",
-        description: "Applying selected tariff updates…",
-      });
-      setActiveJobUuid(job.uuid);
-      setActiveToastId(toastId);
-    } catch (err) {
-      toast({
-        variant: "error",
-        title: "Could not start MASM Core sync",
-        description:
-          err instanceof BffError
-            ? formatBffErrorMessage(err.message, err.errors)
-            : err instanceof Error
-              ? err.message
-              : "Something went wrong.",
-      });
-    } finally {
-      setIsStarting(false);
-    }
-  }
+    void loadSettings();
+  }, [syncReloadToken]); // eslint-disable-line react-hooks/exhaustive-deps -- parent signals sync completion
 
   if (!isActive) {
     return null;
@@ -198,28 +108,13 @@ export function PricelistDetailSettingsTab({
     ? "You don't have permissions to run a sync."
     : !canResolveProvider
       ? "Add a service provider code on a linked practitioner mapping."
-      : activeJobUuid
+      : syncInProgress
         ? "A sync is already in progress."
         : null;
   const syncEnabled = syncDisabledReason == null;
 
   return (
     <div className="max-w-3xl space-y-8" data-testid="pricelist-settings-tab">
-      {activeJobUuid ? (
-        <PricelistMasmSyncJobPanel
-          pricelistUuid={pricelist.uuid}
-          jobUuid={activeJobUuid}
-          syncToastId={activeToastId ?? undefined}
-          onTerminal={() => {
-            void loadSettings();
-          }}
-          onDismiss={() => {
-            setActiveJobUuid(null);
-            setActiveToastId(null);
-          }}
-        />
-      ) : null}
-
       <SettingsPanelSection
         title="Scheme mapping"
         description="Insurance schemes linked to this pricelist."
@@ -250,18 +145,7 @@ export function PricelistDetailSettingsTab({
         title="MASM Core sync"
         description="Update this pricelist from MASM Core tariffs."
         action={
-          <div className="flex flex-col items-end gap-1">
-            <PageActionButton
-              type="button"
-              disabled={!syncEnabled || isStarting}
-              onClick={() => {
-                setSyncDraft(DEFAULT_SYNC_DRAFT);
-                setConfirmOpen(true);
-              }}
-              data-testid="pricelist-masm-sync-button"
-            >
-              Update from MASM Core
-            </PageActionButton>
+          <div className="flex flex-wrap items-center justify-end gap-2">
             {syncDisabledReason ? (
               <p
                 className="max-w-xs text-right text-xs text-slate-400"
@@ -272,6 +156,14 @@ export function PricelistDetailSettingsTab({
             ) : coreProviderId != null ? (
               <p className="text-xs text-slate-400">Provider id {coreProviderId}</p>
             ) : null}
+            <PageActionButton
+              type="button"
+              disabled={!syncEnabled}
+              onClick={() => setConfirmOpen(true)}
+              data-testid="pricelist-masm-sync-button"
+            >
+              Update from MASM Core
+            </PageActionButton>
           </div>
         }
       >
@@ -281,171 +173,18 @@ export function PricelistDetailSettingsTab({
         </p>
       </SettingsPanelSection>
 
-      <Dialog
+      <PricelistPayerSyncDialog
+        pricelistUuid={pricelist.uuid}
         open={confirmOpen}
-        onOpenChange={(open) => {
-          if (!open && !isStarting) {
-            setConfirmOpen(false);
-          }
+        onOpenChange={setConfirmOpen}
+        payerName={settings?.sync_payer_name}
+        coreProviderId={coreProviderId}
+        initialDraft={DEFAULT_PAYER_SYNC_DRAFT}
+        title="Update from MASM Core"
+        onStarted={(jobUuid, toastId) => {
+          onSyncStarted?.(jobUuid, toastId);
         }}
-      >
-        <DialogContent className={cn("sm:max-w-lg", appFont.className)}>
-          <DialogHeader>
-            <DialogTitle>Update from MASM Core</DialogTitle>
-            <DialogDescription>
-              Match by scheme tariff code
-              {coreProviderId != null ? ` (provider ${coreProviderId})` : ""}. Select what
-              to apply.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-1" data-testid="pricelist-masm-sync-options">
-            <label className="flex items-start gap-3 text-sm text-brand-navy">
-              <input
-                type="checkbox"
-                className="mt-0.5 size-4 rounded border-brand-border"
-                checked={syncDraft.updateFixedPrice}
-                disabled={isStarting}
-                onChange={(event) =>
-                  setSyncDraft((current) => ({
-                    ...current,
-                    updateFixedPrice: event.target.checked,
-                  }))
-                }
-              />
-              <span>
-                <span className="font-medium">Update fixed prices</span>
-                <span className="mt-0.5 block text-slate-400">
-                  Set pricelist fixed price from the Core tariff value.
-                </span>
-              </span>
-            </label>
-
-            <label className="flex items-start gap-3 text-sm text-brand-navy">
-              <input
-                type="checkbox"
-                className="mt-0.5 size-4 rounded border-brand-border"
-                checked={syncDraft.updateName}
-                disabled={isStarting}
-                onChange={(event) =>
-                  setSyncDraft((current) => ({
-                    ...current,
-                    updateName: event.target.checked,
-                  }))
-                }
-              />
-              <span>
-                <span className="font-medium">Update product names</span>
-                <span className="mt-0.5 block text-slate-400">
-                  Rename matched products using the Core tariff description.
-                </span>
-              </span>
-            </label>
-
-            <label className="flex items-start gap-3 text-sm text-brand-navy">
-              <input
-                type="checkbox"
-                className="mt-0.5 size-4 rounded border-brand-border"
-                checked={syncDraft.importMissingTariffs}
-                disabled={isStarting}
-                onChange={(event) =>
-                  setSyncDraft((current) => ({
-                    ...current,
-                    importMissingTariffs: event.target.checked,
-                  }))
-                }
-              />
-              <span>
-                <span className="font-medium">Import missing tariffs</span>
-                <span className="mt-0.5 block text-slate-400">
-                  Create products for Core tariffs not in HMIS and add them to this
-                  pricelist.
-                </span>
-              </span>
-            </label>
-
-            <label className="flex items-start gap-3 text-sm text-brand-navy">
-              <input
-                type="checkbox"
-                className="mt-0.5 size-4 rounded border-brand-border"
-                checked={syncDraft.updateValidity}
-                disabled={isStarting}
-                onChange={(event) =>
-                  setSyncDraft((current) => ({
-                    ...current,
-                    updateValidity: event.target.checked,
-                  }))
-                }
-              />
-              <span>
-                <span className="font-medium">Update valid from / valid to</span>
-                <span className="mt-0.5 block text-slate-400">
-                  Apply the dates below to synced pricelist rows.
-                </span>
-              </span>
-            </label>
-
-            {syncDraft.updateValidity ? (
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="masm-sync-date-start">Valid from</Label>
-                  <Input
-                    id="masm-sync-date-start"
-                    type="date"
-                    value={syncDraft.dateStart}
-                    disabled={isStarting}
-                    onChange={(event) =>
-                      setSyncDraft((current) => ({
-                        ...current,
-                        dateStart: event.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="masm-sync-date-end">Valid to</Label>
-                  <Input
-                    id="masm-sync-date-end"
-                    type="date"
-                    value={syncDraft.dateEnd}
-                    disabled={isStarting}
-                    onChange={(event) =>
-                      setSyncDraft((current) => ({
-                        ...current,
-                        dateEnd: event.target.value,
-                      }))
-                    }
-                  />
-                </div>
-              </div>
-            ) : null}
-          </div>
-
-          <DialogFooter>
-            <SecondaryButton
-              type="button"
-              disabled={isStarting}
-              onClick={() => setConfirmOpen(false)}
-            >
-              Cancel
-            </SecondaryButton>
-            <PrimaryButton
-              type="button"
-              disabled={isStarting}
-              onClick={() => void handleStartSync()}
-            >
-              {isStarting ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                  Starting…
-                </>
-              ) : (
-                "Start sync"
-              )}
-            </PrimaryButton>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      />
     </div>
   );
 }

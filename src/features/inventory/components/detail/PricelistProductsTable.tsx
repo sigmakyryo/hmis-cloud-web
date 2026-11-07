@@ -50,6 +50,42 @@ function formatValidityRange(item: CatalogPricelistMembership): string {
   return `${start} – ${end}`;
 }
 
+function hasTariffCode(item: CatalogPricelistMembership): boolean {
+  return Boolean(item.tariff_code?.trim());
+}
+
+function formatMembershipType(item: CatalogPricelistMembership): string {
+  if (item.type_label?.trim()) {
+    return item.type_label.trim();
+  }
+  if (item.is_procedure) {
+    return "Procedure";
+  }
+  if (item.is_lab_test) {
+    return "Lab";
+  }
+  if (item.is_radiology) {
+    return "Radiology";
+  }
+  if (item.is_sundry) {
+    return "Sundry";
+  }
+  if (item.is_drug || item.product_type === "product") {
+    return "Medicine";
+  }
+  if (item.product_type === "consu") {
+    return "Consumable";
+  }
+  if (item.product_type === "service") {
+    return "Service";
+  }
+  if (item.product_type_label?.trim()) {
+    const label = item.product_type_label.trim();
+    return label.charAt(0).toUpperCase() + label.slice(1);
+  }
+  return "—";
+}
+
 export function PricelistProductsTable({
   items,
   isTenantAdmin,
@@ -65,6 +101,7 @@ export function PricelistProductsTable({
         <ListPageDataTableHeaderRow>
           <ListPageDataTableHeaderCell>Product</ListPageDataTableHeaderCell>
           <ListPageDataTableHeaderCell>Tariff code</ListPageDataTableHeaderCell>
+          <ListPageDataTableHeaderCell>Type</ListPageDataTableHeaderCell>
           <ListPageDataTableHeaderCell className="text-right">
             Min qty
           </ListPageDataTableHeaderCell>
@@ -93,6 +130,9 @@ export function PricelistProductsTable({
             </ListPageDataTableCell>
             <ListPageDataTableCell className="py-2 font-mono tabular-nums text-dash-muted">
               {item.tariff_code?.trim() || "—"}
+            </ListPageDataTableCell>
+            <ListPageDataTableCell className="py-2 text-dash-muted">
+              {formatMembershipType(item)}
             </ListPageDataTableCell>
             <ListPageDataTableCell className="py-2 text-right tabular-nums text-dash-muted">
               {formatInventoryQuantity(item.min_quantity, {
@@ -151,7 +191,7 @@ export function PricelistProductsTable({
                         Edit name
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => onEditTariffCode(item)}>
-                        Edit tariff code
+                        {hasTariffCode(item) ? "Edit tariff code" : "Add tariff code"}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem

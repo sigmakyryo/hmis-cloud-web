@@ -26,6 +26,7 @@ export function PricelistProductsTableSkeleton({
         <ListPageDataTableHeaderRow>
           <ListPageDataTableHeaderCell>Product</ListPageDataTableHeaderCell>
           <ListPageDataTableHeaderCell>Tariff code</ListPageDataTableHeaderCell>
+          <ListPageDataTableHeaderCell>Type</ListPageDataTableHeaderCell>
           <ListPageDataTableHeaderCell className="text-right">
             Min qty
           </ListPageDataTableHeaderCell>
@@ -46,6 +47,9 @@ export function PricelistProductsTableSkeleton({
           <ListPageDataTableRow key={index} className="hover:bg-transparent">
             <ListPageDataTableCell className="py-2">
               <Skeleton className="h-3.5 w-40" />
+            </ListPageDataTableCell>
+            <ListPageDataTableCell className="py-2">
+              <Skeleton className="h-3.5 w-16" />
             </ListPageDataTableCell>
             <ListPageDataTableCell className="py-2">
               <Skeleton className="h-3.5 w-16" />

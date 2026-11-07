@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import {
   DetailPageMainSection,
@@ -8,13 +8,19 @@ import {
   DetailPageTabsNavSection,
   DetailPageTabsSection,
 } from "@/features/app-shell/components/page-layout";
-import type { CatalogPricelist } from "@/features/catalog/types/catalog.types";
+import type {
+  CatalogPricelist,
+  CatalogPricelistMasmCoreSyncJob,
+} from "@/features/catalog/types/catalog.types";
 import { PricelistDetailActivityTab } from "@/features/inventory/components/detail/PricelistDetailActivityTab";
 import { PricelistDetailAdvisorPackTab } from "@/features/inventory/components/detail/PricelistDetailAdvisorPackTab";
 import { PricelistDetailPriceChangesTab } from "@/features/inventory/components/detail/PricelistDetailPriceChangesTab";
 import { PricelistDetailProductsTab } from "@/features/inventory/components/detail/PricelistDetailProductsTab";
 import { PricelistDetailRulesTab } from "@/features/inventory/components/detail/PricelistDetailRulesTab";
 import { PricelistDetailSettingsTab } from "@/features/inventory/components/detail/PricelistDetailSettingsTab";
+import { showPricelistSyncResultToast } from "@/features/inventory/components/detail/PricelistSyncResultToast";
+import { usePricelistMasmSyncJobPoll } from "@/features/inventory/hooks/use-pricelist-masm-sync-job-poll";
+import { useToast } from "@/providers/toast-provider";
 
 type PricelistDetailTabsProps = {
   pricelist: CatalogPricelist;
@@ -38,7 +44,56 @@ const tabs: Array<{ id: DetailTabId; label: string }> = [
 ];
 
 export function PricelistDetailTabs({ pricelist }: PricelistDetailTabsProps) {
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<DetailTabId>("products");
+  const [syncJobUuid, setSyncJobUuid] = useState<string | null>(null);
+  const [syncReloadToken, setSyncReloadToken] = useState(0);
+  const syncToastIdRef = useRef<string | number | null>(null);
+
+  const handleSyncStarted = useCallback((jobUuid: string, toastId: string | number) => {
+    syncToastIdRef.current = toastId;
+    setSyncJobUuid(jobUuid);
+  }, []);
+
+  const handleSyncTerminal = useCallback(
+    (job: CatalogPricelistMasmCoreSyncJob) => {
+      const loadingToastId = syncToastIdRef.current;
+      if (job.status === "completed") {
+        showPricelistSyncResultToast(
+          {
+            matched: job.matched,
+            updated: job.updated,
+            unchanged: job.unchanged,
+            imported: job.imported,
+            approval_required: job.approval_required,
+            names_updated: job.names_updated ?? 0,
+          },
+          {
+            replaceId: loadingToastId ?? undefined,
+            title: "MASM Core prices synced",
+          },
+        );
+      } else {
+        toast({
+          id: loadingToastId ?? undefined,
+          variant: "error",
+          title: "MASM Core sync failed",
+          description:
+            job.failure_message || "Prices could not be synced from MASM Core.",
+        });
+      }
+      syncToastIdRef.current = null;
+      setSyncJobUuid(null);
+      setSyncReloadToken((token) => token + 1);
+    },
+    [toast],
+  );
+
+  usePricelistMasmSyncJobPoll(pricelist.uuid, syncJobUuid, {
+    onTerminal: handleSyncTerminal,
+  });
+
+  const syncInProgress = Boolean(syncJobUuid);
 
   return (
     <DetailPageTabsSection>
@@ -55,7 +110,13 @@ export function PricelistDetailTabs({ pricelist }: PricelistDetailTabsProps) {
       </DetailPageTabsNavSection>
 
       <DetailPageMainSection>
-        <PricelistDetailProductsTab pricelist={pricelist} isActive={activeTab === "products"} />
+        <PricelistDetailProductsTab
+          pricelist={pricelist}
+          isActive={activeTab === "products"}
+          syncInProgress={syncInProgress}
+          syncReloadToken={syncReloadToken}
+          onSyncStarted={handleSyncStarted}
+        />
         <PricelistDetailRulesTab pricelist={pricelist} isActive={activeTab === "rules"} />
         <PricelistDetailPriceChangesTab
           pricelist={pricelist}
@@ -68,6 +129,9 @@ export function PricelistDetailTabs({ pricelist }: PricelistDetailTabsProps) {
         <PricelistDetailSettingsTab
           pricelist={pricelist}
           isActive={activeTab === "settings"}
+          syncInProgress={syncInProgress}
+          syncReloadToken={syncReloadToken}
+          onSyncStarted={handleSyncStarted}
         />
         <PricelistDetailActivityTab
           pricelist={pricelist}

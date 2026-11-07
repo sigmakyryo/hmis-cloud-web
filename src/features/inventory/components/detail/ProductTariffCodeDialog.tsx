@@ -45,8 +45,22 @@ type ProductTariffCodeDialogProps = {
   editingCode?: ProductTariffCode | null;
   /** When creating, pre-select this scheme if it is still available. */
   preferredSchemeUuid?: string | null;
+  /**
+   * When true, the insurance scheme is fixed (typically the scheme linked to
+   * the current pricelist) and cannot be changed.
+   */
+  lockScheme?: boolean;
   onSaved: () => void;
 };
+
+function formatSchemeLabel(scheme: InsuranceScheme): string {
+  const company = scheme.insurance_company_name?.trim();
+  const name = scheme.name?.trim();
+  if (company && name) {
+    return `${company} · ${name}`;
+  }
+  return name || company || "Insurance scheme";
+}
 
 export function ProductTariffCodeDialog({
   productId,
@@ -55,6 +69,7 @@ export function ProductTariffCodeDialog({
   existingCodes,
   editingCode = null,
   preferredSchemeUuid = null,
+  lockScheme = false,
   onSaved,
 }: ProductTariffCodeDialogProps) {
   const { toast } = useToast();
@@ -65,21 +80,48 @@ export function ProductTariffCodeDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isEditing = Boolean(editingCode);
+  const schemeIsLocked = lockScheme || isEditing;
   const usedSchemeUuids = useMemo(
     () => new Set(existingCodes.map((entry) => entry.scheme_uuid)),
     [existingCodes],
   );
   const availableSchemes = useMemo(
     () =>
-      schemes.filter(
-        (scheme) =>
-          scheme.is_active &&
-          (isEditing
-            ? scheme.uuid === editingCode?.scheme_uuid
-            : !usedSchemeUuids.has(scheme.uuid)),
-      ),
-    [editingCode?.scheme_uuid, isEditing, schemes, usedSchemeUuids],
+      schemes.filter((scheme) => {
+        if (!scheme.is_active) {
+          return false;
+        }
+        if (isEditing) {
+          return scheme.uuid === editingCode?.scheme_uuid;
+        }
+        if (lockScheme && preferredSchemeUuid) {
+          return scheme.uuid === preferredSchemeUuid;
+        }
+        return !usedSchemeUuids.has(scheme.uuid);
+      }),
+    [
+      editingCode?.scheme_uuid,
+      isEditing,
+      lockScheme,
+      preferredSchemeUuid,
+      schemes,
+      usedSchemeUuids,
+    ],
   );
+  const lockedSchemeLabel = useMemo(() => {
+    const lockedUuid = editingCode?.scheme_uuid ?? preferredSchemeUuid ?? schemeUuid;
+    if (!lockedUuid) {
+      return "—";
+    }
+    const matched = schemes.find((scheme) => scheme.uuid === lockedUuid);
+    if (matched) {
+      return formatSchemeLabel(matched);
+    }
+    if (editingCode?.scheme_name?.trim()) {
+      return editingCode.scheme_name.trim();
+    }
+    return "—";
+  }, [editingCode, preferredSchemeUuid, schemeUuid, schemes]);
 
   useEffect(() => {
     if (!open) {
@@ -102,7 +144,10 @@ export function ProductTariffCodeDialog({
               (scheme) =>
                 scheme.uuid === preferredSchemeUuid &&
                 scheme.is_active &&
-                !existingCodes.some((code) => code.scheme_uuid === preferredSchemeUuid),
+                (lockScheme ||
+                  !existingCodes.some(
+                    (code) => code.scheme_uuid === preferredSchemeUuid,
+                  )),
             );
             if (preferredStillAvailable) {
               setSchemeUuid(preferredSchemeUuid);
@@ -127,14 +172,16 @@ export function ProductTariffCodeDialog({
     return () => {
       cancelled = true;
     };
-  }, [editingCode, existingCodes, open, preferredSchemeUuid, toast]);
+  }, [editingCode, existingCodes, lockScheme, open, preferredSchemeUuid, toast]);
 
   async function handleSubmit() {
     if (!schemeUuid.trim() || !tariffCode.trim()) {
       toast({
         variant: "error",
         title: "Missing information",
-        description: "Select an insurance scheme and enter a tariff code.",
+        description: lockScheme
+          ? "Enter a tariff code."
+          : "Select an insurance scheme and enter a tariff code.",
       });
       return;
     }
@@ -190,7 +237,9 @@ export function ProductTariffCodeDialog({
           <DialogDescription>
             {isEditing
               ? "Update the tariff code used for this insurance scheme."
-              : "Link this product to an insurance scheme with a tariff code."}
+              : lockScheme
+                ? "Add a tariff code for this pricelist’s insurance scheme."
+                : "Link this product to an insurance scheme with a tariff code."}
           </DialogDescription>
         </DialogHeader>
 
@@ -202,11 +251,18 @@ export function ProductTariffCodeDialog({
                 <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                 Loading schemes...
               </div>
+            ) : schemeIsLocked ? (
+              <Input
+                id="tariff-scheme"
+                value={lockedSchemeLabel}
+                disabled
+                readOnly
+              />
             ) : (
               <Select
                 value={schemeUuid}
                 onValueChange={setSchemeUuid}
-                disabled={isEditing || isSubmitting}
+                disabled={isSubmitting}
               >
                 <SelectTrigger id="tariff-scheme">
                   <SelectValue placeholder="Select a scheme" />
@@ -214,7 +270,7 @@ export function ProductTariffCodeDialog({
                 <SelectContent>
                   {availableSchemes.map((scheme) => (
                     <SelectItem key={scheme.uuid} value={scheme.uuid}>
-                      {scheme.insurance_company_name} · {scheme.name}
+                      {formatSchemeLabel(scheme)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -244,7 +300,7 @@ export function ProductTariffCodeDialog({
           </SecondaryButton>
           <PrimaryButton
             type="button"
-            disabled={isSubmitting || isLoadingSchemes}
+            disabled={isSubmitting || isLoadingSchemes || !schemeUuid.trim()}
             onClick={() => void handleSubmit()}
           >
             {isSubmitting ? (

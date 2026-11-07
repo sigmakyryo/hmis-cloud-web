@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   fetchCatalogPricelistProducts,
+  fetchCatalogPricelistSettings,
   fetchPricelistProductSummaryStats,
   removeCatalogPricelistProduct,
   updateCatalogPricelistProduct,
@@ -30,6 +31,7 @@ import {
 import type {
   CatalogPricelist,
   CatalogPricelistMembership,
+  CatalogPricelistSettings,
 } from "@/features/catalog/types/catalog.types";
 import {
   ListPagePagination,
@@ -37,10 +39,15 @@ import {
   ListPageStatsSection,
 } from "@/features/app-shell/components/page-layout";
 import { fetchInsuranceSchemes } from "@/features/customers/services/insurance-schemes.service";
+import type { InsuranceScheme } from "@/features/customers/types/customer-insurance.types";
 import { AddPricelistProductDialog } from "@/features/inventory/components/detail/AddPricelistProductDialog";
 import { CopyPricelistProductsDialog } from "@/features/inventory/components/detail/CopyPricelistProductsDialog";
 import { EditPricelistProductNameDialog } from "@/features/inventory/components/detail/EditPricelistProductNameDialog";
 import { PricelistCopyJobPanel } from "@/features/inventory/components/detail/PricelistCopyJobPanel";
+import {
+  PRODUCTS_TAB_PAYER_SYNC_DRAFT,
+  PricelistPayerSyncDialog,
+} from "@/features/inventory/components/detail/PricelistPayerSyncDialog";
 import { PricelistProductSummaryStatsCards } from "@/features/inventory/components/detail/PricelistProductSummaryStatsCards";
 import { PricelistProductsTable } from "@/features/inventory/components/detail/PricelistProductsTable";
 import { PricelistProductsTableSkeleton } from "@/features/inventory/components/detail/PricelistProductsTableSkeleton";
@@ -56,9 +63,20 @@ import { useUser } from "@/providers/user-provider";
 
 const PRODUCTS_PAGE_SIZE = 25;
 
+/** Resolve the insurance scheme linked to a pricelist by UUID (detail payloads are UUID-only). */
+export function resolvePricelistLinkedScheme(
+  schemes: Pick<InsuranceScheme, "uuid" | "pricelist_uuid">[],
+  pricelistUuid: string,
+): Pick<InsuranceScheme, "uuid" | "pricelist_uuid"> | null {
+  return schemes.find((scheme) => scheme.pricelist_uuid === pricelistUuid) ?? null;
+}
+
 type PricelistDetailProductsTabProps = {
   pricelist: CatalogPricelist;
   isActive: boolean;
+  syncInProgress?: boolean;
+  syncReloadToken?: number;
+  onSyncStarted?: (jobUuid: string, toastId: string | number) => void;
 };
 
 type PendingPriceEdit = {
@@ -69,6 +87,9 @@ type PendingPriceEdit = {
 export function PricelistDetailProductsTab({
   pricelist,
   isActive,
+  syncInProgress = false,
+  syncReloadToken = 0,
+  onSyncStarted,
 }: PricelistDetailProductsTabProps) {
   const { toast } = useToast();
   const { userData } = useUser();
@@ -100,11 +121,14 @@ export function PricelistDetailProductsTab({
     existingCodes: ProductTariffCode[];
     editingCode: ProductTariffCode | null;
     preferredSchemeUuid: string | null;
+    lockScheme: boolean;
   } | null>(null);
   const [isOpeningTariff, setIsOpeningTariff] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [stats, setStats] = useState<PricelistProductSummaryStats | null>(null);
   const [isStatsLoading, setIsStatsLoading] = useState(false);
+  const [settings, setSettings] = useState<CatalogPricelistSettings | null>(null);
+  const [syncOpen, setSyncOpen] = useState(false);
 
   const loadStats = useCallback(async () => {
     setIsStatsLoading(true);
@@ -115,6 +139,15 @@ export function PricelistDetailProductsTab({
       setStats(null);
     } finally {
       setIsStatsLoading(false);
+    }
+  }, [pricelist.uuid]);
+
+  const loadSettings = useCallback(async () => {
+    try {
+      const payload = await fetchCatalogPricelistSettings(pricelist.uuid);
+      setSettings(payload);
+    } catch {
+      setSettings(null);
     }
   }, [pricelist.uuid]);
 
@@ -163,7 +196,17 @@ export function PricelistDetailProductsTab({
     setAppliedSearch("");
     void loadItems({ page: 1, search: "" });
     void loadStats();
+    void loadSettings();
   }, [isActive, pricelist.uuid]); // eslint-disable-line react-hooks/exhaustive-deps -- reset when tab/pricelist changes
+
+  useEffect(() => {
+    if (!isActive || syncReloadToken <= 0) {
+      return;
+    }
+    void loadItems({ silent: true, page: 1 });
+    void loadStats();
+    void loadSettings();
+  }, [syncReloadToken]); // eslint-disable-line react-hooks/exhaustive-deps -- parent signals sync completion
 
   function handleSearchSubmit() {
     const nextSearch = search.trim();
@@ -238,18 +281,24 @@ export function PricelistDetailProductsTab({
         fetchProductTariffCodes(item.product_uuid),
         fetchInsuranceSchemes(),
       ]);
-      const preferredScheme =
-        typeof pricelist.id === "number"
-          ? schemes.find((scheme) => scheme.pricelist_id === pricelist.id) ?? null
-          : null;
-      const preferredCode = preferredScheme
-        ? codes.find((code) => code.scheme_uuid === preferredScheme.uuid) ?? null
-        : null;
+      const preferredScheme = resolvePricelistLinkedScheme(schemes, pricelist.uuid);
+      if (!preferredScheme) {
+        toast({
+          variant: "error",
+          title: "No insurance scheme for this pricelist",
+          description:
+            "Link an insurance scheme to this pricelist before adding tariff codes.",
+        });
+        return;
+      }
+      const preferredCode =
+        codes.find((code) => code.scheme_uuid === preferredScheme.uuid) ?? null;
       setTariffDialog({
         productUuid: item.product_uuid,
         existingCodes: codes,
-        editingCode: preferredCode ?? codes[0] ?? null,
-        preferredSchemeUuid: preferredScheme?.uuid ?? null,
+        editingCode: preferredCode,
+        preferredSchemeUuid: preferredScheme.uuid,
+        lockScheme: true,
       });
     } catch (err) {
       toast({
@@ -319,7 +368,7 @@ export function PricelistDetailProductsTab({
 
   if (showInitialLoader) {
     return (
-      <div className="space-y-4" data-testid="pricelist-products-tab-skeleton">
+      <div className="-mt-4 space-y-4" data-testid="pricelist-products-tab-skeleton">
         <ListPageStatsSection>
           <PricelistProductSummaryStatsCards stats={null} isLoading />
         </ListPageStatsSection>
@@ -346,8 +395,21 @@ export function PricelistDetailProductsTab({
     );
   }
 
+  const syncPayerName = settings?.sync_payer_name?.trim() || null;
+  const showPayerSync =
+    Boolean(settings?.has_pricelist_sync_capability) && Boolean(syncPayerName);
+  const payerSyncFullyEligible = Boolean(settings?.pricelist_sync_enabled);
+  const payerSyncDisabledReason = !isTenantAdmin
+    ? "Only administrators can run a sync."
+    : !payerSyncFullyEligible
+      ? "Add a service provider code on a linked practitioner mapping."
+      : syncInProgress
+        ? "A sync is already in progress."
+        : null;
+  const payerSyncEnabled = showPayerSync && payerSyncDisabledReason == null;
+
   return (
-    <div className="space-y-4" data-testid="pricelist-products-tab">
+    <div className="-mt-4 space-y-4" data-testid="pricelist-products-tab">
       {activeCopyJobUuid ? (
         <PricelistCopyJobPanel
           targetPricelistUuid={pricelist.uuid}
@@ -387,25 +449,51 @@ export function PricelistDetailProductsTab({
         onSearchSubmit={handleSearchSubmit}
         onClearSearch={handleClearSearch}
         trailing={
-          isTenantAdmin ? (
+          showPayerSync || isTenantAdmin ? (
             <div className="flex flex-wrap items-center justify-end gap-2">
-              {totalCount === 0 && !appliedSearch && !activeCopyJobUuid ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-8 rounded-lg px-3 text-[13px] font-medium"
-                  onClick={() => setCopyOpen(true)}
-                >
-                  Copy from pricelist
-                </Button>
+              {showPayerSync ? (
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  {payerSyncDisabledReason ? (
+                    <p
+                      className="max-w-[14rem] text-right text-xs leading-snug text-slate-400"
+                      data-testid="pricelist-payer-sync-hint"
+                    >
+                      {payerSyncDisabledReason}
+                    </p>
+                  ) : null}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-8 shrink-0 rounded-lg px-3 text-[13px] font-medium"
+                    disabled={!payerSyncEnabled}
+                    onClick={() => setSyncOpen(true)}
+                    data-testid="pricelist-payer-sync-button"
+                  >
+                    Sync with {syncPayerName}
+                  </Button>
+                </div>
               ) : null}
-              <PageActionButton
-                type="button"
-                disabled={Boolean(activeCopyJobUuid)}
-                onClick={() => setAddOpen(true)}
-              >
-                Add product
-              </PageActionButton>
+              {isTenantAdmin ? (
+                <>
+                  {totalCount === 0 && !appliedSearch && !activeCopyJobUuid ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-8 rounded-lg px-3 text-[13px] font-medium"
+                      onClick={() => setCopyOpen(true)}
+                    >
+                      Copy from pricelist
+                    </Button>
+                  ) : null}
+                  <PageActionButton
+                    type="button"
+                    disabled={Boolean(activeCopyJobUuid)}
+                    onClick={() => setAddOpen(true)}
+                  >
+                    Add product
+                  </PageActionButton>
+                </>
+              ) : null}
             </div>
           ) : null
         }
@@ -507,6 +595,18 @@ export function PricelistDetailProductsTab({
         }}
       />
 
+      <PricelistPayerSyncDialog
+        pricelistUuid={pricelist.uuid}
+        open={syncOpen}
+        onOpenChange={setSyncOpen}
+        payerName={syncPayerName}
+        coreProviderId={settings?.core_provider_id ?? null}
+        initialDraft={PRODUCTS_TAB_PAYER_SYNC_DRAFT}
+        onStarted={(jobUuid, toastId) => {
+          onSyncStarted?.(jobUuid, toastId);
+        }}
+      />
+
       <EditPricelistProductNameDialog
         item={nameEditItem}
         open={Boolean(nameEditItem)}
@@ -532,6 +632,7 @@ export function PricelistDetailProductsTab({
         existingCodes={tariffDialog?.existingCodes ?? []}
         editingCode={tariffDialog?.editingCode ?? null}
         preferredSchemeUuid={tariffDialog?.preferredSchemeUuid}
+        lockScheme={tariffDialog?.lockScheme ?? false}
         onSaved={() => {
           void loadItems({ silent: true, page });
           void loadStats();

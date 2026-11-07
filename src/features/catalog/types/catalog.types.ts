@@ -47,7 +47,17 @@ export type CatalogPricelistMembership = {
   pricelist_name?: string;
   product_uuid: string;
   product_name?: string;
+  product_type?: string | null;
+  product_type_label?: string | null;
+  /** Display type for the products table (Medicine, Service, Procedure, …). */
+  type_label?: string | null;
   is_drug?: boolean | null;
+  is_procedure?: boolean | null;
+  is_sundry?: boolean | null;
+  is_lab_test?: boolean | null;
+  is_radiology?: boolean | null;
+  /** Snapshot of MASM Core tariff attributes persisted during payer sync. */
+  masm_core?: Record<string, unknown> | null;
   tariff_code?: string | null;
   fixed_price?: number | string | null;
   min_quantity?: number | string | null;
@@ -195,6 +205,12 @@ export type CatalogPricelistSettings = {
   pricelist_uuid: string;
   schemes: CatalogPricelistSettingsScheme[];
   core_provider_id: number | null;
+  /** Display name for Sync with {Payer} when registry capability is on. */
+  sync_payer_name?: string | null;
+  /** Linked scheme company has platform-admin pricelist_sync capability. */
+  has_pricelist_sync_capability?: boolean;
+  /** Capability present and Core provider id can be resolved. */
+  pricelist_sync_enabled?: boolean;
 };
 
 export type CatalogAuditEvent = {

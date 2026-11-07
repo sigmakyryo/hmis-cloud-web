@@ -21,8 +21,9 @@ vi.mock("@/providers/user-provider", () => ({
   useUser: () => useUserMock(),
 }));
 
-vi.mock("@/features/inventory/components/detail/PricelistMasmSyncJobPanel", () => ({
-  PricelistMasmSyncJobPanel: () => <div data-testid="pricelist-masm-sync-job-panel" />,
+vi.mock("@/features/inventory/components/detail/PricelistPayerSyncDialog", () => ({
+  DEFAULT_PAYER_SYNC_DRAFT: {},
+  PricelistPayerSyncDialog: () => null,
 }));
 
 const PRICELIST = {
@@ -98,12 +99,27 @@ describe("PricelistDetailSettingsTab", () => {
     );
   });
 
-  it("does not show practitioner mapping", async () => {
+  it("disables sync when a parent sync is already in progress", async () => {
+    render(
+      <PricelistDetailSettingsTab pricelist={PRICELIST} isActive syncInProgress />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("pricelist-masm-sync-button")).toBeDisabled();
+    });
+    expect(screen.getByTestId("pricelist-masm-sync-hint")).toHaveTextContent(
+      "A sync is already in progress.",
+    );
+  });
+
+  it("does not show practitioner mapping or in-page sync banner", async () => {
     render(<PricelistDetailSettingsTab pricelist={PRICELIST} isActive />);
 
     await waitFor(() => {
       expect(screen.getByTestId("pricelist-settings-tab")).toBeInTheDocument();
     });
     expect(screen.queryByText("Practitioner mapping")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("pricelist-masm-sync-job-panel")).not.toBeInTheDocument();
+    expect(screen.queryByText("Syncing from MASM Core")).not.toBeInTheDocument();
   });
 });

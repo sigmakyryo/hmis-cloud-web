@@ -6,6 +6,7 @@ import { useCallback, useRef, useState } from "react";
 import { SecondaryButton } from "@/components/ui/app-buttons";
 import { Badge } from "@/components/ui/badge";
 import type { CatalogPricelistMasmCoreSyncJob } from "@/features/catalog/types/catalog.types";
+import { showPricelistSyncResultToast } from "@/features/inventory/components/detail/PricelistSyncResultToast";
 import { usePricelistMasmSyncJobPoll } from "@/features/inventory/hooks/use-pricelist-masm-sync-job-poll";
 import { useToast } from "@/providers/toast-provider";
 
@@ -44,16 +45,20 @@ export function PricelistMasmSyncJobPanel({
       setJob(terminalJob);
 
       if (terminalJob.status === "completed") {
-        const pending = terminalJob.approval_required || 0;
-        toast({
-          id: syncToastId,
-          variant: "success",
-          title: "MASM Core prices synced",
-          description:
-            pending > 0
-              ? `Updated ${terminalJob.updated}, unchanged ${terminalJob.unchanged}, pending approval ${pending}.`
-              : `Updated ${terminalJob.updated} of ${terminalJob.matched} matched tariffs (${terminalJob.unchanged} unchanged).`,
-        });
+        showPricelistSyncResultToast(
+          {
+            matched: terminalJob.matched,
+            updated: terminalJob.updated,
+            unchanged: terminalJob.unchanged,
+            imported: terminalJob.imported,
+            approval_required: terminalJob.approval_required,
+            names_updated: terminalJob.names_updated ?? 0,
+          },
+          {
+            id: syncToastId,
+            title: "MASM Core prices synced",
+          },
+        );
       } else {
         toast({
           id: syncToastId,
@@ -107,15 +112,6 @@ export function PricelistMasmSyncJobPanel({
             {STATUS_LABELS[job.status]}
           </Badge>
         ) : null}
-      </div>
-
-      <div className="flex flex-wrap gap-4 text-xs text-brand-muted">
-        <span>Matched: {job?.matched ?? 0}</span>
-        <span className="text-emerald-700">Updated: {job?.updated ?? 0}</span>
-        <span>Names: {job?.names_updated ?? 0}</span>
-        <span>Imported: {job?.imported ?? 0}</span>
-        <span>Unchanged: {job?.unchanged ?? 0}</span>
-        <span>Pending approval: {job?.approval_required ?? 0}</span>
       </div>
 
       {isActive ? (

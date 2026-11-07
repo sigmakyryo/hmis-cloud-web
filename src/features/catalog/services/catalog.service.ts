@@ -175,15 +175,15 @@ export async function archiveCatalogPricelist(pricelistUuid: string): Promise<vo
 export type PricelistProductSummaryStats = {
   totalProducts: number;
   medicines: number;
-  timeLimited: number;
-  addedThisMonth: number;
+  services: number;
+  procedures: number;
 };
 
 type PricelistProductSummaryStatsResponse = {
   total_products: number;
   medicines: number;
-  time_limited: number;
-  added_this_month: number;
+  services: number;
+  procedures: number;
 };
 
 export async function fetchCatalogPricelistProducts(
@@ -205,8 +205,8 @@ export async function fetchPricelistProductSummaryStats(
   return {
     totalProducts: data.total_products,
     medicines: data.medicines,
-    timeLimited: data.time_limited,
-    addedThisMonth: data.added_this_month,
+    services: data.services,
+    procedures: data.procedures,
   };
 }
 
