@@ -75,6 +75,7 @@ export function AddPricelistProductDialog({
 
     const parsedPrice = Number(fixedPrice);
     const parsedMinQty = Number(minQuantity);
+    const isDrug = Boolean(product.metadata?.is_drug);
 
     if (!Number.isFinite(parsedPrice) || parsedPrice < 0) {
       toast({
@@ -85,13 +86,27 @@ export function AddPricelistProductDialog({
       return;
     }
 
+    if (
+      Number.isFinite(parsedMinQty) &&
+      parsedMinQty > 0 &&
+      isDrug &&
+      !Number.isInteger(parsedMinQty)
+    ) {
+      toast({
+        variant: "error",
+        title: "Invalid quantity",
+        description: "Medicine quantities must be whole numbers (for example 1, 3, or 5).",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const result = await addCatalogPricelistProduct(pricelist.uuid, {
         product_uuid: product.uuid,
         fixed_price: parsedPrice,
         ...(Number.isFinite(parsedMinQty) && parsedMinQty > 0
-          ? { min_quantity: parsedMinQty }
+          ? { min_quantity: isDrug ? Math.round(parsedMinQty) : parsedMinQty }
           : {}),
       });
 
@@ -177,11 +192,16 @@ export function AddPricelistProductDialog({
               id="pricelist-add-min-qty"
               type="number"
               min="0"
-              step="any"
+              step={product?.metadata?.is_drug ? "1" : "any"}
               value={minQuantity}
               disabled={isSubmitting}
               onChange={(event) => setMinQuantity(event.target.value)}
             />
+            {product?.metadata?.is_drug ? (
+              <p className="text-xs text-dash-muted">
+                Medicines require whole-number quantities only.
+              </p>
+            ) : null}
           </div>
         </div>
 

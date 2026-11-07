@@ -21,6 +21,7 @@ import { useUser } from "@/providers/user-provider";
 type SetupChrome = OverviewSetupMode | "pending";
 
 const SWAP_MS = 180;
+const OVERVIEW_HOME_STALE_MS = 3 * 60 * 1000;
 
 function prefersReducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -34,6 +35,17 @@ function useSettledMode(mode: SetupChrome) {
     if (mode === shown) {
       return;
     }
+
+    // Skip the fade when leaving the initial pending gate so cards appear immediately.
+    if (
+      shown === "pending" &&
+      (mode === "hidden" || mode === "ready" || mode === "checklist")
+    ) {
+      setShown(mode);
+      setVisible(true);
+      return;
+    }
+
     if (prefersReducedMotion()) {
       setShown(mode);
       setVisible(true);
@@ -69,7 +81,8 @@ export function OverviewWorkspace() {
   const home = useQuery({
     queryKey: ["overview-home"],
     queryFn: fetchOverviewHome,
-    enabled: showDailyOverview,
+    enabled: Boolean(userData),
+    staleTime: OVERVIEW_HOME_STALE_MS,
     retry: false,
   });
 
@@ -114,15 +127,11 @@ export function OverviewWorkspace() {
                 : "pointer-events-none translate-y-1 opacity-0",
             )}
           >
-            {home.isPending ? (
-              <OverviewWorkspaceSkeleton />
-            ) : (
-              <OverviewQuickAccessCards
-                cards={cards}
-                userGroups={userGroups}
-                enabledModules={enabledModules}
-              />
-            )}
+            <OverviewQuickAccessCards
+              cards={cards}
+              userGroups={userGroups}
+              enabledModules={enabledModules}
+            />
             <OverviewActivityFeed />
           </div>
         ) : null}

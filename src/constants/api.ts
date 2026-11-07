@@ -654,6 +654,8 @@ export const BFF_INVENTORY_ROUTES = {
     detail: (pricelistUuid: string) => `/api/inventory/pricelists/${pricelistUuid}`,
     products: (pricelistUuid: string) =>
       `/api/inventory/pricelists/${pricelistUuid}/products`,
+    productsSummaryStats: (pricelistUuid: string) =>
+      `/api/inventory/pricelists/${pricelistUuid}/products/summary-stats`,
     productDetail: (pricelistUuid: string, productUuid: string) =>
       `/api/inventory/pricelists/${pricelistUuid}/products/${productUuid}`,
     approvalConfiguration: "/api/inventory/pricelists/approval-configuration",

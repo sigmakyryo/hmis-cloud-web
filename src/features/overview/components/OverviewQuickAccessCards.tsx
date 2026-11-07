@@ -76,7 +76,7 @@ export function OverviewQuickAccessCards({
           <button
             type="button"
             onClick={() => setShowAll((open) => !open)}
-            className="text-[13px] font-medium text-dash-muted transition-colors hover:text-brand-navy"
+            className="text-[12px] font-normal text-dash-muted/60 transition-colors hover:text-dash-muted"
             aria-expanded={showAll}
           >
             {showAll ? "Show fewer actions" : "View all actions"}

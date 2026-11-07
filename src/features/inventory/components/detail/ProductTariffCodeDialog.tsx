@@ -43,6 +43,8 @@ type ProductTariffCodeDialogProps = {
   onOpenChange: (open: boolean) => void;
   existingCodes: ProductTariffCode[];
   editingCode?: ProductTariffCode | null;
+  /** When creating, pre-select this scheme if it is still available. */
+  preferredSchemeUuid?: string | null;
   onSaved: () => void;
 };
 
@@ -52,6 +54,7 @@ export function ProductTariffCodeDialog({
   onOpenChange,
   existingCodes,
   editingCode = null,
+  preferredSchemeUuid = null,
   onSaved,
 }: ProductTariffCodeDialogProps) {
   const { toast } = useToast();
@@ -83,7 +86,7 @@ export function ProductTariffCodeDialog({
       return;
     }
 
-    setSchemeUuid(editingCode?.scheme_uuid ?? "");
+    setSchemeUuid(editingCode?.scheme_uuid ?? preferredSchemeUuid ?? "");
     setTariffCode(editingCode?.tariff_code ?? "");
 
     let cancelled = false;
@@ -94,6 +97,17 @@ export function ProductTariffCodeDialog({
         const data = await fetchInsuranceSchemes();
         if (!cancelled) {
           setSchemes(data);
+          if (!editingCode && preferredSchemeUuid) {
+            const preferredStillAvailable = data.some(
+              (scheme) =>
+                scheme.uuid === preferredSchemeUuid &&
+                scheme.is_active &&
+                !existingCodes.some((code) => code.scheme_uuid === preferredSchemeUuid),
+            );
+            if (preferredStillAvailable) {
+              setSchemeUuid(preferredSchemeUuid);
+            }
+          }
         }
       } catch {
         if (!cancelled) {
@@ -113,7 +127,7 @@ export function ProductTariffCodeDialog({
     return () => {
       cancelled = true;
     };
-  }, [editingCode, open, toast]);
+  }, [editingCode, existingCodes, open, preferredSchemeUuid, toast]);
 
   async function handleSubmit() {
     if (!schemeUuid.trim() || !tariffCode.trim()) {

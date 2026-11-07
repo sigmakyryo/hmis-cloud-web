@@ -69,7 +69,7 @@ export function TeamSwitcher() {
               data-testid="sidebar-team-switcher-trigger"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <WorkspaceAvatar name={tenantName} className="size-8" />
+              <WorkspaceAvatar name={activeClinicLabel} className="size-8" />
               <div className="grid min-w-0 flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium text-brand-navy">
                   {isLoading ? "Loading..." : activeClinicLabel}
@@ -90,7 +90,10 @@ export function TeamSwitcher() {
             side="right"
             align="start"
             sideOffset={8}
-            className={cn(appFont.className, "w-56 p-1.5")}
+            className={cn(
+              appFont.className,
+              "w-56 rounded-xl border border-brand-border/80 p-1.5 shadow-[0_12px_40px_-16px_rgba(15,23,42,0.28)]",
+            )}
           >
             {clinics.length > 0 ? (
               clinics.map((clinic) => {
@@ -102,17 +105,20 @@ export function TeamSwitcher() {
                     type="button"
                     data-testid={`clinic-option-${clinic.clinic}`}
                     onClick={() => handleClinicSelect(clinic)}
-                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-foreground outline-none hover:bg-accent"
+                    className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-sm text-foreground outline-none hover:bg-accent"
                   >
                     <WorkspaceAvatar
                       name={clinic.clinic_name}
-                      className="size-6 text-[10px]"
+                      className="size-7 text-[10px]"
                     />
-                    <span className="min-w-0 flex-1 truncate">
+                    <span className="min-w-0 flex-1 truncate font-medium text-brand-navy">
                       {clinic.clinic_name}
                     </span>
                     {isActive ? (
-                      <Check className="size-4 shrink-0 text-brand-primary" aria-hidden />
+                      <Check
+                        className="size-4 shrink-0 text-emerald-600"
+                        aria-hidden
+                      />
                     ) : null}
                   </button>
                 );
@@ -126,9 +132,9 @@ export function TeamSwitcher() {
             <Link
               href={ROUTES.settingsOrganization}
               onClick={() => setOpen(false)}
-              className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-foreground outline-none hover:bg-accent"
+              className="flex items-center gap-2.5 rounded-lg px-2 py-2 text-sm text-brand-navy outline-none hover:bg-accent"
             >
-              <AppIcon name="settings" size={16} />
+              <AppIcon name="settings" size={16} className="text-dash-muted" />
               <span>Organization settings</span>
             </Link>
           </PopoverContent>

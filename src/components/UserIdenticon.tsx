@@ -16,6 +16,8 @@ type UserIdenticonProps = {
   imageUrl?: string | null;
   className?: string;
   fallbackClassName?: string;
+  /** When no photo is set: dicebear pattern (default) or letter initials. */
+  fallback?: "identicon" | "initials";
 };
 
 function getInitials(name: string): string {
@@ -33,17 +35,24 @@ export function UserIdenticon({
   imageUrl,
   className,
   fallbackClassName,
+  fallback = "identicon",
 }: UserIdenticonProps) {
-  const identiconSrc = useMemo(() => createIdenticonDataUri(seed), [seed]);
-  const avatarSrc = imageUrl?.trim() || identiconSrc;
+  const photoUrl = imageUrl?.trim() || null;
+  const identiconSrc = useMemo(
+    () => (fallback === "identicon" ? createIdenticonDataUri(seed) : null),
+    [fallback, seed],
+  );
+  const avatarSrc = photoUrl || identiconSrc;
 
   return (
     <Avatar className={cn("size-8 rounded-lg", className)}>
-      <AvatarImage
-        src={avatarSrc}
-        alt={name}
-        className={imageUrl?.trim() ? "object-cover" : undefined}
-      />
+      {avatarSrc ? (
+        <AvatarImage
+          src={avatarSrc}
+          alt={name}
+          className={photoUrl ? "object-cover" : undefined}
+        />
+      ) : null}
       <AvatarFallback className={cn("rounded-lg text-xs", fallbackClassName)}>
         {getInitials(name) || "?"}
       </AvatarFallback>

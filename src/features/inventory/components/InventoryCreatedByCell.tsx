@@ -7,12 +7,14 @@ type InventoryCreatedByCellProps = {
   name?: string | null;
   imageUrl?: string | null;
   size?: "default" | "sm";
+  tone?: "default" | "muted";
 };
 
 export function InventoryCreatedByCell({
   name,
   imageUrl,
   size = "default",
+  tone = "default",
 }: InventoryCreatedByCellProps) {
   const label = name?.trim();
 
@@ -26,16 +28,24 @@ export function InventoryCreatedByCell({
         seed={label}
         name={label}
         imageUrl={imageUrl}
+        fallback="initials"
         className={cn(
           "shrink-0 rounded-md",
           size === "sm" ? "size-5" : "size-7",
         )}
         fallbackClassName={cn(
-          "rounded-md",
-          size === "sm" ? "text-[9px]" : undefined,
+          "rounded-md bg-brand-tint text-brand-navy",
+          size === "sm" ? "text-[9px]" : "text-[11px]",
         )}
       />
-      <span className="truncate text-sm text-brand-navy">{label}</span>
+      <span
+        className={cn(
+          "truncate text-sm",
+          tone === "muted" ? "text-dash-muted" : "text-brand-navy",
+        )}
+      >
+        {label}
+      </span>
     </div>
   );
 }

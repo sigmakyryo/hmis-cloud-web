@@ -34,6 +34,10 @@ export function formatInventoryAmount(
 
 export function formatInventoryQuantity(
   value: string | number | null | undefined,
+  options?: {
+    /** Medicines must display as whole numbers only. */
+    wholeNumbers?: boolean;
+  },
 ): string {
   if (value === null || value === undefined || value === "") {
     return "—";
@@ -42,6 +46,12 @@ export function formatInventoryQuantity(
   const numeric = typeof value === "number" ? value : Number.parseFloat(value);
   if (Number.isNaN(numeric)) {
     return String(value);
+  }
+
+  if (options?.wholeNumbers) {
+    return Math.round(numeric).toLocaleString(undefined, {
+      maximumFractionDigits: 0,
+    });
   }
 
   return numeric.toLocaleString(undefined, {

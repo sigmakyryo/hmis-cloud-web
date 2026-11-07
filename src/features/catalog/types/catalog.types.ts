@@ -31,6 +31,7 @@ export type CatalogProduct = {
 };
 
 export type CatalogPricelist = {
+  id?: number;
   uuid: string;
   name: string;
   is_active: boolean;
@@ -46,11 +47,14 @@ export type CatalogPricelistMembership = {
   pricelist_name?: string;
   product_uuid: string;
   product_name?: string;
+  is_drug?: boolean | null;
   tariff_code?: string | null;
   fixed_price?: number | string | null;
   min_quantity?: number | string | null;
   date_start?: string | null;
   date_end?: string | null;
+  created_by_name?: string | null;
+  created_by_avatar_url?: string | null;
 };
 
 export type CatalogPriceChange = {

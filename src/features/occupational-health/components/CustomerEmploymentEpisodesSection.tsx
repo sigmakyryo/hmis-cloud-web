@@ -1,13 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Briefcase } from "lucide-react";
 
 import { TabAddActionButton } from "@/components/ui/app-buttons";
 import { Button } from "@/components/ui/button";
-import { ROUTES } from "@/constants/routes";
 import { AddEmploymentEpisodeDialog } from "@/features/occupational-health/components/AddEmploymentEpisodeDialog";
+import { CustomerEmploymentEpisodesTable } from "@/features/occupational-health/components/CustomerEmploymentEpisodesTable";
+import { UpdateEmploymentEpisodeDialog } from "@/features/occupational-health/components/UpdateEmploymentEpisodeDialog";
 import type { EmploymentEpisode } from "@/features/occupational-health/types";
 import { fetchEmploymentEpisodes } from "@/features/occupational-health/services/oh.service";
 import { CustomerDetailTabEmptyState } from "@/features/customers/components/detail/CustomerDetailTabEmptyState";
@@ -35,6 +35,8 @@ export function CustomerEmploymentEpisodesSection({
   const [hasLoaded, setHasLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingEpisode, setEditingEpisode] =
+    useState<EmploymentEpisode | null>(null);
 
   const loadEpisodes = useCallback(async () => {
     setIsLoading(true);
@@ -108,28 +110,33 @@ export function CustomerEmploymentEpisodesSection({
     );
   }
 
-  return (
-    <section className="space-y-4" data-testid="customer-employment-section">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold text-brand-navy">Employment</h2>
-          <p className="text-sm text-brand-muted">
-            Occupational health employment episodes for this client.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button asChild variant="outline" size="sm">
-            <Link href={ROUTES.occupationalHealthEmployment(customer.uuid)}>
-              Open OH employment
-            </Link>
-          </Button>
-          <TabAddActionButton onClick={() => setDialogOpen(true)}>
-            Add episode
-          </TabAddActionButton>
-        </div>
-      </div>
+  const dialogs = (
+    <>
+      <AddEmploymentEpisodeDialog
+        customer={customer}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        onCreated={() => void loadEpisodes()}
+      />
+      {editingEpisode ? (
+        <UpdateEmploymentEpisodeDialog
+          customer={customer}
+          episode={editingEpisode}
+          open={Boolean(editingEpisode)}
+          onOpenChange={(open) => {
+            if (!open) {
+              setEditingEpisode(null);
+            }
+          }}
+          onUpdated={() => void loadEpisodes()}
+        />
+      ) : null}
+    </>
+  );
 
-      {episodes.length === 0 ? (
+  if (episodes.length === 0) {
+    return (
+      <>
         <CustomerDetailTabEmptyState
           icon={Briefcase}
           title="No employment episodes yet"
@@ -141,29 +148,31 @@ export function CustomerEmploymentEpisodesSection({
           }
           data-testid="customer-employment-empty"
         />
-      ) : (
-        <ul className="divide-y rounded-xl border border-brand-border bg-white">
-          {episodes.map((episode) => (
-            <li key={episode.uuid} className="px-4 py-3 text-sm">
-              <div className="font-medium">
-                {episode.employee_number || "Employee"} — {episode.start_date}
-                {episode.end_date ? ` → ${episode.end_date}` : " (open)"}
-              </div>
-              <div className="text-brand-muted">
-                {episode.site || "No site"}
-                {episode.department_name ? ` · ${episode.department_name}` : ""}
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+        {dialogs}
+      </>
+    );
+  }
 
-      <AddEmploymentEpisodeDialog
-        customer={customer}
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        onCreated={() => void loadEpisodes()}
+  return (
+    <section className="space-y-4" data-testid="customer-employment-section">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold text-brand-navy">Employment</h2>
+          <p className="text-[13px] text-brand-muted">
+            Occupational health employment episodes for this client.
+          </p>
+        </div>
+        <TabAddActionButton onClick={() => setDialogOpen(true)}>
+          Add episode
+        </TabAddActionButton>
+      </div>
+
+      <CustomerEmploymentEpisodesTable
+        episodes={episodes}
+        onUpdate={setEditingEpisode}
       />
+
+      {dialogs}
     </section>
   );
 }

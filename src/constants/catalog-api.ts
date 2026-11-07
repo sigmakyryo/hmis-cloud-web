@@ -26,6 +26,8 @@ export const CATALOG_API_PATHS = {
     list: "/pricelists/",
     detail: (pricelistUuid: string) => `/pricelists/${pricelistUuid}/`,
     products: (pricelistUuid: string) => `/pricelists/${pricelistUuid}/products/`,
+    productsSummaryStats: (pricelistUuid: string) =>
+      `/pricelists/${pricelistUuid}/products/summary-stats/`,
     productDetail: (pricelistUuid: string, productUuid: string) =>
       `/pricelists/${pricelistUuid}/products/${productUuid}/`,
     approvalConfiguration: "/pricelists/approval-configuration/",

@@ -95,6 +95,16 @@ export async function createEmploymentEpisode(payload: Record<string, unknown>) 
   );
 }
 
+export async function updateEmploymentEpisode(
+  uuid: string,
+  payload: Record<string, unknown>,
+) {
+  return bffRequest<EmploymentEpisode>(
+    BFF_OCCUPATIONAL_HEALTH_ROUTES.employmentEpisode(uuid),
+    { method: "PATCH", body: payload },
+  );
+}
+
 export async function fetchOhEmployersPage(options?: {
   page?: number;
   pageSize?: number;

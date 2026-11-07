@@ -80,7 +80,7 @@ export function WorkspaceAvatar({ name, className }: WorkspaceAvatarProps) {
   return (
     <span
       className={cn(
-        "flex size-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold tracking-[0.04em] shadow-[inset_0_1px_0_rgba(255,255,255,0.34),inset_0_-1px_0_rgba(0,0,0,0.12),0_1px_2px_rgba(31,42,36,0.14)] ring-1 ring-inset",
+        "flex size-8 shrink-0 items-center justify-center rounded-[0.55rem] text-[11px] font-semibold tracking-[0.04em] shadow-[inset_0_1px_0_rgba(255,255,255,0.34),inset_0_-1px_0_rgba(0,0,0,0.12),0_1px_2px_rgba(31,42,36,0.14)] ring-1 ring-inset",
         tone.bg,
         tone.text,
         tone.ring,

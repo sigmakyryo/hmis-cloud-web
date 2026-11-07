@@ -44,11 +44,11 @@ export function PricelistsTable({
             onClick={() => onRowClick?.(pricelist)}
           >
             <ListPageDataTableCell>
-              <span className="block truncate font-medium text-brand-navy group-hover:text-brand-primary">
+              <span className="block truncate text-dash-muted group-hover:text-brand-navy">
                 {pricelist.name}
               </span>
             </ListPageDataTableCell>
-            <ListPageDataTableCell className="font-mono font-medium text-brand-navy">
+            <ListPageDataTableCell className="font-mono tabular-nums text-dash-muted">
               {pricelist.currency_code || "—"}
             </ListPageDataTableCell>
             <ListPageDataTableCell>
@@ -67,6 +67,7 @@ export function PricelistsTable({
                 name={pricelist.created_by_name}
                 imageUrl={pricelist.created_by_avatar_url}
                 size="sm"
+                tone="muted"
               />
             </ListPageDataTableCell>
             <ListPageDataTableCell className="tabular-nums text-dash-muted">

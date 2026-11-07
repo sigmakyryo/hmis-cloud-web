@@ -172,6 +172,20 @@ export async function archiveCatalogPricelist(pricelistUuid: string): Promise<vo
   });
 }
 
+export type PricelistProductSummaryStats = {
+  totalProducts: number;
+  medicines: number;
+  timeLimited: number;
+  addedThisMonth: number;
+};
+
+type PricelistProductSummaryStatsResponse = {
+  total_products: number;
+  medicines: number;
+  time_limited: number;
+  added_this_month: number;
+};
+
 export async function fetchCatalogPricelistProducts(
   pricelistUuid: string,
   filters: Pick<CatalogListFilters, "page" | "pageSize" | "search"> = {},
@@ -179,6 +193,21 @@ export async function fetchCatalogPricelistProducts(
   return bffRequest<PaginatedListResponse<CatalogPricelistMembership>>(
     `${BFF_INVENTORY_ROUTES.pricelists.products(pricelistUuid)}${buildCatalogQuery(filters)}`,
   );
+}
+
+export async function fetchPricelistProductSummaryStats(
+  pricelistUuid: string,
+): Promise<PricelistProductSummaryStats> {
+  const data = await bffRequest<PricelistProductSummaryStatsResponse>(
+    BFF_INVENTORY_ROUTES.pricelists.productsSummaryStats(pricelistUuid),
+  );
+
+  return {
+    totalProducts: data.total_products,
+    medicines: data.medicines,
+    timeLimited: data.time_limited,
+    addedThisMonth: data.added_this_month,
+  };
 }
 
 export async function addCatalogPricelistProduct(

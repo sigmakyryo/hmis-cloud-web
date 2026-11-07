@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/sidebar";
 
 import { AppBreadcrumbProvider } from "@/features/app-shell/providers/app-breadcrumb-provider";
+import { OverviewHomePrefetch } from "@/features/overview/components/OverviewHomePrefetch";
 import { WorkspaceUsageRecorder } from "@/features/overview/components/WorkspaceUsageRecorder";
 import { cn } from "@/lib/utils";
 
@@ -40,6 +41,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <PageActivityBar />
         </Suspense>
         <WorkspaceUsageRecorder />
+        <OverviewHomePrefetch />
         <AppSidebar />
         <SidebarInset className="min-h-0 overflow-hidden bg-dash-canvas">
           <AppBreadcrumbProvider>

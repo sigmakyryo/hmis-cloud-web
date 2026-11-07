@@ -6,10 +6,11 @@ import {
   CalendarPlus,
   Check,
   Copy,
-  ExternalLink,
   HeartPulse,
+  Mail,
   MoreHorizontal,
   Pencil,
+  Phone,
   User,
 } from "lucide-react";
 import { useState } from "react";
@@ -70,49 +71,77 @@ const columns = [
 
 function CustomerHoverPreview({ customer }: { customer: Customer }) {
   const name = formatCustomerName(customer);
+  const contact = customer.email?.trim() || customer.phone_number?.trim() || null;
+  const contactIsEmail = Boolean(customer.email?.trim());
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-3">
-        <UserIdenticon
-          seed={customer.uuid || customer.customer_identifier || name}
-          name={name}
-          className="size-9 rounded-lg"
-        />
-        <div className="min-w-0">
-          <p className="font-semibold text-brand-navy">{name}</p>
-          <p className="font-mono text-sm text-brand-muted">
-            {customer.customer_identifier || "No MRN"}
-          </p>
+    <div className="overflow-hidden">
+      <div className="space-y-3 px-4 pb-3 pt-4">
+        <div className="flex items-start gap-3">
+          <UserIdenticon
+            seed={customer.uuid || customer.customer_identifier || name}
+            name={name}
+            className="size-10 shrink-0 rounded-[0.7rem]"
+            fallbackClassName="rounded-[0.7rem]"
+          />
+          <div className="min-w-0 pt-0.5">
+            <p className="truncate text-[14px] font-semibold leading-tight text-brand-navy">
+              {name}
+            </p>
+            <p className="mt-0.5 text-[12px] leading-tight text-dash-muted">
+              Client
+            </p>
+          </div>
         </div>
+
+        {contact ? (
+          <p className="flex min-w-0 items-center gap-2 text-[12.5px] text-brand-slate">
+            {contactIsEmail ? (
+              <Mail className="size-3.5 shrink-0 text-dash-muted" aria-hidden />
+            ) : (
+              <Phone className="size-3.5 shrink-0 text-dash-muted" aria-hidden />
+            )}
+            <span className="truncate">{contact}</span>
+          </p>
+        ) : null}
       </div>
-      <div
-        className="-mx-4 border-t border-dash-border"
-        aria-hidden="true"
-      />
-      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm">
-        <dt className="text-brand-muted">Visit status</dt>
-        <dd>
-          <CustomerVisitStatusBadge status={customer.visit_status} />
-        </dd>
-        <dt className="text-brand-muted">Gender</dt>
-        <dd className="font-medium text-brand-navy">{customer.gender || "—"}</dd>
-        <dt className="text-brand-muted">Age</dt>
-        <dd className="font-medium text-brand-navy">
-          {formatCustomerListAge(customer) ?? "—"}
-        </dd>
-        <dt className="text-brand-muted">Phone</dt>
-        <dd className="font-medium text-brand-navy">{customer.phone_number || "—"}</dd>
-        <dt className="text-brand-muted">Email</dt>
-        <dd className="truncate font-medium text-brand-navy">{customer.email || "—"}</dd>
+
+      <div className="border-t border-dash-border/70" aria-hidden="true" />
+
+      <dl className="space-y-2.5 px-4 py-3 text-[12.5px]">
+        <div className="flex items-center justify-between gap-3">
+          <dt className="text-dash-muted">Visit status</dt>
+          <dd className="shrink-0">
+            <CustomerVisitStatusBadge status={customer.visit_status} />
+          </dd>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <dt className="text-dash-muted">Client ID</dt>
+          <dd className="truncate font-medium text-brand-navy">
+            {customer.customer_identifier || "—"}
+          </dd>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <dt className="text-dash-muted">Gender</dt>
+          <dd className="font-medium text-brand-navy">{customer.gender || "—"}</dd>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <dt className="text-dash-muted">Age</dt>
+          <dd className="font-medium text-brand-navy">
+            {formatCustomerListAge(customer) ?? "—"}
+          </dd>
+        </div>
       </dl>
-      <div className="border-t border-dash-border/60 pt-2">
+
+      <div className="border-t border-dash-border/70" aria-hidden="true" />
+
+      <div className="flex justify-end px-4 py-2.5">
         <Link
           href={ROUTES.customerDetail(customer.uuid)}
-          className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-primary hover:text-brand-primary-hover"
+          className="inline-flex items-center gap-1 text-[12.5px] font-medium text-brand-navy/80 transition-colors hover:text-brand-primary"
         >
-          <span>View client</span>
-          <ExternalLink className="size-3" />
+          View client
+          <span aria-hidden="true">→</span>
         </Link>
       </div>
     </div>
@@ -193,12 +222,14 @@ export function CustomersTable({
               >
                 <ListPageDataTableCell>
                   <HoverPreviewCard
+                    className="w-[17.5rem] p-0"
                     trigger={
                       <div className="flex min-w-0 items-center gap-2.5">
                         <UserIdenticon
                           seed={customer.uuid || identifier || name}
                           name={name}
-                          className="size-8 shrink-0 rounded-md"
+                          className="size-8 shrink-0 rounded-[0.55rem]"
+                          fallbackClassName="rounded-[0.55rem]"
                         />
                         <div className="min-w-0 space-y-0.5">
                           <Link

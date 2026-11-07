@@ -29,7 +29,7 @@ export function HoverPreviewCard({
         side={side}
         sideOffset={8}
         className={cn(
-          "w-64 rounded-xl border border-brand-border bg-white p-4 text-left text-brand-navy shadow-lg",
+          "w-64 rounded-xl border border-brand-border/80 bg-white p-4 text-left text-brand-navy shadow-[0_12px_40px_-16px_rgba(15,23,42,0.28)]",
           className,
         )}
       >
