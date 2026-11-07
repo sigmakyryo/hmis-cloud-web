@@ -1,17 +1,15 @@
 "use client";
 
-import {
-  LIST_PAGE_INSIGHT_CELL_CLASS,
-  LIST_PAGE_INSIGHT_LABEL_CLASS,
-  LIST_PAGE_INSIGHT_VALUE_CLASS,
-} from "@/features/app-shell/components/page-layout";
 import type { CustomerInvoicesStats } from "@/features/customers/types/customer-billing.types";
+import {
+  CustomerTabStat,
+  CustomerTabStatBand,
+} from "@/features/customers/components/detail/customer-tab-chrome";
 import { formatSalesOrderAmount } from "@/features/sales-orders/utils/format-sales-order";
 import {
   formatCompactAmount,
   formatCompactNumber,
 } from "@/utils/format-compact-number";
-import { cn } from "@/lib/utils";
 
 type CustomerInvoicePaymentStatsCardsProps = {
   stats: CustomerInvoicesStats | null;
@@ -20,7 +18,6 @@ type CustomerInvoicePaymentStatsCardsProps = {
 
 export function CustomerInvoicePaymentStatsCards({
   stats,
-  className,
 }: CustomerInvoicePaymentStatsCardsProps) {
   const buckets = stats ?? {
     all: { count: 0, total: 0 },
@@ -30,64 +27,32 @@ export function CustomerInvoicePaymentStatsCards({
   };
 
   return (
-    <dl
-      className={cn(
-        "grid grid-cols-2 divide-y divide-dash-border/60 border-b border-dash-border/80 sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4 lg:divide-x",
-        className,
-      )}
-      data-testid="customer-invoice-payment-stats"
-    >
-      <div className={LIST_PAGE_INSIGHT_CELL_CLASS}>
-        <dt className={LIST_PAGE_INSIGHT_LABEL_CLASS}>All invoices</dt>
-        <dd className={LIST_PAGE_INSIGHT_VALUE_CLASS}>
-          {formatCompactNumber(buckets.all.count)}
-        </dd>
-        <p
-          className="mt-0.5 text-xs text-brand-muted"
-          title={formatSalesOrderAmount(buckets.all.total, "MWK")}
-        >
-          {formatCompactAmount(buckets.all.total)} MWK · Total billed
-        </p>
-      </div>
-
-      <div className={LIST_PAGE_INSIGHT_CELL_CLASS}>
-        <dt className={LIST_PAGE_INSIGHT_LABEL_CLASS}>Paid</dt>
-        <dd className={LIST_PAGE_INSIGHT_VALUE_CLASS}>
-          {formatCompactNumber(buckets.paid.count)}
-        </dd>
-        <p
-          className="mt-0.5 text-xs text-brand-muted"
-          title={formatSalesOrderAmount(buckets.paid.total, "MWK")}
-        >
-          {formatCompactAmount(buckets.paid.total)} MWK · Settled
-        </p>
-      </div>
-
-      <div className={LIST_PAGE_INSIGHT_CELL_CLASS}>
-        <dt className={LIST_PAGE_INSIGHT_LABEL_CLASS}>Unpaid</dt>
-        <dd className={LIST_PAGE_INSIGHT_VALUE_CLASS}>
-          {formatCompactNumber(buckets.not_paid.count)}
-        </dd>
-        <p
-          className="mt-0.5 text-xs text-brand-muted"
-          title={formatSalesOrderAmount(buckets.not_paid.total, "MWK")}
-        >
-          {formatCompactAmount(buckets.not_paid.total)} MWK · Unpaid
-        </p>
-      </div>
-
-      <div className={LIST_PAGE_INSIGHT_CELL_CLASS}>
-        <dt className={LIST_PAGE_INSIGHT_LABEL_CLASS}>Partially paid</dt>
-        <dd className={LIST_PAGE_INSIGHT_VALUE_CLASS}>
-          {formatCompactNumber(buckets.partially_paid.count)}
-        </dd>
-        <p
-          className="mt-0.5 text-xs text-brand-muted"
-          title={formatSalesOrderAmount(buckets.partially_paid.total, "MWK")}
-        >
-          {formatCompactAmount(buckets.partially_paid.total)} MWK · Partial
-        </p>
-      </div>
-    </dl>
+    <CustomerTabStatBand data-testid="customer-invoice-payment-stats">
+      <CustomerTabStat
+        label="All invoices"
+        value={formatCompactNumber(buckets.all.count)}
+        hint={`${formatCompactAmount(buckets.all.total)} MWK billed`}
+      />
+      <CustomerTabStat
+        label="Paid"
+        value={formatCompactNumber(buckets.paid.count)}
+        hint={`${formatCompactAmount(buckets.paid.total)} MWK settled`}
+        accent={buckets.paid.count > 0}
+      />
+      <CustomerTabStat
+        label="Unpaid"
+        value={formatCompactNumber(buckets.not_paid.count)}
+        hint={
+          <span title={formatSalesOrderAmount(buckets.not_paid.total, "MWK")}>
+            {formatCompactAmount(buckets.not_paid.total)} MWK open
+          </span>
+        }
+      />
+      <CustomerTabStat
+        label="Partially paid"
+        value={formatCompactNumber(buckets.partially_paid.count)}
+        hint={`${formatCompactAmount(buckets.partially_paid.total)} MWK partial`}
+      />
+    </CustomerTabStatBand>
   );
 }

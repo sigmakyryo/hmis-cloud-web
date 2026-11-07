@@ -9,6 +9,11 @@ import { AddCustomerLegalGuardianDialog } from "@/features/customers/components/
 import { CustomerDetailTabEmptyState } from "@/features/customers/components/detail/CustomerDetailTabEmptyState";
 import { CustomerLegalGuardiansTable } from "@/features/customers/components/detail/CustomerLegalGuardiansTable";
 import { CustomerTabSkeleton } from "@/features/customers/components/detail/CustomerTabSkeleton";
+import {
+  CUSTOMER_TAB_BLEED_CLASS,
+  CustomerTabError,
+  CustomerTabActions,
+} from "@/features/customers/components/detail/customer-tab-chrome";
 import { UpdateCustomerLegalGuardianDialog } from "@/features/customers/components/detail/UpdateCustomerLegalGuardianDialog";
 import { ViewCustomerLegalGuardianDialog } from "@/features/customers/components/detail/ViewCustomerLegalGuardianDialog";
 import { VoidCustomerLegalGuardianDialog } from "@/features/customers/components/detail/VoidCustomerLegalGuardianDialog";
@@ -183,11 +188,7 @@ export function CustomerDetailLegalGuardiansTab({
   }
 
   if (loadError && !hasLoaded) {
-    return (
-      <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-6 text-sm text-red-700">
-        {loadError}
-      </div>
-    );
+    return <CustomerTabError message={loadError} />;
   }
 
   const addButton = (
@@ -274,15 +275,17 @@ export function CustomerDetailLegalGuardiansTab({
 
   return (
     <>
-      <div className="space-y-4" data-testid="customer-detail-legal-guardians-tab">
-        <div className="flex justify-end">{addButton}</div>
-        <CustomerLegalGuardiansTable
-          guardians={guardians}
-          voidingUuid={voidingUuid}
-          onEdit={setEditingGuardian}
-          onView={setViewingGuardian}
-          onVoid={setVoidingGuardian}
-        />
+      <div className="space-y-6" data-testid="customer-detail-legal-guardians-tab">
+        <CustomerTabActions>{addButton}</CustomerTabActions>
+        <div className={CUSTOMER_TAB_BLEED_CLASS}>
+          <CustomerLegalGuardiansTable
+            guardians={guardians}
+            voidingUuid={voidingUuid}
+            onEdit={setEditingGuardian}
+            onView={setViewingGuardian}
+            onVoid={setVoidingGuardian}
+          />
+        </div>
         {loadError && hasLoaded ? (
           <p className="text-sm text-red-700">{loadError}</p>
         ) : null}

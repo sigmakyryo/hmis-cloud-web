@@ -13,6 +13,7 @@ import {
 } from "@/features/customers/components/detail/CustomerDetailRecordList";
 import { CustomerDetailTabEmptyState } from "@/features/customers/components/detail/CustomerDetailTabEmptyState";
 import { CustomerTabSkeleton } from "@/features/customers/components/detail/CustomerTabSkeleton";
+import { CustomerTabError } from "@/features/customers/components/detail/customer-tab-chrome";
 import { UpdateCustomerNoteDialog } from "@/features/customers/components/detail/UpdateCustomerNoteDialog";
 import { fetchCustomerNotes } from "@/features/customers/services/customer-notes.service";
 import {
@@ -142,11 +143,7 @@ export function CustomerDetailNotesTab({
   }
 
   if (loadError && !hasLoaded) {
-    return (
-      <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-6 text-sm text-red-700">
-        {loadError}
-      </div>
-    );
+    return <CustomerTabError message={loadError} />;
   }
 
   const addButton = (
@@ -189,14 +186,8 @@ export function CustomerDetailNotesTab({
   return (
     <>
       <CustomerDetailRecordList
-        title={
-          <span className="inline-flex items-center gap-1.5">
-            <NotebookPen className="size-4 text-brand-primary" aria-hidden="true" />
-            <span>Notes</span>
-          </span>
-        }
-        description="Notes recorded for this client."
         action={addButton}
+        plain
         data-testid="customer-detail-notes-tab"
         footer={
           hasMore ? (

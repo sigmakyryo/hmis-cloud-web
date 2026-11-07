@@ -37,8 +37,7 @@ describe("page-layout", () => {
     expect(detailPage).toHaveAttribute("data-page-surface", "card");
     expect(detailPage.firstElementChild).toHaveClass(
       "overflow-hidden",
-      "rounded-xl",
-      "border-dash-border",
+      "bg-white",
     );
     expect(screen.getByText("Header")).toBeInTheDocument();
     expect(screen.getByTestId("detail-tabs")).toHaveClass("bg-white");
@@ -65,7 +64,8 @@ describe("page-layout", () => {
     const listHeader = screen.getByRole("heading", { name: "Clients" })
       .parentElement?.parentElement;
     expect(listHeader).toHaveAttribute("data-list-band");
-    expect(listHeader).toHaveClass("border-b", "px-4");
+    expect(listHeader).toHaveClass("px-3");
+    expect(listHeader).not.toHaveClass("border-b");
     const listTitle = screen.getByRole("heading", { name: "Clients" });
     expect(listTitle).toBeInTheDocument();
     expect(listTitle).toHaveClass(...PAGE_TITLE_CLASS.split(" "));

@@ -9,6 +9,7 @@ import {
 import {
   CustomerActivityTimeline,
 } from "@/features/customers/components/detail/CustomerActivityTimeline";
+import { CustomerOverviewFacts } from "@/features/customers/components/detail/CustomerOverviewFacts";
 import { CustomerTabSkeleton } from "@/features/customers/components/detail/CustomerTabSkeleton";
 import {
   extractCustomerBillingCounts,
@@ -267,14 +268,22 @@ export function CustomerDetailSummaryTab({
   }
 
   if (isLoading && !hasLoaded) {
-    return <CustomerTabSkeleton statCards={4} rows={5} />;
+    return (
+      <div data-testid="customer-detail-summary-tab">
+        <CustomerOverviewFacts customer={customer} />
+        <CustomerTabSkeleton statCards={4} rows={5} className="pt-4" />
+      </div>
+    );
   }
 
   if (loadError && !hasLoaded) {
     return (
-      <p className="px-1 py-6 text-sm text-red-700" role="alert">
-        {loadError}
-      </p>
+      <div data-testid="customer-detail-summary-tab">
+        <CustomerOverviewFacts customer={customer} />
+        <p className="px-1 py-6 text-sm text-red-700" role="alert">
+          {loadError}
+        </p>
+      </div>
     );
   }
 
@@ -284,8 +293,9 @@ export function CustomerDetailSummaryTab({
 
   return (
     <div className="space-y-0" data-testid="customer-detail-summary-tab">
+      <CustomerOverviewFacts customer={customer} />
       <dl
-        className="-mx-4 -mt-4 grid grid-cols-2 border-b border-dash-border sm:-mx-6 sm:grid-cols-4 sm:divide-x sm:divide-dash-border"
+        className="-mx-4 grid grid-cols-2 border-b border-dash-border sm:-mx-6 sm:grid-cols-4 sm:divide-x sm:divide-dash-border"
         data-testid="customer-detail-stats"
         aria-label="Client activity"
       >

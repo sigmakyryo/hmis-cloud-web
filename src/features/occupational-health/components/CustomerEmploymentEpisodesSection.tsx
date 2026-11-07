@@ -12,6 +12,7 @@ import type { EmploymentEpisode } from "@/features/occupational-health/types";
 import { fetchEmploymentEpisodes } from "@/features/occupational-health/services/oh.service";
 import { CustomerDetailTabEmptyState } from "@/features/customers/components/detail/CustomerDetailTabEmptyState";
 import { CustomerTabSkeleton } from "@/features/customers/components/detail/CustomerTabSkeleton";
+import { CustomerTabActions } from "@/features/customers/components/detail/customer-tab-chrome";
 import type { Customer } from "@/features/customers/types/customer.types";
 import { isModuleEnabled } from "@/features/app-shell/utils/module-entitlements";
 import { canAccessOccupationalHealth } from "@/features/occupational-health/utils/oh-access";
@@ -60,9 +61,23 @@ export function CustomerEmploymentEpisodesSection({
   }, [customer.uuid]);
 
   useEffect(() => {
-    if (isActive && hasOhAccess && !hasLoaded && !loadError) {
-      void loadEpisodes();
+    if (!isActive || !hasOhAccess || hasLoaded || loadError) {
+      return;
     }
+
+    let cancelled = false;
+
+    async function run() {
+      await Promise.resolve();
+      if (!cancelled) {
+        await loadEpisodes();
+      }
+    }
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
   }, [hasLoaded, hasOhAccess, isActive, loadEpisodes, loadError]);
 
   if (!hasOhModule) {
@@ -154,18 +169,12 @@ export function CustomerEmploymentEpisodesSection({
   }
 
   return (
-    <section className="space-y-4" data-testid="customer-employment-section">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-sm font-semibold text-brand-navy">Employment</h2>
-          <p className="text-[13px] text-brand-muted">
-            Occupational health employment episodes for this client.
-          </p>
-        </div>
+    <section className="space-y-6" data-testid="customer-employment-section">
+      <CustomerTabActions>
         <TabAddActionButton onClick={() => setDialogOpen(true)}>
           Add episode
         </TabAddActionButton>
-      </div>
+      </CustomerTabActions>
 
       <CustomerEmploymentEpisodesTable
         episodes={episodes}

@@ -25,43 +25,24 @@ type AddActionButtonProps = AppButtonProps & {
   emptyState?: boolean;
 };
 
-/** Secondary tab action — ghost style so page-level primary actions stay prominent. */
+/** Tab create action. Outlined so it stays visible on a white page. */
 export function TabAddActionButton({
   label = "Add",
   showIcon = true,
-  emptyState = false,
+  emptyState: _emptyState = false,
   className,
   children,
   ...props
 }: AddActionButtonProps) {
-  const content = (
-    <>
-      {showIcon ? <AppIcon name="add" size={14} /> : null}
-      {children ?? label}
-    </>
-  );
-
-  if (emptyState) {
-    return (
-      <SecondaryButton
-        size="sm"
-        className={cn("h-8 gap-1.5 px-4", className)}
-        {...props}
-      >
-        {content}
-      </SecondaryButton>
-    );
-  }
-
   return (
-    <Button
-      variant="ghost"
+    <SecondaryButton
       size="sm"
-      className={cn("h-8 gap-1.5 px-2.5 text-brand-navy", className)}
+      className={cn("h-8 gap-1.5 px-3", className)}
       {...props}
     >
-      {content}
-    </Button>
+      {showIcon ? <AppIcon name="add" size={14} /> : null}
+      {children ?? label}
+    </SecondaryButton>
   );
 }
 

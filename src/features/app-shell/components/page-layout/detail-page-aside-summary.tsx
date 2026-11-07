@@ -73,7 +73,9 @@ export function DetailPageAsideSummarySection({
         </h3>
         {action}
       </div>
-      <dl className={layout === "ledger" ? undefined : "space-y-3"}>{children}</dl>
+      {children ? (
+        <dl className={layout === "ledger" ? undefined : "space-y-3"}>{children}</dl>
+      ) : null}
     </div>
   );
 }

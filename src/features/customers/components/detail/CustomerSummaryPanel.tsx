@@ -8,11 +8,7 @@ import {
 } from "@/features/app-shell/components/page-layout";
 import { CustomerAccountSummaryCard } from "@/features/customers/components/detail/CustomerAccountSummaryCard";
 import type { Customer } from "@/features/customers/types/customer.types";
-import {
-  formatAdaptiveAge,
-  formatCustomerName,
-  formatDisplayDate,
-} from "@/features/customers/utils/format-customer";
+import { formatDisplayDate } from "@/features/customers/utils/format-customer";
 import { TagBadgeList } from "@/features/tags/components/TagBadgeList";
 import type { Tag } from "@/features/tags/types/tag.types";
 
@@ -53,9 +49,6 @@ export function CustomerSummaryPanel({
   onBillingUpdated,
   className,
 }: CustomerSummaryPanelProps) {
-  const fullName = formatCustomerName(customer);
-  const ageDisplay = formatAdaptiveAge(customer.dob);
-
   return (
     <DetailPageAsidePanelSection className={className}>
       <CustomerAccountSummaryCard
@@ -66,8 +59,7 @@ export function CustomerSummaryPanel({
       />
 
       <DetailPageAsideSummarySection
-        title="Personal"
-        layout="ledger"
+        title="Profile"
         action={
           <Button
             type="button"
@@ -81,66 +73,7 @@ export function CustomerSummaryPanel({
           </Button>
         }
       >
-        <RecordLine label="Name" value={fullName} />
-        <RecordLine
-          label="Client ID"
-          value={
-            <span className="font-mono text-[12px]">{customer.customer_identifier}</span>
-          }
-        />
-        <RecordLine
-          label="Internal reference"
-          value={
-            customer.internal_reference ? (
-              <span className="font-mono text-[12px]">{customer.internal_reference}</span>
-            ) : (
-              "—"
-            )
-          }
-        />
-        <RecordLine
-          label="Phone"
-          value={
-            customer.phone_number ? (
-              <a
-                href={`tel:${customer.phone_number}`}
-                className="hover:text-brand-primary"
-              >
-                {customer.phone_number}
-              </a>
-            ) : (
-              "—"
-            )
-          }
-        />
-        <RecordLine
-          label="Email"
-          value={
-            customer.email ? (
-              <a
-                href={`mailto:${customer.email}`}
-                className="break-all hover:text-brand-primary"
-              >
-                {customer.email}
-              </a>
-            ) : (
-              "—"
-            )
-          }
-        />
-        <RecordLine label="Gender" value={customer.gender} />
-        <RecordLine
-          label="Date of birth"
-          value={
-            <>
-              {formatDisplayDate(customer.dob)}
-              {customer.dob_is_estimated ? (
-                <span className="ml-1 font-normal text-dash-muted">(estimated)</span>
-              ) : null}
-            </>
-          }
-        />
-        <RecordLine label="Age" value={ageDisplay} />
+        {null}
       </DetailPageAsideSummarySection>
 
       <DetailPageAsideSummarySection
@@ -174,7 +107,6 @@ export function CustomerSummaryPanel({
             </span>
           }
         />
-        <RecordLine label="Registered" value={formatDisplayDate(customer.created_at)} />
         <RecordLine label="Last updated" value={formatDisplayDate(customer.updated_at)} />
       </DetailPageAsideSummarySection>
     </DetailPageAsidePanelSection>

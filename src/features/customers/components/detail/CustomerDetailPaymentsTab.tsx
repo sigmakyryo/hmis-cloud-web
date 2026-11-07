@@ -4,12 +4,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Wallet } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { ListPagePagination } from "@/features/app-shell/components/page-layout";
 import { CustomerInvoicePaymentStatsCards } from "@/features/customers/components/detail/CustomerInvoicePaymentStatsCards";
 import { CustomerDetailTabEmptyState } from "@/features/customers/components/detail/CustomerDetailTabEmptyState";
 import { CustomerPaymentsTable } from "@/features/customers/components/detail/CustomerPaymentsTable";
 import { CustomerTabSkeleton } from "@/features/customers/components/detail/CustomerTabSkeleton";
+import {
+  CUSTOMER_TAB_BLEED_CLASS,
+  CustomerTabError,
+} from "@/features/customers/components/detail/customer-tab-chrome";
 import { fetchCustomerPayments } from "@/features/customers/services/customer-billing.service";
 import type {
   CustomerInvoicesStats,
@@ -130,19 +133,15 @@ export function CustomerDetailPaymentsTab({
 
   if (loadError && !hasLoaded) {
     return (
-      <div className="space-y-3">
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-6 text-sm text-red-700">
-          {loadError}
-        </div>
-        <Button type="button" variant="outline" onClick={() => void loadPayments(1)}>
-          Try again
-        </Button>
-      </div>
+      <CustomerTabError
+        message={loadError}
+        onRetry={() => void loadPayments(1)}
+      />
     );
   }
 
   return (
-    <div className="space-y-5" data-testid="customer-detail-payments-tab">
+    <div className="space-y-6" data-testid="customer-detail-payments-tab">
       <CustomerInvoicePaymentStatsCards stats={invoicesStats} />
 
       {totalCount === 0 ? (
@@ -153,7 +152,7 @@ export function CustomerDetailPaymentsTab({
           data-testid="customer-payments-empty-state"
         />
       ) : (
-        <>
+        <div className={CUSTOMER_TAB_BLEED_CLASS}>
           <CustomerPaymentsTable
             payments={payments}
             onRowClick={(payment) =>
@@ -172,8 +171,9 @@ export function CustomerDetailPaymentsTab({
             hasPrevious={hasPrevious}
             isLoading={isRefreshing}
             onPageChange={setPage}
+            className="border-t-0"
           />
-        </>
+        </div>
       )}
     </div>
   );
