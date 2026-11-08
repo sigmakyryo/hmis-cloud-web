@@ -424,6 +424,9 @@ export const BFF_OCCUPATIONAL_HEALTH_ROUTES = {
   examTemplates: "/api/occupational-health/exam-templates",
   examTemplate: (uuid: string) =>
     `/api/occupational-health/exam-templates/${uuid}`,
+  examTemplateAiChat: (uuid: string) => `/api/occupational-health/exam-templates/${encodeURIComponent(uuid)}/ai/chat`,
+  examTemplateAiStream: (uuid: string) => `/api/occupational-health/exam-templates/${encodeURIComponent(uuid)}/ai/stream`,
+  examTemplateAiApply: (uuid: string) => `/api/occupational-health/exam-templates/${encodeURIComponent(uuid)}/ai/apply`,
   examTemplatePublish: (uuid: string) =>
     `/api/occupational-health/exam-templates/${uuid}/publish`,
   examTemplateVersions: (uuid: string) =>

@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowDown, ArrowUp, ChevronRight, Lock, SlidersHorizontal } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { RequiredFieldMarker } from "@/components/ui/required-field-marker";
 import { formatCatalogScheduleSummary } from "@/features/occupational-health/services/oh.service";
@@ -16,6 +16,7 @@ import type {
   BuilderAttachment,
   BuilderItem,
 } from "@/features/oh-template-builder/template-builder.types";
+import { scrollToCertificateSection } from "@/features/oh-template-builder/lib/certificateEditorScroll";
 import { cn } from "@/lib/utils";
 
 /** Shared by item rows and the canvas column header so the columns line up. */
@@ -32,7 +33,7 @@ type CanvasSectionProps = {
 
 export function CanvasSection({ attachment, isFirst, isLast }: CanvasSectionProps) {
   const { selection, select, moveSection, reorderItems, isBusy } = useTemplateBuilder();
-  const [isOpen, setIsOpen] = useState(true);
+  const [disclosure, setDisclosure] = useState({ selection, open: true });
   const itemsQuery = useSectionItems(attachment.sectionUuid);
   const section = attachment.section;
   const isDirect = section?.contentMode === "direct";
@@ -50,10 +51,17 @@ export function CanvasSection({ attachment, isFirst, isLast }: CanvasSectionProp
     selection.type === "item" && selection.attachmentUuid === attachment.uuid
       ? selection.itemUuid
       : null;
+  const isOpen = disclosure.selection !== selection && (isSectionSelected || selectedItemUuid) ? true : disclosure.open;
   const items = itemsQuery.data?.items ?? [];
   const total = itemsQuery.data?.total ?? attachment.itemCount;
   const hiddenCount = Math.max(0, (itemsQuery.data?.total ?? 0) - items.length);
   const bodyId = `canvas-section-body-${attachment.uuid}`;
+
+  useEffect(() => {
+    if (isOpen && (isSectionSelected || selectedItemUuid)) {
+      scrollToCertificateSection(attachment.uuid, false, selectedItemUuid ?? undefined);
+    }
+  }, [attachment.uuid, isOpen, isSectionSelected, selectedItemUuid, items.length]);
 
   return (
     <li
@@ -72,7 +80,7 @@ export function CanvasSection({ attachment, isFirst, isLast }: CanvasSectionProp
           aria-expanded={isOpen}
           aria-controls={bodyId}
           aria-label={isOpen ? `Collapse ${name}` : `Expand ${name}`}
-          onClick={() => setIsOpen((open) => !open)}
+          onClick={() => setDisclosure({ selection, open: !isOpen })}
           className="flex size-5 shrink-0 items-center justify-center rounded text-dash-muted hover:bg-slate-200/70 hover:text-brand-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
         >
           <ChevronRight
@@ -184,6 +192,7 @@ export function CanvasSection({ attachment, isFirst, isLast }: CanvasSectionProp
                 renderItem={(item, handle) => (
                   <CanvasItemRow
                     item={item}
+                    targetId={`template-editor-item-${attachment.uuid}-${item.uuid}`}
                     mode={mode}
                     dragHandle={handle}
                     isSelected={item.uuid === selectedItemUuid}
@@ -252,6 +261,7 @@ function IconButton({
 
 type CanvasItemRowProps = {
   item: BuilderItem;
+  targetId: string;
   mode: "exclusive" | "inclusive";
   isSelected: boolean;
   onSelect: () => void;
@@ -260,6 +270,7 @@ type CanvasItemRowProps = {
 
 function CanvasItemRow({
   item,
+  targetId,
   mode,
   isSelected,
   onSelect,
@@ -273,7 +284,7 @@ function CanvasItemRow({
       : "Selection only";
 
   return (
-    <div className="flex items-center gap-1">
+    <div id={targetId} className="flex items-center gap-1">
       {dragHandle}
       <button
         type="button"

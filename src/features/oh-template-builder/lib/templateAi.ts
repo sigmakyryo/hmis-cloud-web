@@ -1,4 +1,5 @@
 import { BFF_OCCUPATIONAL_HEALTH_ROUTES } from "@/constants/api";
+import type { TemplateKind } from "@/features/oh-template-builder/template-builder.types";
 import { bffRequest } from "@/lib/bff-client";
 
 export type CofTemplateAiField = {
@@ -51,4 +52,15 @@ export async function applyCofTemplateAiOperations(
     BFF_OCCUPATIONAL_HEALTH_ROUTES.cofTemplateAiApply(templateUuid),
     { method: "POST", body: payload },
   );
+}
+
+export function templateAiRoute(kind: TemplateKind, uuid: string, action: "stream" | "chat" | "apply") {
+  const routes = kind === "exam"
+    ? { stream: BFF_OCCUPATIONAL_HEALTH_ROUTES.examTemplateAiStream, chat: BFF_OCCUPATIONAL_HEALTH_ROUTES.examTemplateAiChat, apply: BFF_OCCUPATIONAL_HEALTH_ROUTES.examTemplateAiApply }
+    : { stream: BFF_OCCUPATIONAL_HEALTH_ROUTES.cofTemplateAiStream, chat: BFF_OCCUPATIONAL_HEALTH_ROUTES.cofTemplateAiChat, apply: BFF_OCCUPATIONAL_HEALTH_ROUTES.cofTemplateAiApply };
+  return routes[action](uuid);
+}
+
+export async function applyExamTemplateAiOperations(templateUuid: string, payload: { operations: CofTemplateAiOperation[] }) {
+  return bffRequest<CofTemplateAiApplyResponse>(templateAiRoute("exam", templateUuid, "apply"), { method: "POST", body: payload });
 }

@@ -5,28 +5,29 @@ import type { BuilderSelection } from "@/features/oh-template-builder/template-b
 
 const state = vi.hoisted(() => ({
   toast: vi.fn(),
+  kind: "certificate" as "exam" | "certificate",
   selection: { type: "template" } as BuilderSelection,
-  apply: vi.fn(), invalidate: vi.fn(), createSection: vi.fn(), attachSection: vi.fn(), select: vi.fn(), flush: vi.fn(), publish: vi.fn(), replace: vi.fn(), pending: false,
+  apply: vi.fn(), invalidate: vi.fn(), createSection: vi.fn(), attachSection: vi.fn(), select: vi.fn(), flush: vi.fn(), publish: vi.fn(), replace: vi.fn(), rename: vi.fn(), pending: false,
 }));
-vi.mock("@/features/oh-template-builder/lib/templateAi", () => ({ applyCofTemplateAiOperations: state.apply }));
+vi.mock("@/features/oh-template-builder/lib/templateAi", async (original) => ({ ...await original<typeof import("@/features/oh-template-builder/lib/templateAi")>(), applyCofTemplateAiOperations: state.apply, applyExamTemplateAiOperations: state.apply }));
 vi.mock("sonner", () => ({ toast: { error: state.toast } }));
 vi.mock("next/navigation", () => ({ usePathname: () => "/templates/certificate/test", useRouter: () => ({ replace: state.replace }) }));
 vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({ invalidateQueries: state.invalidate, getQueryData: vi.fn() }) }));
 vi.mock("@/features/oh-template-builder/hooks/useTemplateBuilder", () => ({
   useTemplateBuilder: () => ({
-    template: { name: "Workplace fitness" }, templateUuid: "test",
+    template: { name: "Workplace fitness" }, templateUuid: "test", kind: state.kind,
     attachments: [{ uuid: "a", sectionUuid: "s", section: { name: "Medical history" } }],
     selection: state.selection, select: state.select, isLoading: false,
     library: [{ uuid: "library-section", name: "Vision screening", code: "VISION" }, { uuid: "other-section", name: "Hearing screening", code: "HEARING" }],
     attachSection: state.attachSection, createSection: state.createSection, publishTemplate: state.publish, flushPendingSaves: state.flush,
-    isPending: () => state.pending, isBusy: false,
+    renameTemplate: state.rename, isPending: () => state.pending, isBusy: false,
   }),
   useSectionItems: () => ({ data: { items: [] }, isPending: false }),
 }));
 vi.mock("@/features/oh-template-builder/components/TemplateInspector", () => ({
   TemplateInspector: () => <div>{state.selection.type === "template" ? "Template inspector" : "Selected section inspector"}</div>,
 }));
-vi.mock("@/features/oh-template-builder/components/CertificateEditorCanvas", () => ({ CertificateEditorCanvas: () => <div>Complete document canvas</div> }));
+vi.mock("@/features/oh-template-builder/components/TemplateCanvas", () => ({ TemplateCanvas: () => <div>Complete document canvas</div> }));
 vi.mock("@/features/oh-template-builder/components/TemplatePreview", () => ({ TemplatePreview: () => <div>Certificate preview</div> }));
 vi.mock("@/features/oh-template-builder/stores/certificate-studio.store", () => ({
   useCertificateStudioStore: (selector: (value: object) => unknown) => selector({ acceptOperation: vi.fn(), note: null, setNote: vi.fn() }),
@@ -36,6 +37,7 @@ vi.mock("@/features/oh-template-builder/stores/certificate-studio.store", () => 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 beforeEach(() => {
   vi.clearAllMocks();
+  state.kind = "certificate";
   state.selection = { type: "template" };
   state.pending = false;
   state.apply.mockResolvedValue({ applied: [], errors: [] });
@@ -325,11 +327,12 @@ it("shows a scope-refusal toast without enqueuing mutations", async () => {
   expect(state.apply).not.toHaveBeenCalled();
 });
 
-it("requires exact target selection and sends a bound native approval rather than delete operations", async () => {
+it.each(["exam", "certificate"] as const)("%s requires exact target selection and bound native approval", async (kind) => {
+  state.kind = kind;
   const fetch = vi.fn().mockResolvedValueOnce(controlStream({ type: "approval_required", token: "nonce", expires_at: "2099-01-01T00:00:00Z", approvals: [{ id: "delete-1", label: "Detach Vitals", effect: "Shared content remains." }] }, { type: "conversation", conversation_id: "conversation" })).mockResolvedValueOnce(controlStream({ type: "approval_result", completed: 1, failed: 0 }));
   vi.stubGlobal("fetch", fetch);
   render(<CertificateStudio view="edit" />);
-  fireEvent.change(screen.getByRole("textbox", { name: "Describe changes for the certificate assistant" }), { target: { value: "Remove Vitals" } });
+  fireEvent.change(screen.getByRole("textbox", { name: `Describe changes for the ${kind} assistant` }), { target: { value: "Remove Vitals" } });
   fireEvent.click(screen.getByRole("button", { name: "Send" }));
   const approve = await screen.findByRole("button", { name: "Approve selected" });
   expect(approve).toBeDisabled();
@@ -353,4 +356,31 @@ it("rejects all pending targets without calling the mutation queue", async () =>
   await screen.findByText("Rejected — no deletion performed");
   expect(JSON.parse(fetch.mock.calls[1][1].body).decisions).toEqual({ "delete-1": false });
   expect(state.apply).not.toHaveBeenCalled();
+});
+
+
+it("gives exam the approved studio shell but sends drafts only to the exam API", async () => {
+  state.kind = "exam";
+  const fetch = vi.fn().mockResolvedValue(controlStream({ type: "refusal", message: "Can't help with that." }));
+  vi.stubGlobal("fetch", fetch);
+  render(<CertificateStudio view="edit" />);
+  expect(screen.getByRole("link", { name: "Back to exam templates" })).toHaveAttribute("href", "/settings/modules/occupational-health?tab=exam-templates");
+  expect(screen.getByRole("complementary", { name: "Exam editor sidebar" })).toHaveClass("my-3", "mr-3", "rounded-lg", "md:grow");
+  expect(screen.getByRole("banner", { name: "Exam editor header" })).toBeInTheDocument();
+  fireEvent.change(screen.getByRole("textbox", { name: "Describe changes for the exam assistant" }), { target: { value: "Write a poem" } });
+  fireEvent.click(screen.getByRole("button", { name: "Send" }));
+  await waitFor(() => expect(state.toast).toHaveBeenCalledWith("Can't help with that."));
+  expect(fetch.mock.calls[0][0]).toBe("/api/occupational-health/exam-templates/test/ai/stream");
+  expect(state.apply).not.toHaveBeenCalled();
+});
+
+
+it("preserves exam header renaming through the existing save handler", async () => {
+  state.kind = "exam";
+  state.rename.mockResolvedValue(true);
+  render(<CertificateStudio view="edit" />);
+  const name = screen.getByRole("textbox", { name: "Template name" });
+  fireEvent.change(name, { target: { value: "Updated examination" } });
+  fireEvent.blur(name);
+  await waitFor(() => expect(state.rename).toHaveBeenCalledWith("Updated examination"));
 });

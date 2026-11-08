@@ -79,6 +79,9 @@ export const OCCUPATIONAL_HEALTH_API_PATHS = {
   ohLibrarySectionItemsReorder: "/oh-library-section-items/reorder/",
   ohExamTemplates: "/oh-exam-templates/",
   ohExamTemplate: (uuid: string) => `/oh-exam-templates/${uuid}/`,
+  ohExamTemplateAiChat: (uuid: string) => `/oh-exam-templates/${encodeURIComponent(uuid)}/ai/chat/`,
+  ohExamTemplateAiStream: (uuid: string) => `/oh-exam-templates/${encodeURIComponent(uuid)}/ai/stream/`,
+  ohExamTemplateAiApply: (uuid: string) => `/oh-exam-templates/${encodeURIComponent(uuid)}/ai/apply/`,
   ohExamTemplatePublish: (uuid: string) => `/oh-exam-templates/${uuid}/publish/`,
   ohExamTemplateVersions: (uuid: string) =>
     `/oh-exam-templates/${uuid}/versions/`,

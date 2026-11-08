@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { applyCofTemplateAiOperations, type CofTemplateAiOperation, type CofTemplateAiApplyResponse } from "@/features/oh-template-builder/lib/templateAi";
+import type { TemplateKind } from "@/features/oh-template-builder/template-builder.types";
+import { applyExamTemplateAiOperations, applyCofTemplateAiOperations, type CofTemplateAiOperation, type CofTemplateAiApplyResponse } from "@/features/oh-template-builder/lib/templateAi";
 import { getErrorMessage } from "@/lib/fetch-error";
 
 /** A queue belongs to one mounted template session, not a global studio store. */
-export function useTemplateAiQueue(templateUuid: string) {
+export function useTemplateAiQueue(templateUuid: string, kind: TemplateKind = "certificate") {
   const [note, setNote] = useState("");
   const active = useRef(true);
   const queue = useRef<Promise<void>>(Promise.resolve());
@@ -19,7 +20,7 @@ export function useTemplateAiQueue(templateUuid: string) {
     const task = queue.current.then(async (): Promise<(CofTemplateAiApplyResponse & { uncertain?: boolean }) | null> => {
       if (!active.current) return null;
       try {
-        const result = await applyCofTemplateAiOperations(templateUuid, { operations });
+        const result = await (kind === "exam" ? applyExamTemplateAiOperations : applyCofTemplateAiOperations)(templateUuid, { operations });
         if (active.current && result.errors?.length) setNote(result.errors.join("\n"));
         return result;
       } catch (error: unknown) {

@@ -1,5 +1,6 @@
+import { POST as examPost } from "@/app/api/occupational-health/exam-templates/[uuid]/ai/stream/route";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { POST } from "@/app/api/occupational-health/cof-templates/[uuid]/ai/stream/route";
+import { POST as cofPost } from "@/app/api/occupational-health/cof-templates/[uuid]/ai/stream/route";
 
 const auth = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/server/require-access-token", () => ({ requireAccessToken: auth }));
@@ -15,13 +16,13 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
-describe("certificate AI BFF stream proxy", () => {
+describe.each([["cof", cofPost], ["exam", examPost]] as const)("%s AI BFF stream proxy", (kind, POST) => {
   it("forwards the template UUID, prompt, session and cancellation signal without buffering SSE", async () => {
     const body = 'data: {"type":"text_delta","delta":"Ready"}\n\ndata: [DONE]\n\n';
     fetchMock.mockResolvedValue(new Response(body, { headers: { "content-type": "text/event-stream" } }));
     const incoming = request();
     const response = await POST(incoming, context);
-    expect(fetchMock).toHaveBeenCalledWith("https://oh.test/api/oh-cof-templates/template-uuid/ai/stream/", expect.objectContaining({
+    expect(fetchMock).toHaveBeenCalledWith(`https://oh.test/api/oh-${kind}-templates/template-uuid/ai/stream/`, expect.objectContaining({
       method: "POST", body: JSON.stringify({ prompt: "Add vision" }), signal: incoming.signal,
       headers: expect.objectContaining({ "X-HMIS-Session": "test-session" }),
     }));

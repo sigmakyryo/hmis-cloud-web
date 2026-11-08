@@ -8,12 +8,12 @@ import { ArrowLeft, ChevronRight, Loader2, Plus, Search, Send, SlidersHorizontal
 import { useEffect, useLayoutEffect, useRef, useState, useTransition } from "react";
 
 import { PrimaryButton } from "@/components/ui/app-buttons";
-import { BFF_OCCUPATIONAL_HEALTH_ROUTES } from "@/constants/api";
+import { templateAiRoute } from "@/features/oh-template-builder/lib/templateAi";
 import { AddSectionSheet } from "@/features/oh-template-builder/components/AddSectionSheet";
-import { CertificateEditorCanvas } from "@/features/oh-template-builder/components/CertificateEditorCanvas";
+import { TemplateCanvas } from "@/features/oh-template-builder/components/TemplateCanvas";
 import { TemplateInspector } from "@/features/oh-template-builder/components/TemplateInspector";
 import { TemplatePreview } from "@/features/oh-template-builder/components/TemplatePreview";
-import type { BuilderMode } from "@/features/oh-template-builder/components/TemplateBuilderTopBar";
+import { TemplateNameField, type BuilderMode } from "@/features/oh-template-builder/components/TemplateBuilderTopBar";
 import {
   useSectionItems,
   useTemplateBuilder,
@@ -25,7 +25,7 @@ import {
   templateGalleryHref,
   templateQueryKeys,
 } from "@/features/oh-template-builder/lib/templateKinds";
-import { readCertificateAiStream, validateCertificateAiDraft } from "@/features/oh-template-builder/lib/templateAiStream";
+import { readTemplateAiStream, validateCertificateAiDraft } from "@/features/oh-template-builder/lib/templateAiStream";
 import { useTemplateAiQueue } from "@/features/oh-template-builder/hooks/useTemplateAiQueue";
 import { defaultResponseFields } from "@/features/settings/components/modules/occupational-health/template-library/responseConfig";
 import type { BuilderAttachment } from "@/features/oh-template-builder/template-builder.types";
@@ -50,18 +50,20 @@ type CertificateStudioProps = {
 export function CertificateStudio({ view }: CertificateStudioProps) {
   const {
     template,
+    kind = "certificate",
     templateUuid,
     attachments,
     selection,
     select,
     isLoading,
+    loadError,
     createSection,
     publishTemplate,
     flushPendingSaves,
     isPending,
     isBusy,
   } = useTemplateBuilder();
-  const { enqueue, note, setNote: writeNote } = useTemplateAiQueue(templateUuid);
+  const { enqueue, note, setNote: writeNote } = useTemplateAiQueue(templateUuid, kind);
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [prompt, setPrompt] = useState("");
@@ -112,6 +114,10 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
       : attachments.find((row) => row.uuid === selection.attachmentUuid);
   const publishing = isPending("template:publish");
 
+  if (loadError) {
+    return <div role="alert" className="flex h-full flex-col items-center justify-center gap-3 bg-[#fafaf9] p-6 text-sm text-brand-navy"><h1>This template could not be opened</h1><p>{getErrorMessage(loadError, "It may have been archived or you may no longer have access.")}</p><Link href={templateGalleryHref(kind)} className="text-brand-primary underline">Back to templates</Link></div>;
+  }
+
   async function send(text: string, approval?: AiApprovalDecision) {
     const controller = new AbortController();
     streamAbort.current = controller;
@@ -128,7 +134,7 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
     let deletionResult: { completed: number; failed: number; rejected: number | boolean } | null = null;
     try {
       const response = await fetch(
-        BFF_OCCUPATIONAL_HEALTH_ROUTES.cofTemplateAiStream(templateUuid),
+        templateAiRoute(kind, templateUuid, "stream"),
         {
           method: "POST",
           signal: controller.signal,
@@ -138,7 +144,7 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
         },
       );
       if (response.ok && !approval) setActivity("Generating draft");
-      for await (const event of readCertificateAiStream(response)) {
+      for await (const event of readTemplateAiStream(response, kind)) {
         if (!active.current) break;
         if (event.type === "text_delta" && event.delta) {
           raw += event.delta;
@@ -171,8 +177,8 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
       if (deletionResult) {
         setActivity(deletionResult.completed ? `${deletionResult.completed} approved deletions completed${deletionResult.failed ? `; ${deletionResult.failed} failed` : ""}` : deletionResult.failed ? "Deletion failed — review a fresh proposal" : "Rejected — no deletion performed");
         if (deletionResult.completed) await Promise.all([
-          queryClient.invalidateQueries({ queryKey: templateQueryKeys.attachments("certificate", templateUuid) }),
-          queryClient.invalidateQueries({ queryKey: ["oh-templates", "certificate", "items"] }),
+          queryClient.invalidateQueries({ queryKey: templateQueryKeys.attachments(kind, templateUuid) }),
+          queryClient.invalidateQueries({ queryKey: ["oh-templates", kind, "items"] }),
         ]);
         return;
       }
@@ -201,13 +207,13 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
       const changed = new Set(result.applied.map((row) => row.type));
       const invalidations = [];
       if (result.uncertain || changed.has("create_section") || changed.has("attach_section") || changed.has("create_item")) {
-        invalidations.push(queryClient.invalidateQueries({ queryKey: templateQueryKeys.attachments("certificate", templateUuid) }));
+        invalidations.push(queryClient.invalidateQueries({ queryKey: templateQueryKeys.attachments(kind, templateUuid) }));
       }
       if (result.uncertain || changed.has("create_section")) {
-        invalidations.push(queryClient.invalidateQueries({ queryKey: templateQueryKeys.library("certificate") }));
+        invalidations.push(queryClient.invalidateQueries({ queryKey: templateQueryKeys.library(kind) }));
       }
       if (result.uncertain || changed.has("create_item")) {
-        invalidations.push(queryClient.invalidateQueries({ queryKey: ["oh-templates", "certificate", "items"] }));
+        invalidations.push(queryClient.invalidateQueries({ queryKey: ["oh-templates", kind, "items"] }));
       }
       try {
         await Promise.all(invalidations);
@@ -216,7 +222,7 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
       }
       if (!active.current) return;
       const rows = queryClient.getQueryData<typeof attachments>(
-        templateQueryKeys.attachments("certificate", templateUuid),
+        templateQueryKeys.attachments(kind, templateUuid),
       );
       const created = rows?.find((row) => !known.has(row.uuid));
       if (active.current && created) {
@@ -279,22 +285,26 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
   // 51rem bounds the middle to its 48rem document plus 3rem responsive gutters.
   // The right column, rather than empty document margins, absorbs any remaining width.
   return (
-    <div className={cn("flex h-full min-h-0 flex-col overflow-y-auto bg-[#fafaf9] [--certificate-sidebar-width:14rem] xl:[--certificate-sidebar-width:16rem] [--certificate-document-column:51rem] [--certificate-config-width:16rem] lg:[--certificate-config-width:20rem] xl:[--certificate-config-width:22rem] md:flex-row md:overflow-hidden", appFont.className)}>
-      <div aria-label="Certificate workspace" className="flex min-h-0 min-w-0 flex-1 flex-col bg-inherit md:basis-[calc(var(--certificate-sidebar-width)+var(--certificate-document-column))] md:max-w-[calc(var(--certificate-sidebar-width)+var(--certificate-document-column))]">
-      <header aria-label="Certificate editor header" className="grid shrink-0 items-center gap-y-2 py-2 md:grid-cols-[var(--certificate-sidebar-width)_minmax(0,1fr)]">
+    <div onKeyDown={(event) => {
+      if (event.key === "Escape" && !["INPUT", "TEXTAREA", "SELECT"].includes((event.target as HTMLElement).tagName)) select({ type: "template" });
+    }} className={cn("flex h-full min-h-0 flex-col overflow-y-auto bg-[#fafaf9] [--certificate-sidebar-width:14rem] xl:[--certificate-sidebar-width:16rem] [--certificate-document-column:51rem] [--certificate-config-width:16rem] lg:[--certificate-config-width:20rem] xl:[--certificate-config-width:22rem] md:flex-row md:overflow-hidden", appFont.className)}>
+      <div aria-label={`${kind === "exam" ? "Exam" : "Certificate"} workspace`} className="flex min-h-0 min-w-0 flex-1 flex-col bg-inherit md:basis-[calc(var(--certificate-sidebar-width)+var(--certificate-document-column))] md:max-w-[calc(var(--certificate-sidebar-width)+var(--certificate-document-column))]">
+      <header aria-label={`${kind === "exam" ? "Exam" : "Certificate"} editor header`} className="grid shrink-0 items-center gap-y-2 py-2 md:grid-cols-[var(--certificate-sidebar-width)_minmax(0,1fr)]">
           <div className="flex min-w-0 items-center justify-between gap-2 px-3">
             <div className="flex min-w-0 flex-1 items-center gap-1.5">
               <Link
-                href={templateGalleryHref("certificate")}
-                aria-label="Back to certificate catalog"
-                title="Back to certificate catalog"
+                href={templateGalleryHref(kind)}
+                aria-label={kind === "exam" ? "Back to exam templates" : "Back to certificate catalog"}
+                title={kind === "exam" ? "Back to exam templates" : "Back to certificate catalog"}
                 className="grid size-6 shrink-0 place-items-center rounded-full text-dash-muted hover:text-brand-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
               >
                 <ArrowLeft className="size-3.5" aria-hidden />
               </Link>
-              <h1 title={template?.name || "Untitled certificate"} className="min-w-0 truncate text-sm font-semibold tracking-tight text-brand-navy">
-                {isLoading ? "Opening" : template?.name || "Untitled certificate"}
-              </h1>
+              {kind === "exam" && template ? <TemplateNameField key={`${template.uuid}:${template.name}`} initialName={template.name} compact /> : (
+              <h1 title={template?.name || (kind === "exam" ? "Untitled exam template" : "Untitled certificate")} className="min-w-0 truncate text-sm font-semibold tracking-tight text-brand-navy">
+                {isLoading ? "Opening" : template?.name || (kind === "exam" ? "Untitled exam template" : "Untitled certificate")}
+              </h1>              )}
+
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
               <button
@@ -337,7 +347,7 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
                   </ViewChip>
                 </div>
               </div>
-              <div aria-label="Certificate publishing actions" className="justify-self-end xl:col-start-3">
+              <div aria-label={`${kind === "exam" ? "Exam" : "Certificate"} publishing actions`} className="justify-self-end xl:col-start-3">
                 <PrimaryButton
 
                   type="button"
@@ -358,9 +368,9 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
           </div>
       </header>
         <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-      <aside aria-label="Certificate section outline" className={cn(SIDEBAR_SIZE, "flex max-h-48 flex-col overflow-hidden bg-inherit md:max-h-none")}>
+      <aside aria-label={`${kind === "exam" ? "Exam" : "Certificate"} section outline`} className={cn(SIDEBAR_SIZE, "flex max-h-48 flex-col overflow-hidden bg-inherit md:max-h-none")}>
         <nav
-          aria-label="Certificate sections"
+          aria-label={`${kind === "exam" ? "Exam" : "Certificate"} sections`}
           className="flex min-h-0 flex-1 flex-col px-2 py-3"
         >
           <div className="mb-2 flex items-center justify-between px-2"><h2 className="text-[11px] font-semibold tracking-widest text-dash-muted uppercase">Document outline</h2><span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs tabular-nums text-dash-muted">{attachments.length}</span></div>
@@ -423,7 +433,7 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
           </div>
         ) : (
           <div className="flex min-h-0 flex-1 flex-col">
-            <CertificateEditorCanvas onAddSection={() => void addSection()} />
+            <TemplateCanvas embedded onAddSection={() => setSectionSearchOpen(true)} />
 
           </div>
         )}
@@ -457,7 +467,7 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
                   </> : null}
                   {reply ? <details className="mt-1 text-dash-muted"><summary className="cursor-pointer">View assistant summary</summary><p className="max-h-24 overflow-y-auto whitespace-pre-wrap py-1 leading-5">{reply}</p></details> : null}
                 </div> : null}
-                {pendingApproval ? <div role="group" aria-label="Approve certificate deletions" className="space-y-2 px-3 py-2 text-xs">
+                {pendingApproval ? <div role="group" aria-label={`Approve ${kind === "exam" ? "exam" : "certificate"} deletions`} className="space-y-2 px-3 py-2 text-xs">
                   <p className="font-medium text-brand-navy">Review exact deletions. Nothing runs until approved.</p>
                   <div className="max-h-40 space-y-2 overflow-y-auto">
                     {pendingApproval.approvals.map((target) => <label key={target.id} className="flex items-start gap-2">
@@ -473,7 +483,7 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
                 <div className="flex items-end gap-3 px-3 py-1.5">
                   <textarea
                     ref={composerRef}
-                    aria-label="Describe changes for the certificate assistant"
+                    aria-label={`Describe changes for the ${kind === "exam" ? "exam" : "certificate"} assistant`}
                     value={prompt}
                     onChange={(event) => setPrompt(event.target.value)}
                     rows={1}
@@ -517,7 +527,7 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
       </div>
       {/* Cap the document column; configuration receives remaining lateral space. */}
       <aside
-        aria-label="Certificate editor sidebar"
+        aria-label={`${kind === "exam" ? "Exam" : "Certificate"} editor sidebar`}
         className="box-border my-3 mr-3 flex min-h-0 min-w-0 max-h-[36dvh] shrink-0 flex-col overflow-hidden rounded-lg border-y border-r border-dash-border bg-white shadow-[0_1px_6px_rgb(31_42_36/0.06)] md:w-[var(--certificate-config-width)] md:min-w-[var(--certificate-config-width)] md:max-h-none md:grow md:basis-[var(--certificate-config-width)]"
       >
         {!previewing ? <>
@@ -530,7 +540,7 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
             >Deselect</button> : null}
           </div>
           <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto"><TemplateInspector /></div>
-        </> : <p className="px-5 py-4 text-xs leading-5 text-dash-muted">Preview the complete certificate. Return to Build to edit its sections and fields.</p>}
+        </> : <p className="px-5 py-4 text-xs leading-5 text-dash-muted">Preview the complete template. Return to Build to edit its sections and fields.</p>}
       </aside>
       {sectionSearchOpen ? <AddSectionSheet open initialTab="library" onOpenChange={setSectionSearchOpen} /> : null}
     </div>

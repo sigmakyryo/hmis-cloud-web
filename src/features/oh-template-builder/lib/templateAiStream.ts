@@ -89,3 +89,13 @@ export function validateCertificateAiDraft(raw: string): { assistant_message: st
     throw new Error("The certificate assistant returned an invalid draft. Review any partial changes and try again.");
   }
 }
+
+/** Shared transport framing; domain-specific wording must not imply an exam edits COF resources. */
+export async function* readTemplateAiStream(response: Response, kind: "exam" | "certificate") {
+  try {
+    yield* readCertificateAiStream(response);
+  } catch (error) {
+    if (kind === "exam" && error instanceof Error) throw new Error(error.message.replaceAll("certificate", "exam"));
+    throw error;
+  }
+}

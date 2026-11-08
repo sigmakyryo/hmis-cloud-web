@@ -15,8 +15,8 @@ function Probe() {
   const [draft, setDraft] = useState("");
   return <><p>{template?.name}</p><p data-testid="selection">{selection.type}</p><p data-testid="sections">{attachments.map((row) => row.uuid).join(",")}</p><input aria-label="Local draft" value={draft} onChange={(event) => setDraft(event.target.value)} /><button onClick={() => select({ type: "section", attachmentUuid: "previous-section" })}>Select previous</button></>;
 }
-function App({ uuid, client }: { uuid: string; client: QueryClient }) {
-  return <QueryClientProvider client={client}><TemplateBuilderProvider kind="certificate" templateUuid={uuid}><Probe /></TemplateBuilderProvider></QueryClientProvider>;
+function App({ uuid, client, kind = "certificate" }: { uuid: string; client: QueryClient; kind?: "exam" | "certificate" }) {
+  return <QueryClientProvider client={client}><TemplateBuilderProvider kind={kind} templateUuid={uuid}><Probe /></TemplateBuilderProvider></QueryClientProvider>;
 }
 afterEach(cleanup);
 beforeEach(() => {
@@ -59,4 +59,18 @@ describe("template session isolation", () => {
     expect(screen.getByTestId("sections")).toBeEmptyDOMElement();
     expect(screen.getByTestId("selection")).toHaveTextContent("template");
   });
+});
+
+
+it("resets mounted forms and selection when kind changes even with an identical UUID", async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const { rerender } = render(<App kind="certificate" uuid="previous" client={client} />);
+  await screen.findByText("Template previous");
+  fireEvent.click(screen.getByText("Select previous"));
+  fireEvent.change(screen.getByLabelText("Local draft"), { target: { value: "COF-only draft" } });
+  rerender(<App kind="exam" uuid="previous" client={client} />);
+  expect(screen.getByTestId("selection")).toHaveTextContent("template");
+  expect(screen.getByLabelText("Local draft")).toHaveValue("");
+  await screen.findByText("Template previous");
+  expect(client.getQueryCache().findAll().some((query) => query.queryKey[1] === "exam")).toBe(true);
 });
