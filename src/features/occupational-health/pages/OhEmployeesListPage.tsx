@@ -254,7 +254,7 @@ export function OhEmployeesListPage() {
   }
 
   function handleRowClick(customer: Customer) {
-    router.push(ROUTES.customerDetail(customer.uuid));
+    router.push(ROUTES.occupationalHealthEmployee(customer.uuid));
   }
 
   if (isUserLoading) {

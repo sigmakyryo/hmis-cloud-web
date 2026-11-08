@@ -102,7 +102,7 @@ export function OhEmployeesTable({
                     />
                     <div className="min-w-0 space-y-0.5">
                       <Link
-                        href={ROUTES.customerDetail(customer.uuid)}
+                        href={ROUTES.occupationalHealthEmployee(customer.uuid)}
                         className="block truncate text-[13px] font-medium text-brand-navy transition-colors group-hover:text-brand-primary"
                         onClick={(event) => event.stopPropagation()}
                       >

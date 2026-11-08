@@ -24,6 +24,7 @@ export const moduleDisplayNames: Record<string, string> = {
   Clinical: "EMR",
   Therapy: "Therapy",
   OccupationalHealth: "OHS",
+  Workforce: "Workforce",
 };
 
 export const moduleIcons: Record<string, AppIconName> = {
@@ -39,6 +40,7 @@ export const moduleIcons: Record<string, AppIconName> = {
   Clinical: "hospital",
   Therapy: "dumbbell",
   OccupationalHealth: "clipboard",
+  Workforce: "users",
 };
 
 export const moduleOrder = [
@@ -54,6 +56,7 @@ export const moduleOrder = [
   "Clinical",
   "Therapy",
   "OccupationalHealth",
+  "Workforce",
 ] as const;
 
 /** Mirrors web-old navigation; only enabled routes appear in web-new for now. */
@@ -284,7 +287,31 @@ export const navigation: NavigationItem[] = [
     href: ROUTES.occupationalHealthEmployees,
     icon: "users",
     requiredGroup: "OccupationalHealth",
-    moduleName: "OccupationalHealth",
+    moduleName: "Workforce",
+    enabledInWebNew: true,
+  },
+  {
+    name: "Forms",
+    href: ROUTES.occupationalHealthForms,
+    icon: "file",
+    requiredGroup: "OccupationalHealth",
+    moduleName: "Workforce",
+    enabledInWebNew: true,
+  },
+  {
+    name: "Immunizations",
+    href: ROUTES.occupationalHealthImmunizations,
+    icon: "clipboard",
+    requiredGroup: "OccupationalHealth",
+    moduleName: "Workforce",
+    enabledInWebNew: true,
+  },
+  {
+    name: "Drug & alcohol",
+    href: ROUTES.occupationalHealthDrugAlcohol,
+    icon: "clipboard",
+    requiredGroup: "OccupationalHealth",
+    moduleName: "Workforce",
     enabledInWebNew: true,
   },
   {
