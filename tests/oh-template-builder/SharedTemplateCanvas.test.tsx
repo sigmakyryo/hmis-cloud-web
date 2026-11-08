@@ -18,6 +18,10 @@ it.each(["exam", "certificate"] as const)("uses the actual exam heading/item/ans
   state.kind = kind;
   render(<TemplateCanvas embedded onAddSection={vi.fn()} />);
   expect(screen.getByText("Answers")).toBeInTheDocument();
+  const headings = screen.getByText("Answers").closest(".sticky");
+  expect(headings).toHaveClass("bg-[#fafaf9]", "sticky", "top-0");
+  expect(headings).not.toHaveClass("bg-white/95", "backdrop-blur-sm");
+  expect(headings?.className).not.toMatch(/\bborder(?:-|\s|$)/);
   expect(screen.getByText("Repeats")).toBeInTheDocument();
   expect(screen.getByText("Required")).toBeInTheDocument();
   expect(screen.getByText("Any answers")).toBeInTheDocument();

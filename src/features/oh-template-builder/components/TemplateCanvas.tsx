@@ -28,7 +28,7 @@ export function TemplateCanvas({ onAddSection, embedded = false }: TemplateCanva
       onClick={() => select({ type: "template" })}
     >
       {hasSections ? (
-        <div className="sticky top-0 z-10 border-b border-dash-border bg-white/95 backdrop-blur-sm">
+        <div className={cn("sticky top-0 z-10", embedded ? "bg-[#fafaf9]" : "bg-white/95 backdrop-blur-sm")}>
           <div className={cn(embedded ? CERTIFICATE_CONTENT_GUTTERS : "px-5 sm:px-8")}><div className={embedded ? CERTIFICATE_CONTENT_WIDTH : "mx-auto w-full max-w-[52rem]"}>
             <div className={CANVAS_ITEM_INDENT}>
               <div
