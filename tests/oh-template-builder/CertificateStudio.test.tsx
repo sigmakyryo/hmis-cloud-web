@@ -4,10 +4,12 @@ import { CertificateStudio } from "@/features/oh-template-builder/components/Cer
 import type { BuilderSelection } from "@/features/oh-template-builder/template-builder.types";
 
 const state = vi.hoisted(() => ({
+  toast: vi.fn(),
   selection: { type: "template" } as BuilderSelection,
   apply: vi.fn(), invalidate: vi.fn(), createSection: vi.fn(), attachSection: vi.fn(), select: vi.fn(), flush: vi.fn(), publish: vi.fn(), replace: vi.fn(), pending: false,
 }));
 vi.mock("@/features/oh-template-builder/lib/templateAi", () => ({ applyCofTemplateAiOperations: state.apply }));
+vi.mock("sonner", () => ({ toast: { error: state.toast } }));
 vi.mock("next/navigation", () => ({ usePathname: () => "/templates/certificate/test", useRouter: () => ({ replace: state.replace }) }));
 vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({ invalidateQueries: state.invalidate, getQueryData: vi.fn() }) }));
 vi.mock("@/features/oh-template-builder/hooks/useTemplateBuilder", () => ({
@@ -307,4 +309,48 @@ describe("certificate studio layout and save guards", () => {
     await waitFor(() => expect(state.flush).toHaveBeenCalledOnce());
     expect(state.publish).not.toHaveBeenCalled();
   });
+});
+
+
+function controlStream(...events: object[]) {
+  return new Response(events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join("") + "data: [DONE]\n\n", { headers: { "content-type": "text/event-stream" } });
+}
+
+it("shows a scope-refusal toast without enqueuing mutations", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(controlStream({ type: "refusal", message: "Can't help with that." })));
+  render(<CertificateStudio view="edit" />);
+  fireEvent.change(screen.getByRole("textbox", { name: "Describe changes for the certificate assistant" }), { target: { value: "Write a poem" } });
+  fireEvent.click(screen.getByRole("button", { name: "Send" }));
+  await waitFor(() => expect(state.toast).toHaveBeenCalledWith("Can't help with that."));
+  expect(state.apply).not.toHaveBeenCalled();
+});
+
+it("requires exact target selection and sends a bound native approval rather than delete operations", async () => {
+  const fetch = vi.fn().mockResolvedValueOnce(controlStream({ type: "approval_required", token: "nonce", expires_at: "2099-01-01T00:00:00Z", approvals: [{ id: "delete-1", label: "Detach Vitals", effect: "Shared content remains." }] }, { type: "conversation", conversation_id: "conversation" })).mockResolvedValueOnce(controlStream({ type: "approval_result", completed: 1, failed: 0 }));
+  vi.stubGlobal("fetch", fetch);
+  render(<CertificateStudio view="edit" />);
+  fireEvent.change(screen.getByRole("textbox", { name: "Describe changes for the certificate assistant" }), { target: { value: "Remove Vitals" } });
+  fireEvent.click(screen.getByRole("button", { name: "Send" }));
+  const approve = await screen.findByRole("button", { name: "Approve selected" });
+  expect(approve).toBeDisabled();
+  expect(state.apply).not.toHaveBeenCalled();
+  expect(fetch).toHaveBeenCalledTimes(1);
+  fireEvent.click(screen.getByRole("checkbox", { name: "Detach Vitals" }));
+  fireEvent.click(approve);
+  await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+  expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({ approval_token: "nonce", conversation_id: "conversation", decisions: { "delete-1": true } });
+  await screen.findByText("1 approved deletions completed");
+  expect(state.apply).not.toHaveBeenCalled();
+});
+
+it("rejects all pending targets without calling the mutation queue", async () => {
+  const fetch = vi.fn().mockResolvedValueOnce(controlStream({ type: "approval_required", token: "nonce", expires_at: "2099-01-01T00:00:00Z", approvals: [{ id: "delete-1", label: "Detach Vitals", effect: "Shared content remains." }] }, { type: "conversation", conversation_id: "conversation" })).mockResolvedValueOnce(controlStream({ type: "approval_result", completed: 0, rejected: true }));
+  vi.stubGlobal("fetch", fetch);
+  render(<CertificateStudio view="edit" />);
+  fireEvent.change(screen.getByRole("textbox", { name: "Describe changes for the certificate assistant" }), { target: { value: "Remove Vitals" } });
+  fireEvent.click(screen.getByRole("button", { name: "Send" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Reject all" }));
+  await screen.findByText("Rejected — no deletion performed");
+  expect(JSON.parse(fetch.mock.calls[1][1].body).decisions).toEqual({ "delete-1": false });
+  expect(state.apply).not.toHaveBeenCalled();
 });

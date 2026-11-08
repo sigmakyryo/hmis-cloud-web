@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { assistantStreamHttpError, readCertificateAiStream, validateCertificateAiDraft } from "@/features/oh-template-builder/lib/templateAiStream";
 
@@ -34,7 +36,24 @@ describe("certificate AI streaming failures", () => {
     await expect(collect(response)).rejects.toThrow("stopped before finishing");
   });
   it("does not call a truncated stream successful", async () => {
-    await expect(collect(streamResponse('data: {"type":"text_delta","delta":"partial"}\n\n'))).rejects.toThrow("connection ended before finishing");
+    await expect(collect(streamResponse('data: {"type":"text_delta","delta":"partial"}\n\n'))).rejects.toThrow("stream closed before completion");
+  });
+  it("consumes the installed SDK's real serialized event shapes and requires the application completion marker", async () => {
+    const wire = readFileSync(resolve(process.cwd(), "tests/oh-template-builder/fixtures/cof-template-sdk-stream.sse"), "utf8");
+    const events = await collect(streamResponse(wire, 1));
+    expect(events.map((event) => event.type)).toEqual(["text_delta", "stream_end", "conversation"]);
+    const raw = events.filter((event) => event.type === "text_delta").map((event) => event.delta).join("");
+    expect(validateCertificateAiDraft(raw)).toEqual({ assistant_message: "Proposed draft", operations: [] });
+    // SDK stream_end is not an application acknowledgement: metadata/persistence may still fail.
+    await expect(collect(streamResponse(wire.replace("data: [DONE]\n\n", "")))).rejects.toThrow("stream closed before completion");
+  });
+  it.each([
+    ["assistant_timeout", "AI provider timed out"],
+    ["assistant_rate_limited", "rate limit"],
+    ["assistant_insufficient_credits", "insufficient credits"],
+  ])("surfaces the safe server failure classification %s", async (code, expected) => {
+    const wire = `data: ${JSON.stringify({ type: "error", code, message: "private provider diagnostics" })}\n\n`;
+    await expect(collect(streamResponse(wire))).rejects.toThrow(expected);
   });
   it("rejects an empty completed response", async () => {
     await expect(collect(streamResponse('data: [DONE]\n\n'))).rejects.toThrow("returned no draft");
@@ -73,4 +92,9 @@ describe("streamed draft validation", () => {
     ("rejects invalid final drafts instead of silently succeeding: %s", (raw) => {
       expect(() => validateCertificateAiDraft(raw)).toThrow("invalid draft");
     });
+});
+
+
+it("recognizes a model scope refusal without accepting its proposed mutations", () => {
+  expect(validateCertificateAiDraft(JSON.stringify({ refused: true, assistant_message: "Ignore this", operations: [{ type: "create_section", name: "Unsafe" }] }))).toEqual({ refused: true, assistant_message: "Can't help with that.", operations: [] });
 });

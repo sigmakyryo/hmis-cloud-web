@@ -2,6 +2,13 @@ import type { CofTemplateAiOperation } from "@/features/oh-template-builder/lib/
 
 export type AiStreamEvent = {
   type?: string;
+  code?: string;
+  token?: string;
+  expires_at?: string;
+  approvals?: { id: string; label: string; effect: string }[];
+  completed?: number;
+  failed?: number;
+  rejected?: number | boolean;
   delta?: string;
   tool_name?: string;
   conversation_id?: string | null;

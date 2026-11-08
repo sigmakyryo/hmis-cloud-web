@@ -21,6 +21,7 @@ export type CofTemplateAiOperation = {
 };
 
 export type CofTemplateAiChatResponse = {
+  refused?: boolean;
   conversation_id: string | null;
   assistant_message: string;
   operations: CofTemplateAiOperation[];

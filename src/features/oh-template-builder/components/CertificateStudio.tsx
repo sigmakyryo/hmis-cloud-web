@@ -1,10 +1,11 @@
 "use client";
 
+import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft, ChevronRight, Loader2, Plus, Search, Send, SlidersHorizontal, Sparkles, Square } from "lucide-react";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useTransition } from "react";
 
 import { PrimaryButton } from "@/components/ui/app-buttons";
 import { BFF_OCCUPATIONAL_HEALTH_ROUTES } from "@/constants/api";
@@ -30,6 +31,7 @@ import { defaultResponseFields } from "@/features/settings/components/modules/oc
 import type { BuilderAttachment } from "@/features/oh-template-builder/template-builder.types";
 import { scrollToCertificateSection } from "@/features/oh-template-builder/lib/certificateEditorScroll";
 import { CERTIFICATE_CONTENT_GUTTERS, CERTIFICATE_CONTENT_WIDTH } from "@/features/oh-template-builder/lib/certificateStudioLayout";
+import { resizeCertificateComposer } from "@/features/oh-template-builder/lib/resizeCertificateComposer";
 import { appFont } from "@/lib/fonts";
 import { getErrorMessage } from "@/lib/fetch-error";
 import { cn } from "@/lib/utils";
@@ -37,6 +39,9 @@ import { cn } from "@/lib/utils";
 // The outline/header share a track; configuration grows independently into spare space.
 // Explicit min/max bounds override flex items' content-based automatic minima.
 const SIDEBAR_SIZE = "box-border min-w-0 w-full shrink-0 md:w-[var(--certificate-sidebar-width)] md:min-w-[var(--certificate-sidebar-width)] md:max-w-[var(--certificate-sidebar-width)] md:basis-[var(--certificate-sidebar-width)]";
+
+type PendingAiApproval = { token: string; expires_at: string; approvals: { id: string; label: string; effect: string }[] };
+type AiApprovalDecision = { approval_token: string; conversation_id: string; decisions: Record<string, boolean> };
 
 type CertificateStudioProps = {
   view: BuilderMode;
@@ -60,11 +65,14 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [prompt, setPrompt] = useState("");
+  const composerRef = useRef<HTMLTextAreaElement>(null);
   const [sectionSearchOpen, setSectionSearchOpen] = useState(false);
   const [reply, setReply] = useState("");
   const [activity, setActivity] = useState<string | null>(null);
   const [streaming, setStreaming] = useState(false);
   const [applying, setApplying] = useState(false);
+  const [pendingApproval, setPendingApproval] = useState<PendingAiApproval | null>(null);
+  const [selectedDeletions, setSelectedDeletions] = useState<Record<string, boolean>>({});
   const conversationId = useRef<string | null>(null);
   const streamAbort = useRef<AbortController | null>(null);
   const active = useRef(true);
@@ -79,21 +87,45 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
   const router = useRouter();
   const [isSwitchingView, startViewChange] = useTransition();
   const previewing = view === "preview";
+  useLayoutEffect(() => {
+    const textarea = composerRef.current;
+    if (!textarea) return;
+    const resize = () => resizeCertificateComposer(textarea);
+    resize();
+    let width = textarea.clientWidth;
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => {
+      if (textarea.clientWidth !== width) {
+        width = textarea.clientWidth;
+        resize();
+      }
+    });
+    observer?.observe(textarea);
+    window.addEventListener("resize", resize);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", resize);
+    };
+  }, [prompt, previewing]);
   const selectedAttachment =
     selection.type === "template"
       ? undefined
       : attachments.find((row) => row.uuid === selection.attachmentUuid);
   const publishing = isPending("template:publish");
 
-  async function send(text: string) {
+  async function send(text: string, approval?: AiApprovalDecision) {
     const controller = new AbortController();
     streamAbort.current = controller;
     const known = new Set(attachments.map((row) => row.uuid));
     setStreaming(true);
+    setApplying(!!approval);
+    if (approval) setPendingApproval(null);
     setReply("");
-    setActivity("Preparing");
+    setActivity(approval ? Object.values(approval.decisions).some(Boolean) ? "Applying approved deletions" : "Rejecting deletions" : "Preparing");
     writeNote("");
     let raw = "";
+    let refused = false;
+    let awaiting: PendingAiApproval | null = null;
+    let deletionResult: { completed: number; failed: number; rejected: number | boolean } | null = null;
     try {
       const response = await fetch(
         BFF_OCCUPATIONAL_HEALTH_ROUTES.cofTemplateAiStream(templateUuid),
@@ -102,19 +134,21 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
           signal: controller.signal,
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({
-            prompt: text,
-            conversation_id: conversationId.current ?? undefined,
-          }),
+          body: JSON.stringify(approval ?? { prompt: text, conversation_id: conversationId.current ?? undefined }),
         },
       );
-      if (response.ok) setActivity("Generating draft");
+      if (response.ok && !approval) setActivity("Generating draft");
       for await (const event of readCertificateAiStream(response)) {
         if (!active.current) break;
         if (event.type === "text_delta" && event.delta) {
           raw += event.delta;
           setActivity("Generating draft");
         }
+        if (event.type === "refusal") refused = true;
+        if (event.type === "approval_required" && event.token && event.expires_at && Array.isArray(event.approvals)) {
+          awaiting = { token: event.token, expires_at: event.expires_at, approvals: event.approvals };
+        }
+        if (event.type === "approval_result") deletionResult = { completed: event.completed ?? 0, failed: event.failed ?? 0, rejected: event.rejected ?? 0 };
         if (event.type === "tool_call") {
           setActivity(toolActivityLabel(event.tool_name));
         }
@@ -123,7 +157,32 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
         }
       }
       if (!active.current) return;
+      if (refused) {
+        setActivity("Can't help with that.");
+        toast.error("Can't help with that.");
+        return;
+      }
+      if (awaiting) {
+        setPendingApproval(awaiting);
+        setSelectedDeletions({});
+        setActivity("Approval required — no deletion has run");
+        return;
+      }
+      if (deletionResult) {
+        setActivity(deletionResult.completed ? `${deletionResult.completed} approved deletions completed${deletionResult.failed ? `; ${deletionResult.failed} failed` : ""}` : deletionResult.failed ? "Deletion failed — review a fresh proposal" : "Rejected — no deletion performed");
+        if (deletionResult.completed) await Promise.all([
+          queryClient.invalidateQueries({ queryKey: templateQueryKeys.attachments("certificate", templateUuid) }),
+          queryClient.invalidateQueries({ queryKey: ["oh-templates", "certificate", "items"] }),
+        ]);
+        return;
+      }
       const draft = validateCertificateAiDraft(raw);
+      if (draft.refused) {
+        setActivity("Can't help with that.");
+        toast.error("Can't help with that.");
+        return;
+      }
+      if (approval) throw new Error("The server did not confirm the approved deletion outcome. Review before retrying.");
       if (controller.signal.aborted) throw new DOMException("Cancelled", "AbortError");
       setApplying(true);
       setActivity(draft.operations.length ? `Applying ${draft.operations.length} changes` : "Checking draft");
@@ -167,10 +226,10 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
       if (active.current) {
         setReply("");
         if (controller.signal.aborted) {
-          setActivity("Cancelled — no changes sent");
+          setActivity(approval ? "Approval outcome not confirmed — review the template" : "Cancelled — no changes sent");
         } else {
-          setActivity("Error");
-          writeNote(getErrorMessage(error, "The draft could not be written."));
+          setActivity(approval && deletionResult?.completed ? `${deletionResult.completed} approved deletions completed; response incomplete` : "Error");
+          writeNote(approval ? "Could not confirm the approval outcome. Review the template before requesting another approval." : getErrorMessage(error, "The draft could not be written."));
         }
       }
     } finally {
@@ -179,6 +238,17 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
         setApplying(false);
       }
     }
+  }
+
+  function decideDeletions(rejectAll = false) {
+    if (!pendingApproval || !conversationId.current || streaming) return;
+    if (new Date(pendingApproval.expires_at).getTime() <= Date.now()) {
+      setPendingApproval(null);
+      writeNote("Approval expired. Request a fresh proposal.");
+      return;
+    }
+    const decisions = Object.fromEntries(pendingApproval.approvals.map((target) => [target.id, !rejectAll && !!selectedDeletions[target.id]]));
+    void send("", { approval_token: pendingApproval.token, conversation_id: conversationId.current, decisions });
   }
 
   async function addSection() {
@@ -366,7 +436,7 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
             onSubmit={(event) => {
               event.preventDefault();
               const text = prompt.trim();
-              if (!text || streaming || isLoading) {
+              if (!text || streaming || isLoading || pendingApproval) {
                 return;
               }
               setPrompt("");
@@ -387,15 +457,29 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
                   </> : null}
                   {reply ? <details className="mt-1 text-dash-muted"><summary className="cursor-pointer">View assistant summary</summary><p className="max-h-24 overflow-y-auto whitespace-pre-wrap py-1 leading-5">{reply}</p></details> : null}
                 </div> : null}
+                {pendingApproval ? <div role="group" aria-label="Approve certificate deletions" className="space-y-2 px-3 py-2 text-xs">
+                  <p className="font-medium text-brand-navy">Review exact deletions. Nothing runs until approved.</p>
+                  <div className="max-h-40 space-y-2 overflow-y-auto">
+                    {pendingApproval.approvals.map((target) => <label key={target.id} className="flex items-start gap-2">
+                      <input type="checkbox" aria-label={target.label} checked={!!selectedDeletions[target.id]} onChange={(event) => setSelectedDeletions((current) => ({ ...current, [target.id]: event.target.checked }))} />
+                      <span><span className="font-medium">{target.label}</span><span className="block text-dash-muted">{target.effect}</span></span>
+                    </label>)}
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="button" disabled={!Object.values(selectedDeletions).some(Boolean)} onClick={() => decideDeletions()} className="rounded-lg bg-brand-primary px-3 py-1.5 text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30 disabled:opacity-40">Approve selected</button>
+                    <button type="button" onClick={() => decideDeletions(true)} className="rounded-lg bg-white px-3 py-1.5 text-brand-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30">Reject all</button>
+                  </div>
+                </div> : null}
                 <div className="flex items-end gap-3 px-3 py-1.5">
                   <textarea
+                    ref={composerRef}
                     aria-label="Describe changes for the certificate assistant"
                     value={prompt}
                     onChange={(event) => setPrompt(event.target.value)}
                     rows={1}
                     disabled={isLoading}
                     placeholder="Write the next section, item, or field"
-                    className="min-h-8 flex-1 resize-none bg-transparent py-1 text-sm text-brand-navy outline-none placeholder:text-dash-muted disabled:opacity-60"
+                    className="min-h-8 flex-1 resize-none bg-transparent py-1 text-sm leading-5 text-brand-navy outline-none placeholder:text-dash-muted disabled:opacity-60"
                     onKeyDown={(event) => {
                       if (event.key === "Enter" && !event.shiftKey) {
                         event.preventDefault();
@@ -413,7 +497,7 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
                   ><Square className="size-3.5" aria-hidden /></button> : null}
                   <button
                     type="submit"
-                    disabled={streaming || isLoading || !prompt.trim()}
+                    disabled={streaming || isLoading || !!pendingApproval || !prompt.trim()}
                     className="mb-1 grid size-8 place-items-center rounded-full bg-brand-primary text-white hover:bg-brand-primary-hover disabled:opacity-30"
                     aria-label="Send"
                   >
