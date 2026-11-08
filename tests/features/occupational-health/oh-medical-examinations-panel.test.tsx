@@ -5,6 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { OhMedicalExaminationsPanel } from "@/features/occupational-health/components/OhMedicalExaminationsPanel";
 import type { EmploymentEpisode, OhVisitEncounter } from "@/features/occupational-health/types";
 
+const user = vi.hoisted(() => ({ is_admin: true }));
+vi.mock("@/providers/user-provider", () => ({ useUser: () => ({ userData: user }) }));
+
 const ohService = vi.hoisted(() => ({
   createOhExamination: vi.fn(),
   fetchOhExamTemplateVersions: vi.fn(),
@@ -86,11 +89,13 @@ const PROFILE = {
   exam_template_code: "EXAM",
   exam_template_name: "Annual exam",
   employer: 5,
+  employer_uuid: "employer-uuid",
 };
 
 const PUBLISHED_VERSION = {
   id: 1,
   uuid: "ver-1",
+  template: "tmpl-1",
   number: 1,
   status: "published",
   snapshot_json: {
@@ -131,6 +136,7 @@ function renderPanel(
       <OhMedicalExaminationsPanel
         encounter={ENCOUNTER}
         episodes={[EPISODE]}
+        onManageEmployment={vi.fn()}
         workspace={workspace as never}
       />
     </QueryClientProvider>,
@@ -138,6 +144,7 @@ function renderPanel(
 }
 
 beforeEach(() => {
+  user.is_admin = true;
   ohService.fetchOhHazardProfiles.mockResolvedValue([PROFILE]);
   ohService.fetchOhExamTemplateVersions.mockResolvedValue([PUBLISHED_VERSION]);
   ohService.createOhExamination.mockResolvedValue({
@@ -212,6 +219,7 @@ describe("OhMedicalExaminationsPanel", () => {
           responses_json: {
             __exam_template__: {
               template_uuid: "tmpl-1",
+              version_number: 1,
               answers: { picks: {}, fields: { vitals: { bp: "120/80" } } },
             },
           },
@@ -243,6 +251,7 @@ describe("OhMedicalExaminationsPanel", () => {
           responses_json: {
             __exam_template__: {
               template_uuid: "tmpl-1",
+              version_number: 1,
               answers: { picks: {}, fields: { vitals: { bp: "120/80" } } },
             },
           },
@@ -273,5 +282,105 @@ describe("OhMedicalExaminationsPanel", () => {
       ),
     );
     vi.useRealTimers();
+  });
+  it("renders pinned v1 even when latest published v2 and a newer draft exist", async () => {
+    ohService.fetchOhExamTemplateVersions.mockResolvedValue([
+      { ...PUBLISHED_VERSION, uuid: "ver-3", number: 3, status: "draft" },
+      { ...PUBLISHED_VERSION, uuid: "ver-2", number: 2, snapshot_json: { sections: [] } }, PUBLISHED_VERSION,
+    ]);
+    renderPanel({ examinations: [{ id: 11, uuid: "exam-v1", exam_type: "periodic", template_version_uuid: "ver-1", template_snapshot: PUBLISHED_VERSION.snapshot_json,
+      responses_json: { __exam_template__: { template_uuid: "tmpl-1", template_version_uuid: "ver-1", version_number: 1, answers: { picks: {}, fields: { vitals: { bp: "original v1 value" } } } } } }] });
+    expect(await screen.findByTestId("oh-exam-answer-bp")).toHaveTextContent("original v1 value");
+    expect(screen.queryByText("Finish the examination template")).toBeNull();
+    expect(ohService.createOhExamination).not.toHaveBeenCalled();
+  });
+
+  it("keeps the pinned historical schema when the risk profile now links another template", async () => {
+    ohService.fetchOhHazardProfiles.mockResolvedValue([{ ...PROFILE, exam_template: "replacement-template" }]);
+    ohService.fetchOhExamTemplateVersions.mockResolvedValue([{ ...PUBLISHED_VERSION, template: "replacement-template", uuid: "replacement-version", snapshot_json: { sections: [] } }]);
+    renderPanel({ examinations: [{ id: 11, uuid: "historical", exam_type: "periodic", template_uuid: "tmpl-1", template_version_uuid: "ver-1", template_snapshot: PUBLISHED_VERSION.snapshot_json,
+      responses_json: { __exam_template__: { template_uuid: "tmpl-1", template_version_uuid: "ver-1", version_number: 1, answers: { picks: {}, fields: { vitals: { bp: "historic value" } } } } } }] });
+    expect(await screen.findByTestId("oh-exam-answer-bp")).toHaveTextContent("historic value");
+    expect(ohService.patchOhExaminationResponses).not.toHaveBeenCalled();
+  });
+
+  it("never retargets an older examination without a recoverable version", async () => {
+    renderPanel({ examinations: [{ id: 11, uuid: "legacy", exam_type: "periodic", responses_json: { __exam_template__: { template_uuid: "tmpl-1", answers: { picks: {}, fields: {} } } } }] });
+    expect(await screen.findByText("Saved examination version unavailable")).toBeVisible();
+    expect(ohService.createOhExamination).not.toHaveBeenCalled();
+    expect(ohService.patchOhExaminationResponses).not.toHaveBeenCalled();
+  });
+
+  it("starts a blank examination with the newest published version, never the newer draft", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    ohService.fetchOhExamTemplateVersions.mockResolvedValue([
+      { ...PUBLISHED_VERSION, uuid: "draft-9", number: 9, status: "draft" },
+      PUBLISHED_VERSION, { ...PUBLISHED_VERSION, uuid: "published-2", number: 2 },
+    ]);
+    ohService.createOhExamination.mockResolvedValue({ id: 11, uuid: "new-pinned", exam_type: "pre_employment", template_version_uuid: "published-2", template_snapshot: PUBLISHED_VERSION.snapshot_json, responses_json: {}, row_version: 1 });
+    renderPanel();
+    fireEvent.click(await screen.findByRole("combobox", { name: /Exam type/ }));
+    fireEvent.click(await screen.findByRole("option", { name: "Admission exam" }));
+    fireEvent.click(screen.getByTestId("oh-exam-details-continue"));
+    fireEvent.click(await screen.findByTestId("oh-exam-toggle-item"));
+    await vi.advanceTimersByTimeAsync(650);
+    await waitFor(() => expect(ohService.createOhExamination).toHaveBeenCalledWith(expect.objectContaining({ template_version_uuid: "published-2" })));
+    await waitFor(() => expect(ohService.patchOhExaminationResponses).toHaveBeenCalledWith("new-pinned", expect.objectContaining({ responses_json: expect.objectContaining({ __exam_template__: expect.objectContaining({ template_version_uuid: "published-2", version_number: 2 }) }) })));
+    vi.useRealTimers();
+  });
+
+  it("offers a contextual profile setup link and decorative illustration when no template is linked", async () => {
+    ohService.fetchOhHazardProfiles.mockResolvedValue([{ ...PROFILE, exam_template: null }]);
+    renderPanel();
+    expect(await screen.findByRole("heading", { name: "Set up this examination" })).toBeVisible();
+    const link = screen.getByRole("link", { name: /Choose exam template/ });
+    expect(link).toHaveAttribute("href", "/settings/modules/occupational-health?employer=employer-uuid&profile=hp-1");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(screen.getByLabelText("Examination setup").querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+    expect(ohService.createOhExamination).not.toHaveBeenCalled();
+  });
+
+  it("does not expose administrator settings actions to a clinician", async () => {
+    user.is_admin = false;
+    ohService.fetchOhHazardProfiles.mockResolvedValue([{ ...PROFILE, exam_template: null }]);
+    renderPanel();
+    expect(await screen.findByText(/Ask your administrator/)).toBeVisible();
+    expect(screen.queryByRole("link", { name: /Choose exam template/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Check again" })).toBeEnabled();
+  });
+
+  it("requires a published version rather than using a draft snapshot", async () => {
+    ohService.fetchOhExamTemplateVersions.mockResolvedValue([{ ...PUBLISHED_VERSION, status: "draft" }]);
+    renderPanel();
+    expect(await screen.findByRole("heading", { name: "Publish the examination template" })).toBeVisible();
+    expect(screen.getByRole("link", { name: /Review and publish/ })).toHaveAttribute("href", "/templates/exam/tmpl-1");
+    expect(screen.queryByTestId("oh-exam-details-step")).toBeNull();
+    expect(ohService.createOhExamination).not.toHaveBeenCalled();
+  });
+
+  it("rechecks changed profile linkage and publication without creating an examination", async () => {
+    ohService.fetchOhHazardProfiles.mockResolvedValueOnce([{ ...PROFILE, exam_template: null }]).mockResolvedValue([PROFILE]);
+    ohService.fetchOhExamTemplateVersions.mockResolvedValue([PUBLISHED_VERSION]);
+    renderPanel();
+    fireEvent.click(await screen.findByRole("button", { name: "Check again" }));
+    expect(await screen.findByTestId("oh-exam-details-step")).toBeVisible();
+    expect(ohService.fetchOhHazardProfiles).toHaveBeenCalledTimes(2);
+    expect(ohService.createOhExamination).not.toHaveBeenCalled();
+    expect(ohService.patchOhExaminationResponses).not.toHaveBeenCalled();
+  });
+
+  it("offers retry for setup loading errors rather than calling them missing templates", async () => {
+    ohService.fetchOhHazardProfiles.mockRejectedValueOnce(new Error("Unavailable")).mockResolvedValue([PROFILE]);
+    renderPanel();
+    expect(await screen.findByRole("heading", { name: "Couldn't load examination setup" })).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Check again" }));
+    expect(await screen.findByTestId("oh-exam-details-step")).toBeVisible();
+  });
+
+  it("distinguishes a published template without examination sections", async () => {
+    ohService.fetchOhExamTemplateVersions.mockResolvedValue([{ ...PUBLISHED_VERSION, snapshot_json: { schema_version: 2, sections: [] } }]);
+    renderPanel();
+    expect(await screen.findByRole("heading", { name: "Finish the examination template" })).toBeVisible();
+    expect(screen.getByRole("link", { name: /Edit exam template/ })).toHaveAttribute("href", "/templates/exam/tmpl-1");
   });
 });

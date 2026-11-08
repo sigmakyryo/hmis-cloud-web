@@ -14,6 +14,7 @@ const responseConfigSchema = z.object({
     }),
   ),
   validation: z.object({
+    required: z.boolean().optional(),
     min: z.number().optional(),
     max: z.number().optional(),
     min_length: z.number().optional(),
@@ -23,6 +24,8 @@ const responseConfigSchema = z.object({
 });
 
 const responseFieldSchema = responseConfigSchema.extend({
+  required: z.boolean().optional(),
+  is_required: z.boolean().optional(),
   code: z.string().min(1),
   label: z.string().min(1),
 });

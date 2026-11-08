@@ -1,6 +1,9 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import { ROUTES } from "@/constants/routes";
+import { createNativeOhVisit } from "@/features/occupational-health/services/native-visit.service";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Building2, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -93,6 +96,9 @@ export function CustomerVisitDialog({
   onVisitChanged,
 }: CustomerVisitDialogProps) {
   const { toast } = useToast();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const nativeSubmissionKey = useRef<string | null>(null);
   const { userData } = useUser();
   const [loadedConsultationServices, setLoadedConsultationServices] = useState<{
     departmentUuid: string;
@@ -179,6 +185,14 @@ export function CustomerVisitDialog({
   const eligibilityUnavailable = isOhDepartment &&
     (eligibility.isPending || eligibility.isFetching || eligibility.isError);
 
+  useEffect(() => {
+    if (!isOhDepartment) return;
+    form.setValue("mode_of_payment", "cash");
+    form.setValue("insurance_scheme", "");
+    form.setValue("consultation_service", "");
+    setAttachmentFile(null);
+  }, [isOhDepartment, form]);
+
   const canClose = useMemo(
     () => canCloseCustomerVisit(userData, activeVisit, clinicIdByUuid),
     [activeVisit, clinicIdByUuid, userData],
@@ -191,6 +205,7 @@ export function CustomerVisitDialog({
 
   const loadDialogContext = useCallback(async () => {
     const generation = ++contextGeneration.current;
+    nativeSubmissionKey.current = null;
     setIsLoadingContext(true);
     setCloseError(null);
 
@@ -262,7 +277,7 @@ export function CustomerVisitDialog({
   }, [loadDialogContext, open]);
 
   useEffect(() => {
-    if (!open || !selectedDepartmentUuid) {
+    if (!open || !selectedDepartmentUuid || isOhDepartment) {
       return;
     }
 
@@ -306,7 +321,7 @@ export function CustomerVisitDialog({
     return () => {
       cancelled = true;
     };
-  }, [form, open, selectedDepartmentUuid]);
+  }, [form, open, selectedDepartmentUuid, isOhDepartment]);
 
   useEffect(() => {
     if (modeOfPayment !== "insurance") {
@@ -340,6 +355,19 @@ export function CustomerVisitDialog({
           setStartStep("visit");
           return;
         }
+      }
+      if (department?.department_type === OH_DEPARTMENT_TYPE) {
+        nativeSubmissionKey.current ??= crypto.randomUUID();
+        const native = await createNativeOhVisit({
+          customer_uuid: customer.uuid, department_uuid: values.department, clinic_uuid: values.clinic,
+          visit_date: new Date(values.visit_date).toISOString(), idempotency_key: nativeSubmissionKey.current,
+        });
+        if (generation !== contextGeneration.current) return;
+        void queryClient.invalidateQueries({ queryKey: ["oh-encounters"] });
+        onOpenChange(false);
+        router.push(ROUTES.occupationalHealthEncounter(native.visit, native.uuid));
+        toast({ variant: "success", title: "OH visit started" });
+        return;
       }
       const visit = await createCustomerVisit(
         toCreateVisitPayload(customer.uuid, values),
@@ -532,7 +560,8 @@ export function CustomerVisitDialog({
                 ) : null}
                 <StartVisitFormFields
                   form={form}
-                  step={startStep}
+                  nativeOh={isOhDepartment}
+                  step={isOhDepartment ? "visit" : startStep}
                   onStepChange={(step) => {
                     if (step !== "visit" && (showRiskProfileNotice || eligibilityUnavailable)) {
                       return;
@@ -604,6 +633,14 @@ export function CustomerVisitDialog({
                     )}
                   </DestructiveButton>
                 )}
+              </>
+            ) : hasDefaultClinic && isOhDepartment ? (
+              <>
+                <SecondaryButton type="button" onClick={() => onOpenChange(false)} disabled={isSubmitting}>Cancel</SecondaryButton>
+                <PrimaryButton type="button" disabled={isSubmitting || eligibilityUnavailable || showRiskProfileNotice}
+                  onClick={() => void handleStartVisit()}>
+                  {isSubmitting ? "Starting…" : "Start OH visit"}
+                </PrimaryButton>
               </>
             ) : hasDefaultClinic && startStep === "attachments" ? (
               <>

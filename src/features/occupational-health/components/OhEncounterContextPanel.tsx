@@ -21,6 +21,8 @@ import type {
 type OhEncounterContextPanelProps = {
   activePanel: OhEncounterPanelId;
   encounter: OhVisitEncounter;
+  completionRef?: { current: (() => Promise<boolean>) | null };
+  completing?: boolean;
   customer: Customer | null;
   episodes: EmploymentEpisode[];
   workspace: ReturnType<typeof useOhEncounterWorkspaceData>;
@@ -33,6 +35,8 @@ type OhEncounterContextPanelProps = {
 export function OhEncounterContextPanel({
   activePanel,
   encounter,
+  completionRef,
+  completing,
   customer,
   episodes,
   workspace,
@@ -41,23 +45,22 @@ export function OhEncounterContextPanel({
   examFocusRequest = 0,
   onActiveExamChange,
 }: OhEncounterContextPanelProps) {
-  if (activePanel === "medical-examinations") {
-    return (
-      <OhMedicalExaminationsPanel
+  const medical = <div hidden={activePanel !== "medical-examinations"} className={activePanel === "medical-examinations" ? "flex min-h-0 flex-1 flex-col" : "hidden"}>      <OhMedicalExaminationsPanel
         encounter={encounter}
+        completionRef={completionRef}
+        completing={completing}
         episodes={episodes}
         workspace={workspace}
         onManageEmployment={onManageEmployment}
         focusedExamUuid={focusedExamUuid}
         examFocusRequest={examFocusRequest}
         onActiveExamChange={onActiveExamChange}
-      />
-    );
-  }
+      /></div>;
+  if (activePanel === "medical-examinations") return <>{medical}</>;
 
   if (activePanel === "certificate") {
     return (
-      <OhEncounterColumns
+      <>{medical}<OhEncounterColumns
         sectionKey="certificate"
         form={
           <OhColumnPanel eyebrow="Record" title="Certificate" className="bg-white">
@@ -81,13 +84,13 @@ export function OhEncounterContextPanel({
             />
           </OhColumnPanel>
         }
-      />
+      /></>
     );
   }
 
   if (activePanel === "employment") {
     return (
-      <OhEncounterColumns
+      <>{medical}<OhEncounterColumns
         sectionKey="employment"
         form={
           <OhColumnPanel eyebrow="Record" title="Employment" className="bg-white">
@@ -104,9 +107,9 @@ export function OhEncounterContextPanel({
             <OhEmploymentRecords customer={customer} />
           </OhColumnPanel>
         }
-      />
+      /></>
     );
   }
 
-  return <OhEncounterModulePlaceholder moduleId={activePanel} />;
+  return <>{medical}<OhEncounterModulePlaceholder moduleId={activePanel} /></>;
 }

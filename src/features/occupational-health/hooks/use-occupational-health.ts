@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import {
@@ -228,9 +229,10 @@ export function useOhEncounterWorkspaceData(encounterId: number | null) {
     queryFn: fetchIodCases,
   });
 
-  const examinations =
-    examinationsQuery.data?.filter((item) => item.encounter === encounterId) ??
-    [];
+  const examinations = useMemo(
+    () => examinationsQuery.data?.filter((item) => item.encounter === encounterId) ?? [],
+    [examinationsQuery.data, encounterId],
+  );
   const examinationIds = new Set(examinations.map((item) => item.id));
 
   const findings =

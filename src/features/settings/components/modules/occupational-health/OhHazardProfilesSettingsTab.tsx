@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { useSearchParams } from "next/navigation";
 import { PrimaryButton } from "@/components/ui/app-buttons";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
@@ -178,6 +180,8 @@ export function OhHazardProfilesSettingsTab({
   embedded = false,
 }: OhHazardProfilesSettingsTabProps) {
   const { toast } = useToast();
+  const requestedProfile = useSearchParams().get("profile");
+  const handledProfile = useRef<string | null>(null);
   const [profiles, setProfiles] = useState<OhHazardProfile[]>([]);
   const [cofTemplates, setCofTemplates] = useState<OhCofTemplate[]>([]);
   const [examTemplates, setExamTemplates] = useState<OhExamTemplate[]>([]);
@@ -236,6 +240,31 @@ export function OhHazardProfilesSettingsTab({
     };
   }, [employer.id, isActive]);
 
+  const openEdit = useCallback((row: OhHazardProfile) => {
+    setEditing(row);
+    setName(row.name);
+    setCode(row.code ?? "");
+    setColor(row.color?.trim() || DEFAULT_COLOR);
+    setCofTemplateUuid(row.cof_template || NONE_TEMPLATE);
+    setExamTemplateUuid(row.exam_template || NONE_TEMPLATE);
+    setAssessmentInterval(
+      row.assessment_interval != null ? String(row.assessment_interval) : "",
+    );
+    setAssessmentIntervalUnit(
+      (row.assessment_interval_unit as OhAssessmentIntervalUnit) || "month",
+    );
+    setDialogOpen(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isActive || !requestedProfile) return;
+    const key = `${employer.uuid}:${requestedProfile}`;
+    const profile = profiles.find((row) => row.uuid === requestedProfile && row.employer === employer.id);
+    if (!profile || handledProfile.current === key) return;
+    handledProfile.current = key;
+    openEdit(profile);
+  }, [isActive, requestedProfile, profiles, employer.id, employer.uuid, openEdit]);
+
   if (!isActive) {
     return null;
   }
@@ -253,22 +282,6 @@ export function OhHazardProfilesSettingsTab({
 
   function openCreate() {
     resetForm();
-    setDialogOpen(true);
-  }
-
-  function openEdit(row: OhHazardProfile) {
-    setEditing(row);
-    setName(row.name);
-    setCode(row.code ?? "");
-    setColor(row.color?.trim() || DEFAULT_COLOR);
-    setCofTemplateUuid(row.cof_template || NONE_TEMPLATE);
-    setExamTemplateUuid(row.exam_template || NONE_TEMPLATE);
-    setAssessmentInterval(
-      row.assessment_interval != null ? String(row.assessment_interval) : "",
-    );
-    setAssessmentIntervalUnit(
-      (row.assessment_interval_unit as OhAssessmentIntervalUnit) || "month",
-    );
     setDialogOpen(true);
   }
 
@@ -420,6 +433,7 @@ export function OhHazardProfilesSettingsTab({
             <SheetTitle>
               {editing ? "Edit risk profile" : "Add risk profile"}
             </SheetTitle>
+            <SheetDescription className="sr-only">Choose the examination and certificate templates for this risk profile.</SheetDescription>
           </SheetHeader>
           <form
             className="flex min-h-0 flex-1 flex-col border-t border-dash-border"

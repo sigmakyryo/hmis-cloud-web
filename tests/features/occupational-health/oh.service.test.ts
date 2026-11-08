@@ -56,4 +56,10 @@ describe("occupational health service", () => {
       "/api/occupational-health/campaign-queue",
     );
   });
+  it("loads later employment pages so a valid native OH visit stays usable", async () => {
+    vi.mocked(bffRequest).mockResolvedValueOnce({ results: [{ id: 1 }], pagination: { next: "?page=2" } })
+      .mockResolvedValueOnce({ results: [{ id: 2 }], pagination: { next: null } });
+    expect(await fetchEmploymentEpisodes("customer")).toEqual([{ id: 1 }, { id: 2 }]);
+    expect(bffRequest).toHaveBeenLastCalledWith("/api/occupational-health/employment-episodes?customer=customer&page=2");
+  });
 });

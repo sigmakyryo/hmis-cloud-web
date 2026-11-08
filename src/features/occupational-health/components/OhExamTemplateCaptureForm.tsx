@@ -1,399 +1,90 @@
 "use client";
 
-import { useState } from "react";
 import { Check } from "lucide-react";
-
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import type { OhResponseField } from "@/features/occupational-health/types";
-import {
-  emptyExamTemplateAnswers,
-  fieldOwnerKey,
-  type ExamTemplateAnswers,
-  type ExamTemplateSnapshot,
-  type ExamTemplateSnapshotItem,
-  type ExamTemplateSnapshotSection,
-} from "@/features/occupational-health/lib/exam-template-snapshot";
+import { Textarea } from "@/components/ui/textarea";
+import { RequiredFieldMarker } from "@/components/ui/required-field-marker";
+import type { OhResponseField } from "../types";
+import { emptyExamTemplateAnswers, fieldOwnerKey, type ExamTemplateAnswers, type ExamTemplateSnapshot } from "../lib/exam-template-snapshot";
+import { fieldErrorKey, isRequiredField, sectionErrorKey, type ExamErrors } from "../lib/exam-template-validation";
 import { cn } from "@/lib/utils";
 
-type OhExamTemplateCaptureFormProps = {
+type Props = {
   snapshot: ExamTemplateSnapshot;
   templateName?: string | null;
   value?: ExamTemplateAnswers;
   onChange: (next: ExamTemplateAnswers) => void;
   disabled?: boolean;
+  errors?: ExamErrors;
+  setupHref?: string;
 };
 
-export function OhExamTemplateCaptureForm({
-  snapshot,
-  templateName,
-  value,
-  onChange,
-  disabled,
-}: OhExamTemplateCaptureFormProps) {
+export function OhExamTemplateCaptureForm({ snapshot, value, onChange, disabled, errors = {} }: Props) {
   const answers = value ?? emptyExamTemplateAnswers();
-
-  function setPicks(sectionCode: string, next: string[]) {
-    onChange({
-      ...answers,
-      picks: { ...answers.picks, [sectionCode]: next },
-    });
+  function setField(owner: string, code: string, next: string) {
+    onChange({ ...answers, fields: { ...answers.fields, [owner]: { ...answers.fields[owner], [code]: next } } });
   }
-
-  function setField(owner: string, fieldCode: string, fieldValue: string) {
-    onChange({
-      ...answers,
-      fields: {
-        ...answers.fields,
-        [owner]: {
-          ...(answers.fields[owner] ?? {}),
-          [fieldCode]: fieldValue,
-        },
-      },
-    });
-  }
-
-  return (
-    <div data-testid="oh-exam-template-capture">
-      <header className="pb-4">
-        <h2 className="text-lg font-semibold tracking-tight text-brand-navy">
-          {templateName?.trim() || "Examination template"}
-        </h2>
-      </header>
-
-      <ol className="space-y-0">
-        {snapshot.sections.map((section, index) => (
-          <CaptureSection
-            key={section.code}
-            section={section}
-            index={index}
-            answers={answers}
-            disabled={disabled}
-            onSetPicks={setPicks}
-            onSetField={setField}
-          />
-        ))}
-      </ol>
-    </div>
-  );
-}
-
-function CaptureSection({
-  section,
-  index,
-  answers,
-  disabled,
-  onSetPicks,
-  onSetField,
-}: {
-  section: ExamTemplateSnapshotSection;
-  index: number;
-  answers: ExamTemplateAnswers;
-  disabled?: boolean;
-  onSetPicks: (sectionCode: string, next: string[]) => void;
-  onSetField: (owner: string, fieldCode: string, value: string) => void;
-}) {
-  const isDirect = section.content_mode === "direct";
-  const exclusive = section.selection_mode === "exclusive";
-  const picked = answers.picks[section.code] ?? [];
-  const headingId = `exam-section-${section.code}`;
-
-  function toggleItem(itemCode: string) {
-    if (disabled) {
-      return;
-    }
-    if (exclusive) {
-      onSetPicks(section.code, picked.includes(itemCode) ? [] : [itemCode]);
-      return;
-    }
-    onSetPicks(
-      section.code,
-      picked.includes(itemCode)
-        ? picked.filter((code) => code !== itemCode)
-        : [...picked, itemCode],
-    );
-  }
-
-  return (
-    <li className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-x-3 border-t border-dash-border py-4">
-      <span
-        aria-hidden
-        className={cn(
-          "mt-0.5 flex size-6 items-center justify-center rounded-full border text-[11px] font-semibold tabular-nums",
-          picked.length > 0 || isDirect
-            ? "border-brand-primary bg-brand-primary text-white"
-            : "border-dash-border text-dash-muted",
-        )}
-      >
-        {index + 1}
-      </span>
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <h3 id={headingId} className="text-[14.5px] font-semibold tracking-tight text-brand-navy">
-            {section.name}
-            {section.is_mandatory ? (
-              <span className="ml-1 text-brand-primary" aria-label="Required">
-                *
-              </span>
-            ) : null}
-          </h3>
-          <span className="text-xs text-dash-muted">
-            {isDirect
-              ? "Enter values"
-              : exclusive
-                ? "Choose one"
-                : "Choose all that apply"}
-          </span>
+  return <div data-testid="oh-exam-template-capture">
+    <ol className="space-y-0">{snapshot.sections.map((section, index) => {
+      const picks = answers.picks[section.code] ?? [];
+      const direct = section.content_mode === "direct";
+      const exclusive = section.selection_mode === "exclusive";
+      const sectionError = errors[sectionErrorKey(section.code)];
+      const headingId = `exam-section-${section.code}`;
+      const errorId = `${headingId}-error`;
+      return <li key={section.code} className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-x-3 border-t border-dash-border py-5">
+        <span aria-hidden className={cn("mt-0.5 flex size-6 items-center justify-center rounded-full border text-[11px] font-semibold", picks.length || direct ? "border-brand-primary bg-brand-primary text-white" : "border-dash-border text-dash-muted")}>{index + 1}</span>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-baseline justify-between gap-2"><h3 id={headingId} tabIndex={-1} data-exam-error-key={direct && section.response_definitions_missing ? sectionErrorKey(section.code) : undefined} className="text-[14.5px] font-semibold text-brand-navy">{section.name}{section.is_mandatory ? <RequiredFieldMarker /> : null}</h3><span className="text-xs text-dash-muted">{direct ? "Enter responses" : exclusive ? "Choose one" : "Choose all that apply"}</span></div>
+          {sectionError ? <p id={errorId} className="mt-2 text-xs text-red-700">{sectionError}</p> : null}
+          {direct ? <div className="mt-4 space-y-4">{(section.response_fields ?? []).map((field) => <ResponseField key={field.code} field={field} owner={section.code} value={answers.fields[section.code]?.[field.code] ?? ""} disabled={disabled} errors={errors} onChange={(next) => setField(section.code, field.code, next)} />)}</div>
+            : section.items.length === 0 ? <p className="mt-3 text-sm text-dash-muted">No items in this section.</p>
+              : <ul role={exclusive ? "radiogroup" : "group"} aria-labelledby={headingId} aria-invalid={Boolean(sectionError)} aria-describedby={sectionError ? errorId : undefined} className="mt-3 grid gap-2 sm:grid-cols-2">
+                {section.items.map((item) => {
+                  const checked = picks.includes(item.code);
+                  const owner = fieldOwnerKey(section.code, item.code);
+                  const fields = item.response_fields.filter((field) => field.prompt_after_select !== false);
+                  const panelId = `exam-responses-${owner}`;
+                  function toggle() {
+                    const next = checked ? picks.filter((code) => code !== item.code) : exclusive ? [item.code] : [...picks, item.code];
+                    onChange({ ...answers, picks: { ...answers.picks, [section.code]: next } });
+                  }
+                  return <li key={item.code} className={cn("min-w-0 border-b border-dash-border/60", checked && "sm:col-span-2")}>
+                    <button type="button" role={exclusive ? "radio" : "checkbox"} aria-checked={checked} aria-expanded={checked} aria-controls={panelId} aria-invalid={Boolean(sectionError)} aria-describedby={sectionError ? errorId : undefined} data-exam-error-key={sectionErrorKey(section.code)} disabled={disabled} onClick={toggle} className="flex w-full items-center gap-3 px-1 py-3 text-left text-[13.5px] font-medium text-brand-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 disabled:opacity-60">
+                      <span aria-hidden className={cn("flex size-[18px] shrink-0 items-center justify-center border", exclusive ? "rounded-full" : "rounded", checked ? "border-brand-primary bg-brand-primary text-white" : "border-slate-300 bg-white")}>{checked ? <Check className="size-3" /> : null}</span>{item.name}
+                    </button>
+                    {checked ? <div id={panelId} className="mb-4 ml-8 space-y-4 pt-1">
+                      {fields.map((field) => <ResponseField key={field.code} field={field} owner={owner} value={answers.fields[owner]?.[field.code] ?? ""} disabled={disabled} errors={errors} onChange={(next) => setField(owner, field.code, next)} />)}
+                      {fields.length === 0 && !item.response_definitions_missing ? <p className="text-xs text-dash-muted">No additional response needed.</p> : null}
+                    </div> : null}
+                  </li>;
+                })}
+              </ul>}
         </div>
-
-        {isDirect ? (
-          <div className="mt-4 space-y-3">
-            {(section.response_fields ?? []).map((field) => (
-              <FieldInput
-                key={field.code}
-                field={field}
-                value={answers.fields[fieldOwnerKey(section.code)]?.[field.code] ?? ""}
-                disabled={disabled}
-                onChange={(next) =>
-                  onSetField(fieldOwnerKey(section.code), field.code, next)
-                }
-              />
-            ))}
-            {(section.response_fields ?? []).length === 0 ? (
-              <p className="text-sm text-dash-muted">No fields configured on this section.</p>
-            ) : null}
-          </div>
-        ) : section.items.length === 0 ? (
-          <p className="mt-3 text-sm text-dash-muted">No items in this section.</p>
-        ) : (
-          <ul
-            role={exclusive ? "radiogroup" : "group"}
-            aria-labelledby={headingId}
-            className="-mx-1 mt-2 grid gap-px sm:grid-cols-2"
-          >
-            {section.items.map((item) => (
-              <CaptureItem
-                key={item.code}
-                item={item}
-                sectionCode={section.code}
-                exclusive={exclusive}
-                checked={picked.includes(item.code)}
-                answers={answers}
-                disabled={disabled}
-                onToggle={() => toggleItem(item.code)}
-                onSetField={onSetField}
-              />
-            ))}
-          </ul>
-        )}
-      </div>
-    </li>
-  );
+      </li>;
+    })}</ol>
+  </div>;
 }
 
-function CaptureItem({
-  item,
-  sectionCode,
-  exclusive,
-  checked,
-  answers,
-  disabled,
-  onToggle,
-  onSetField,
-}: {
-  item: ExamTemplateSnapshotItem;
-  sectionCode: string;
-  exclusive: boolean;
-  checked: boolean;
-  answers: ExamTemplateAnswers;
-  disabled?: boolean;
-  onToggle: () => void;
-  onSetField: (owner: string, fieldCode: string, value: string) => void;
-}) {
-  const promptFields = (item.response_fields ?? []).filter(
-    (field) => field.prompt_after_select !== false,
-  );
-  const owner = fieldOwnerKey(sectionCode, item.code);
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  const showDetails = checked && detailsOpen && promptFields.length > 0;
-
-  function handleRowClick() {
-    if (disabled) {
-      return;
-    }
-    if (!checked) {
-      onToggle();
-      if (promptFields.length > 0) {
-        setDetailsOpen(true);
-      }
-      return;
-    }
-    if (showDetails) {
-      setDetailsOpen(false);
-      return;
-    }
-    onToggle();
-    setDetailsOpen(false);
-  }
-
-  function handleOption(fieldCode: string, next: string) {
-    onSetField(owner, fieldCode, next);
-    setDetailsOpen(false);
-  }
-
-  return (
-    <li className={cn("rounded-md", showDetails && "bg-brand-tint/40 sm:col-span-2")}>
-      <button
-        type="button"
-        role={exclusive ? "radio" : "checkbox"}
-        aria-checked={checked}
-        aria-expanded={promptFields.length > 0 ? showDetails : undefined}
-        disabled={disabled}
-        onClick={handleRowClick}
-        className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13.5px] hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30 disabled:opacity-60"
-      >
-        <SelectionGlyph exclusive={exclusive} checked={checked} />
-        <span className={cn("min-w-0 flex-1", checked ? "font-medium text-brand-navy" : "text-brand-navy")}>
-          {item.name}
-        </span>
-      </button>
-      {showDetails ? (
-        <div className="space-y-3 pb-3 pl-10 pr-2">
-          {promptFields.map((field) =>
-            field.options?.length ? (
-              <OptionField
-                key={field.code}
-                field={field}
-                value={answers.fields[owner]?.[field.code] ?? ""}
-                disabled={disabled}
-                onChange={(next) => handleOption(field.code, next)}
-              />
-            ) : (
-              <FieldInput
-                key={field.code}
-                field={field}
-                value={answers.fields[owner]?.[field.code] ?? ""}
-                disabled={disabled}
-                onChange={(next) => onSetField(owner, field.code, next)}
-              />
-            ),
-          )}
-        </div>
-      ) : null}
-    </li>
-  );
-}
-
-function FieldInput({
-  field,
-  value,
-  onChange,
-  disabled,
-}: {
-  field: OhResponseField;
-  value: string;
-  onChange: (value: string) => void;
-  disabled?: boolean;
-}) {
-  const inputType =
-    field.response_type === "number" || field.response_type === "decimal"
-      ? "number"
-      : field.response_type === "date"
-        ? "date"
-        : field.response_type === "datetime"
-          ? "datetime-local"
-          : field.response_type === "time"
-            ? "time"
-            : "text";
-
-  if (field.options?.length) {
-    return (
-      <OptionField field={field} value={value} onChange={onChange} disabled={disabled} />
-    );
-  }
-
-  return (
-    <label className="block space-y-1.5">
-      <Label className="text-xs font-medium text-brand-slate">{field.label}</Label>
-      <Input
-        type={inputType}
-        value={value}
-        disabled={disabled}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={field.response_type.replaceAll("_", " ")}
-      />
-    </label>
-  );
-}
-
-function OptionField({
-  field,
-  value,
-  onChange,
-  disabled,
-}: {
-  field: OhResponseField;
-  value: string;
-  onChange: (value: string) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <p className="text-xs font-medium text-brand-slate">{field.label}</p>
-      <div role="radiogroup" aria-label={field.label} className="flex flex-wrap gap-1.5">
-        {field.options.map((option) => {
-          const selected = value === option.code;
-          return (
-            <button
-              key={option.code}
-              type="button"
-              role="radio"
-              aria-checked={selected}
-              disabled={disabled}
-              onClick={() => onChange(option.code)}
-              className={cn(
-                "rounded-full border px-3 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30 disabled:opacity-60",
-                selected
-                  ? "border-brand-primary bg-brand-primary font-medium text-white"
-                  : "border-brand-primary/20 bg-white text-brand-slate hover:border-brand-primary/50 hover:text-brand-navy",
-              )}
-            >
-              {option.label}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function SelectionGlyph({
-  exclusive,
-  checked,
-}: {
-  exclusive: boolean;
-  checked: boolean;
-}) {
-  return (
-    <span
-      aria-hidden
-      className={cn(
-        "flex size-[18px] shrink-0 items-center justify-center border-[1.5px]",
-        exclusive ? "rounded-full" : "rounded-[5px]",
-        checked
-          ? exclusive
-            ? "border-brand-primary bg-white"
-            : "border-brand-primary bg-brand-primary"
-          : "border-slate-300 bg-white",
-      )}
-    >
-      {checked ? (
-        exclusive ? (
-          <span className="size-2 rounded-full bg-brand-primary" />
-        ) : (
-          <Check className="size-3 text-white" strokeWidth={3} />
-        )
-      ) : null}
-    </span>
-  );
+function ResponseField({ field, owner, value, disabled, errors, onChange }: { field: OhResponseField; owner: string; value: string; disabled?: boolean; errors: ExamErrors; onChange: (next: string) => void }) {
+  const key = fieldErrorKey(owner, field.code);
+  const id = `exam-field-${owner}-${field.code}`;
+  const error = errors[key];
+  const label = <>{field.label}{isRequiredField(field) ? <RequiredFieldMarker /> : null}</>;
+  const props = { id, disabled, "aria-invalid": Boolean(error), "aria-describedby": error ? `${id}-error` : undefined, "data-exam-error-key": key, "aria-required": isRequiredField(field) };
+  const multi = field.response_type === "multi_select";
+  const options = field.options?.length ? field.options : field.response_type === "boolean" ? [{ code: "true", label: "Yes" }, { code: "false", label: "No" }] : [];
+  const selected = multi ? value.split(",").filter(Boolean) : [value];
+  return <div className="space-y-2">
+    {options.length ? <fieldset disabled={disabled} aria-describedby={props["aria-describedby"]}>
+      <legend className="mb-2 text-xs font-medium text-brand-slate">{label}</legend>
+      <div role={multi ? "group" : "radiogroup"} aria-label={field.label} className="flex flex-wrap gap-2">{options.map((option) => <button {...props} id={`${id}-${option.code}`} key={option.code} type="button" role={multi ? "checkbox" : "radio"} aria-checked={selected.includes(option.code)} onClick={() => onChange(multi ? (selected.includes(option.code) ? selected.filter((code) => code !== option.code) : [...selected, option.code]).join(",") : option.code)} className={cn("rounded-md border px-3 py-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 disabled:opacity-60", selected.includes(option.code) ? "border-brand-primary bg-brand-primary text-white" : "border-brand-primary/20 bg-white text-brand-navy")}>{option.label}</button>)}</div>
+    </fieldset> : <>
+      <label htmlFor={id} className="block text-xs font-medium text-brand-slate">{label}</label>
+      {field.response_type === "file" ? <p {...props} tabIndex={-1} className="text-xs text-dash-muted">File responses are not available in this workspace. Ask an administrator to review this template requirement.</p>
+        : ["text", "textarea", "long_text"].includes(field.response_type) ? <Textarea {...props} rows={3} value={value} onChange={(event) => onChange(event.target.value)} className="min-h-20 resize-y bg-white text-sm" />
+          : <Input {...props} type={["number", "decimal"].includes(field.response_type) ? "number" : field.response_type === "datetime" ? "datetime-local" : ["date", "time"].includes(field.response_type) ? field.response_type : "text"} step={field.response_type === "decimal" ? "any" : undefined} min={field.validation?.min} max={field.validation?.max} value={value} onChange={(event) => onChange(event.target.value)} className="bg-white text-sm" />}
+    </>}
+    {error ? <p id={`${id}-error`} className="text-xs text-red-700">{error}</p> : null}
+  </div>;
 }

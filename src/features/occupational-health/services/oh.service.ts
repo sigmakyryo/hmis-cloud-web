@@ -125,12 +125,22 @@ export async function fetchOhEmployeeSummary(): Promise<CustomerSummaryStats> {
 }
 
 export async function fetchEmploymentEpisodes(customerUuid?: string) {
-  const response = await bffRequest<ListResponse<EmploymentEpisode>>(
-    `${BFF_OCCUPATIONAL_HEALTH_ROUTES.employmentEpisodes}${listQuery({
-      customer: customerUuid,
-    })}`,
-  );
-  return response.results;
+  const episodes: EmploymentEpisode[] = [];
+  let page = 1;
+  const seen = new Set<string>();
+  while (true) {
+    const response = await bffRequest<ListResponse<EmploymentEpisode>>(
+      `${BFF_OCCUPATIONAL_HEALTH_ROUTES.employmentEpisodes}${listQuery({
+        customer: customerUuid, page: page > 1 ? String(page) : undefined,
+      })}`,
+    );
+    episodes.push(...response.results);
+    const next = response.pagination?.next;
+    if (!next) return episodes;
+    if (seen.has(next)) throw new Error("Employment pagination did not advance. Please retry.");
+    seen.add(next);
+    page += 1;
+  }
 }
 
 export async function createEmploymentEpisode(payload: Record<string, unknown>) {
@@ -1503,3 +1513,7 @@ export async function detachOhExamTemplateSection(uuid: string) {
 }
 
 export type { OhRequirementsConfig };
+
+export async function recoverOhExaminationVersion(uuid: string, payload: { row_version: number; template_version_uuid: string }) {
+  return bffRequest<OhExamination>(`${BFF_OCCUPATIONAL_HEALTH_ROUTES.examination(uuid).replace(/\/$/, "")}/template-version`, { method: "POST", body: payload });
+}

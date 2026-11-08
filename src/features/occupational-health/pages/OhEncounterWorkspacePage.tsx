@@ -4,14 +4,17 @@ import Link from "next/link";
 import { FileQuestion, ShieldAlert } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { completeNativeOhVisit } from "@/features/occupational-health/services/native-visit.service";
+import { useRef, useState } from "react";
 
-import { SecondaryButton } from "@/components/ui/app-buttons";
+import { PrimaryButton, SecondaryButton } from "@/components/ui/app-buttons";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
   DetailPageLayout,
   DetailPageSkeleton,
 } from "@/features/app-shell/components/page-layout";
+import { parseExamTemplateSnapshot, type ExamTemplateResponseEnvelope } from "../lib/exam-template-snapshot";
+import { validateExamAnswers } from "../lib/exam-template-validation";
 import { useAppBreadcrumb } from "@/features/app-shell/hooks/use-app-breadcrumb";
 import { OhEncounterContextPanel } from "@/features/occupational-health/components/OhEncounterContextPanel";
 import { OhEncounterEdgeRail } from "@/features/occupational-health/components/OhEncounterEdgeRail";
@@ -75,6 +78,10 @@ export function OhEncounterWorkspacePage({
   const [activePanel, setActivePanel] = useOhEncounterModuleParam();
   const [focusedExamUuid, setFocusedExamUuid] = useState<string | null>(null);
   const [examFocusRequest, setExamFocusRequest] = useState(0);
+  const [completeError, setCompleteError] = useState<string | null>(null);
+  const [completing, setCompleting] = useState(false);
+  const completionRef = useRef<(() => Promise<boolean>) | null>(null);
+  const completionBusy = useRef(false);
   const [activeExamUuid, setActiveExamUuid] = useState<string | null>(null);
 
   const encounterQuery = useQuery({
@@ -124,7 +131,7 @@ export function OhEncounterWorkspacePage({
     );
   }
 
-  if (!encounter) {
+  if (!encounter || encounter.visit !== visitUuid) {
     return (
       <WorkspaceStateScreen
         icon={FileQuestion}
@@ -146,16 +153,40 @@ export function OhEncounterWorkspacePage({
         <OhEncounterHeader
           customer={customer}
           encounter={encounter}
-          actions={
-            <Link
-              href={ROUTES.occupationalHealth}
-              className="text-[13px] font-medium text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
-            >
-              OHS Queue
-            </Link>
-          }
+          actions={<div className="flex flex-wrap items-center justify-end gap-3">
+            <Link href={ROUTES.occupationalHealth} className="text-[13px] font-medium text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30">OHS Queue</Link>
+            {encounter.origin === "laravel" && encounter.is_active ? <PrimaryButton type="button" disabled={completing} onClick={async () => {
+              if (completionBusy.current) return;
+              completionBusy.current = true;
+              setCompleting(true); setCompleteError(null);
+              try {
+                if (!completionRef.current || !(await completionRef.current())) {
+                  setActivePanel("medical-examinations");
+                  if (!completionRef.current) setCompleteError("Review the examination setup before completing this visit.");
+                  return;
+                }
+                for (const exam of workspace.examinations) {
+                  if (exam.uuid === activeExamUuid) continue;
+                  const schema = parseExamTemplateSnapshot(exam.template_snapshot);
+                  const envelope = exam.responses_json?.__exam_template__ as ExamTemplateResponseEnvelope | undefined;
+                  if (schema && envelope?.answers?.picks && envelope.answers.fields && Object.keys(validateExamAnswers(schema, envelope.answers)).length) {
+                    setFocusedExamUuid(exam.uuid);
+                    setExamFocusRequest((current) => current + 1);
+                    setActivePanel("medical-examinations");
+                    setCompleteError("Complete the highlighted responses in this examination before completing the visit.");
+                    return;
+                  }
+                }
+                await completeNativeOhVisit(encounter.uuid);
+                await encounterQuery.refetch();
+              } catch (error) {
+                setActivePanel("medical-examinations");
+                setCompleteError(error instanceof Error ? error.message : "Could not complete visit. Your responses have been kept.");
+              } finally { completionBusy.current = false; setCompleting(false); }
+            }}>{completing ? "Completing…" : "Complete visit"}</PrimaryButton> : null}
+          </div>}
         />
-
+        {completeError ? <p role="alert" className="px-5 py-3 text-sm text-red-700">{completeError}</p> : null}
         <div className="flex min-h-0 flex-1">
           <div
             className="grid min-h-0 min-w-0 flex-1 grid-cols-1 xl:grid-cols-[17.5rem_minmax(0,1fr)] xl:grid-rows-[minmax(0,1fr)] 2xl:grid-cols-[19rem_minmax(0,1fr)]"
@@ -176,6 +207,8 @@ export function OhEncounterWorkspacePage({
                 />
               ) : (
                 <OhEncounterContextPanel
+                  completionRef={completionRef}
+                  completing={completing}
                   activePanel={activePanel}
                   encounter={encounter}
                   customer={customer}

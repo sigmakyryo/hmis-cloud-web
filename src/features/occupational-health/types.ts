@@ -1,4 +1,5 @@
 export type OhVisitEncounter = {
+  origin?: "core" | "laravel";
   id: number;
   uuid: string;
   visit: string;
@@ -96,6 +97,7 @@ export type OhHazardProfile = {
   assessment_interval?: number | null;
   assessment_interval_unit?: OhAssessmentIntervalUnit | string;
   employer: number | null;
+  employer_uuid?: string | null;
   employer_name?: string | null;
   hazards?: number[];
   /** Attached COF template UUID (tenant-scoped). */
@@ -256,6 +258,7 @@ export type OhResponseConfigOption = {
 };
 
 export type OhResponseConfigValidation = {
+  required?: boolean;
   min?: number;
   max?: number;
   min_length?: number;
@@ -272,6 +275,8 @@ export type OhResponseConfig = {
 
 /** Named response field on a section or item. */
 export type OhResponseField = OhResponseConfig & {
+  required?: boolean;
+  is_required?: boolean;
   code: string;
   label: string;
 };
@@ -455,6 +460,10 @@ export type OhPublishedFormConfig = {
 };
 
 export type OhExamination = {
+  template_uuid?: string | null;
+  template_version_number?: number | null;
+  template_version_uuid?: string | null;
+  template_snapshot?: Record<string, unknown> | null;
   id: number;
   uuid: string;
   encounter: number;

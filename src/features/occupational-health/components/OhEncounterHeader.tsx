@@ -47,7 +47,7 @@ export function OhEncounterHeader({
 
   return (
     <header
-      className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-dash-border bg-white px-5"
+      className="flex min-h-14 shrink-0 flex-wrap items-center justify-between gap-3 py-3 sm:flex-nowrap border-b border-dash-border bg-white px-5"
       data-testid="oh-encounter-header"
     >
       <div className="flex min-w-0 items-center gap-3">

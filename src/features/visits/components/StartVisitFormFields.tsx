@@ -34,6 +34,7 @@ export type StartVisitStep = "visit" | "payment" | "attachments";
 
 type StartVisitFormFieldsProps = {
   form: UseFormReturn<StartVisitFormValues>;
+  nativeOh?: boolean;
   step: StartVisitStep;
   onStepChange: (step: StartVisitStep) => void;
   defaultClinicName: string;
@@ -55,6 +56,7 @@ type StartVisitFormFieldsProps = {
 
 export function StartVisitFormFields({
   form,
+  nativeOh = false,
   step,
   onStepChange,
   defaultClinicName,
@@ -163,7 +165,7 @@ export function StartVisitFormFields({
 
   return (
     <div className="space-y-6">
-      {riskProfileNotice ? null : (
+      {riskProfileNotice || nativeOh ? null : (
       <nav
         aria-label="Start visit steps"
         className="flex items-center gap-5 border-b border-dash-border/70"
@@ -318,6 +320,7 @@ export function StartVisitFormFields({
             )}
           />
 
+          {nativeOh ? null : (
           <FormField
             control={form.control}
             name="consultation_service"
@@ -373,6 +376,7 @@ export function StartVisitFormFields({
               </FormItem>
             )}
           />
+          )}
           </>
           )}
         </div>
