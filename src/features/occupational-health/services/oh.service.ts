@@ -1,4 +1,6 @@
 import { BFF_OCCUPATIONAL_HEALTH_ROUTES } from "@/constants/api";
+import type { CustomerListFilters, CustomersListResponse } from "@/features/customers/types/customer.types";
+import type { CustomerSummaryStats } from "@/features/customers/utils/customer-stats";
 import type {
   EmploymentEpisode,
   FitnessAssessment,
@@ -77,6 +79,49 @@ export async function fetchOhEncounters(params?: {
     })}`,
   );
   return response.results;
+}
+
+export async function fetchOhEncounter(uuid: string) {
+  return bffRequest<OhVisitEncounter>(
+    BFF_OCCUPATIONAL_HEALTH_ROUTES.encounter(uuid),
+  );
+}
+
+export async function fetchOhEmployees(filters: CustomerListFilters) {
+  return bffRequest<CustomersListResponse>(
+    `${BFF_OCCUPATIONAL_HEALTH_ROUTES.employees}${listQuery({
+      search: filters.search,
+      page: filters.page ? String(filters.page) : undefined,
+      page_size: filters.pageSize ? String(filters.pageSize) : undefined,
+      gender: filters.gender,
+      ordering: filters.ordering,
+      is_active:
+        filters.isActive === undefined ? undefined : filters.isActive ? "1" : "0",
+    })}`,
+  );
+}
+
+type OhEmployeeSummaryResponse = {
+  total_clients: number;
+  new_this_month: number;
+  male_count: number;
+  female_count: number;
+  other_count: number;
+  average_age: number;
+};
+
+export async function fetchOhEmployeeSummary(): Promise<CustomerSummaryStats> {
+  const data = await bffRequest<OhEmployeeSummaryResponse>(
+    BFF_OCCUPATIONAL_HEALTH_ROUTES.employeesSummary,
+  );
+  return {
+    totalClients: data.total_clients,
+    newThisMonth: data.new_this_month,
+    maleCount: data.male_count,
+    femaleCount: data.female_count,
+    otherCount: data.other_count,
+    averageAge: data.average_age,
+  };
 }
 
 export async function fetchEmploymentEpisodes(customerUuid?: string) {

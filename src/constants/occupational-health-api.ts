@@ -1,6 +1,9 @@
-/** Django DRF v1 occupational health endpoints (relative to HMIS_API_URL, server-only). */
+/** Laravel occupational health endpoints (relative to OH_SERVICE_URL, server-only). */
 export const OCCUPATIONAL_HEALTH_API_PATHS = {
   ohEncounters: "/oh-encounters/",
+  ohEncounter: (uuid: string) => `/oh-encounters/${uuid}/`,
+  ohEmployees: "/oh/employees/",
+  ohEmployeesSummary: "/oh/employees/summary/",
   employmentEpisodes: "/employment-episodes/",
   employmentEpisode: (uuid: string) => `/employment-episodes/${uuid}/`,
   employers: "/employers/",

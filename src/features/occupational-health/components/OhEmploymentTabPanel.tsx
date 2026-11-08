@@ -124,6 +124,7 @@ export function OhEmploymentForm({ customer }: OhEmploymentFormProps) {
     try {
       await createEmploymentEpisode({
         customer: customer.id,
+        customer_uuid: customer.uuid,
         employer: Number(employerId),
         job_title: Number(jobTitleId),
         hazard_profile: hazardProfileId ? Number(hazardProfileId) : null,

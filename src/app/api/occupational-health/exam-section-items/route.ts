@@ -1,8 +1,8 @@
 import { OCCUPATIONAL_HEALTH_API_PATHS } from "@/constants/occupational-health-api";
-import { createLaboratoryCatalogListHandlers } from "@/lib/server/laboratory-catalog-bff";
+import { createOccupationalHealthListHandlers } from "@/lib/server/occupational-health-bff";
 
 /** @deprecated Prefer /library-section-items */
-const handlers = createLaboratoryCatalogListHandlers(
+const handlers = createOccupationalHealthListHandlers(
   OCCUPATIONAL_HEALTH_API_PATHS.ohLibrarySectionItems,
   ["section", "include_inactive", "search", "page", "page_size"],
 );

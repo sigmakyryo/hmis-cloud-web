@@ -10,8 +10,16 @@ export type OhVisitEncounter = {
   clinician: number | null;
   clinician_name: string | null;
   customer_uuid?: string;
+  customer_id?: number;
   customer_name?: string;
   customer_identifier?: string;
+  first_name?: string;
+  middle_name?: string | null;
+  last_name?: string;
+  gender?: string;
+  dob?: string | null;
+  phone_number?: string | null;
+  email?: string | null;
   employer_name?: string | null;
   hazard_profile_name?: string | null;
   status: string;

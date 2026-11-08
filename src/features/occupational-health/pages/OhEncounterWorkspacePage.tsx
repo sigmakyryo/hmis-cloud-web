@@ -23,13 +23,12 @@ import {
   useEmploymentEpisodes,
   useOhEncounterWorkspaceData,
 } from "@/features/occupational-health/hooks/use-occupational-health";
-import { fetchOhEncounters } from "@/features/occupational-health/services/oh.service";
-import type { OhExamination, OhVisitEncounter } from "@/features/occupational-health/types";
+import { fetchOhEncounter } from "@/features/occupational-health/services/oh.service";
+import type { OhExamination } from "@/features/occupational-health/types";
 import { canAccessOccupationalHealth } from "@/features/occupational-health/utils/oh-access";
+import { customerFromOhEncounter } from "@/features/occupational-health/utils/customer-from-oh-encounter";
 import { customerHasActiveRiskProfile } from "@/features/occupational-health/utils/customer-has-risk-profile";
-import { fetchCustomer } from "@/features/customers/services/customers.service";
 import { formatCustomerName } from "@/features/customers/utils/format-customer";
-import { fetchVisit } from "@/features/visits/services/visits.service";
 import { ROUTES } from "@/constants/routes";
 import { useUser } from "@/providers/user-provider";
 
@@ -78,40 +77,21 @@ export function OhEncounterWorkspacePage({
   const [examFocusRequest, setExamFocusRequest] = useState(0);
   const [activeExamUuid, setActiveExamUuid] = useState<string | null>(null);
 
-  const visitQuery = useQuery({
-    queryKey: ["visit", visitUuid],
-    queryFn: () => fetchVisit(visitUuid),
-    enabled: Boolean(visitUuid) && hasAccess,
-  });
-
-  const encounterFromVisit: OhVisitEncounter | null =
-    visitQuery.data?.encounters.find((item) => item.uuid === encounterUuid) ?? null;
-
-  const fallbackEncounterQuery = useQuery({
+  const encounterQuery = useQuery({
     queryKey: ["oh-encounter", encounterUuid],
-    queryFn: async () => {
-      const rows = await fetchOhEncounters({ pageSize: 200 });
-      return rows.find((row) => row.uuid === encounterUuid) ?? null;
-    },
-    enabled: hasAccess && visitQuery.isFetched && !encounterFromVisit,
+    queryFn: () => fetchOhEncounter(encounterUuid),
+    enabled: Boolean(encounterUuid) && hasAccess,
+    retry: false,
   });
 
-  const customerQuery = useQuery({
-    queryKey: ["customer", visitQuery.data?.customer],
-    queryFn: () => fetchCustomer(visitQuery.data!.customer),
-    enabled: Boolean(visitQuery.data?.customer),
-  });
-
-  const encounter = encounterFromVisit ?? fallbackEncounterQuery.data ?? null;
+  const encounter = encounterQuery.data ?? null;
   const workspace = useOhEncounterWorkspaceData(encounter?.id ?? null);
-  const customer = customerQuery.data ?? null;
+  const customer = encounter ? customerFromOhEncounter(encounter) : null;
   const episodesQuery = useEmploymentEpisodes(customer?.uuid);
   const episodes = episodesQuery.data ?? [];
 
   useAppBreadcrumb(customer ? formatCustomerName(customer) : "OH encounter");
 
-  const customerLoading =
-    Boolean(visitQuery.data?.customer) && customerQuery.isLoading;
   const episodesLoading = Boolean(customer?.uuid) && episodesQuery.isLoading;
   const hasRiskProfile = customerHasActiveRiskProfile(episodes);
   const showRiskProfileEmpty =
@@ -122,9 +102,7 @@ export function OhEncounterWorkspacePage({
 
   if (
     isUserLoading ||
-    visitQuery.isLoading ||
-    (!encounterFromVisit && fallbackEncounterQuery.isLoading) ||
-    customerLoading ||
+    encounterQuery.isLoading ||
     episodesLoading
   ) {
     return (

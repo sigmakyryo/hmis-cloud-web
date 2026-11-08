@@ -319,6 +319,9 @@ export const BFF_CLINICAL_OPD_ROUTES = {
 /** Browser-facing BFF occupational health routes (same origin). */
 export const BFF_OCCUPATIONAL_HEALTH_ROUTES = {
   encounters: "/api/occupational-health/encounters",
+  encounter: (uuid: string) => `/api/occupational-health/encounters/${uuid}`,
+  employees: "/api/occupational-health/employees",
+  employeesSummary: "/api/occupational-health/employees/summary",
   employmentEpisodes: "/api/occupational-health/employment-episodes",
   employmentEpisode: (uuid: string) =>
     `/api/occupational-health/employment-episodes/${uuid}`,

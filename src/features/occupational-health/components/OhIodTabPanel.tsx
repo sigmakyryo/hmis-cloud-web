@@ -42,6 +42,7 @@ const SAFETY_CLASSES = [
 type OhIodFormProps = {
   encounterId: number;
   customerId: number;
+  customerUuid?: string;
   tenantId: number;
   onCreated: () => void;
 };
@@ -49,6 +50,7 @@ type OhIodFormProps = {
 export function OhIodForm({
   encounterId,
   customerId,
+  customerUuid,
   tenantId,
   onCreated,
 }: OhIodFormProps) {
@@ -74,6 +76,7 @@ export function OhIodForm({
       await createIodCase({
         tenant: tenantId,
         customer: customerId,
+        customer_uuid: customerUuid,
         encounter: encounterId,
         severity,
         onset_date: onsetDate,

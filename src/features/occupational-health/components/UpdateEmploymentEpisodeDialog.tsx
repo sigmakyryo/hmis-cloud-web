@@ -74,11 +74,10 @@ export function UpdateEmploymentEpisodeDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const loadedEmployerIdRef = useRef<string | null>(null);
   const seededFromEpisodeRef = useRef(false);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
+  const episodeSeed = `${episode.uuid}:${open ? "open" : "closed"}`;
+  const [appliedSeed, setAppliedSeed] = useState(episodeSeed);
+  if (open && appliedSeed !== episodeSeed) {
+    setAppliedSeed(episodeSeed);
     setEmployerId(String(episode.employer));
     setJobTitleId(String(episode.job_title));
     setHazardProfileId(
@@ -89,10 +88,24 @@ export function UpdateEmploymentEpisodeDialog({
     setEmployeeNumber(episode.employee_number ?? "");
     setSiteId("");
     setDepartmentId("");
+  }
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
     loadedEmployerIdRef.current = null;
     seededFromEpisodeRef.current = false;
-    void fetchOhEmployers().then(setEmployers);
-  }, [episode, open]);
+    let cancelled = false;
+    void fetchOhEmployers().then((rows) => {
+      if (!cancelled) {
+        setEmployers(rows);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [episode.uuid, open]);
 
   useEffect(() => {
     if (!open || !employerId) {
@@ -169,6 +182,7 @@ export function UpdateEmploymentEpisodeDialog({
       );
       await updateEmploymentEpisode(episode.uuid, {
         customer: customer.id,
+        customer_uuid: customer.uuid,
         employer: Number(employerId),
         job_title: Number(jobTitleId),
         hazard_profile: hazardProfileId ? Number(hazardProfileId) : null,

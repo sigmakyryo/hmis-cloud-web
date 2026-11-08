@@ -1,7 +1,7 @@
 import { OCCUPATIONAL_HEALTH_API_PATHS } from "@/constants/occupational-health-api";
-import { createLaboratoryCatalogDetailHandlers } from "@/lib/server/laboratory-catalog-bff";
+import { createOccupationalHealthDetailHandlers } from "@/lib/server/occupational-health-bff";
 
-const handlers = createLaboratoryCatalogDetailHandlers(
+const handlers = createOccupationalHealthDetailHandlers(
   OCCUPATIONAL_HEALTH_API_PATHS.employmentEpisode,
 );
 

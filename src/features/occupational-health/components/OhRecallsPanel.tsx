@@ -59,6 +59,7 @@ export function OhRecallsPanel({ customer, encounterId }: OhRecallsPanelProps) {
     try {
       await createOhImmunisation({
         customer: customer.id,
+        customer_uuid: customer.uuid,
         vaccine_code: vaccineCode,
         status: "current",
         notes,
@@ -84,6 +85,7 @@ export function OhRecallsPanel({ customer, encounterId }: OhRecallsPanelProps) {
     try {
       await createPpeFitTest({
         customer: customer.id,
+        customer_uuid: customer.uuid,
         ppe_type: ppeType,
         status: "due",
         notes,
@@ -109,6 +111,7 @@ export function OhRecallsPanel({ customer, encounterId }: OhRecallsPanelProps) {
     try {
       await createFoodHandlerClearance({
         customer: customer.id,
+        customer_uuid: customer.uuid,
         status: "pending",
         notes,
       });
@@ -135,6 +138,7 @@ export function OhRecallsPanel({ customer, encounterId }: OhRecallsPanelProps) {
     try {
       await createSickLeaveCertificate({
         customer: customer.id,
+        customer_uuid: customer.uuid,
         encounter: encounterId ?? null,
         days: Number(sickDays),
         issued_at: new Date().toISOString(),

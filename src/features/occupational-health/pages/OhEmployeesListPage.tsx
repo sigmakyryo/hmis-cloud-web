@@ -5,17 +5,17 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { CustomerSummaryStatsCards } from "@/features/customers/components/CustomerSummaryStats";
-import { fetchCustomers } from "@/features/customers/services/customers.service";
 import type { Customer } from "@/features/customers/types/customer.types";
 import {
   buildCustomerListFilters,
   countActiveCustomerFilters,
   type CustomerListFilterState,
 } from "@/features/customers/utils/customer-list-filters";
+import type { CustomerSummaryStats as CustomerSummaryStatsData } from "@/features/customers/utils/customer-stats";
 import {
-  fetchCustomerSummaryStats,
-  type CustomerSummaryStats as CustomerSummaryStatsData,
-} from "@/features/customers/utils/customer-stats";
+  fetchOhEmployeeSummary,
+  fetchOhEmployees,
+} from "@/features/occupational-health/services/oh.service";
 import { OhEmployeesEmptyState } from "@/features/occupational-health/components/OhEmployeesEmptyState";
 import { OhEmployeesPageHeader } from "@/features/occupational-health/components/OhEmployeesPageHeader";
 import { OhEmployeesTable } from "@/features/occupational-health/components/OhEmployeesTable";
@@ -126,7 +126,7 @@ export function OhEmployeesListPage() {
     setIsUnauthorized(false);
 
     try {
-      const response = await fetchCustomers(listFilters);
+      const response = await fetchOhEmployees(listFilters);
       setCustomers(response.results);
       setTotalCount(response.pagination?.count ?? response.results.length);
       setHasNext(Boolean(response.pagination?.next));
@@ -158,7 +158,7 @@ export function OhEmployeesListPage() {
         setError(null);
         setIsUnauthorized(false);
 
-        const response = await fetchCustomers(listFilters);
+        const response = await fetchOhEmployees(listFilters);
         if (cancelled) {
           return;
         }
@@ -202,9 +202,7 @@ export function OhEmployeesListPage() {
 
     void (async () => {
       try {
-        const summary = await fetchCustomerSummaryStats({
-          hasEmploymentEpisode: true,
-        });
+        const summary = await fetchOhEmployeeSummary();
         if (!cancelled) {
           setStats(summary);
         }
