@@ -1,0 +1,216 @@
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { CertificateStudio } from "@/features/oh-template-builder/components/CertificateStudio";
+import type { BuilderSelection } from "@/features/oh-template-builder/template-builder.types";
+
+const state = vi.hoisted(() => ({
+  selection: { type: "template" } as BuilderSelection,
+  createSection: vi.fn(), attachSection: vi.fn(), select: vi.fn(), flush: vi.fn(), publish: vi.fn(), replace: vi.fn(), pending: false,
+}));
+vi.mock("next/navigation", () => ({ usePathname: () => "/templates/certificate/test", useRouter: () => ({ replace: state.replace }) }));
+vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({ invalidateQueries: vi.fn() }) }));
+vi.mock("@/features/oh-template-builder/hooks/useTemplateBuilder", () => ({
+  useTemplateBuilder: () => ({
+    template: { name: "Workplace fitness" }, templateUuid: "test",
+    attachments: [{ uuid: "a", sectionUuid: "s", section: { name: "Medical history" } }],
+    selection: state.selection, select: state.select, isLoading: false,
+    library: [{ uuid: "library-section", name: "Vision screening", code: "VISION" }, { uuid: "other-section", name: "Hearing screening", code: "HEARING" }],
+    attachSection: state.attachSection, createSection: state.createSection, publishTemplate: state.publish, flushPendingSaves: state.flush,
+    isPending: () => state.pending, isBusy: false,
+  }),
+  useSectionItems: () => ({ data: { items: [] }, isPending: false }),
+}));
+vi.mock("@/features/oh-template-builder/components/TemplateInspector", () => ({
+  TemplateInspector: () => <div>{state.selection.type === "template" ? "Template inspector" : "Selected section inspector"}</div>,
+}));
+vi.mock("@/features/oh-template-builder/components/CertificateEditorCanvas", () => ({ CertificateEditorCanvas: () => <div>Complete document canvas</div> }));
+vi.mock("@/features/oh-template-builder/components/TemplatePreview", () => ({ TemplatePreview: () => <div>Certificate preview</div> }));
+vi.mock("@/features/oh-template-builder/stores/certificate-studio.store", () => ({
+  useCertificateStudioStore: (selector: (value: object) => unknown) => selector({ acceptOperation: vi.fn(), note: null, setNote: vi.fn() }),
+  whenStudioIdle: vi.fn(),
+}));
+
+afterEach(cleanup);
+beforeEach(() => {
+  vi.clearAllMocks();
+  state.selection = { type: "template" };
+  state.pending = false;
+  state.attachSection.mockResolvedValue({ uuid: "attached" });
+  state.flush.mockResolvedValue(true);
+  state.select.mockImplementation((selection: BuilderSelection) => { state.selection = selection; });
+});
+
+describe("certificate studio layout and save guards", () => {
+  it("changes configuration inside the right sidebar and leaves the document in place", () => {
+    const { rerender } = render(<CertificateStudio view="edit" />);
+    const sidebar = screen.getByRole("complementary", { name: "Certificate editor sidebar" });
+    expect(within(sidebar).getByText("Template inspector")).toBeInTheDocument();
+    const canvas = screen.getByText("Complete document canvas");
+    fireEvent.click(within(screen.getByRole("complementary", { name: "Certificate section outline" })).getByRole("button", { name: "Medical history" }));
+    rerender(<CertificateStudio view="edit" />);
+    expect(within(sidebar).getByText("Section settings")).toBeInTheDocument();
+    expect(within(sidebar).getByText("Selected section inspector")).toBeInTheDocument();
+    expect(screen.getByText("Complete document canvas")).toBe(canvas);
+  });
+
+  it("places sections left and configuration right without a left canvas divider", () => {
+    render(<CertificateStudio view="edit" />);
+    const outline = screen.getByRole("complementary", { name: "Certificate section outline" });
+    const config = screen.getByRole("complementary", { name: "Certificate editor sidebar" });
+    const canvas = screen.getByText("Complete document canvas");
+    expect(outline.compareDocumentPosition(canvas) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(canvas.compareDocumentPosition(config) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(outline.className).not.toMatch(/border-(?:l|r|t|b)/);
+    expect(config).not.toHaveClass("md:border-l");
+    expect(config).toHaveClass("border-y", "border-r");
+  });
+
+  it("keeps the identity in one top-left flex row and view controls centered", () => {
+    render(<CertificateStudio view="edit" />);
+    const header = screen.getByRole("banner", { name: "Certificate editor header" });
+    const back = within(header).getByRole("link", { name: "Back to certificate catalog" });
+    const title = within(header).getByRole("heading", { name: "Workplace fitness" });
+    expect(back.parentElement).toBe(title.parentElement);
+    expect(title.parentElement).toHaveClass("flex", "items-center");
+    const controls = within(header).getByLabelText("Editor view");
+    expect(controls.parentElement).toHaveClass("justify-center");
+    expect(within(controls).getByRole("button", { name: "Build" })).toBeInTheDocument();
+    expect(within(controls).getByRole("button", { name: "Preview" })).toBeInTheDocument();
+  });
+
+  it("keeps an arrow-only catalog link and dynamic title with circular actions at the other end", () => {
+    render(<CertificateStudio view="edit" />);
+    const header = screen.getByRole("banner", { name: "Certificate editor header" });
+    const back = within(header).getByRole("link", { name: "Back to certificate catalog" });
+    expect(back).toHaveAttribute("href", "/settings/modules/occupational-health?tab=catalog");
+    expect(back.textContent).toBe("");
+    expect(within(header).queryByText("Certificates")).not.toBeInTheDocument();
+    const title = within(header).getByRole("heading", { name: "Workplace fitness" });
+    expect(title).toHaveClass("min-w-0", "truncate");
+    expect(title).toHaveAttribute("title", "Workplace fitness");
+    expect(title.parentElement?.parentElement).toHaveClass("justify-between");
+    const search = within(header).getByRole("button", { name: "Search section library" });
+    const add = within(header).getByRole("button", { name: "Add section" });
+    expect(search).toHaveClass("rounded-full", "size-7", "bg-white");
+    expect(add).toHaveClass("rounded-full", "size-7", "bg-brand-primary", "text-white");
+    for (const action of [search, add]) {
+      expect(action).toHaveAttribute("title", action.getAttribute("aria-label"));
+      expect(action).toHaveClass("focus-visible:ring-2");
+    }
+    expect(search.parentElement).toBe(add.parentElement);
+    expect(screen.queryByRole("button", { name: "Add a section" })).not.toBeInTheDocument();
+  });
+
+  it("opens the existing searchable library and attaches the selected shared section", async () => {
+    render(<CertificateStudio view="edit" />);
+    const search = screen.getByRole("button", { name: "Search section library" });
+    fireEvent.click(search);
+    expect(search).toHaveAttribute("aria-expanded", "true");
+    const dialog = screen.getByRole("dialog", { name: "Add section" });
+    fireEvent.change(within(dialog).getByRole("textbox", { name: "Search shared sections" }), { target: { value: "VISION" } });
+    expect(within(dialog).getByText("Vision screening")).toBeInTheDocument();
+    expect(within(dialog).queryByText("Hearing screening")).not.toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole("button", { name: /Vision screening/ }));
+    await waitFor(() => expect(state.attachSection).toHaveBeenCalledWith("library-section"));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(search).toHaveAttribute("aria-expanded", "false");
+    expect(state.createSection).not.toHaveBeenCalled();
+  });
+
+  it("uses the existing new-section handler and retains its pending guard", async () => {
+    const { rerender } = render(<CertificateStudio view="edit" />);
+    fireEvent.click(screen.getByRole("button", { name: "Add section" }));
+    await waitFor(() => expect(state.createSection).toHaveBeenCalledWith(expect.objectContaining({ name: "New section", code: "SECTION_2", contentMode: "items" })));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    state.pending = true;
+    rerender(<CertificateStudio view="edit" />);
+    expect(screen.getByRole("button", { name: "Add section" })).toBeDisabled();
+  });
+
+  it("reserves a full-height white right panel outside the header that takes unused document space", () => {
+    render(<CertificateStudio view="edit" />);
+    const workspace = screen.getByLabelText("Certificate workspace");
+    const header = screen.getByRole("banner", { name: "Certificate editor header" });
+    const outline = screen.getByRole("complementary", { name: "Certificate section outline" });
+    const config = screen.getByRole("complementary", { name: "Certificate editor sidebar" });
+    expect(workspace).toContainElement(header);
+    expect(workspace).not.toContainElement(config);
+    expect(workspace.parentElement).toBe(config.parentElement);
+    expect(workspace.parentElement).toHaveClass("bg-[#fafaf9]");
+    expect(workspace).toHaveClass("bg-inherit");
+    expect(outline).toHaveClass("bg-inherit");
+    expect(config).toHaveClass("bg-white", "border-y", "border-r", "rounded-lg");
+    expect(screen.queryByLabelText("Configuration panel spacing")).not.toBeInTheDocument();
+    expect(config).toHaveClass("my-3", "mr-3", "md:grow", "md:basis-[var(--certificate-config-width)]", "md:min-w-[var(--certificate-config-width)]");
+    expect(config).not.toHaveClass("md:max-w-[var(--certificate-sidebar-width)]");
+    expect(workspace.parentElement).toHaveClass("[--certificate-config-width:16rem]", "lg:[--certificate-config-width:20rem]", "xl:[--certificate-config-width:22rem]", "[--certificate-document-column:51rem]");
+    expect(workspace).toHaveClass("md:basis-[calc(var(--certificate-sidebar-width)+var(--certificate-document-column))]", "md:max-w-[calc(var(--certificate-sidebar-width)+var(--certificate-document-column))]");
+    expect(outline).toHaveClass("md:basis-[var(--certificate-sidebar-width)]");
+    expect(header).toHaveClass("md:grid-cols-[var(--certificate-sidebar-width)_minmax(0,1fr)]");
+    expect(config.className).toContain("shadow-[0_1px_6px_rgb(31_42_36/0.06)]");
+    expect(header.className).not.toMatch(/border(?:-|\s)/);
+    expect(within(header).queryByText("Autosave enabled")).not.toBeInTheDocument();
+  });
+
+  it("uses the same max width and responsive gutters for the composer as the sections", () => {
+    render(<CertificateStudio view="edit" />);
+    const input = screen.getByRole("textbox", { name: "Describe changes for the certificate assistant" });
+    expect(input.closest("form")).toHaveClass("px-4", "sm:px-6", "overflow-y-auto", "[scrollbar-gutter:stable]");
+    const content = input.closest("[data-certificate-composer-content]");
+    expect(content).toHaveClass("mx-auto", "w-full", "max-w-3xl");
+  });
+
+  it("aligns publishing with the document content end rather than the workspace edge", () => {
+    render(<CertificateStudio view="edit" />);
+    const publish = screen.getByRole("button", { name: "Publish" });
+    const actions = screen.getByLabelText("Certificate publishing actions");
+    expect(actions).toContainElement(publish);
+    expect(actions).toHaveClass("justify-self-end", "xl:col-start-3");
+    expect(actions.className).not.toMatch(/absolute|right-0/);
+    const content = publish.closest("[data-certificate-header-content]");
+    expect(content).toHaveClass("mx-auto", "w-full", "max-w-3xl");
+    expect(content?.parentElement).toHaveClass("px-4", "sm:px-6", "overflow-y-auto", "[scrollbar-gutter:stable]");
+    expect(content).toContainElement(screen.getByLabelText("Editor view"));
+  });
+
+  it("removes composer dividers while retaining input and keyboard affordances", () => {
+    render(<CertificateStudio view="edit" />);
+    const input = screen.getByRole("textbox", { name: "Describe changes for the certificate assistant" });
+    expect(input.closest("form")?.className).not.toMatch(/border(?:-|\s)/);
+    expect(input.parentElement).not.toHaveClass("border", "border-t", "border-b");
+    expect(input.parentElement).toHaveClass("focus-within:ring-2", "shadow-[0_2px_10px_rgb(31_42_36/0.08)]");
+    expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
+    fireEvent.change(input, { target: { value: "Add a section" } });
+    expect(screen.getByRole("button", { name: "Send" })).toBeEnabled();
+  });
+
+  it("omits the AI heading while keeping the input accessible", () => {
+    render(<CertificateStudio view="edit" />);
+    expect(screen.queryByText("Build with AI")).not.toBeInTheDocument();
+    expect(screen.queryByText("Describe a section, item or field")).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Describe changes for the certificate assistant" })).toBeInTheDocument();
+  });
+
+  it("flushes pending edits before navigating to preview", async () => {
+    render(<CertificateStudio view="edit" />);
+    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+    await waitFor(() => expect(state.replace).toHaveBeenCalledWith("/templates/certificate/test?view=preview", { scroll: false }));
+    expect(state.flush).toHaveBeenCalledOnce();
+  });
+
+  it("does not leave Build if saving pending edits fails", async () => {
+    state.flush.mockResolvedValue(false);
+    render(<CertificateStudio view="edit" />);
+    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+    await waitFor(() => expect(state.flush).toHaveBeenCalledOnce());
+    expect(state.replace).not.toHaveBeenCalled();
+  });
+
+  it("does not publish a template if pending edits fail to save", async () => {
+    state.flush.mockResolvedValue(false);
+    render(<CertificateStudio view="edit" />);
+    fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+    await waitFor(() => expect(state.flush).toHaveBeenCalledOnce());
+    expect(state.publish).not.toHaveBeenCalled();
+  });
+});

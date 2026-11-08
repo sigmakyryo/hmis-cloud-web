@@ -68,6 +68,11 @@ export function CreateTemplateDialog({ kind, open, onOpenChange }: CreateTemplat
     if (!created) {
       return;
     }
+    // Creation has no implicit copy step: the new UUID starts with no attachments.
+    queryClient.setQueryData(templateQueryKeys.detail(kind, created.uuid), created);
+    queryClient.setQueryData(templateQueryKeys.attachments(kind, created.uuid), []);
+    form.reset({ name: "", code: "" });
+    onOpenChange(false);
     void queryClient.invalidateQueries({ queryKey: templateQueryKeys.list(kind) });
     router.push(ROUTES.ohTemplateBuilder(kind, created.uuid));
   }

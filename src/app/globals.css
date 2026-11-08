@@ -991,7 +991,8 @@
   width: 1rem;
   height: 1rem;
   fill: none;
-  color: var(--color-dash-muted);
+  stroke: currentColor;
+  color: var(--color-brand-navy);
 }
 
 .brand-calendar .rdp-month {
@@ -1042,6 +1043,27 @@
 .brand-calendar .rdp-button_next {
   grid-column: 3;
   grid-row: 1;
+}
+
+.brand-calendar[data-nav-layout="around"] .rdp-month {
+  position: relative;
+}
+
+.brand-calendar[data-nav-layout="around"] .rdp-button_previous,
+.brand-calendar[data-nav-layout="around"] .rdp-button_next {
+  position: absolute;
+  top: 0.35rem;
+  z-index: 1;
+}
+
+.brand-calendar[data-nav-layout="around"] .rdp-button_previous {
+  left: 0.35rem;
+  right: auto;
+}
+
+.brand-calendar[data-nav-layout="around"] .rdp-button_next {
+  right: 0.35rem;
+  left: auto;
 }
 
 .brand-calendar .rdp-month_grid {

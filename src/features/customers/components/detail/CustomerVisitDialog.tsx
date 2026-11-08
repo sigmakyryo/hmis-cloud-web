@@ -52,6 +52,7 @@ import {
   formatAdaptiveAge,
   formatCustomerName,
 } from "@/features/customers/utils/format-customer";
+import { OhRiskProfileRequiredNotice } from "@/features/occupational-health/components/OhRiskProfileRequiredNotice";
 import { fetchEmploymentEpisodes } from "@/features/occupational-health/services/oh.service";
 import {
   customerHasActiveRiskProfile,
@@ -109,6 +110,7 @@ export function CustomerVisitDialog({
   const [startStep, setStartStep] = useState<StartVisitStep>("visit");
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const [hasActiveRiskProfile, setHasActiveRiskProfile] = useState(false);
+  const [serverRiskBlocked, setServerRiskBlocked] = useState(false);
 
   const form = useForm<StartVisitFormValues>({
     resolver: zodResolver(startVisitSchema),
@@ -165,6 +167,13 @@ export function CustomerVisitDialog({
   const ohRiskProfileBlocked =
     selectedDepartment?.department_type === OH_DEPARTMENT_TYPE &&
     !hasActiveRiskProfile;
+  const showRiskProfileNotice = ohRiskProfileBlocked || serverRiskBlocked;
+  if (
+    serverRiskBlocked &&
+    selectedDepartment?.department_type !== OH_DEPARTMENT_TYPE
+  ) {
+    setServerRiskBlocked(false);
+  }
 
   const canClose = useMemo(
     () => canCloseCustomerVisit(userData, activeVisit, clinicIdByUuid),
@@ -313,14 +322,6 @@ export function CustomerVisitDialog({
       department?.department_type === OH_DEPARTMENT_TYPE &&
       !hasActiveRiskProfile
     ) {
-      form.setError("department", {
-        message: OH_RISK_PROFILE_REQUIRED_MESSAGE,
-      });
-      toast({
-        variant: "error",
-        title: "Risk profile required",
-        description: OH_RISK_PROFILE_REQUIRED_MESSAGE,
-      });
       setStartStep("visit");
       return;
     }
@@ -363,15 +364,29 @@ export function CustomerVisitDialog({
       if (error instanceof BffError) {
         const fieldErrors = mapBffErrorsToForm(error.errors);
         for (const [field, message] of Object.entries(fieldErrors)) {
+          if (
+            field === "department" &&
+            message === OH_RISK_PROFILE_REQUIRED_MESSAGE
+          ) {
+            setServerRiskBlocked(true);
+            setStartStep("visit");
+            continue;
+          }
           if (field in form.getValues()) {
             form.setError(field as keyof StartVisitFormValues, { message });
           }
         }
-        toast({
-          variant: "error",
-          title: "Could not start visit",
-          description: formatBffErrorMessage(error.message, error.errors),
-        });
+        const onlyRiskProfile =
+          Object.values(fieldErrors).every(
+            (message) => message === OH_RISK_PROFILE_REQUIRED_MESSAGE,
+          ) && Object.keys(fieldErrors).length > 0;
+        if (!onlyRiskProfile) {
+          toast({
+            variant: "error",
+            title: "Could not start visit",
+            description: formatBffErrorMessage(error.message, error.errors),
+          });
+        }
       } else {
         toast({
           variant: "error",
@@ -436,15 +451,7 @@ export function CustomerVisitDialog({
     if (!valid) {
       return;
     }
-    if (ohRiskProfileBlocked) {
-      form.setError("department", {
-        message: OH_RISK_PROFILE_REQUIRED_MESSAGE,
-      });
-      toast({
-        variant: "error",
-        title: "Risk profile required",
-        description: OH_RISK_PROFILE_REQUIRED_MESSAGE,
-      });
+    if (showRiskProfileNotice) {
       return;
     }
     setStartStep("payment");
@@ -509,7 +516,21 @@ export function CustomerVisitDialog({
                 <StartVisitFormFields
                   form={form}
                   step={startStep}
-                  onStepChange={setStartStep}
+                  onStepChange={(step) => {
+                    if (step !== "visit" && showRiskProfileNotice) {
+                      return;
+                    }
+                    setStartStep(step);
+                  }}
+                  lockLaterSteps={showRiskProfileNotice}
+                  riskProfileNotice={
+                    showRiskProfileNotice ? (
+                      <OhRiskProfileRequiredNotice
+                        customerUuid={customer.uuid}
+                        onNavigate={() => onOpenChange(false)}
+                      />
+                    ) : null
+                  }
                   defaultClinicName={defaultClinic?.name ?? "Your clinic"}
                   departments={departments}
                   consultationServices={consultationServices}
@@ -523,14 +544,6 @@ export function CustomerVisitDialog({
                   attachmentFile={attachmentFile}
                   onAttachmentFileChange={setAttachmentFile}
                 />
-                {startStep === "visit" && ohRiskProfileBlocked ? (
-                  <p
-                    className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
-                    data-testid="oh-risk-profile-required"
-                  >
-                    {OH_RISK_PROFILE_REQUIRED_MESSAGE}
-                  </p>
-                ) : null}
               </form>
             </Form>
           )}
@@ -648,6 +661,7 @@ export function CustomerVisitDialog({
                 {hasDefaultClinic ? (
                   <PrimaryButton
                     type="button"
+                    disabled={showRiskProfileNotice}
                     onClick={() => void handleContinueToPayment()}
                   >
                     Continue

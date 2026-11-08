@@ -203,6 +203,16 @@ export const ROUTES = {
   settingsModuleDental: "/settings/modules/dental",
   settingsModuleRegistration: "/settings/modules/registration",
   settingsModuleOccupationalHealth: "/settings/modules/occupational-health",
+  settingsOccupationalHealthEmployer: (
+    employerUuid: string,
+    section?: "departments" | "job-titles" | "risk-profiles",
+  ) => {
+    const params = new URLSearchParams({ employer: employerUuid });
+    if (section && section !== "risk-profiles") {
+      params.set("section", section);
+    }
+    return `/settings/modules/occupational-health?${params.toString()}`;
+  },
   settingsModule: (slug: string) => `/settings/modules/${slug}`,
   ohTemplateBuilder: (kind: "exam" | "certificate", uuid: string) =>
     `/templates/${kind}/${uuid}`,

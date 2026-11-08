@@ -221,7 +221,7 @@ function createLibraryAdapter(
         ? await fetchOhCofTemplateSections(templateUuid)
         : await fetchOhExamTemplateSections(templateUuid)
       )
-        .filter((row) => row.active !== false)
+        .filter((row) => row.active !== false && row.template === templateUuid)
         .map(fromTemplateAttachment)
         .toSorted(byPosition),
     attachSection: async (templateUuid, sectionUuid, sortOrder) =>
@@ -254,7 +254,7 @@ function createLibraryAdapter(
     },
     listLibrary: async () =>
       (await fetchOhLibrarySections({ kind: libraryKind }))
-        .filter((row) => row.active !== false)
+        .filter((row) => row.active !== false && row.kind === libraryKind)
         .map(fromLibrarySection),
     createSection: async (input) =>
       fromLibrarySection(
@@ -283,7 +283,7 @@ function createLibraryAdapter(
         pageSize: SECTION_ITEMS_PAGE_SIZE,
       });
       const items = response.results
-        .filter((row) => row.active !== false)
+        .filter((row) => row.active !== false && row.section === sectionUuid)
         .toSorted((a, b) => a.sort_order - b.sort_order)
         .map((row) =>
           fromLibraryItem(row, sectionDefault, ohLibrarySectionItemLabel(row)),

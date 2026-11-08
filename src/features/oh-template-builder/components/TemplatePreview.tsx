@@ -39,7 +39,13 @@ function sectionAnchorId(attachmentUuid: string) {
 }
 
 /** The form as a clinician fills it in. Answers live in memory only. */
-export function TemplatePreview() {
+export function TemplatePreview({
+  className,
+  embedded = false,
+}: {
+  className?: string;
+  embedded?: boolean;
+}) {
   const { kind, template, attachments, isLoading } = useTemplateBuilder();
   const [answers, setAnswers] = useState<PreviewAnswers>({});
   const [values, setValues] = useState<PreviewValues>({});
@@ -59,7 +65,7 @@ export function TemplatePreview() {
     setValues((current) => setPreviewValue(current, ownerUuid, fieldCode, value));
 
   return (
-    <div className="h-full min-h-0 overflow-y-auto bg-dash-canvas">
+    <div className={cn("h-full min-h-0 overflow-y-auto bg-dash-canvas", className)}>
       <ProgressRail
         answered={progress.answered}
         total={progress.total}
@@ -71,7 +77,7 @@ export function TemplatePreview() {
       />
 
       <div className="mx-auto flex w-full max-w-[74rem] items-start gap-10 px-3 pb-20 pt-6 sm:px-6">
-        {attachments.length > 0 ? (
+        {!embedded && attachments.length > 0 ? (
           <SectionNav attachments={attachments} answeredByUuid={answeredByUuid} />
         ) : null}
 
@@ -153,7 +159,9 @@ export function TemplatePreview() {
           </footer>
         </article>
 
-        {attachments.length > 0 ? <div className="hidden w-44 shrink-0 2xl:block" aria-hidden /> : null}
+        {!embedded && attachments.length > 0 ? (
+          <div className="hidden w-44 shrink-0 2xl:block" aria-hidden />
+        ) : null}
       </div>
     </div>
   );
@@ -470,7 +478,7 @@ function inputTypeFor(field: OhResponseField) {
   }
 }
 
-function PreviewFieldInput({
+export function PreviewFieldInput({
   field,
   value,
   onChange,

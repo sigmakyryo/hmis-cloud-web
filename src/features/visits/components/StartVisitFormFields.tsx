@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { UseFormReturn } from "react-hook-form";
 
 import { ROUTES } from "@/constants/routes";
+import { OH_RISK_PROFILE_REQUIRED_MESSAGE } from "@/features/occupational-health/utils/customer-has-risk-profile";
 
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
@@ -47,6 +48,9 @@ type StartVisitFormFieldsProps = {
   selectedClinicId: number | null;
   attachmentFile: File | null;
   onAttachmentFileChange: (file: File | null) => void;
+  lockLaterSteps?: boolean;
+  /** When set, only the department field stays so the clinic can switch away from occupational health. */
+  riskProfileNotice?: ReactNode;
 };
 
 export function StartVisitFormFields({
@@ -65,6 +69,8 @@ export function StartVisitFormFields({
   selectedClinicId,
   attachmentFile,
   onAttachmentFileChange,
+  lockLaterSteps = false,
+  riskProfileNotice,
 }: StartVisitFormFieldsProps) {
   const [departmentSelectOpen, setDepartmentSelectOpen] = useState(false);
   const [departmentSearch, setDepartmentSearch] = useState("");
@@ -157,6 +163,7 @@ export function StartVisitFormFields({
 
   return (
     <div className="space-y-6">
+      {riskProfileNotice ? null : (
       <nav
         aria-label="Start visit steps"
         className="flex items-center gap-5 border-b border-dash-border/70"
@@ -178,9 +185,10 @@ export function StartVisitFormFields({
         </button>
         <button
           type="button"
+          disabled={lockLaterSteps}
           onClick={() => void goToPayment()}
           className={cn(
-            "relative -mb-px pb-2.5 text-sm",
+            "relative -mb-px pb-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-40",
             step === "payment"
               ? "font-medium text-brand-navy"
               : "text-dash-muted hover:text-brand-navy",
@@ -193,9 +201,10 @@ export function StartVisitFormFields({
         </button>
         <button
           type="button"
+          disabled={lockLaterSteps}
           onClick={() => void goToAttachments()}
           className={cn(
-            "relative -mb-px pb-2.5 text-sm",
+            "relative -mb-px pb-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-40",
             step === "attachments"
               ? "font-medium text-brand-navy"
               : "text-dash-muted hover:text-brand-navy",
@@ -207,6 +216,7 @@ export function StartVisitFormFields({
           ) : null}
         </button>
       </nav>
+      )}
 
       {step === "visit" ? (
         <div className="space-y-6">
@@ -259,12 +269,20 @@ export function StartVisitFormFields({
                     ))}
                   </SearchableSelect>
                 </FormControl>
-                <p className="text-xs text-dash-muted">{defaultClinicName}</p>
-                <FormMessage />
+                {riskProfileNotice ? null : (
+                  <p className="text-xs text-dash-muted">{defaultClinicName}</p>
+                )}
+                {form.formState.errors.department?.message ===
+                OH_RISK_PROFILE_REQUIRED_MESSAGE ? null : (
+                  <FormMessage />
+                )}
+                {riskProfileNotice}
               </FormItem>
             )}
           />
 
+          {riskProfileNotice ? null : (
+          <>
           <FormField
             control={form.control}
             name="visit_date"
@@ -355,6 +373,8 @@ export function StartVisitFormFields({
               </FormItem>
             )}
           />
+          </>
+          )}
         </div>
       ) : step === "payment" ? (
         <div className="space-y-6">

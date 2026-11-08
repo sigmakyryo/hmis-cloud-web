@@ -73,7 +73,16 @@ const TemplateBuilderContext = createContext<TemplateBuilderValue | null>(null);
 
 type ItemsData = { items: BuilderItem[]; total: number };
 
-export function TemplateBuilderProvider({
+/** A template identity owns the entire edit/preview/autosave lifecycle. */
+export function TemplateBuilderProvider(props: {
+  kind: TemplateKind;
+  templateUuid: string;
+  children: ReactNode;
+}) {
+  return <TemplateBuilderSession key={`${props.kind}:${props.templateUuid}`} {...props} />;
+}
+
+function TemplateBuilderSession({
   kind,
   templateUuid,
   children,
@@ -109,10 +118,14 @@ export function TemplateBuilderProvider({
   const templateQuery = useQuery({
     queryKey: detailKey,
     queryFn: () => adapter.getTemplate(templateUuid),
+    placeholderData: () => undefined,
+    staleTime: 0,
   });
   const attachmentsQuery = useQuery({
     queryKey: attachmentsKey,
     queryFn: () => adapter.listAttachments(templateUuid),
+    placeholderData: () => undefined,
+    staleTime: 0,
   });
   const libraryQuery = useQuery({
     queryKey: libraryKey,
@@ -283,7 +296,7 @@ export function TemplateBuilderProvider({
           return true;
         },
         {
-          success: "Section archived from the library",
+          success: "Section removed",
           error: "Could not archive section",
         },
       );
@@ -342,9 +355,12 @@ export function TemplateBuilderProvider({
           await adapter.archiveItem(item.uuid);
           return true;
         },
-        { success: "Item archived", error: "Could not archive item" },
+        { success: "Item removed", error: "Could not remove item" },
       );
       if (done) {
+        if (selection.type === "item" && selection.itemUuid === item.uuid) {
+          select({ type: "section", attachmentUuid: selection.attachmentUuid });
+        }
         queryClient.setQueryData<ItemsData>(
           templateQueryKeys.items(kind, sectionUuid),
           (current) =>

@@ -9,7 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SettingsContentSkeleton } from "@/features/settings/components/SettingsContentSkeleton";
 import { SettingsPanelSection } from "@/features/settings/components/SettingsPageLayout";
+import { OhCatalogEmptyIllustration } from "@/features/settings/components/modules/occupational-health/oh-catalog-empty-illustrations";
 import { cn } from "@/lib/utils";
+
+type OhCatalogEmptyKind = "risk" | "department" | "role";
 
 type OhCatalogListPanelProps = {
   title: string;
@@ -20,6 +23,7 @@ type OhCatalogListPanelProps = {
   error?: string | null;
   emptyTitle: string;
   emptyDescription: string;
+  emptyKind?: OhCatalogEmptyKind;
   toolbar?: ReactNode;
   children: ReactNode;
   isEmpty: boolean;
@@ -36,6 +40,7 @@ export function OhCatalogListPanel({
   error = null,
   emptyTitle,
   emptyDescription,
+  emptyKind = "role",
   toolbar,
   children,
   isEmpty,
@@ -49,19 +54,14 @@ export function OhCatalogListPanel({
       ) : error ? (
         <p className="text-sm text-red-600">{error}</p>
       ) : isEmpty ? (
-        <div
-          className={cn(
-            "rounded-xl border border-dashed border-dash-border/80 bg-slate-50/60 px-4 py-8 text-center",
-            embedded && "rounded-none border-0 border-b border-solid bg-transparent px-0 py-12",
-          )}
-        >
-          <p className={cn("text-sm font-medium text-brand-navy", embedded && "text-[15px]")}>
-            {emptyTitle}
-          </p>
-          <p className={cn("mt-1 text-sm text-slate-400", embedded && "text-[13px] text-dash-muted")}>
-            {emptyDescription}
-          </p>
-        </div>
+        <CatalogEmptyState
+          kind={emptyKind}
+          title={emptyTitle}
+          description={emptyDescription}
+          addLabel={addLabel}
+          onAdd={onAdd}
+          embedded={embedded}
+        />
       ) : (
         children
       )}
@@ -113,6 +113,46 @@ type OhCatalogRowProps = {
   /** Whole-row click (e.g. open employer workspace). Hides edit/archive. */
   onSelect?: () => void;
 };
+
+function CatalogEmptyState({
+  kind,
+  title,
+  description,
+  addLabel,
+  onAdd,
+  embedded,
+}: {
+  kind: OhCatalogEmptyKind;
+  title: string;
+  description: string;
+  addLabel: string;
+  onAdd: () => void;
+  embedded: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col items-center px-6 text-center",
+        embedded ? "py-16" : "rounded-xl border border-dashed border-dash-border/80 bg-slate-50/60 py-10",
+      )}
+      data-testid="oh-catalog-empty"
+    >
+      <OhCatalogEmptyIllustration kind={kind} />
+      <p className="mt-5 text-[15px] font-semibold text-brand-navy">{title}</p>
+      <p className="mt-1.5 max-w-sm text-[13px] leading-relaxed text-dash-muted">
+        {description}
+      </p>
+      <PrimaryButton
+        type="button"
+        size="sm"
+        className="mt-5 h-8 px-3 text-[13px]"
+        onClick={onAdd}
+      >
+        {addLabel}
+      </PrimaryButton>
+    </div>
+  );
+}
 
 function StatusBadge({ isActive }: { isActive: boolean }) {
   return (

@@ -5,11 +5,11 @@ import { useEffect, useMemo, useState } from "react";
 import { PrimaryButton } from "@/components/ui/app-buttons";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RequiredFieldMarker } from "@/components/ui/required-field-marker";
@@ -368,6 +368,7 @@ export function OhHazardProfilesSettingsTab({
         error={error}
         emptyTitle="No risk profiles yet"
         emptyDescription="Create a profile and link COF and exam templates."
+        emptyKind="risk"
         isEmpty={profiles.length === 0}
         embedded={embedded}
       >
@@ -400,7 +401,7 @@ export function OhHazardProfilesSettingsTab({
         </ul>
       </OhCatalogListPanel>
 
-      <Dialog
+      <Sheet
         open={dialogOpen}
         onOpenChange={(open) => {
           setDialogOpen(open);
@@ -409,17 +410,17 @@ export function OhHazardProfilesSettingsTab({
           }
         }}
       >
-        <DialogContent
+        <SheetContent
           className={cn(
             appFont.className,
-            "flex max-h-[90vh] w-full max-w-md flex-col gap-0 overflow-hidden p-0",
+            "flex w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-lg",
           )}
         >
-          <DialogHeader className="shrink-0 px-5 pb-4 pt-5 text-left">
-            <DialogTitle>
+          <SheetHeader className="shrink-0 space-y-0 px-5 pb-4 pr-12 pt-5 text-left">
+            <SheetTitle>
               {editing ? "Edit risk profile" : "Add risk profile"}
-            </DialogTitle>
-          </DialogHeader>
+            </SheetTitle>
+          </SheetHeader>
           <form
             className="flex min-h-0 flex-1 flex-col border-t border-dash-border"
             onSubmit={(event) => void handleSubmit(event)}
@@ -529,8 +530,8 @@ export function OhHazardProfilesSettingsTab({
               </PrimaryButton>
             </div>
           </form>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
     </>
   );
 }

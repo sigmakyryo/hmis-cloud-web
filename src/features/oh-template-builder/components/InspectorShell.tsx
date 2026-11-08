@@ -23,14 +23,14 @@ export function InspectorShell({ eyebrow, title, children, tabs, footer }: Inspe
   const active = tabs?.find((tab) => tab.id === activeId) ?? tabs?.[0];
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="border-b border-dash-border px-5 pt-4">
+    <div className="flex h-full min-h-0 min-w-0 w-full flex-col">
+      <div className="border-b border-dash-border px-3 pt-2">
         <div className="text-xs text-dash-muted">{eyebrow}</div>
-        <h2 className="mt-1 truncate text-base font-semibold tracking-tight text-brand-navy">
+        <h2 className="mt-1 truncate text-sm font-semibold tracking-tight text-brand-navy">
           {title}
         </h2>
         {tabs && tabs.length > 0 ? (
-          <div role="tablist" aria-label={typeof title === "string" ? title : "Inspector"} className="mt-3 flex gap-5">
+          <div role="tablist" aria-label={typeof title === "string" ? title : "Inspector"} className="mt-2 flex gap-3">
             {tabs.map((tab) => {
               const selected = tab.id === active?.id;
               return (
@@ -56,7 +56,7 @@ export function InspectorShell({ eyebrow, title, children, tabs, footer }: Inspe
           <div className="h-4" />
         )}
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
         {tabs && tabs.length > 0
           ? tabs.map((tab) => (
               <div key={tab.id} role="tabpanel" hidden={tab.id !== active?.id}>
@@ -66,7 +66,7 @@ export function InspectorShell({ eyebrow, title, children, tabs, footer }: Inspe
           : children}
       </div>
       {footer ? (
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-dash-border bg-white px-5 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-dash-border bg-white px-3 py-2">
           {footer}
         </div>
       ) : null}
@@ -84,7 +84,7 @@ export function InspectorToggleRow({
   control: ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-xl border border-dash-border px-4 py-3">
+    <div className="flex items-center justify-between gap-3 border-b border-dash-border py-2">
       <div>
         <p className="text-sm font-medium text-brand-navy">{title}</p>
         {description ? (

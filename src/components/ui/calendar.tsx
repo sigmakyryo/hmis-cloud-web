@@ -25,7 +25,15 @@ function CalendarChevron({
         ? ChevronLeft
         : ChevronDown;
 
-  return <Icon className={className} strokeWidth={2} aria-hidden />;
+  return (
+    <Icon
+      className={className}
+      size={16}
+      strokeWidth={2}
+      aria-hidden
+      style={{ width: 16, height: 16, fill: "none" }}
+    />
+  );
 }
 
 function Calendar({
@@ -56,6 +64,7 @@ function Calendar({
           ...style,
         } as React.CSSProperties
       }
+      navLayout="around"
       components={{ Chevron: CalendarChevron }}
       {...props}
     />

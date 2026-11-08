@@ -29,7 +29,7 @@ export function TemplateInspector() {
 
   if (selection.type === "section") {
     if (!attachment.section) {
-      return <TemplateDetailsPanel />;
+      return <InspectorPending label="Opening this section" />;
     }
     return (
       <SectionInspector
@@ -40,11 +40,23 @@ export function TemplateInspector() {
     );
   }
 
+  if (itemsQuery.isPending || !attachment.section) {
+    return <InspectorPending label="Opening this item" />;
+  }
+
   const item = itemsQuery.data?.items.find((row) => row.uuid === selection.itemUuid);
   if (!item) {
-    return <TemplateDetailsPanel />;
+    return <InspectorPending label="This item is no longer on the section." />;
   }
   return <ItemInspector key={item.uuid} attachment={attachment} item={item} />;
+}
+
+function InspectorPending({ label }: { label: string }) {
+  return (
+    <div className="flex h-full items-center px-5">
+      <p className="text-sm text-dash-muted">{label}</p>
+    </div>
+  );
 }
 
 function TemplateDetailsPanel() {
@@ -59,15 +71,15 @@ function TemplateDetailsPanel() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-white">
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-8 text-center">
-        <SelectionIllustration className="h-40 w-auto text-brand-primary" />
-        <p className="mt-6 text-[15px] font-semibold text-brand-navy">Nothing selected</p>
-        <p className="mt-1.5 max-w-[28ch] text-[13px] leading-5 text-dash-muted">
+    <div className="flex h-full min-h-0 min-w-0 w-full flex-col bg-white">
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-3 text-center">
+        <SelectionIllustration className="h-16 w-auto text-brand-primary" />
+        <p className="mt-3 text-sm font-semibold text-brand-navy">Nothing selected</p>
+        <p className="mt-1.5 w-full text-[13px] leading-5 text-dash-muted">
           Choose a section or an item on the form. What you can edit opens here.
         </p>
       </div>
-      <div className="border-t border-dash-border px-5 py-3">
+      <div className="border-t border-dash-border px-3 py-2">
         <ConfirmActionButton
           confirmLabel="Archive template"
           disabled={isPending("template:archive")}
