@@ -4,7 +4,7 @@ import type { AppIconName } from "@/components/icons/app-icon";
  * Clinical specialties served by the shared EMR workspace.
  * Keep in sync with api/eportal/clinical/specialties/builtin.py.
  */
-export type ClinicalSpecialtyCode = "opd" | "dental";
+export type ClinicalSpecialtyCode = "opd" | "dental" | "ipd";
 
 /** Visit order item types the Orders tab can place. */
 export type ClinicalOrdersTabItemType =
@@ -27,7 +27,7 @@ export type ClinicalSpecialtyDefinition = {
   /** Shown when the queue has no encounters. */
   queueEmptyDescription: string;
   /** Catalog `procedure_context` of procedures ordered in this workspace. */
-  procedureContext: "opd" | "dental";
+  procedureContext: "opd" | "dental" | "ipd";
   /** Orders tab item types; omitted means every type. */
   orderItemTypes?: readonly ClinicalOrdersTabItemType[];
   icon: AppIconName;
@@ -71,6 +71,19 @@ export const CLINICAL_SPECIALTIES: readonly ClinicalSpecialtyDefinition[] = [
     procedureContext: "dental",
     orderItemTypes: ["RADIOLOGY", "SUNDRY"],
     icon: "dental",
+  },
+  {
+    code: "ipd",
+    label: "IPD",
+    basePath: "/clinical/ipd",
+    accessGroup: "IPD",
+    moduleName: "IPD",
+    departmentTypes: ["ipd"],
+    queueNavLabel: "IPD Queue",
+    queueEmptyDescription:
+      "Active inpatient encounters will appear here once clients are admitted to an IPD ward.",
+    procedureContext: "ipd",
+    icon: "hospital",
   },
 ];
 

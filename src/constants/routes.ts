@@ -126,6 +126,12 @@ export const ROUTES = {
   clinicalDental: "/clinical/dental",
   clinicalDentalEncounter: (visitUuid: string, encounterUuid: string) =>
     `/clinical/dental/${visitUuid}/${encounterUuid}`,
+  clinicalIpd: "/clinical/ipd",
+  clinicalIpdBoard: "/clinical/ipd/board",
+  clinicalIpdBeds: "/clinical/ipd/beds",
+  clinicalIpdAdmit: "/clinical/ipd/admit",
+  clinicalIpdEncounter: (visitUuid: string, encounterUuid: string) =>
+    `/clinical/ipd/${visitUuid}/${encounterUuid}`,
   occupationalHealth: "/occupational-health",
   occupationalHealthEmployees: "/occupational-health/employees",
   occupationalHealthCompliance: "/occupational-health/compliance",

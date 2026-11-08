@@ -53,6 +53,8 @@ export const dispositionSchema = z.object({
   follow_up_at: z.string().optional(),
   notes: z.string().optional(),
   referral_destination: z.string().optional(),
+  /** Optional bed UUID for OPD → IPD handoff when outcome is admitted. */
+  ipd_bed: z.string().uuid().optional().or(z.literal("")),
 });
 
 export const clinicalNoteSchema = z.object({

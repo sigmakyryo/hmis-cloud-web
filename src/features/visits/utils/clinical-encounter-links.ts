@@ -1,4 +1,5 @@
 import { DENTAL_WORKSPACE_ROUTING } from "@/features/clinical-dental/constants/dental-workspace-routing";
+import { IPD_WORKSPACE_ROUTING } from "@/features/clinical-ipd/constants/ipd-workspace-routing";
 import { OPD_WORKSPACE_ROUTING } from "@/features/clinical-opd/constants/opd-workspace-routing";
 import type { ClinicalWorkspaceRouting } from "@/features/clinical-workspace/types/clinical-workspace.types";
 import { workspaceLandingHref } from "@/features/clinical-workspace/utils/workspace-tabs";
@@ -6,6 +7,7 @@ import { workspaceLandingHref } from "@/features/clinical-workspace/utils/worksp
 const WORKSPACE_ROUTINGS: readonly ClinicalWorkspaceRouting[] = [
   OPD_WORKSPACE_ROUTING,
   DENTAL_WORKSPACE_ROUTING,
+  IPD_WORKSPACE_ROUTING,
 ];
 
 /**

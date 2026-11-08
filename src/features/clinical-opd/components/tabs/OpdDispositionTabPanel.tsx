@@ -58,6 +58,7 @@ export function OpdDispositionTabPanel({
       follow_up_at: disposition.data?.follow_up_at ?? "",
       notes: disposition.data?.notes ?? "",
       referral_destination: disposition.data?.referral_destination ?? "",
+      ipd_bed: "",
     },
   });
   const outcome = form.watch("outcome");
@@ -74,9 +75,13 @@ export function OpdDispositionTabPanel({
           await upsert.mutateAsync({
             ...values,
             follow_up_at: values.follow_up_at || null,
+            ipd_bed: values.ipd_bed || null,
           });
           toast({
-            title: "Disposition saved",
+            title:
+              values.outcome === "admitted" && values.ipd_bed
+                ? "Admitted to IPD"
+                : "Disposition saved",
             variant: "success",
           });
         } catch (error) {
@@ -127,6 +132,16 @@ export function OpdDispositionTabPanel({
           <Input
             disabled={!canWrite}
             {...form.register("referral_destination")}
+          />
+        </div>
+      ) : null}
+      {outcome === "admitted" ? (
+        <div className="space-y-1.5">
+          <Label>IPD bed UUID (optional handoff)</Label>
+          <Input
+            disabled={!canWrite}
+            placeholder="Bed UUID to create inpatient stay"
+            {...form.register("ipd_bed")}
           />
         </div>
       ) : null}
