@@ -9,24 +9,27 @@ import {
 } from "@/features/oh-template-builder/components/CanvasSection";
 import type { AddSectionTab } from "@/features/oh-template-builder/components/AddSectionSheet";
 import { useTemplateBuilder } from "@/features/oh-template-builder/hooks/useTemplateBuilder";
+import { CERTIFICATE_CONTENT_GUTTERS, CERTIFICATE_CONTENT_WIDTH } from "@/features/oh-template-builder/lib/certificateStudioLayout";
 import { cn } from "@/lib/utils";
 
 type TemplateCanvasProps = {
   onAddSection: (tab: AddSectionTab) => void;
+  embedded?: boolean;
 };
 
-export function TemplateCanvas({ onAddSection }: TemplateCanvasProps) {
+export function TemplateCanvas({ onAddSection, embedded = false }: TemplateCanvasProps) {
   const { attachments, isLoading, select } = useTemplateBuilder();
   const hasSections = !isLoading && attachments.length > 0;
 
   return (
     <div
-      className="h-full min-h-0 overflow-y-auto bg-white"
+      id={embedded ? "template-editor-viewport" : undefined}
+      className={cn("h-full min-h-0 overflow-y-auto [scrollbar-gutter:stable]", embedded ? "bg-inherit" : "bg-white")}
       onClick={() => select({ type: "template" })}
     >
       {hasSections ? (
-        <div className="sticky top-0 z-10 border-b border-dash-border bg-white/95 backdrop-blur-sm">
-          <div className="mx-auto w-full max-w-[52rem] px-5 sm:px-8">
+        <div className={cn("sticky top-0 z-10", embedded ? "bg-[#fafaf9]" : "bg-white/95 backdrop-blur-sm")}>
+          <div className={cn(embedded ? CERTIFICATE_CONTENT_GUTTERS : "px-5 sm:px-8")}><div className={embedded ? CERTIFICATE_CONTENT_WIDTH : "mx-auto w-full max-w-[52rem]"}>
             <div className={CANVAS_ITEM_INDENT}>
               <div
                 aria-hidden
@@ -42,11 +45,11 @@ export function TemplateCanvas({ onAddSection }: TemplateCanvasProps) {
                 <span />
               </div>
             </div>
-          </div>
+          </div></div>
         </div>
       ) : null}
 
-      <div className="mx-auto w-full max-w-[52rem] px-5 pb-16 pt-2 sm:px-8">
+      <div className={cn("pb-16 pt-2", embedded ? CERTIFICATE_CONTENT_GUTTERS : "px-5 sm:px-8")}><div className={embedded ? CERTIFICATE_CONTENT_WIDTH : "mx-auto w-full max-w-[52rem]"}>
         {isLoading ? (
           <CanvasSkeleton />
         ) : (
@@ -74,7 +77,7 @@ export function TemplateCanvas({ onAddSection }: TemplateCanvasProps) {
               </button>
             </>
         )}
-      </div>
+      </div></div>
     </div>
   );
 }

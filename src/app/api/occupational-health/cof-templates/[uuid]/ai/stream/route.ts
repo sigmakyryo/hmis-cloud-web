@@ -1,3 +1,4 @@
+import { assistantStreamHttpError } from "@/features/oh-template-builder/lib/templateAiStream";
 import { OCCUPATIONAL_HEALTH_API_PATHS } from "@/constants/occupational-health-api";
 import { OH_SERVICE_URL } from "@/lib/server/oh-service";
 import { bffError } from "@/lib/server/bff-response";
@@ -13,7 +14,7 @@ export async function POST(request: Request, context: RouteContext) {
       return auth.error;
     }
     if (!OH_SERVICE_URL) {
-      throw new HmisApiError("OH_SERVICE_URL is not configured on the server.");
+      throw new HmisApiError("The certificate assistant service is not configured on the server.", 503);
     }
 
     const { uuid } = await context.params;
@@ -29,12 +30,17 @@ export async function POST(request: Request, context: RouteContext) {
         },
         body,
         cache: "no-store",
+        signal: request.signal,
       },
     );
 
-    if (!upstream.ok || !upstream.body) {
-      const message = await upstream.text();
-      throw new HmisApiError(message || "AI stream failed.", upstream.status);
+    if (!upstream.ok) {
+      await upstream.body?.cancel();
+      throw new HmisApiError(assistantStreamHttpError(upstream.status), upstream.status);
+    }
+    if (!upstream.body || !upstream.headers.get("content-type")?.toLowerCase().includes("text/event-stream")) {
+      await upstream.body?.cancel();
+      throw new HmisApiError("The certificate assistant returned an invalid stream response. Please try again.", 502);
     }
 
     return new Response(upstream.body, {
@@ -46,6 +52,8 @@ export async function POST(request: Request, context: RouteContext) {
       },
     });
   } catch (error) {
-    return bffError(error);
+    return bffError(error instanceof HmisApiError
+      ? error
+      : new HmisApiError(assistantStreamHttpError(502), 502));
   }
 }

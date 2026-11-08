@@ -161,7 +161,7 @@ function ViewTabs({ view }: TemplateBuilderTopBarProps) {
   );
 }
 
-function TemplateNameField({ initialName }: { initialName: string }) {
+export function TemplateNameField({ initialName, compact = false }: { initialName: string; compact?: boolean }) {
   const { renameTemplate, isPending } = useTemplateBuilder();
   const [name, setName] = useState(initialName);
 
@@ -197,7 +197,8 @@ function TemplateNameField({ initialName }: { initialName: string }) {
         }
       }}
       size={Math.max(name.length, 8)}
-      className="h-8 min-w-0 max-w-[14rem] border-b border-transparent bg-transparent text-[15px] font-semibold text-brand-navy outline-none transition-colors placeholder:text-dash-muted focus:border-brand-primary/40 sm:max-w-[22rem]"
+      title={initialName}
+      className={cn("h-8 min-w-0 border-b border-transparent bg-transparent font-semibold text-brand-navy outline-none transition-colors placeholder:text-dash-muted focus:border-brand-primary/40", compact ? "w-full truncate text-sm" : "max-w-[14rem] text-[15px] sm:max-w-[22rem]")}
     />
   );
 }

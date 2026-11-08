@@ -11,7 +11,8 @@ describe("parseAiStream", () => {
     const { events, rest } = parseSseChunk(
       'data: {"type":"text_delta","delta":"{\\"assistant"}\n\ndata: [DONE]\n\n',
     );
-    expect(events).toHaveLength(1);
+    expect(events).toHaveLength(2);
+    expect(events[1]?.type).toBe("done");
     expect(events[0]?.type).toBe("text_delta");
     expect(rest).toBe("");
   });

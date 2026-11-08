@@ -4,37 +4,44 @@ import { CertificateStudio } from "@/features/oh-template-builder/components/Cer
 import type { BuilderSelection } from "@/features/oh-template-builder/template-builder.types";
 
 const state = vi.hoisted(() => ({
+  toast: vi.fn(),
+  kind: "certificate" as "exam" | "certificate",
   selection: { type: "template" } as BuilderSelection,
-  createSection: vi.fn(), attachSection: vi.fn(), select: vi.fn(), flush: vi.fn(), publish: vi.fn(), replace: vi.fn(), pending: false,
+  apply: vi.fn(), invalidate: vi.fn(), createSection: vi.fn(), attachSection: vi.fn(), select: vi.fn(), flush: vi.fn(), publish: vi.fn(), replace: vi.fn(), rename: vi.fn(), pending: false,
 }));
+vi.mock("@/features/oh-template-builder/lib/templateAi", async (original) => ({ ...await original<typeof import("@/features/oh-template-builder/lib/templateAi")>(), applyCofTemplateAiOperations: state.apply, applyExamTemplateAiOperations: state.apply }));
+vi.mock("sonner", () => ({ toast: { error: state.toast } }));
 vi.mock("next/navigation", () => ({ usePathname: () => "/templates/certificate/test", useRouter: () => ({ replace: state.replace }) }));
-vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({ invalidateQueries: vi.fn() }) }));
+vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({ invalidateQueries: state.invalidate, getQueryData: vi.fn() }) }));
 vi.mock("@/features/oh-template-builder/hooks/useTemplateBuilder", () => ({
   useTemplateBuilder: () => ({
-    template: { name: "Workplace fitness" }, templateUuid: "test",
+    template: { name: "Workplace fitness" }, templateUuid: "test", kind: state.kind,
     attachments: [{ uuid: "a", sectionUuid: "s", section: { name: "Medical history" } }],
     selection: state.selection, select: state.select, isLoading: false,
     library: [{ uuid: "library-section", name: "Vision screening", code: "VISION" }, { uuid: "other-section", name: "Hearing screening", code: "HEARING" }],
     attachSection: state.attachSection, createSection: state.createSection, publishTemplate: state.publish, flushPendingSaves: state.flush,
-    isPending: () => state.pending, isBusy: false,
+    renameTemplate: state.rename, isPending: () => state.pending, isBusy: false,
   }),
   useSectionItems: () => ({ data: { items: [] }, isPending: false }),
 }));
 vi.mock("@/features/oh-template-builder/components/TemplateInspector", () => ({
   TemplateInspector: () => <div>{state.selection.type === "template" ? "Template inspector" : "Selected section inspector"}</div>,
 }));
-vi.mock("@/features/oh-template-builder/components/CertificateEditorCanvas", () => ({ CertificateEditorCanvas: () => <div>Complete document canvas</div> }));
+vi.mock("@/features/oh-template-builder/components/TemplateCanvas", () => ({ TemplateCanvas: () => <div>Complete document canvas</div> }));
 vi.mock("@/features/oh-template-builder/components/TemplatePreview", () => ({ TemplatePreview: () => <div>Certificate preview</div> }));
 vi.mock("@/features/oh-template-builder/stores/certificate-studio.store", () => ({
   useCertificateStudioStore: (selector: (value: object) => unknown) => selector({ acceptOperation: vi.fn(), note: null, setNote: vi.fn() }),
   whenStudioIdle: vi.fn(),
 }));
 
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 beforeEach(() => {
   vi.clearAllMocks();
+  state.kind = "certificate";
   state.selection = { type: "template" };
   state.pending = false;
+  state.apply.mockResolvedValue({ applied: [], errors: [] });
+  state.invalidate.mockResolvedValue(undefined);
   state.attachSection.mockResolvedValue({ uuid: "attached" });
   state.flush.mockResolvedValue(true);
   state.select.mockImplementation((selection: BuilderSelection) => { state.selection = selection; });
@@ -178,7 +185,7 @@ describe("certificate studio layout and save guards", () => {
     const input = screen.getByRole("textbox", { name: "Describe changes for the certificate assistant" });
     expect(input.closest("form")?.className).not.toMatch(/border(?:-|\s)/);
     expect(input.parentElement).not.toHaveClass("border", "border-t", "border-b");
-    expect(input.parentElement).toHaveClass("focus-within:ring-2", "shadow-[0_2px_10px_rgb(31_42_36/0.08)]");
+    expect(input.closest("[data-certificate-composer-shell]")).toHaveClass("focus-within:ring-2", "shadow-[0_2px_10px_rgb(31_42_36/0.08)]");
     expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
     fireEvent.change(input, { target: { value: "Add a section" } });
     expect(screen.getByRole("button", { name: "Send" })).toBeEnabled();
@@ -189,6 +196,97 @@ describe("certificate studio layout and save guards", () => {
     expect(screen.queryByText("Build with AI")).not.toBeInTheDocument();
     expect(screen.queryByText("Describe a section, item or field")).not.toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Describe changes for the certificate assistant" })).toBeInTheDocument();
+  });
+
+  it("shows actionable startup failures and keeps the composer usable for a retry", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response("upstream unavailable", { status: 503 }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<CertificateStudio view="edit" />);
+    const input = screen.getByRole("textbox", { name: "Describe changes for the certificate assistant" });
+    fireEvent.change(input, { target: { value: "Help with draft" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("check the AI provider configuration");
+    fireEvent.change(input, { target: { value: "Try again" } });
+    expect(screen.getByRole("button", { name: "Send" })).toBeEnabled();
+  });
+
+  it("renders a completed JSON stream without replacing the document", async () => {
+    const draft = JSON.stringify({ assistant_message: "Ready to edit.", operations: [] });
+    const stream = `data: ${JSON.stringify({ type: "text_delta", delta: draft })}\n\ndata: [DONE]\n\n`;
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(stream, { headers: { "content-type": "text/event-stream" } })));
+    render(<CertificateStudio view="edit" />);
+    fireEvent.change(screen.getByRole("textbox", { name: "Describe changes for the certificate assistant" }), { target: { value: "Help with draft" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() => expect(screen.getByText("Ready to edit.")).toBeInTheDocument());
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByText("Complete document canvas")).toBeInTheDocument();
+  });
+
+  it("batches thirteen item operations and only announces success after confirmed apply", async () => {
+    const operations = Array.from({ length: 13 }, (_, i) => ({ type: "create_item", section_code: `SECTION_${i}`, name: `Item ${i}`, code: `ITEM_${i}` }));
+    const claim = "Proposed clinical items for all attached sections.";
+    const draft = JSON.stringify({ assistant_message: claim, operations });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(`data: ${JSON.stringify({ type: "text_delta", delta: draft })}\n\ndata: [DONE]\n\n`, { headers: { "content-type": "text/event-stream" } })));
+    let finish!: (value: object) => void;
+    state.apply.mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+    render(<CertificateStudio view="edit" />);
+    const input = screen.getByRole("textbox", { name: "Describe changes for the certificate assistant" });
+    fireEvent.change(input, { target: { value: "Populate existing sections" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() => expect(state.apply).toHaveBeenCalledOnce());
+    expect(state.apply).toHaveBeenCalledWith("test", { operations });
+    expect(screen.getByRole("status")).toHaveTextContent("Applying 13 changes");
+    expect(screen.queryByText(claim)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cancel assistant" })).toBeDisabled();
+    expect(input).toBeEnabled();
+    finish({ applied: operations.map((operation) => ({ type: operation.type, result: {} })), errors: [] });
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Saved 13 changes"));
+    expect(screen.getByText(claim).closest("details")).not.toHaveAttribute("open");
+    expect(screen.getByRole("status").closest("[data-certificate-composer-shell]")).toBeInTheDocument();
+    expect(state.invalidate).toHaveBeenCalledTimes(2);
+    expect(state.invalidate.mock.calls.some(([value]) => value.queryKey.includes("library"))).toBe(false);
+    expect(state.invalidate).toHaveBeenCalledWith({ queryKey: ["oh-templates", "certificate", "items"] });
+  });
+
+  it("reports partial apply honestly and never shows the model's success claim", async () => {
+    const claim = "All sections are populated and saved.";
+    const operations = [{ type: "create_item", section_code: "VITALS", code: "PULSE", name: "Pulse" }, { type: "create_item", section_code: "MISSING", code: "OTHER", name: "Other" }];
+    const draft = JSON.stringify({ assistant_message: claim, operations });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(`data: ${JSON.stringify({ type: "text_delta", delta: draft })}\n\ndata: [DONE]\n\n`, { headers: { "content-type": "text/event-stream" } })));
+    state.apply.mockResolvedValue({ applied: [{ type: "create_item", result: {} }], errors: ["create_item: Library section not found."] });
+    render(<CertificateStudio view="edit" />);
+    fireEvent.change(screen.getByRole("textbox", { name: "Describe changes for the certificate assistant" }), { target: { value: "Populate sections" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Library section not found");
+    expect(screen.getByRole("status")).toHaveTextContent("1 saved, 0 already present, 1 failed");
+    expect(screen.queryByText(claim)).not.toBeInTheDocument();
+  });
+
+  it("does not claim zero changes saved when the apply response is lost", async () => {
+    const draft = JSON.stringify({ assistant_message: "All done", operations: [{ type: "create_item", section_code: "VITALS", code: "PULSE", name: "Pulse" }] });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(`data: ${JSON.stringify({ type: "text_delta", delta: draft })}\n\ndata: [DONE]\n\n`, { headers: { "content-type": "text/event-stream" } })));
+    state.apply.mockRejectedValue(new Error("Connection lost"));
+    render(<CertificateStudio view="edit" />);
+    fireEvent.change(screen.getByRole("textbox", { name: "Describe changes for the certificate assistant" }), { target: { value: "Draft items" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Save could not be confirmed. Review before retrying.");
+    expect(screen.getByRole("status")).toHaveTextContent("Save not confirmed");
+    expect(screen.queryByText("All done")).not.toBeInTheDocument();
+    expect(state.apply).toHaveBeenCalledOnce();
+  });
+
+  it("lets generation be cancelled from the composer without applying a partial draft", async () => {
+    vi.stubGlobal("fetch", vi.fn((_url, options: RequestInit) => new Promise((_resolve, reject) => {
+      options.signal?.addEventListener("abort", () => reject(new DOMException("Cancelled", "AbortError")));
+    })));
+    render(<CertificateStudio view="edit" />);
+    const input = screen.getByRole("textbox", { name: "Describe changes for the certificate assistant" });
+    fireEvent.change(input, { target: { value: "Draft sections" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel assistant" }));
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Cancelled — no changes sent"));
+    expect(state.apply).not.toHaveBeenCalled();
+    expect(input).toBeEnabled();
   });
 
   it("flushes pending edits before navigating to preview", async () => {
@@ -213,4 +311,76 @@ describe("certificate studio layout and save guards", () => {
     await waitFor(() => expect(state.flush).toHaveBeenCalledOnce());
     expect(state.publish).not.toHaveBeenCalled();
   });
+});
+
+
+function controlStream(...events: object[]) {
+  return new Response(events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join("") + "data: [DONE]\n\n", { headers: { "content-type": "text/event-stream" } });
+}
+
+it("shows a scope-refusal toast without enqueuing mutations", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(controlStream({ type: "refusal", message: "Can't help with that." })));
+  render(<CertificateStudio view="edit" />);
+  fireEvent.change(screen.getByRole("textbox", { name: "Describe changes for the certificate assistant" }), { target: { value: "Write a poem" } });
+  fireEvent.click(screen.getByRole("button", { name: "Send" }));
+  await waitFor(() => expect(state.toast).toHaveBeenCalledWith("Can't help with that."));
+  expect(state.apply).not.toHaveBeenCalled();
+});
+
+it.each(["exam", "certificate"] as const)("%s requires exact target selection and bound native approval", async (kind) => {
+  state.kind = kind;
+  const fetch = vi.fn().mockResolvedValueOnce(controlStream({ type: "approval_required", token: "nonce", expires_at: "2099-01-01T00:00:00Z", approvals: [{ id: "delete-1", label: "Detach Vitals", effect: "Shared content remains." }] }, { type: "conversation", conversation_id: "conversation" })).mockResolvedValueOnce(controlStream({ type: "approval_result", completed: 1, failed: 0 }));
+  vi.stubGlobal("fetch", fetch);
+  render(<CertificateStudio view="edit" />);
+  fireEvent.change(screen.getByRole("textbox", { name: `Describe changes for the ${kind} assistant` }), { target: { value: "Remove Vitals" } });
+  fireEvent.click(screen.getByRole("button", { name: "Send" }));
+  const approve = await screen.findByRole("button", { name: "Approve selected" });
+  expect(approve).toBeDisabled();
+  expect(state.apply).not.toHaveBeenCalled();
+  expect(fetch).toHaveBeenCalledTimes(1);
+  fireEvent.click(screen.getByRole("checkbox", { name: "Detach Vitals" }));
+  fireEvent.click(approve);
+  await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+  expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({ approval_token: "nonce", conversation_id: "conversation", decisions: { "delete-1": true } });
+  await screen.findByText("1 approved deletions completed");
+  expect(state.apply).not.toHaveBeenCalled();
+});
+
+it("rejects all pending targets without calling the mutation queue", async () => {
+  const fetch = vi.fn().mockResolvedValueOnce(controlStream({ type: "approval_required", token: "nonce", expires_at: "2099-01-01T00:00:00Z", approvals: [{ id: "delete-1", label: "Detach Vitals", effect: "Shared content remains." }] }, { type: "conversation", conversation_id: "conversation" })).mockResolvedValueOnce(controlStream({ type: "approval_result", completed: 0, rejected: true }));
+  vi.stubGlobal("fetch", fetch);
+  render(<CertificateStudio view="edit" />);
+  fireEvent.change(screen.getByRole("textbox", { name: "Describe changes for the certificate assistant" }), { target: { value: "Remove Vitals" } });
+  fireEvent.click(screen.getByRole("button", { name: "Send" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Reject all" }));
+  await screen.findByText("Rejected — no deletion performed");
+  expect(JSON.parse(fetch.mock.calls[1][1].body).decisions).toEqual({ "delete-1": false });
+  expect(state.apply).not.toHaveBeenCalled();
+});
+
+
+it("gives exam the approved studio shell but sends drafts only to the exam API", async () => {
+  state.kind = "exam";
+  const fetch = vi.fn().mockResolvedValue(controlStream({ type: "refusal", message: "Can't help with that." }));
+  vi.stubGlobal("fetch", fetch);
+  render(<CertificateStudio view="edit" />);
+  expect(screen.getByRole("link", { name: "Back to exam templates" })).toHaveAttribute("href", "/settings/modules/occupational-health?tab=exam-templates");
+  expect(screen.getByRole("complementary", { name: "Exam editor sidebar" })).toHaveClass("my-3", "mr-3", "rounded-lg", "md:grow");
+  expect(screen.getByRole("banner", { name: "Exam editor header" })).toBeInTheDocument();
+  fireEvent.change(screen.getByRole("textbox", { name: "Describe changes for the exam assistant" }), { target: { value: "Write a poem" } });
+  fireEvent.click(screen.getByRole("button", { name: "Send" }));
+  await waitFor(() => expect(state.toast).toHaveBeenCalledWith("Can't help with that."));
+  expect(fetch.mock.calls[0][0]).toBe("/api/occupational-health/exam-templates/test/ai/stream");
+  expect(state.apply).not.toHaveBeenCalled();
+});
+
+
+it("preserves exam header renaming through the existing save handler", async () => {
+  state.kind = "exam";
+  state.rename.mockResolvedValue(true);
+  render(<CertificateStudio view="edit" />);
+  const name = screen.getByRole("textbox", { name: "Template name" });
+  fireEvent.change(name, { target: { value: "Updated examination" } });
+  fireEvent.blur(name);
+  await waitFor(() => expect(state.rename).toHaveBeenCalledWith("Updated examination"));
 });
