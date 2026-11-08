@@ -398,8 +398,16 @@ export const BFF_OCCUPATIONAL_HEALTH_ROUTES = {
   cofTemplates: "/api/occupational-health/cof-templates",
   cofTemplate: (uuid: string) =>
     `/api/occupational-health/cof-templates/${uuid}`,
+  cofTemplateDocument: (uuid: string) =>
+    `/api/occupational-health/cof-templates/${uuid}/document`,
   cofTemplatePublish: (uuid: string) =>
     `/api/occupational-health/cof-templates/${uuid}/publish`,
+  cofTemplateAiChat: (uuid: string) =>
+    `/api/occupational-health/cof-templates/${uuid}/ai/chat`,
+  cofTemplateAiStream: (uuid: string) =>
+    `/api/occupational-health/cof-templates/${uuid}/ai/stream`,
+  cofTemplateAiApply: (uuid: string) =>
+    `/api/occupational-health/cof-templates/${uuid}/ai/apply`,
   cofTemplateVersions: (uuid: string) =>
     `/api/occupational-health/cof-templates/${uuid}/versions`,
   cofTemplateSections: "/api/occupational-health/cof-template-sections",

@@ -63,7 +63,11 @@ export const OCCUPATIONAL_HEALTH_API_PATHS = {
     `/oh-catalog-section-rules/${uuid}/`,
   ohCofTemplates: "/oh-cof-templates/",
   ohCofTemplate: (uuid: string) => `/oh-cof-templates/${uuid}/`,
+  ohCofTemplateDocument: (uuid: string) => `/oh-cof-templates/${uuid}/document/`,
   ohCofTemplatePublish: (uuid: string) => `/oh-cof-templates/${uuid}/publish/`,
+  ohCofTemplateAiChat: (uuid: string) => `/oh-cof-templates/${uuid}/ai/chat/`,
+  ohCofTemplateAiStream: (uuid: string) => `/oh-cof-templates/${uuid}/ai/stream/`,
+  ohCofTemplateAiApply: (uuid: string) => `/oh-cof-templates/${uuid}/ai/apply/`,
   ohCofTemplateVersions: (uuid: string) => `/oh-cof-templates/${uuid}/versions/`,
   ohCofTemplateSections: "/oh-cof-template-sections/",
   ohCofTemplateSection: (uuid: string) =>

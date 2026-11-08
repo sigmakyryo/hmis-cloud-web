@@ -76,6 +76,31 @@ describe("settings navigation config", () => {
     ).toBe("MASM eClaims");
   });
 
+  it("keeps Modules active on an occupational health employer page", () => {
+    const categories = buildSettingsNavigation(true);
+    const employerPath = ROUTES.settingsOccupationalHealthEmployer(
+      "890cc1e2-b0ec-4cdf-8745-9e5ad1ff09da",
+    );
+
+    expect(employerPath).toBe(
+      "/settings/modules/occupational-health?employer=890cc1e2-b0ec-4cdf-8745-9e5ad1ff09da",
+    );
+    expect(
+      ROUTES.settingsOccupationalHealthEmployer(
+        "890cc1e2-b0ec-4cdf-8745-9e5ad1ff09da",
+        "job-titles",
+      ),
+    ).toBe(
+      "/settings/modules/occupational-health?employer=890cc1e2-b0ec-4cdf-8745-9e5ad1ff09da&section=job-titles",
+    );
+    expect(
+      findActiveSettingsNavigationItem(
+        "/settings/modules/occupational-health",
+        categories,
+      )?.label,
+    ).toBe("Modules");
+  });
+
   it("assigns icons to every settings nav item", () => {
     const categories = buildSettingsNavigation(true);
     const items = categories.flatMap((category) => category.items);

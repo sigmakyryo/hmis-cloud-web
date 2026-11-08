@@ -214,12 +214,12 @@ export function ItemInspector({ attachment, item }: ItemInspectorProps) {
           footer={
             <>
               <ConfirmActionButton
-                confirmLabel="Archive item"
+                confirmLabel="Delete item"
                 disabled={isArchiving}
                 onConfirm={onArchive}
               >
                 <Archive className="size-3.5" aria-hidden />
-                Archive
+                Delete
               </ConfirmActionButton>
               <PrimaryButton
                 type="submit"

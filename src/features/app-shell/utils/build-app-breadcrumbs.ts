@@ -130,6 +130,15 @@ export function buildAppBreadcrumbs(pathname: string): AppBreadcrumb[] {
       ];
     }
 
+    if (pathname.startsWith(`${ROUTES.settingsModuleOccupationalHealth}/employers/`)) {
+      return [
+        { label: "Settings" },
+        { label: "Modules", href: ROUTES.settingsModules },
+        { label: "Occupational health", href: ROUTES.settingsModuleOccupationalHealth },
+        { label: "Employer" },
+      ];
+    }
+
     if (pathname === ROUTES.settingsIntegrations) {
       return [{ label: "Settings" }, { label: "Integrations" }];
     }

@@ -18,6 +18,7 @@ import {
 } from "@/features/oh-template-builder/components/AddSectionSheet";
 import { EmptyTemplate } from "@/features/oh-template-builder/components/EmptyTemplate";
 import type { SectionInteractionMode } from "@/features/oh-template-builder/components/SelectionModeToggle";
+import { CertificateStudio } from "@/features/oh-template-builder/components/CertificateStudio";
 import { TemplateCanvas } from "@/features/oh-template-builder/components/TemplateCanvas";
 import { TemplateInspector } from "@/features/oh-template-builder/components/TemplateInspector";
 import { TemplateOutline } from "@/features/oh-template-builder/components/TemplateOutline";
@@ -60,6 +61,14 @@ export function TemplateBuilderPage({ kind, templateUuid, view }: TemplateBuilde
           action={<BackButton kind={kind} />}
         />
       </CenteredState>
+    );
+  }
+
+  if (kind === "certificate") {
+    return (
+      <TemplateBuilderProvider kind={kind} templateUuid={templateUuid}>
+        <CertificateStudio view={view} />
+      </TemplateBuilderProvider>
     );
   }
 

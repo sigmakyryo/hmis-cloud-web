@@ -5,13 +5,12 @@ import { useForm } from "react-hook-form";
 
 import { PrimaryButton, SecondaryButton } from "@/components/ui/app-buttons";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import {
   Form,
   FormControl,
@@ -72,17 +71,22 @@ export function OhCreateEmployerDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn(appFont.className, "max-w-md")}>
-        <DialogHeader className="text-left">
-          <DialogTitle>Add employer</DialogTitle>
-          <DialogDescription>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        className={cn(
+          appFont.className,
+          "flex w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-md",
+        )}
+      >
+        <SheetHeader className="space-y-1 px-5 pb-4 pr-12 pt-5 text-left">
+          <SheetTitle>Add employer</SheetTitle>
+          <SheetDescription>
             You can set up risk profiles, departments and job titles next.
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
         <Form {...form}>
           <form
-            className="space-y-4"
+            className="space-y-4 border-t border-dash-border px-5 py-4"
             onSubmit={form.handleSubmit((values) => onSubmit(values))}
           >
             <FormField
@@ -128,7 +132,7 @@ export function OhCreateEmployerDialog({
                 )}
               />
             </div>
-            <DialogFooter className="gap-2 sm:gap-2">
+            <div className="flex justify-end gap-2 border-t border-dash-border pt-3">
               <SecondaryButton
                 type="button"
                 onClick={() => onOpenChange(false)}
@@ -139,10 +143,10 @@ export function OhCreateEmployerDialog({
               <PrimaryButton type="submit" disabled={isSaving}>
                 {isSaving ? "Adding" : "Add and open"}
               </PrimaryButton>
-            </DialogFooter>
+            </div>
           </form>
         </Form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

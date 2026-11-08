@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { SettingsContentSkeleton } from "@/features/settings/components/SettingsContentSkeleton";
 import { OhCatalogSettingsTab } from "@/features/settings/components/modules/occupational-health/OhCatalogSettingsTab";
+import { OhEmployerSettingsPage } from "@/features/settings/components/modules/occupational-health/OhEmployerSettingsPage";
 import { OhEmployersSettingsTab } from "@/features/settings/components/modules/occupational-health/OhEmployersSettingsTab";
 import { OhExamTemplatesSettingsTab } from "@/features/settings/components/modules/occupational-health/OhExamTemplatesSettingsTab";
 import { cn } from "@/lib/utils";
@@ -36,17 +37,21 @@ function OhModuleSettingsTabsInner() {
     [searchParams],
   );
 
+  const employerUuid = searchParams.get("employer");
+
   function setActiveTab(tab: OhModuleTabId) {
     const params = new URLSearchParams(searchParams.toString());
     if (tab === "employers") {
       params.delete("tab");
     } else {
       params.set("tab", tab);
-      params.delete("employer");
-      params.delete("section");
     }
     const query = params.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }
+
+  if (employerUuid) {
+    return <OhEmployerSettingsPage employerUuid={employerUuid} />;
   }
 
   return (

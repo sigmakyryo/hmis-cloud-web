@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -38,7 +39,6 @@ import type {
 } from "@/features/occupational-health/types";
 import { BffError } from "@/lib/bff-client";
 import { appFont } from "@/lib/fonts";
-import { cn } from "@/lib/utils";
 import { useToast } from "@/providers/toast-provider";
 
 const NONE_PROFILE = "__none__";
@@ -225,6 +225,7 @@ export function OhJobTitlesSettingsTab({
         error={error}
         emptyTitle="No job titles yet"
         emptyDescription="Add the roles workers hold at this employer."
+        emptyKind="role"
         isEmpty={rows.length === 0}
         embedded={embedded}
       >
@@ -254,57 +255,50 @@ export function OhJobTitlesSettingsTab({
           }
         }}
       >
-        <DialogContent
-          className={cn(appFont.className, "flex w-full max-w-md flex-col gap-0 overflow-hidden p-0")}
-        >
-          <DialogHeader className="shrink-0 px-5 pb-4 pt-5 text-left">
+        <DialogContent className={appFont.className}>
+          <DialogHeader>
             <DialogTitle>{editing ? "Edit job title" : "Add job title"}</DialogTitle>
           </DialogHeader>
-          <form
-            className="flex flex-col border-t border-dash-border"
-            onSubmit={(event) => void handleSubmit(event)}
-          >
-            <div className="space-y-4 px-5 py-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="oh-job-title">
-                    Title <RequiredFieldMarker />
-                  </Label>
-                  <Input
-                    id="oh-job-title"
-                    value={title}
-                    onChange={(event) => setTitle(event.target.value)}
-                    autoFocus
-                    required
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="oh-job-code">Code</Label>
-                  <Input
-                    id="oh-job-code"
-                    value={code}
-                    onChange={(event) => setCode(event.target.value)}
-                  />
-                </div>
+          <form className="space-y-4" onSubmit={(event) => void handleSubmit(event)}>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="oh-job-title">
+                  Title <RequiredFieldMarker />
+                </Label>
+                <Input
+                  id="oh-job-title"
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  autoFocus
+                  required
+                />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="oh-job-risk-profile">Risk profile</Label>
-                <Select value={hazardProfileId} onValueChange={setHazardProfileId}>
-                  <SelectTrigger id="oh-job-risk-profile">
-                    <SelectValue placeholder="No risk profile" />
-                  </SelectTrigger>
-                  <SelectContent className={appFont.className}>
-                    <SelectItem value={NONE_PROFILE}>No risk profile</SelectItem>
-                    {profiles.map((profile) => (
-                      <SelectItem key={profile.uuid} value={String(profile.id)}>
-                        {profile.code ? `${profile.name} (${profile.code})` : profile.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="oh-job-code">Code</Label>
+                <Input
+                  id="oh-job-code"
+                  value={code}
+                  onChange={(event) => setCode(event.target.value)}
+                />
               </div>
             </div>
-            <div className="flex items-center justify-end gap-2 border-t border-dash-border px-5 py-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="oh-job-risk-profile">Risk profile</Label>
+              <Select value={hazardProfileId} onValueChange={setHazardProfileId}>
+                <SelectTrigger id="oh-job-risk-profile">
+                  <SelectValue placeholder="No risk profile" />
+                </SelectTrigger>
+                <SelectContent className={appFont.className}>
+                  <SelectItem value={NONE_PROFILE}>No risk profile</SelectItem>
+                  {profiles.map((profile) => (
+                    <SelectItem key={profile.uuid} value={String(profile.id)}>
+                      {profile.code ? `${profile.name} (${profile.code})` : profile.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
               <Button
                 type="button"
                 variant="outline"
@@ -316,7 +310,7 @@ export function OhJobTitlesSettingsTab({
               <PrimaryButton type="submit" disabled={isSubmitting || !title.trim()}>
                 {isSubmitting ? "Saving" : editing ? "Save changes" : "Add job title"}
               </PrimaryButton>
-            </div>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>

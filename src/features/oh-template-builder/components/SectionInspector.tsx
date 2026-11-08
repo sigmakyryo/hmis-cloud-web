@@ -223,12 +223,12 @@ export function SectionInspector({ attachment, section }: SectionInspectorProps)
                 </Button>
                 {section.isSystem ? null : (
                   <ConfirmActionButton
-                    confirmLabel="Archive everywhere"
+                    confirmLabel="Delete section"
                     disabled={isRemoving}
                     onConfirm={() => archiveSection(attachment)}
                   >
                     <Archive className="size-3.5" aria-hidden />
-                    Archive
+                    Delete
                   </ConfirmActionButton>
                 )}
               </div>

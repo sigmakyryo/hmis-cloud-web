@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -29,7 +30,6 @@ import type {
 } from "@/features/occupational-health/types";
 import { BffError } from "@/lib/bff-client";
 import { appFont } from "@/lib/fonts";
-import { cn } from "@/lib/utils";
 import { useToast } from "@/providers/toast-provider";
 
 type OhDepartmentsSettingsTabProps = {
@@ -188,6 +188,7 @@ export function OhDepartmentsSettingsTab({
         error={error}
         emptyTitle="No departments yet"
         emptyDescription="Add departments used when placing workers at this employer."
+        emptyKind="department"
         isEmpty={rows.length === 0}
         embedded={embedded}
       >
@@ -215,17 +216,12 @@ export function OhDepartmentsSettingsTab({
           }
         }}
       >
-        <DialogContent
-          className={cn(appFont.className, "flex w-full max-w-md flex-col gap-0 overflow-hidden p-0")}
-        >
-          <DialogHeader className="shrink-0 px-5 pb-4 pt-5 text-left">
+        <DialogContent className={appFont.className}>
+          <DialogHeader>
             <DialogTitle>{editing ? "Edit department" : "Add department"}</DialogTitle>
           </DialogHeader>
-          <form
-            className="flex flex-col border-t border-dash-border"
-            onSubmit={(event) => void handleSubmit(event)}
-          >
-            <div className="grid gap-4 px-5 py-4 sm:grid-cols-2">
+          <form className="space-y-4" onSubmit={(event) => void handleSubmit(event)}>
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="oh-dept-name">
                   Name <RequiredFieldMarker />
@@ -247,7 +243,7 @@ export function OhDepartmentsSettingsTab({
                 />
               </div>
             </div>
-            <div className="flex items-center justify-end gap-2 border-t border-dash-border px-5 py-3">
+            <DialogFooter>
               <Button
                 type="button"
                 variant="outline"
@@ -259,7 +255,7 @@ export function OhDepartmentsSettingsTab({
               <PrimaryButton type="submit" disabled={isSubmitting || !name.trim()}>
                 {isSubmitting ? "Saving" : editing ? "Save changes" : "Add department"}
               </PrimaryButton>
-            </div>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>

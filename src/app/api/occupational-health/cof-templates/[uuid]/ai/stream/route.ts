@@ -1,0 +1,51 @@
+import { OCCUPATIONAL_HEALTH_API_PATHS } from "@/constants/occupational-health-api";
+import { OH_SERVICE_URL } from "@/lib/server/oh-service";
+import { bffError } from "@/lib/server/bff-response";
+import { HmisApiError } from "@/lib/server/hmis-api";
+import { requireAccessToken } from "@/lib/server/require-access-token";
+
+type RouteContext = { params: Promise<{ uuid: string }> };
+
+export async function POST(request: Request, context: RouteContext) {
+  try {
+    const auth = await requireAccessToken();
+    if ("error" in auth) {
+      return auth.error;
+    }
+    if (!OH_SERVICE_URL) {
+      throw new HmisApiError("OH_SERVICE_URL is not configured on the server.");
+    }
+
+    const { uuid } = await context.params;
+    const body = await request.text();
+    const upstream = await fetch(
+      `${OH_SERVICE_URL}${OCCUPATIONAL_HEALTH_API_PATHS.ohCofTemplateAiStream(uuid)}`,
+      {
+        method: "POST",
+        headers: {
+          accept: "text/event-stream",
+          "content-type": "application/json",
+          "X-HMIS-Session": auth.accessToken,
+        },
+        body,
+        cache: "no-store",
+      },
+    );
+
+    if (!upstream.ok || !upstream.body) {
+      const message = await upstream.text();
+      throw new HmisApiError(message || "AI stream failed.", upstream.status);
+    }
+
+    return new Response(upstream.body, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        "X-Accel-Buffering": "no",
+      },
+    });
+  } catch (error) {
+    return bffError(error);
+  }
+}

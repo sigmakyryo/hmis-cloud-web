@@ -27,11 +27,9 @@ import { TabbedDialog } from "@/components/ui/tabbed-dialog";
 import type { Appointment } from "@/features/appointments/types/appointment.types";
 import { fetchCustomerInsurance } from "@/features/customers/services/customer-insurance.service";
 import type { CustomerInsurance } from "@/features/customers/types/customer-insurance.types";
+import { OhRiskProfileRequiredNotice } from "@/features/occupational-health/components/OhRiskProfileRequiredNotice";
 import { fetchEmploymentEpisodes } from "@/features/occupational-health/services/oh.service";
-import {
-  customerHasActiveRiskProfile,
-  OH_RISK_PROFILE_REQUIRED_MESSAGE,
-} from "@/features/occupational-health/utils/customer-has-risk-profile";
+import { customerHasActiveRiskProfile } from "@/features/occupational-health/utils/customer-has-risk-profile";
 import { VisitAttachmentDropzone } from "@/features/visits/components/VisitAttachmentDropzone";
 import { fetchConsultationServiceCatalog } from "@/features/visits/services/consultation-services.service";
 import { uploadEncounterAttachment } from "@/features/visits/services/visit-attachments.service";
@@ -172,11 +170,6 @@ export function StartVisitFromAppointmentDialog({
 
   const handleSubmit = form.handleSubmit(async (values) => {
     if (ohRiskProfileBlocked) {
-      toast({
-        variant: "error",
-        title: "Risk profile required",
-        description: OH_RISK_PROFILE_REQUIRED_MESSAGE,
-      });
       setActiveTab("visit");
       return;
     }
@@ -256,9 +249,12 @@ export function StartVisitFromAppointmentDialog({
         { id: "attachments", label: "Attachments" },
       ]}
       activeTab={activeTab}
-      onTabChange={(tabId) =>
-        setActiveTab(tabId as "visit" | "payment" | "attachments")
-      }
+      onTabChange={(tabId) => {
+        if (ohRiskProfileBlocked && tabId !== "visit") {
+          return;
+        }
+        setActiveTab(tabId as "visit" | "payment" | "attachments");
+      }}
       className={appFont.className}
       data-testid="start-visit-from-appointment-dialog"
       footer={
@@ -273,17 +269,8 @@ export function StartVisitFromAppointmentDialog({
           {activeTab === "visit" ? (
             <PrimaryButton
               type="button"
-              onClick={() => {
-                if (ohRiskProfileBlocked) {
-                  toast({
-                    variant: "error",
-                    title: "Risk profile required",
-                    description: OH_RISK_PROFILE_REQUIRED_MESSAGE,
-                  });
-                  return;
-                }
-                setActiveTab("payment");
-              }}
+              disabled={ohRiskProfileBlocked}
+              onClick={() => setActiveTab("payment")}
             >
               Continue
             </PrimaryButton>
@@ -343,14 +330,6 @@ export function StartVisitFromAppointmentDialog({
         <form className="space-y-4">
           {activeTab === "visit" ? (
             <>
-              {ohRiskProfileBlocked ? (
-                <p
-                  className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
-                  data-testid="oh-risk-profile-required"
-                >
-                  {OH_RISK_PROFILE_REQUIRED_MESSAGE}
-                </p>
-              ) : null}
               <div className="rounded-xl border border-brand-border bg-slate-50/60 p-4 text-sm">
                 <dl className="space-y-2">
                   <div className="flex justify-between gap-4">
@@ -373,7 +352,12 @@ export function StartVisitFromAppointmentDialog({
                   ) : null}
                 </dl>
               </div>
-
+              {ohRiskProfileBlocked ? (
+                <OhRiskProfileRequiredNotice
+                  customerUuid={patientUuid}
+                  onNavigate={() => onOpenChange(false)}
+                />
+              ) : (
               <FormField
                 control={form.control}
                 name="consultation_service"
@@ -408,6 +392,7 @@ export function StartVisitFromAppointmentDialog({
                   </FormItem>
                 )}
               />
+              )}
             </>
           ) : activeTab === "payment" ? (
             <>

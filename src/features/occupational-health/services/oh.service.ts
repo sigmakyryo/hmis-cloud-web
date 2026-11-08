@@ -1107,6 +1107,38 @@ export async function fetchOhCofTemplate(uuid: string) {
   return bffRequest<OhCofTemplate>(BFF_OCCUPATIONAL_HEALTH_ROUTES.cofTemplate(uuid));
 }
 
+export type OhCofTemplateDocumentField = {
+  code: string;
+  label: string;
+  response_type: string;
+  options: string;
+};
+
+export type OhCofTemplateDocument = {
+  uuid: string;
+  name: string;
+  code: string;
+  sections: {
+    attachment_uuid: string;
+    library_section_uuid: string | null;
+    name: string;
+    code: string;
+    fields: OhCofTemplateDocumentField[];
+    items: {
+      uuid: string;
+      name: string;
+      code: string;
+      fields: OhCofTemplateDocumentField[];
+    }[];
+  }[];
+};
+
+export async function fetchOhCofTemplateDocument(uuid: string) {
+  return bffRequest<OhCofTemplateDocument>(
+    BFF_OCCUPATIONAL_HEALTH_ROUTES.cofTemplateDocument(uuid),
+  );
+}
+
 export async function createOhCofTemplate(payload: {
   name: string;
   code: string;
@@ -1178,6 +1210,7 @@ export async function fetchOhLibrarySections(options: {
     `${BFF_OCCUPATIONAL_HEALTH_ROUTES.librarySections}${listQuery({
       kind: options.kind,
       include_inactive: options.includeInactive ? "true" : undefined,
+      page_size: "200",
     })}`,
   );
   return response.results;
