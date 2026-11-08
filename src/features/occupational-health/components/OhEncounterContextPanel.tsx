@@ -7,12 +7,17 @@ import { OhEmploymentForm } from "@/features/occupational-health/components/OhEm
 import { OhEmploymentRecords } from "@/features/occupational-health/components/OhEmploymentRecords";
 import { OhEncounterModulePlaceholder } from "@/features/occupational-health/components/OhEncounterModulePlaceholder";
 import { OhMedicalExaminationsPanel } from "@/features/occupational-health/components/OhMedicalExaminationsPanel";
+import { OhVisitTemplateStep } from "@/features/occupational-health/components/OhVisitTemplateStep";
 import {
   OhColumnPanel,
   OhEncounterColumns,
 } from "@/features/occupational-health/components/OhEncounterColumns";
 import type { useOhEncounterWorkspaceData } from "@/features/occupational-health/hooks/use-occupational-health";
-import type { OhEncounterPanelId } from "@/features/occupational-health/lib/oh-encounter-modules";
+import {
+  COF_TEMPLATE_RESPONSE_KEY,
+  isVisitStepOpen,
+  type OhEncounterPanelId,
+} from "@/features/occupational-health/lib/oh-encounter-modules";
 import type {
   EmploymentEpisode,
   OhVisitEncounter,
@@ -22,6 +27,7 @@ type OhEncounterContextPanelProps = {
   activePanel: OhEncounterPanelId;
   encounter: OhVisitEncounter;
   completionRef?: { current: (() => Promise<boolean>) | null };
+  cofCompletionRef?: { current: (() => Promise<boolean>) | null };
   completing?: boolean;
   customer: Customer | null;
   episodes: EmploymentEpisode[];
@@ -36,6 +42,7 @@ export function OhEncounterContextPanel({
   activePanel,
   encounter,
   completionRef,
+  cofCompletionRef,
   completing,
   customer,
   episodes,
@@ -45,7 +52,27 @@ export function OhEncounterContextPanel({
   examFocusRequest = 0,
   onActiveExamChange,
 }: OhEncounterContextPanelProps) {
-  const medical = <div hidden={activePanel !== "medical-examinations"} className={activePanel === "medical-examinations" ? "flex min-h-0 flex-1 flex-col" : "hidden"}>      <OhMedicalExaminationsPanel
+  const native = encounter.origin === "laravel";
+  const saved = {
+    exam: workspace.examinations.some((exam) => (exam.row_version ?? 0) > 1),
+  };
+  const cofLocked = !isVisitStepOpen("certificate", saved, native);
+  const cofStep = native ? (
+    <div hidden={activePanel !== "certificate"} className={activePanel === "certificate" ? "flex min-h-0 flex-1 flex-col" : "hidden"}>
+      <OhVisitTemplateStep
+        family="cof"
+        title="Certificate"
+        responseKey={COF_TEMPLATE_RESPONSE_KEY}
+        encounter={encounter}
+        records={workspace.cofResponses}
+        locked={cofLocked}
+        completionRef={cofCompletionRef}
+        onSaved={workspace.refetchAll}
+      />
+    </div>
+  ) : null;
+  const medical = <div hidden={activePanel !== "medical-examinations"} className={activePanel === "medical-examinations" ? "flex min-h-0 flex-1 flex-col" : "hidden"}>
+    <OhMedicalExaminationsPanel
         encounter={encounter}
         completionRef={completionRef}
         completing={completing}
@@ -56,11 +83,11 @@ export function OhEncounterContextPanel({
         examFocusRequest={examFocusRequest}
         onActiveExamChange={onActiveExamChange}
       /></div>;
-  if (activePanel === "medical-examinations") return <>{medical}</>;
+  if (activePanel === "medical-examinations") return <>{medical}{cofStep}</>;
 
   if (activePanel === "certificate") {
     return (
-      <>{medical}<OhEncounterColumns
+      <>{medical}{cofStep}{cofLocked ? null : <OhEncounterColumns
         sectionKey="certificate"
         form={
           <OhColumnPanel eyebrow="Record" title="Certificate" className="bg-white">
@@ -84,13 +111,13 @@ export function OhEncounterContextPanel({
             />
           </OhColumnPanel>
         }
-      /></>
+      />}</>
     );
   }
 
   if (activePanel === "employment") {
     return (
-      <>{medical}<OhEncounterColumns
+      <>{medical}{cofStep}<OhEncounterColumns
         sectionKey="employment"
         form={
           <OhColumnPanel eyebrow="Record" title="Employment" className="bg-white">
@@ -111,5 +138,5 @@ export function OhEncounterContextPanel({
     );
   }
 
-  return <>{medical}<OhEncounterModulePlaceholder moduleId={activePanel} /></>;
+  return <>{medical}{cofStep}<OhEncounterModulePlaceholder moduleId={activePanel} /></>;
 }

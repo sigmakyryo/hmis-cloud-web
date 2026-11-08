@@ -5,7 +5,7 @@ const state = vi.hoisted(() => ({ query: "employer=employer-uuid&profile=hp-1", 
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(state.query) }));
 vi.mock("@/providers/toast-provider", () => ({ useToast: () => ({ toast: state.toast }) }));
 vi.mock("@/features/occupational-health/services/oh.service", () => ({
-  fetchOhHazardProfiles: state.profiles, fetchOhCofTemplates: vi.fn().mockResolvedValue([]), fetchOhExamTemplates: vi.fn().mockResolvedValue([]),
+  fetchOhHazardProfiles: state.profiles, fetchOhCofTemplates: vi.fn().mockResolvedValue([]), fetchOhExamTemplates: vi.fn().mockResolvedValue([]), fetchOhEmployeeFormTemplates: vi.fn().mockResolvedValue([]),
   archiveOhHazardProfile: vi.fn(), createOhHazardProfile: vi.fn(), updateOhHazardProfile: vi.fn(),
 }));
 beforeEach(() => {
@@ -17,6 +17,7 @@ it("opens the exact employer's requested risk profile for template assignment", 
   render(<OhHazardProfilesSettingsTab isActive employer={{ id: 5, uuid: "employer-uuid", name: "Employer", code: "EMP" }} />);
   expect(await screen.findByRole("dialog")).toBeVisible();
   expect(screen.getByLabelText(/Name/)).toHaveValue("Welding");
+  expect(screen.getByLabelText("Employee form template")).toBeVisible();
   expect(screen.getByLabelText("Exam template")).toBeVisible();
 });
 it("does not open an unrelated employer's profile or a nonexistent target", async () => {

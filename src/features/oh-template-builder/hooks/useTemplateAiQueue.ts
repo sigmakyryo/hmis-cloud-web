@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { TemplateKind } from "@/features/oh-template-builder/template-builder.types";
-import { applyExamTemplateAiOperations, applyCofTemplateAiOperations, type CofTemplateAiOperation, type CofTemplateAiApplyResponse } from "@/features/oh-template-builder/lib/templateAi";
+import { applyEmployeeFormTemplateAiOperations, applyExamTemplateAiOperations, applyCofTemplateAiOperations, type CofTemplateAiOperation, type CofTemplateAiApplyResponse } from "@/features/oh-template-builder/lib/templateAi";
 import { getErrorMessage } from "@/lib/fetch-error";
 
 /** A queue belongs to one mounted template session, not a global studio store. */
@@ -20,7 +20,8 @@ export function useTemplateAiQueue(templateUuid: string, kind: TemplateKind = "c
     const task = queue.current.then(async (): Promise<(CofTemplateAiApplyResponse & { uncertain?: boolean }) | null> => {
       if (!active.current) return null;
       try {
-        const result = await (kind === "exam" ? applyExamTemplateAiOperations : applyCofTemplateAiOperations)(templateUuid, { operations });
+        const apply = kind === "exam" ? applyExamTemplateAiOperations : kind === "employee" ? applyEmployeeFormTemplateAiOperations : applyCofTemplateAiOperations;
+        const result = await apply(templateUuid, { operations });
         if (active.current && result.errors?.length) setNote(result.errors.join("\n"));
         return result;
       } catch (error: unknown) {

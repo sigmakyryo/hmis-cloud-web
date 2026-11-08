@@ -434,6 +434,28 @@ export const BFF_OCCUPATIONAL_HEALTH_ROUTES = {
   examTemplateSections: "/api/occupational-health/exam-template-sections",
   examTemplateSection: (uuid: string) =>
     `/api/occupational-health/exam-template-sections/${uuid}`,
+  employeeFormTemplates: "/api/occupational-health/employee-form-templates",
+  employeeFormTemplate: (uuid: string) =>
+    `/api/occupational-health/employee-form-templates/${uuid}`,
+  employeeFormTemplateAiChat: (uuid: string) =>
+    `/api/occupational-health/employee-form-templates/${encodeURIComponent(uuid)}/ai/chat`,
+  employeeFormTemplateAiStream: (uuid: string) =>
+    `/api/occupational-health/employee-form-templates/${encodeURIComponent(uuid)}/ai/stream`,
+  employeeFormTemplateAiApply: (uuid: string) =>
+    `/api/occupational-health/employee-form-templates/${encodeURIComponent(uuid)}/ai/apply`,
+  employeeFormTemplatePublish: (uuid: string) =>
+    `/api/occupational-health/employee-form-templates/${uuid}/publish`,
+  employeeFormTemplateVersions: (uuid: string) =>
+    `/api/occupational-health/employee-form-templates/${uuid}/versions`,
+  employeeFormTemplateSections: "/api/occupational-health/employee-form-template-sections",
+  employeeFormTemplateSection: (uuid: string) =>
+    `/api/occupational-health/employee-form-template-sections/${uuid}`,
+  employeeFormResponses: "/api/occupational-health/employee-form-responses",
+  employeeFormResponseResponses: (uuid: string) =>
+    `/api/occupational-health/employee-form-responses/${uuid}/responses`,
+  cofResponses: "/api/occupational-health/cof-responses",
+  cofResponseResponses: (uuid: string) =>
+    `/api/occupational-health/cof-responses/${uuid}/responses`,
   featureFlags: "/api/occupational-health/feature-flags",
 } as const;
 

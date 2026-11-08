@@ -13,6 +13,8 @@ import {
   fetchOhEncounters,
   fetchOhExamFindings,
   fetchOhEmployers,
+  fetchOhCofResponses,
+  fetchOhEmployeeFormResponses,
   fetchOhExaminations,
   fetchOhHrFitness,
   fetchOhJobTitles,
@@ -208,6 +210,14 @@ export function useOhEncounterWorkspaceData(encounterId: number | null) {
     queryKey: ["oh-examinations"],
     queryFn: fetchOhExaminations,
   });
+  const employeeFormsQuery = useQuery({
+    queryKey: ["oh-employee-form-responses"],
+    queryFn: fetchOhEmployeeFormResponses,
+  });
+  const cofResponsesQuery = useQuery({
+    queryKey: ["oh-cof-responses"],
+    queryFn: fetchOhCofResponses,
+  });
 
   const findingsQuery = useQuery({
     queryKey: ["oh-exam-findings"],
@@ -233,6 +243,14 @@ export function useOhEncounterWorkspaceData(encounterId: number | null) {
     () => examinationsQuery.data?.filter((item) => item.encounter === encounterId) ?? [],
     [examinationsQuery.data, encounterId],
   );
+  const employeeForms = useMemo(
+    () => employeeFormsQuery.data?.filter((item) => item.encounter === encounterId && item.is_active !== false) ?? [],
+    [employeeFormsQuery.data, encounterId],
+  );
+  const cofResponses = useMemo(
+    () => cofResponsesQuery.data?.filter((item) => item.encounter === encounterId && item.is_active !== false) ?? [],
+    [cofResponsesQuery.data, encounterId],
+  );
   const examinationIds = new Set(examinations.map((item) => item.id));
 
   const findings =
@@ -256,24 +274,32 @@ export function useOhEncounterWorkspaceData(encounterId: number | null) {
 
   return {
     examinations,
+    employeeForms,
+    cofResponses,
     findings,
     fitness,
     fitnessCertificates,
     iodCases,
     isLoading:
       examinationsQuery.isLoading ||
+      employeeFormsQuery.isLoading ||
+      cofResponsesQuery.isLoading ||
       findingsQuery.isLoading ||
       fitnessQuery.isLoading ||
       certificatesQuery.isLoading ||
       iodQuery.isLoading,
     isError:
       examinationsQuery.isError ||
+      employeeFormsQuery.isError ||
+      cofResponsesQuery.isError ||
       findingsQuery.isError ||
       fitnessQuery.isError ||
       certificatesQuery.isError ||
       iodQuery.isError,
     refetchAll: () => {
       void examinationsQuery.refetch();
+      void employeeFormsQuery.refetch();
+      void cofResponsesQuery.refetch();
       void findingsQuery.refetch();
       void fitnessQuery.refetch();
       void certificatesQuery.refetch();

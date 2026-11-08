@@ -7,25 +7,21 @@ import { SettingsContentSkeleton } from "@/features/settings/components/Settings
 import { OhCatalogSettingsTab } from "@/features/settings/components/modules/occupational-health/OhCatalogSettingsTab";
 import { OhEmployerSettingsPage } from "@/features/settings/components/modules/occupational-health/OhEmployerSettingsPage";
 import { OhEmployersSettingsTab } from "@/features/settings/components/modules/occupational-health/OhEmployersSettingsTab";
+import { OhEmployeeFormTemplatesSettingsTab } from "@/features/settings/components/modules/occupational-health/OhEmployeeFormTemplatesSettingsTab";
 import { OhExamTemplatesSettingsTab } from "@/features/settings/components/modules/occupational-health/OhExamTemplatesSettingsTab";
 import { cn } from "@/lib/utils";
 
-export type OhModuleTabId = "employers" | "catalog" | "exam-templates";
+export type OhModuleTabId = "employers" | "employee-forms" | "catalog" | "exam-templates";
 
-const TABS: Array<{ id: OhModuleTabId; label: string }> = [
+export const OH_MODULE_TABS: Array<{ id: OhModuleTabId; label: string }> = [
   { id: "employers", label: "Employers" },
+  { id: "employee-forms", label: "Employee form templates" },
   { id: "catalog", label: "COF templates" },
   { id: "exam-templates", label: "Exam templates" },
 ];
 
 function parseTab(value: string | null): OhModuleTabId {
-  if (value === "catalog") {
-    return "catalog";
-  }
-  if (value === "exam-templates") {
-    return "exam-templates";
-  }
-  return "employers";
+  return OH_MODULE_TABS.find((tab) => tab.id === value)?.id ?? "employers";
 }
 
 function OhModuleSettingsTabsInner() {
@@ -60,7 +56,7 @@ function OhModuleSettingsTabsInner() {
         aria-label="Occupational health module settings"
         className="flex gap-6 border-b border-dash-border"
       >
-        {TABS.map((tab) => {
+        {OH_MODULE_TABS.map((tab) => {
           const selected = activeTab === tab.id;
           return (
             <button
@@ -82,6 +78,7 @@ function OhModuleSettingsTabsInner() {
       </nav>
       <div>
         <OhEmployersSettingsTab isActive={activeTab === "employers"} />
+        <OhEmployeeFormTemplatesSettingsTab isActive={activeTab === "employee-forms"} />
         <OhCatalogSettingsTab isActive={activeTab === "catalog"} />
         <OhExamTemplatesSettingsTab
           isActive={activeTab === "exam-templates"}

@@ -8,9 +8,9 @@ import type {
   OhTemplateVersionStatus,
 } from "@/features/occupational-health/types";
 
-export type TemplateKind = "exam" | "certificate";
+export type TemplateKind = "employee" | "exam" | "certificate";
 
-export const TEMPLATE_KINDS: readonly TemplateKind[] = ["exam", "certificate"];
+export const TEMPLATE_KINDS: readonly TemplateKind[] = ["employee", "exam", "certificate"];
 
 export type BuilderTemplate = {
   uuid: string;

@@ -108,6 +108,10 @@ export type OhHazardProfile = {
   exam_template?: string | null;
   exam_template_name?: string | null;
   exam_template_code?: string | null;
+  /** Attached employee-form template UUID (tenant-scoped). */
+  employee_form_template?: string | null;
+  employee_form_template_name?: string | null;
+  employee_form_template_code?: string | null;
   is_active?: boolean;
 };
 
@@ -248,7 +252,7 @@ export type OhCatalogSection = {
 /** @deprecated Use OhCatalogSection */
 export type OhCatalogSectionRule = OhCatalogSection;
 
-export type OhLibrarySectionKind = "cof" | "exam";
+export type OhLibrarySectionKind = "cof" | "exam" | "employee";
 
 export type OhLibraryContentMode = "items" | "direct";
 
@@ -368,6 +372,8 @@ export type OhCofTemplateSection = {
   item_count?: number;
 };
 
+export type OhEmployeeFormTemplate = OhExamTemplate;
+
 export type OhExamTemplate = {
   id: number;
   uuid: string;
@@ -457,6 +463,19 @@ export type OhPublishedFormConfig = {
   content_hash: string | null;
   form: OhFormSchema;
   form_engine_enabled: boolean;
+};
+
+export type OhTemplateCapture = {
+  id: number;
+  uuid: string;
+  encounter: number;
+  responses_json?: Record<string, unknown>;
+  row_version?: number;
+  template_version_uuid?: string | null;
+  template_uuid?: string | null;
+  template_version_number?: number | null;
+  template_snapshot?: Record<string, unknown> | null;
+  is_active?: boolean;
 };
 
 export type OhExamination = {

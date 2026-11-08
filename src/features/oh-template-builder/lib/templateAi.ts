@@ -55,10 +55,16 @@ export async function applyCofTemplateAiOperations(
 }
 
 export function templateAiRoute(kind: TemplateKind, uuid: string, action: "stream" | "chat" | "apply") {
-  const routes = kind === "exam"
-    ? { stream: BFF_OCCUPATIONAL_HEALTH_ROUTES.examTemplateAiStream, chat: BFF_OCCUPATIONAL_HEALTH_ROUTES.examTemplateAiChat, apply: BFF_OCCUPATIONAL_HEALTH_ROUTES.examTemplateAiApply }
-    : { stream: BFF_OCCUPATIONAL_HEALTH_ROUTES.cofTemplateAiStream, chat: BFF_OCCUPATIONAL_HEALTH_ROUTES.cofTemplateAiChat, apply: BFF_OCCUPATIONAL_HEALTH_ROUTES.cofTemplateAiApply };
+  const routes = {
+    exam: { stream: BFF_OCCUPATIONAL_HEALTH_ROUTES.examTemplateAiStream, chat: BFF_OCCUPATIONAL_HEALTH_ROUTES.examTemplateAiChat, apply: BFF_OCCUPATIONAL_HEALTH_ROUTES.examTemplateAiApply },
+    employee: { stream: BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormTemplateAiStream, chat: BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormTemplateAiChat, apply: BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormTemplateAiApply },
+    certificate: { stream: BFF_OCCUPATIONAL_HEALTH_ROUTES.cofTemplateAiStream, chat: BFF_OCCUPATIONAL_HEALTH_ROUTES.cofTemplateAiChat, apply: BFF_OCCUPATIONAL_HEALTH_ROUTES.cofTemplateAiApply },
+  }[kind];
   return routes[action](uuid);
+}
+
+export async function applyEmployeeFormTemplateAiOperations(templateUuid: string, payload: { operations: CofTemplateAiOperation[] }) {
+  return bffRequest<CofTemplateAiApplyResponse>(templateAiRoute("employee", templateUuid, "apply"), { method: "POST", body: payload });
 }
 
 export async function applyExamTemplateAiOperations(templateUuid: string, payload: { operations: CofTemplateAiOperation[] }) {

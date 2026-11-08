@@ -95,7 +95,9 @@ export async function* readTemplateAiStream(response: Response, kind: "exam" | "
   try {
     yield* readCertificateAiStream(response);
   } catch (error) {
-    if (kind === "exam" && error instanceof Error) throw new Error(error.message.replaceAll("certificate", "exam"));
+    if (kind !== "certificate" && error instanceof Error) {
+      throw new Error(error.message.replaceAll("certificate", kind === "employee" ? "employee form" : "exam"));
+    }
     throw error;
   }
 }

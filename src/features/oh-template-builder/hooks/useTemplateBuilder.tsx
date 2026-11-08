@@ -16,6 +16,7 @@ import { getTemplateAdapter } from "@/features/oh-template-builder/lib/templateA
 import { templateQueryKeys } from "@/features/oh-template-builder/lib/templateKinds";
 import {
   publishOhCofTemplate,
+  publishOhEmployeeFormTemplate,
   publishOhExamTemplate,
 } from "@/features/occupational-health/services/oh.service";
 import {
@@ -409,7 +410,9 @@ function TemplateBuilderSession({
           const version =
             kind === "certificate"
               ? await publishOhCofTemplate(templateUuid)
-              : await publishOhExamTemplate(templateUuid);
+              : kind === "employee"
+                ? await publishOhEmployeeFormTemplate(templateUuid)
+                : await publishOhExamTemplate(templateUuid);
           return version;
         },
         {

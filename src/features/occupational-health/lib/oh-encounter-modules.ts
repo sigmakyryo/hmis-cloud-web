@@ -1,9 +1,7 @@
 import {
   FileBadge2,
-  FlaskConical,
   ShieldAlert,
   Stethoscope,
-  Syringe,
   type LucideIcon,
 } from "lucide-react";
 
@@ -25,18 +23,6 @@ export const OH_ENCOUNTER_MODULES = [
     label: "Injury on Duty Management",
     description: "Record and manage injury-on-duty cases",
     icon: ShieldAlert,
-  },
-  {
-    id: "immunization",
-    label: "Immunization & Infectious Control",
-    description: "Vaccinations and infectious disease controls",
-    icon: Syringe,
-  },
-  {
-    id: "drug-alcohol",
-    label: "Drug & Alcohol Testing",
-    description: "Screening and chain-of-custody records",
-    icon: FlaskConical,
   },
 ] as const;
 
@@ -61,3 +47,26 @@ export function moduleIcon(id: OhEncounterModuleId): LucideIcon {
 
 /** Envelope key for risk-profile exam template answers inside examination.responses_json. */
 export const EXAM_TEMPLATE_RESPONSE_KEY = "__exam_template__";
+
+export const EMPLOYEE_FORM_RESPONSE_KEY = "__employee_form__";
+
+export const COF_TEMPLATE_RESPONSE_KEY = "__cof_template__";
+
+export function isCaptureSaved(row: { row_version?: number | null } | null | undefined) {
+  return (row?.row_version ?? 0) > 1;
+}
+
+/** Native visits collect the examination, then the certificate. */
+export function isVisitStepOpen(
+  panel: string,
+  saved: { exam: boolean },
+  native: boolean,
+) {
+  if (!native) {
+    return true;
+  }
+  if (panel === "certificate") {
+    return saved.exam;
+  }
+  return true;
+}

@@ -1,21 +1,28 @@
 import {
   archiveOhCofTemplate,
+  archiveOhEmployeeFormTemplate,
   archiveOhExamTemplate,
   archiveOhLibrarySection,
   archiveOhLibrarySectionItem,
   attachOhCofTemplateSection,
+  attachOhEmployeeFormTemplateSection,
   attachOhExamTemplateSection,
   createOhCofTemplate,
+  createOhEmployeeFormTemplate,
   createOhExamTemplate,
   createOhLibrarySection,
   createOhLibrarySectionItem,
   detachOhCofTemplateSection,
+  detachOhEmployeeFormTemplateSection,
   detachOhExamTemplateSection,
   fetchOhCofTemplate,
   fetchOhCofTemplateSections,
   fetchOhCofTemplates,
+  fetchOhEmployeeFormTemplate,
   fetchOhExamTemplate,
+  fetchOhEmployeeFormTemplateSections,
   fetchOhExamTemplateSections,
+  fetchOhEmployeeFormTemplates,
   fetchOhExamTemplates,
   fetchOhLibrarySectionItemsPage,
   fetchOhLibrarySections,
@@ -24,7 +31,9 @@ import {
   reorderOhLibrarySectionItems,
   updateOhCofTemplate,
   updateOhCofTemplateSection,
+  updateOhEmployeeFormTemplate,
   updateOhExamTemplate,
+  updateOhEmployeeFormTemplateSection,
   updateOhExamTemplateSection,
   updateOhLibrarySection,
   updateOhLibrarySectionItem,
@@ -89,6 +98,7 @@ export type TemplateAdapter = {
 const LIBRARY_KIND: Record<TemplateKind, OhLibrarySectionKind> = {
   certificate: "cof",
   exam: "exam",
+  employee: "employee",
 };
 
 function toTemplate(row: OhCofTemplate | OhExamTemplate): BuilderTemplate {
@@ -186,71 +196,68 @@ function createLibraryAdapter(
   templateKind: TemplateKind,
   libraryKind: OhLibrarySectionKind,
 ): TemplateAdapter {
-  const isCertificate = templateKind === "certificate";
+  const templates = {
+    certificate: {
+      list: fetchOhCofTemplates,
+      get: fetchOhCofTemplate,
+      create: createOhCofTemplate,
+      update: updateOhCofTemplate,
+      archive: archiveOhCofTemplate,
+      sections: fetchOhCofTemplateSections,
+      attach: attachOhCofTemplateSection,
+      detach: detachOhCofTemplateSection,
+      move: updateOhCofTemplateSection,
+    },
+    exam: {
+      list: fetchOhExamTemplates,
+      get: fetchOhExamTemplate,
+      create: createOhExamTemplate,
+      update: updateOhExamTemplate,
+      archive: archiveOhExamTemplate,
+      sections: fetchOhExamTemplateSections,
+      attach: attachOhExamTemplateSection,
+      detach: detachOhExamTemplateSection,
+      move: updateOhExamTemplateSection,
+    },
+    employee: {
+      list: fetchOhEmployeeFormTemplates,
+      get: fetchOhEmployeeFormTemplate,
+      create: createOhEmployeeFormTemplate,
+      update: updateOhEmployeeFormTemplate,
+      archive: archiveOhEmployeeFormTemplate,
+      sections: fetchOhEmployeeFormTemplateSections,
+      attach: attachOhEmployeeFormTemplateSection,
+      detach: detachOhEmployeeFormTemplateSection,
+      move: updateOhEmployeeFormTemplateSection,
+    },
+  }[templateKind];
 
   return {
-    listTemplates: async () =>
-      (isCertificate ? await fetchOhCofTemplates() : await fetchOhExamTemplates()).map(
-        toTemplate,
-      ),
-    getTemplate: async (uuid) =>
-      toTemplate(
-        isCertificate ? await fetchOhCofTemplate(uuid) : await fetchOhExamTemplate(uuid),
-      ),
-    createTemplate: async (input) =>
-      toTemplate(
-        isCertificate
-          ? await createOhCofTemplate(input)
-          : await createOhExamTemplate(input),
-      ),
-    renameTemplate: async (uuid, name) =>
-      toTemplate(
-        isCertificate
-          ? await updateOhCofTemplate(uuid, { name })
-          : await updateOhExamTemplate(uuid, { name }),
-      ),
+    listTemplates: async () => (await templates.list()).map(toTemplate),
+    getTemplate: async (uuid) => toTemplate(await templates.get(uuid)),
+    createTemplate: async (input) => toTemplate(await templates.create(input)),
+    renameTemplate: async (uuid, name) => toTemplate(await templates.update(uuid, { name })),
     archiveTemplate: async (uuid) => {
-      if (isCertificate) {
-        await archiveOhCofTemplate(uuid);
-      } else {
-        await archiveOhExamTemplate(uuid);
-      }
+      await templates.archive(uuid);
     },
     listAttachments: async (templateUuid) =>
-      (isCertificate
-        ? await fetchOhCofTemplateSections(templateUuid)
-        : await fetchOhExamTemplateSections(templateUuid)
-      )
+      (await templates.sections(templateUuid))
         .filter((row) => row.active !== false && row.template === templateUuid)
         .map(fromTemplateAttachment)
         .toSorted(byPosition),
     attachSection: async (templateUuid, sectionUuid, sortOrder) =>
       fromTemplateAttachment(
-        isCertificate
-          ? await attachOhCofTemplateSection({
-              template: templateUuid,
-              library_section: sectionUuid,
-              sort_order: sortOrder,
-            })
-          : await attachOhExamTemplateSection({
-              template: templateUuid,
-              library_section: sectionUuid,
-              sort_order: sortOrder,
-            }),
+        await templates.attach({
+          template: templateUuid,
+          library_section: sectionUuid,
+          sort_order: sortOrder,
+        }),
       ),
     detachSection: async (uuid) => {
-      if (isCertificate) {
-        await detachOhCofTemplateSection(uuid);
-      } else {
-        await detachOhExamTemplateSection(uuid);
-      }
+      await templates.detach(uuid);
     },
     moveAttachment: async (uuid, sortOrder) => {
-      if (isCertificate) {
-        await updateOhCofTemplateSection(uuid, { sort_order: sortOrder });
-      } else {
-        await updateOhExamTemplateSection(uuid, { sort_order: sortOrder });
-      }
+      await templates.move(uuid, { sort_order: sortOrder });
     },
     listLibrary: async () =>
       (await fetchOhLibrarySections({ kind: libraryKind }))
@@ -323,6 +330,7 @@ function createLibraryAdapter(
 const ADAPTERS: Record<TemplateKind, TemplateAdapter> = {
   certificate: createLibraryAdapter("certificate", LIBRARY_KIND.certificate),
   exam: createLibraryAdapter("exam", LIBRARY_KIND.exam),
+  employee: createLibraryAdapter("employee", LIBRARY_KIND.employee),
 };
 
 export function getTemplateAdapter(kind: TemplateKind) {

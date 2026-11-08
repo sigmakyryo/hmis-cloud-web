@@ -22,6 +22,7 @@ import { OhEncounterHeader } from "@/features/occupational-health/components/OhE
 import { OhEncounterModuleNav } from "@/features/occupational-health/components/OhEncounterModuleNav";
 import { OhRiskProfileRequiredEmptyState } from "@/features/occupational-health/components/OhRiskProfileRequiredEmptyState";
 import { useOhEncounterModuleParam } from "@/features/occupational-health/hooks/use-oh-encounter-module-param";
+import { isVisitStepOpen } from "@/features/occupational-health/lib/oh-encounter-modules";
 import {
   useEmploymentEpisodes,
   useOhEncounterWorkspaceData,
@@ -81,6 +82,7 @@ export function OhEncounterWorkspacePage({
   const [completeError, setCompleteError] = useState<string | null>(null);
   const [completing, setCompleting] = useState(false);
   const completionRef = useRef<(() => Promise<boolean>) | null>(null);
+  const cofCompletionRef = useRef<(() => Promise<boolean>) | null>(null);
   const completionBusy = useRef(false);
   const [activeExamUuid, setActiveExamUuid] = useState<string | null>(null);
 
@@ -101,6 +103,16 @@ export function OhEncounterWorkspacePage({
 
   const episodesLoading = Boolean(customer?.uuid) && episodesQuery.isLoading;
   const hasRiskProfile = customerHasActiveRiskProfile(episodes);
+  const nativeVisit = encounter?.origin === "laravel";
+  const captureSaved = {
+    exam: workspace.examinations.some((exam) => (exam.row_version ?? 0) > 1),
+  };
+  const lockedPanels = nativeVisit
+    ? ([
+        isVisitStepOpen("certificate", captureSaved, true) ? null : "certificate",
+      ].filter(Boolean) as Array<"certificate">)
+    : [];
+
   const showRiskProfileEmpty =
     Boolean(customer?.uuid) &&
     !episodesLoading &&
@@ -165,6 +177,13 @@ export function OhEncounterWorkspacePage({
                   if (!completionRef.current) setCompleteError("Review the examination setup before completing this visit.");
                   return;
                 }
+                if (encounter.origin === "laravel") {
+                  if (!cofCompletionRef.current || !(await cofCompletionRef.current())) {
+                    setActivePanel("certificate");
+                    setCompleteError("Complete the certificate before completing this visit.");
+                    return;
+                  }
+                }
                 for (const exam of workspace.examinations) {
                   if (exam.uuid === activeExamUuid) continue;
                   const schema = parseExamTemplateSnapshot(exam.template_snapshot);
@@ -195,6 +214,7 @@ export function OhEncounterWorkspacePage({
             <OhEncounterModuleNav
               activePanel={activePanel}
               onPanelChange={setActivePanel}
+              lockedPanels={lockedPanels}
             />
             <section
               className="flex min-h-0 min-w-0 flex-col bg-white"
@@ -208,6 +228,7 @@ export function OhEncounterWorkspacePage({
               ) : (
                 <OhEncounterContextPanel
                   completionRef={completionRef}
+                  cofCompletionRef={cofCompletionRef}
                   completing={completing}
                   activePanel={activePanel}
                   encounter={encounter}
