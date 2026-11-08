@@ -3,7 +3,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowLeft, ChevronRight, Loader2, Plus, Search, Send, SlidersHorizontal, Sparkles } from "lucide-react";
+import { ArrowLeft, ChevronRight, Loader2, Plus, Search, Send, SlidersHorizontal, Sparkles, Square } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
 
 import { PrimaryButton } from "@/components/ui/app-buttons";
@@ -18,8 +18,6 @@ import {
   useTemplateBuilder,
 } from "@/features/oh-template-builder/hooks/useTemplateBuilder";
 import {
-  extractAssistantMessage,
-  extractOperations,
   toolActivityLabel,
 } from "@/features/oh-template-builder/lib/parseAiStream";
 import {
@@ -58,7 +56,7 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
     isPending,
     isBusy,
   } = useTemplateBuilder();
-  const { enqueue, whenIdle, note, setNote: writeNote } = useTemplateAiQueue(templateUuid);
+  const { enqueue, note, setNote: writeNote } = useTemplateAiQueue(templateUuid);
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [prompt, setPrompt] = useState("");
@@ -66,6 +64,7 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
   const [reply, setReply] = useState("");
   const [activity, setActivity] = useState<string | null>(null);
   const [streaming, setStreaming] = useState(false);
+  const [applying, setApplying] = useState(false);
   const conversationId = useRef<string | null>(null);
   const streamAbort = useRef<AbortController | null>(null);
   const active = useRef(true);
@@ -92,8 +91,8 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
     const known = new Set(attachments.map((row) => row.uuid));
     setStreaming(true);
     setReply("");
-    setActivity("Writing");
-    const seen = new Set<string>();
+    setActivity("Preparing");
+    writeNote("");
     let raw = "";
     try {
       const response = await fetch(
@@ -109,20 +108,12 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
           }),
         },
       );
+      if (response.ok) setActivity("Generating draft");
       for await (const event of readCertificateAiStream(response)) {
         if (!active.current) break;
         if (event.type === "text_delta" && event.delta) {
           raw += event.delta;
-          setReply(extractAssistantMessage(raw));
-          setActivity(null);
-          for (const operation of extractOperations(raw)) {
-            const signature = `${operation.type}:${operation.section_code ?? ""}:${operation.code ?? operation.name ?? ""}`;
-            if (seen.has(signature)) {
-              continue;
-            }
-            seen.add(signature);
-            enqueue(operation);
-          }
+          setActivity("Generating draft");
         }
         if (event.type === "tool_call") {
           setActivity(toolActivityLabel(event.tool_name));
@@ -132,20 +123,39 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
         }
       }
       if (!active.current) return;
-      validateCertificateAiDraft(raw);
-      await whenIdle();
+      const draft = validateCertificateAiDraft(raw);
+      if (controller.signal.aborted) throw new DOMException("Cancelled", "AbortError");
+      setApplying(true);
+      setActivity(draft.operations.length ? `Applying ${draft.operations.length} changes` : "Checking draft");
+      // A validated draft is sent once, in dependency order, instead of one HTTP request per item.
+      const result = draft.operations.length ? await enqueue(draft.operations) : { applied: [], errors: [], uncertain: false };
+      if (!active.current || !result) return;
+      const saved = result.applied.filter((row) => !row.reused).length;
+      const reused = result.applied.length - saved;
+      if (result.errors.length) {
+        setReply("");
+        setActivity(result.uncertain ? "Save not confirmed" : `Error — ${saved} saved, ${reused} already present, ${result.errors.length} failed`);
+      } else {
+        setActivity(draft.operations.length ? `Saved ${saved} changes${reused ? `; ${reused} already present` : ""}` : "No changes to save");
+        setReply(draft.assistant_message);
+      }
+      const changed = new Set(result.applied.map((row) => row.type));
+      const invalidations = [];
+      if (result.uncertain || changed.has("create_section") || changed.has("attach_section") || changed.has("create_item")) {
+        invalidations.push(queryClient.invalidateQueries({ queryKey: templateQueryKeys.attachments("certificate", templateUuid) }));
+      }
+      if (result.uncertain || changed.has("create_section")) {
+        invalidations.push(queryClient.invalidateQueries({ queryKey: templateQueryKeys.library("certificate") }));
+      }
+      if (result.uncertain || changed.has("create_item")) {
+        invalidations.push(queryClient.invalidateQueries({ queryKey: ["oh-templates", "certificate", "items"] }));
+      }
+      try {
+        await Promise.all(invalidations);
+      } catch {
+        if (active.current) writeNote([...result.errors, "Could not refresh the editor. Review before retrying."].join("\n"));
+      }
       if (!active.current) return;
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: templateQueryKeys.attachments("certificate", templateUuid),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: templateQueryKeys.library("certificate"),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["oh-templates", "certificate", "items"],
-        }),
-      ]);
       const rows = queryClient.getQueryData<typeof attachments>(
         templateQueryKeys.attachments("certificate", templateUuid),
       );
@@ -154,11 +164,19 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
         select({ type: "section", attachmentUuid: created.uuid });
       }
     } catch (error) {
-      if (active.current && !controller.signal.aborted) writeNote(getErrorMessage(error, "The draft could not be written."));
+      if (active.current) {
+        setReply("");
+        if (controller.signal.aborted) {
+          setActivity("Cancelled — no changes sent");
+        } else {
+          setActivity("Error");
+          writeNote(getErrorMessage(error, "The draft could not be written."));
+        }
+      }
     } finally {
       if (active.current) {
         setStreaming(false);
-        setActivity(null);
+        setApplying(false);
       }
     }
   }
@@ -336,13 +354,7 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
         ) : (
           <div className="flex min-h-0 flex-1 flex-col">
             <CertificateEditorCanvas onAddSection={() => void addSection()} />
-            {reply || activity || note ? <div
-              className="mx-5 mb-3 max-h-28 shrink-0 overflow-y-auto bg-transparent px-3 py-2 text-sm lg:mx-8"
-              aria-live="polite"
-            >
-              {reply || activity ? <><p className="mb-1 flex items-center gap-2 text-xs font-medium text-brand-primary"><Sparkles className="size-3.5" aria-hidden />{activity ?? "Assistant"}</p><p className="whitespace-pre-wrap leading-6 text-brand-navy">{reply}</p></> : null}
-              {note ? <p className="text-red-700" role="alert">{note}</p> : null}
-            </div> : null}
+
           </div>
         )}
 
@@ -363,36 +375,55 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
 
           >
             <div data-certificate-composer-content className={CERTIFICATE_CONTENT_WIDTH}>
-              <div
-                className="flex items-end gap-3 rounded-md bg-white/70 px-3 py-1.5 shadow-[0_2px_10px_rgb(31_42_36/0.08)] focus-within:ring-2 focus-within:ring-brand-primary/10"
-              >
-                <textarea
-                  aria-label="Describe changes for the certificate assistant"
-                  value={prompt}
-                  onChange={(event) => setPrompt(event.target.value)}
-                  rows={1}
-                  disabled={isLoading}
-                  placeholder="Write the next section, item, or field"
-                  className="min-h-8 flex-1 resize-none bg-transparent py-1 text-sm text-brand-navy outline-none placeholder:text-dash-muted disabled:opacity-60"
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" && !event.shiftKey) {
-                      event.preventDefault();
-                      event.currentTarget.form?.requestSubmit();
-                    }
-                  }}
-                />
-                <button
-                  type="submit"
-                  disabled={streaming || isLoading || !prompt.trim()}
-                  className="mb-1 grid size-8 place-items-center rounded-full bg-brand-primary text-white hover:bg-brand-primary-hover disabled:opacity-30"
-                  aria-label="Send"
-                >
-                  {streaming ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <Send className="size-3.5" />
-                  )}
-                </button>
+              <div data-certificate-composer-shell className="rounded-md bg-white/70 shadow-[0_2px_10px_rgb(31_42_36/0.08)] focus-within:ring-2 focus-within:ring-brand-primary/10">
+                {activity || note ? <div className="px-3 pt-2 text-xs">
+                  <p role="status" aria-live="polite" className="flex items-center gap-1.5 text-dash-muted">
+                    {streaming ? <Loader2 className="size-3 animate-spin" aria-hidden /> : <Sparkles className="size-3" aria-hidden />}
+                    {activity}
+                  </p>
+                  {note ? <>
+                    <p role="alert" className="mt-1 line-clamp-2 text-red-700">{note.split("\n")[0]}</p>
+                    {note.includes("\n") ? <details className="mt-1 text-red-700"><summary className="cursor-pointer">View all errors</summary><p className="max-h-24 overflow-y-auto whitespace-pre-wrap py-1">{note}</p></details> : null}
+                  </> : null}
+                  {reply ? <details className="mt-1 text-dash-muted"><summary className="cursor-pointer">View assistant summary</summary><p className="max-h-24 overflow-y-auto whitespace-pre-wrap py-1 leading-5">{reply}</p></details> : null}
+                </div> : null}
+                <div className="flex items-end gap-3 px-3 py-1.5">
+                  <textarea
+                    aria-label="Describe changes for the certificate assistant"
+                    value={prompt}
+                    onChange={(event) => setPrompt(event.target.value)}
+                    rows={1}
+                    disabled={isLoading}
+                    placeholder="Write the next section, item, or field"
+                    className="min-h-8 flex-1 resize-none bg-transparent py-1 text-sm text-brand-navy outline-none placeholder:text-dash-muted disabled:opacity-60"
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && !event.shiftKey) {
+                        event.preventDefault();
+                        event.currentTarget.form?.requestSubmit();
+                      }
+                    }}
+                  />
+                  {streaming ? <button
+                    type="button"
+                    aria-label="Cancel assistant"
+                    title={applying ? "Changes are being saved; cancellation cannot undo a save" : "Cancel generation"}
+                    disabled={applying}
+                    onClick={() => streamAbort.current?.abort()}
+                    className="mb-1 grid size-8 place-items-center rounded-full bg-white text-brand-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30 disabled:opacity-40"
+                  ><Square className="size-3.5" aria-hidden /></button> : null}
+                  <button
+                    type="submit"
+                    disabled={streaming || isLoading || !prompt.trim()}
+                    className="mb-1 grid size-8 place-items-center rounded-full bg-brand-primary text-white hover:bg-brand-primary-hover disabled:opacity-30"
+                    aria-label="Send"
+                  >
+                    {streaming ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Send className="size-3.5" />
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </form>

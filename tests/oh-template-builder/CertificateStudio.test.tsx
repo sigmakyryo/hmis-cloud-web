@@ -5,10 +5,11 @@ import type { BuilderSelection } from "@/features/oh-template-builder/template-b
 
 const state = vi.hoisted(() => ({
   selection: { type: "template" } as BuilderSelection,
-  createSection: vi.fn(), attachSection: vi.fn(), select: vi.fn(), flush: vi.fn(), publish: vi.fn(), replace: vi.fn(), pending: false,
+  apply: vi.fn(), invalidate: vi.fn(), createSection: vi.fn(), attachSection: vi.fn(), select: vi.fn(), flush: vi.fn(), publish: vi.fn(), replace: vi.fn(), pending: false,
 }));
+vi.mock("@/features/oh-template-builder/lib/templateAi", () => ({ applyCofTemplateAiOperations: state.apply }));
 vi.mock("next/navigation", () => ({ usePathname: () => "/templates/certificate/test", useRouter: () => ({ replace: state.replace }) }));
-vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({ invalidateQueries: vi.fn(), getQueryData: vi.fn() }) }));
+vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({ invalidateQueries: state.invalidate, getQueryData: vi.fn() }) }));
 vi.mock("@/features/oh-template-builder/hooks/useTemplateBuilder", () => ({
   useTemplateBuilder: () => ({
     template: { name: "Workplace fitness" }, templateUuid: "test",
@@ -35,6 +36,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   state.selection = { type: "template" };
   state.pending = false;
+  state.apply.mockResolvedValue({ applied: [], errors: [] });
+  state.invalidate.mockResolvedValue(undefined);
   state.attachSection.mockResolvedValue({ uuid: "attached" });
   state.flush.mockResolvedValue(true);
   state.select.mockImplementation((selection: BuilderSelection) => { state.selection = selection; });
@@ -178,7 +181,7 @@ describe("certificate studio layout and save guards", () => {
     const input = screen.getByRole("textbox", { name: "Describe changes for the certificate assistant" });
     expect(input.closest("form")?.className).not.toMatch(/border(?:-|\s)/);
     expect(input.parentElement).not.toHaveClass("border", "border-t", "border-b");
-    expect(input.parentElement).toHaveClass("focus-within:ring-2", "shadow-[0_2px_10px_rgb(31_42_36/0.08)]");
+    expect(input.closest("[data-certificate-composer-shell]")).toHaveClass("focus-within:ring-2", "shadow-[0_2px_10px_rgb(31_42_36/0.08)]");
     expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
     fireEvent.change(input, { target: { value: "Add a section" } });
     expect(screen.getByRole("button", { name: "Send" })).toBeEnabled();
@@ -213,6 +216,73 @@ describe("certificate studio layout and save guards", () => {
     await waitFor(() => expect(screen.getByText("Ready to edit.")).toBeInTheDocument());
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.getByText("Complete document canvas")).toBeInTheDocument();
+  });
+
+  it("batches thirteen item operations and only announces success after confirmed apply", async () => {
+    const operations = Array.from({ length: 13 }, (_, i) => ({ type: "create_item", section_code: `SECTION_${i}`, name: `Item ${i}`, code: `ITEM_${i}` }));
+    const claim = "Proposed clinical items for all attached sections.";
+    const draft = JSON.stringify({ assistant_message: claim, operations });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(`data: ${JSON.stringify({ type: "text_delta", delta: draft })}\n\ndata: [DONE]\n\n`, { headers: { "content-type": "text/event-stream" } })));
+    let finish!: (value: object) => void;
+    state.apply.mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+    render(<CertificateStudio view="edit" />);
+    const input = screen.getByRole("textbox", { name: "Describe changes for the certificate assistant" });
+    fireEvent.change(input, { target: { value: "Populate existing sections" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() => expect(state.apply).toHaveBeenCalledOnce());
+    expect(state.apply).toHaveBeenCalledWith("test", { operations });
+    expect(screen.getByRole("status")).toHaveTextContent("Applying 13 changes");
+    expect(screen.queryByText(claim)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cancel assistant" })).toBeDisabled();
+    expect(input).toBeEnabled();
+    finish({ applied: operations.map((operation) => ({ type: operation.type, result: {} })), errors: [] });
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Saved 13 changes"));
+    expect(screen.getByText(claim).closest("details")).not.toHaveAttribute("open");
+    expect(screen.getByRole("status").closest("[data-certificate-composer-shell]")).toBeInTheDocument();
+    expect(state.invalidate).toHaveBeenCalledTimes(2);
+    expect(state.invalidate.mock.calls.some(([value]) => value.queryKey.includes("library"))).toBe(false);
+    expect(state.invalidate).toHaveBeenCalledWith({ queryKey: ["oh-templates", "certificate", "items"] });
+  });
+
+  it("reports partial apply honestly and never shows the model's success claim", async () => {
+    const claim = "All sections are populated and saved.";
+    const operations = [{ type: "create_item", section_code: "VITALS", code: "PULSE", name: "Pulse" }, { type: "create_item", section_code: "MISSING", code: "OTHER", name: "Other" }];
+    const draft = JSON.stringify({ assistant_message: claim, operations });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(`data: ${JSON.stringify({ type: "text_delta", delta: draft })}\n\ndata: [DONE]\n\n`, { headers: { "content-type": "text/event-stream" } })));
+    state.apply.mockResolvedValue({ applied: [{ type: "create_item", result: {} }], errors: ["create_item: Library section not found."] });
+    render(<CertificateStudio view="edit" />);
+    fireEvent.change(screen.getByRole("textbox", { name: "Describe changes for the certificate assistant" }), { target: { value: "Populate sections" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Library section not found");
+    expect(screen.getByRole("status")).toHaveTextContent("1 saved, 0 already present, 1 failed");
+    expect(screen.queryByText(claim)).not.toBeInTheDocument();
+  });
+
+  it("does not claim zero changes saved when the apply response is lost", async () => {
+    const draft = JSON.stringify({ assistant_message: "All done", operations: [{ type: "create_item", section_code: "VITALS", code: "PULSE", name: "Pulse" }] });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(`data: ${JSON.stringify({ type: "text_delta", delta: draft })}\n\ndata: [DONE]\n\n`, { headers: { "content-type": "text/event-stream" } })));
+    state.apply.mockRejectedValue(new Error("Connection lost"));
+    render(<CertificateStudio view="edit" />);
+    fireEvent.change(screen.getByRole("textbox", { name: "Describe changes for the certificate assistant" }), { target: { value: "Draft items" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Save could not be confirmed. Review before retrying.");
+    expect(screen.getByRole("status")).toHaveTextContent("Save not confirmed");
+    expect(screen.queryByText("All done")).not.toBeInTheDocument();
+    expect(state.apply).toHaveBeenCalledOnce();
+  });
+
+  it("lets generation be cancelled from the composer without applying a partial draft", async () => {
+    vi.stubGlobal("fetch", vi.fn((_url, options: RequestInit) => new Promise((_resolve, reject) => {
+      options.signal?.addEventListener("abort", () => reject(new DOMException("Cancelled", "AbortError")));
+    })));
+    render(<CertificateStudio view="edit" />);
+    const input = screen.getByRole("textbox", { name: "Describe changes for the certificate assistant" });
+    fireEvent.change(input, { target: { value: "Draft sections" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel assistant" }));
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Cancelled — no changes sent"));
+    expect(state.apply).not.toHaveBeenCalled();
+    expect(input).toBeEnabled();
   });
 
   it("flushes pending edits before navigating to preview", async () => {

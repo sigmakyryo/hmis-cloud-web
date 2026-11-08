@@ -1,3 +1,4 @@
+import type { CofTemplateAiOperation } from "@/features/oh-template-builder/lib/templateAi";
 import { parseSseChunk, type AiStreamEvent } from "@/features/oh-template-builder/lib/parseAiStream";
 
 /** Public status messages only: never forward provider/debug HTML, credentials or stack traces. */
@@ -58,7 +59,7 @@ export async function* readCertificateAiStream(response: Response): AsyncGenerat
 }
 
 /** Streaming is textual in this SDK, so verify the final object before reporting completion. */
-export function validateCertificateAiDraft(raw: string): void {
+export function validateCertificateAiDraft(raw: string): { assistant_message: string; operations: CofTemplateAiOperation[] } {
   try {
     const draft: unknown = JSON.parse(raw);
     if (typeof draft !== "object" || draft === null ||
@@ -66,6 +67,7 @@ export function validateCertificateAiDraft(raw: string): void {
       !("operations" in draft) || !Array.isArray(draft.operations)) {
       throw new Error("Invalid draft shape");
     }
+    return draft as { assistant_message: string; operations: CofTemplateAiOperation[] };
   } catch {
     throw new Error("The certificate assistant returned an invalid draft. Review any partial changes and try again.");
   }

@@ -12,6 +12,8 @@ export type CofTemplateAiOperation = {
   type: string;
   client_key?: string;
   library_section_uuid?: string;
+  attachment_uuid?: string;
+  section_uuid?: string;
   section_code?: string;
   name?: string;
   code?: string;
@@ -26,7 +28,7 @@ export type CofTemplateAiChatResponse = {
 };
 
 export type CofTemplateAiApplyResponse = {
-  applied: { type: string; client_key?: string; result: unknown }[];
+  applied: { type: string; client_key?: string; reused?: boolean; result: unknown }[];
   errors: string[];
 };
 
