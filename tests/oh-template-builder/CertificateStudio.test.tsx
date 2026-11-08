@@ -8,7 +8,7 @@ const state = vi.hoisted(() => ({
   createSection: vi.fn(), attachSection: vi.fn(), select: vi.fn(), flush: vi.fn(), publish: vi.fn(), replace: vi.fn(), pending: false,
 }));
 vi.mock("next/navigation", () => ({ usePathname: () => "/templates/certificate/test", useRouter: () => ({ replace: state.replace }) }));
-vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({ invalidateQueries: vi.fn() }) }));
+vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({ invalidateQueries: vi.fn(), getQueryData: vi.fn() }) }));
 vi.mock("@/features/oh-template-builder/hooks/useTemplateBuilder", () => ({
   useTemplateBuilder: () => ({
     template: { name: "Workplace fitness" }, templateUuid: "test",
@@ -30,7 +30,7 @@ vi.mock("@/features/oh-template-builder/stores/certificate-studio.store", () => 
   whenStudioIdle: vi.fn(),
 }));
 
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 beforeEach(() => {
   vi.clearAllMocks();
   state.selection = { type: "template" };
@@ -189,6 +189,30 @@ describe("certificate studio layout and save guards", () => {
     expect(screen.queryByText("Build with AI")).not.toBeInTheDocument();
     expect(screen.queryByText("Describe a section, item or field")).not.toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Describe changes for the certificate assistant" })).toBeInTheDocument();
+  });
+
+  it("shows actionable startup failures and keeps the composer usable for a retry", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response("upstream unavailable", { status: 503 }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<CertificateStudio view="edit" />);
+    const input = screen.getByRole("textbox", { name: "Describe changes for the certificate assistant" });
+    fireEvent.change(input, { target: { value: "Help with draft" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("check the AI provider configuration");
+    fireEvent.change(input, { target: { value: "Try again" } });
+    expect(screen.getByRole("button", { name: "Send" })).toBeEnabled();
+  });
+
+  it("renders a completed JSON stream without replacing the document", async () => {
+    const draft = JSON.stringify({ assistant_message: "Ready to edit.", operations: [] });
+    const stream = `data: ${JSON.stringify({ type: "text_delta", delta: draft })}\n\ndata: [DONE]\n\n`;
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(stream, { headers: { "content-type": "text/event-stream" } })));
+    render(<CertificateStudio view="edit" />);
+    fireEvent.change(screen.getByRole("textbox", { name: "Describe changes for the certificate assistant" }), { target: { value: "Help with draft" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() => expect(screen.getByText("Ready to edit.")).toBeInTheDocument());
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByText("Complete document canvas")).toBeInTheDocument();
   });
 
   it("flushes pending edits before navigating to preview", async () => {

@@ -9,7 +9,7 @@ export type AiStreamEvent = {
 
 export function parseSseChunk(buffer: string): { events: AiStreamEvent[]; rest: string } {
   const events: AiStreamEvent[] = [];
-  const parts = buffer.split("\n\n");
+  const parts = buffer.replace(/\r\n/g, "\n").split("\n\n");
   const rest = parts.pop() ?? "";
 
   for (const part of parts) {
@@ -17,14 +17,21 @@ export function parseSseChunk(buffer: string): { events: AiStreamEvent[]; rest: 
       .split("\n")
       .filter((row) => row.startsWith("data:"))
       .map((row) => row.slice(5).trim())
-      .join("");
-    if (!line || line === "[DONE]") {
+      .join("\n");
+    if (!line) continue;
+    if (line === "[DONE]") {
+      events.push({ type: "done" });
       continue;
     }
     try {
-      events.push(JSON.parse(line) as AiStreamEvent);
+      const event: unknown = JSON.parse(line);
+      if (typeof event !== "object" || event === null || !("type" in event) || typeof event.type !== "string") {
+        throw new Error("Invalid event");
+      }
+      events.push(event as AiStreamEvent);
     } catch {
-      // Incomplete JSON frames are ignored until the next chunk completes them.
+      // This frame is complete; malformed JSON is a protocol failure, not an incomplete chunk.
+      throw new Error("The certificate assistant returned an invalid stream response. Please try again.");
     }
   }
 

@@ -20,13 +20,13 @@ import {
 import {
   extractAssistantMessage,
   extractOperations,
-  parseSseChunk,
   toolActivityLabel,
 } from "@/features/oh-template-builder/lib/parseAiStream";
 import {
   templateGalleryHref,
   templateQueryKeys,
 } from "@/features/oh-template-builder/lib/templateKinds";
+import { readCertificateAiStream, validateCertificateAiDraft } from "@/features/oh-template-builder/lib/templateAiStream";
 import { useTemplateAiQueue } from "@/features/oh-template-builder/hooks/useTemplateAiQueue";
 import { defaultResponseFields } from "@/features/settings/components/modules/occupational-health/template-library/responseConfig";
 import type { BuilderAttachment } from "@/features/oh-template-builder/template-builder.types";
@@ -95,7 +95,6 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
     setActivity("Writing");
     const seen = new Set<string>();
     let raw = "";
-    let buffer = "";
     try {
       const response = await fetch(
         BFF_OCCUPATIONAL_HEALTH_ROUTES.cofTemplateAiStream(templateUuid),
@@ -110,41 +109,30 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
           }),
         },
       );
-      if (!response.ok || !response.body) {
-        throw new Error("The assistant could not start.");
-      }
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      while (true) {
-        const chunk = await reader.read();
-        if (!active.current || chunk.done) {
-          break;
-        }
-        buffer += decoder.decode(chunk.value, { stream: true });
-        const parsed = parseSseChunk(buffer);
-        buffer = parsed.rest;
-        for (const event of parsed.events) {
-          if (event.type === "text_delta" && event.delta) {
-            raw += event.delta;
-            setReply(extractAssistantMessage(raw));
-            setActivity(null);
-            for (const operation of extractOperations(raw)) {
-              const signature = `${operation.type}:${operation.section_code ?? ""}:${operation.code ?? operation.name ?? ""}`;
-              if (seen.has(signature)) {
-                continue;
-              }
-              seen.add(signature);
-              enqueue(operation);
+      for await (const event of readCertificateAiStream(response)) {
+        if (!active.current) break;
+        if (event.type === "text_delta" && event.delta) {
+          raw += event.delta;
+          setReply(extractAssistantMessage(raw));
+          setActivity(null);
+          for (const operation of extractOperations(raw)) {
+            const signature = `${operation.type}:${operation.section_code ?? ""}:${operation.code ?? operation.name ?? ""}`;
+            if (seen.has(signature)) {
+              continue;
             }
-          }
-          if (event.type === "tool_call") {
-            setActivity(toolActivityLabel(event.tool_name));
-          }
-          if (event.type === "conversation" && event.conversation_id) {
-            conversationId.current = event.conversation_id;
+            seen.add(signature);
+            enqueue(operation);
           }
         }
+        if (event.type === "tool_call") {
+          setActivity(toolActivityLabel(event.tool_name));
+        }
+        if (event.type === "conversation" && event.conversation_id) {
+          conversationId.current = event.conversation_id;
+        }
       }
+      if (!active.current) return;
+      validateCertificateAiDraft(raw);
       await whenIdle();
       if (!active.current) return;
       await Promise.all([
