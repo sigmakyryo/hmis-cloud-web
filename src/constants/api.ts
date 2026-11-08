@@ -73,6 +73,7 @@ export const BFF_CUSTOMERS_ROUTES = {
   memberBenefitsCheck: (uuid: string) =>
     `/api/customers/${uuid}/member-benefits/check`,
   tags: (uuid: string) => `/api/customers/${uuid}/tags`,
+  photo: (uuid: string) => `/api/customers/${uuid}/photo`,
   visits: (uuid: string, query?: { limit?: number }) => {
     const params = new URLSearchParams();
     if (query?.limit) {
@@ -805,6 +806,7 @@ export const BFF_SETTINGS_ROUTES = {
   pricelistDefault: "/api/pricelists/default",
   branding: "/api/tenants/current/branding",
   currency: "/api/tenants/current/currency",
+  organizationType: "/api/tenants/current/organization-type",
   customerIdentifierSettings:
     "/api/tenants/current/customer-identifier-settings",
   users: "/api/user-management",

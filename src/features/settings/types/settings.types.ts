@@ -14,6 +14,7 @@ export type TenantDetail = {
   full_address: string | null;
   status: string;
   is_active: boolean;
+  organization_type?: "public" | "employee";
   clinic_count: number;
   max_clinics: number;
   location_count: number;

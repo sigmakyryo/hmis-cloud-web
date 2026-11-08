@@ -1,28 +1,25 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  formatCustomerVisitStatusLabel,
-  isCustomerVisitActive,
-  normalizeCustomerVisitStatus,
-} from "@/features/customers/utils/customer-visit-status";
+import { formatCustomerVisitStatusLabel } from "@/features/customers/utils/customer-visit-status";
 
-describe("customer visit status utils", () => {
-  it("detects active visits", () => {
-    expect(isCustomerVisitActive("active")).toBe(true);
-    expect(isCustomerVisitActive("completed")).toBe(false);
-    expect(isCustomerVisitActive(undefined)).toBe(false);
-  });
+describe("formatCustomerVisitStatusLabel", () => {
+  const now = new Date("2026-11-08T12:00:00.000Z");
 
-  it("formats visit status labels", () => {
+  it("keeps active and cancelled labels", () => {
     expect(formatCustomerVisitStatusLabel("active")).toBe("Active");
-    expect(formatCustomerVisitStatusLabel("not_started")).toBe("Not started");
-    expect(formatCustomerVisitStatusLabel("completed")).toBe("Completed");
     expect(formatCustomerVisitStatusLabel("cancelled")).toBe("Cancelled");
   });
 
-  it("normalizes unknown statuses to not_started", () => {
-    expect(normalizeCustomerVisitStatus("active")).toBe("active");
-    expect(normalizeCustomerVisitStatus("unknown")).toBe("not_started");
-    expect(normalizeCustomerVisitStatus(undefined)).toBe("not_started");
+  it("shows last visit for completed", () => {
+    expect(
+      formatCustomerVisitStatusLabel("completed", {
+        lastVisitAt: "2026-11-08T10:00:00.000Z",
+        now,
+      }),
+    ).toBe("Last visit 2h ago");
+  });
+
+  it("shows no visits when never visited", () => {
+    expect(formatCustomerVisitStatusLabel("not_started")).toBe("No visits");
   });
 });

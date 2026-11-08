@@ -5,6 +5,7 @@ import type { CreateCustomerPayload } from "@/features/customers/types/customer.
 import type { Customer } from "@/features/customers/types/customer.types";
 import { bffError, bffSuccess } from "@/lib/server/bff-response";
 import { hmisApiRequest, hmisApiRequestWithMeta } from "@/lib/server/hmis-api";
+import { withBrowserCustomerPhoto } from "@/lib/server/media-url";
 import { requireAccessToken } from "@/lib/server/require-access-token";
 
 const FORWARDED_QUERY_KEYS = [
@@ -48,7 +49,7 @@ export async function GET(request: Request) {
     );
 
     return bffSuccess({
-      results: data,
+      results: data.map(withBrowserCustomerPhoto),
       pagination: meta.pagination ?? null,
     });
   } catch (error) {
@@ -78,7 +79,7 @@ export async function POST(request: Request) {
       body,
     });
 
-    return bffSuccess(customer, 201);
+    return bffSuccess(withBrowserCustomerPhoto(customer), 201);
   } catch (error) {
     return bffError(error);
   }

@@ -87,3 +87,21 @@ export async function voidCustomer(uuid: string): Promise<void> {
     method: "DELETE",
   });
 }
+
+export async function uploadCustomerPhoto(
+  uuid: string,
+  photo: File,
+): Promise<Customer> {
+  const formData = new FormData();
+  formData.set("photo", photo, photo.name);
+  return bffRequest<Customer>(BFF_CUSTOMERS_ROUTES.photo(uuid), {
+    method: "POST",
+    body: formData,
+  });
+}
+
+export async function clearCustomerPhoto(uuid: string): Promise<Customer> {
+  return bffRequest<Customer>(BFF_CUSTOMERS_ROUTES.photo(uuid), {
+    method: "DELETE",
+  });
+}

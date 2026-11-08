@@ -1,5 +1,6 @@
 import { OrganizationContactForm } from "@/features/settings/components/OrganizationContactForm";
 import { OrganizationCurrencySection } from "@/features/settings/components/OrganizationCurrencySection";
+import { OrganizationTypeSection } from "@/features/settings/components/OrganizationTypeSection";
 import { OrganizationFieldRow } from "@/features/settings/components/OrganizationTabContent";
 import { SettingsSection } from "@/features/settings/components/SettingsPageLayout";
 import type { TenantDetail } from "@/features/settings/types/settings.types";
@@ -52,6 +53,12 @@ export function OrganizationGeneralTab({
           </OrganizationFieldRow>
           <OrganizationFieldRow label="Currency">
             <OrganizationCurrencySection />
+          </OrganizationFieldRow>
+          <OrganizationFieldRow label="Organization type">
+            <OrganizationTypeSection
+              tenant={tenant}
+              onTenantUpdated={onTenantUpdated}
+            />
           </OrganizationFieldRow>
           <OrganizationFieldRow label="Description">
             {formatValue(tenant.description)}

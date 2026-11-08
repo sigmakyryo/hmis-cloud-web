@@ -24,6 +24,11 @@ export type Customer = {
   has_synced_to_openmrs: boolean;
   is_active: boolean;
   visit_status: CustomerVisitStatus;
+  last_visit_at?: string | null;
+  active_visit_uuid?: string | null;
+  photo_url?: string | null;
+  current_queue_stage?: string | null;
+  current_department_type?: string | null;
   tags?: Tag[];
   /** OH employment episode employer (when has_employment_episode list). */
   oh_employer_name?: string | null;

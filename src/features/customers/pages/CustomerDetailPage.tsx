@@ -265,6 +265,7 @@ export function CustomerDetailPage({
         <CustomerDetailHeader
           customer={customer}
           onManageTagsClick={handleManageTagsClick}
+          onCustomerUpdated={handleCustomerUpdated}
           actions={
             <CustomerDetailActions
               customer={customer}

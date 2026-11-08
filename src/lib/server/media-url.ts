@@ -54,3 +54,17 @@ export function withBrowserAvatar<T extends { avatar_url?: string | null }>(
     avatar_url: avatarUrl,
   };
 }
+
+export function withBrowserCustomerPhoto<T extends { photo_url?: string | null }>(
+  customer: T,
+): T {
+  const photoUrl = absoluteMediaUrl(customer.photo_url);
+  if (!photoUrl || photoUrl === customer.photo_url) {
+    return customer;
+  }
+
+  return {
+    ...customer,
+    photo_url: photoUrl,
+  };
+}

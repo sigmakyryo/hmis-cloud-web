@@ -1,3 +1,5 @@
+"use client";
+
 import { Calendar, Hash, Mail, Phone } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -7,6 +9,11 @@ import {
   formatAdaptiveAge,
   formatDisplayDate,
 } from "@/features/customers/utils/format-customer";
+import {
+  getInternalReferenceShortLabel,
+} from "@/features/settings/utils/organization-type";
+import { formatLastVisitDetailLabel } from "@/lib/format-relative-time";
+import { useUser } from "@/providers/user-provider";
 
 function OverviewFact({
   label,
@@ -26,7 +33,9 @@ function OverviewFact({
 }
 
 export function CustomerOverviewFacts({ customer }: { customer: Customer }) {
+  const { userData } = useUser();
   const ageDisplay = formatAdaptiveAge(customer.dob);
+  const referenceLabel = getInternalReferenceShortLabel(userData?.tenant);
 
   return (
     <dl
@@ -66,7 +75,7 @@ export function CustomerOverviewFacts({ customer }: { customer: Customer }) {
           "—"
         )}
       </OverviewFact>
-      <OverviewFact label="Reference">
+      <OverviewFact label={referenceLabel}>
         {customer.internal_reference ? (
           <span className="inline-flex items-center gap-1.5 font-mono text-[12px]">
             <Hash className="size-3.5 text-dash-muted" aria-hidden="true" />
@@ -81,6 +90,9 @@ export function CustomerOverviewFacts({ customer }: { customer: Customer }) {
           <Calendar className="size-3.5 text-dash-muted" aria-hidden="true" />
           {formatDisplayDate(customer.created_at)}
         </span>
+      </OverviewFact>
+      <OverviewFact label="Last Visit">
+        {formatLastVisitDetailLabel(customer.last_visit_at)}
       </OverviewFact>
     </dl>
   );

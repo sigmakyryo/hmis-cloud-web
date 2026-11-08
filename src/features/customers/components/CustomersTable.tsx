@@ -30,7 +30,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { UserIdenticon } from "@/components/UserIdenticon";
+import { ClientProfileAvatar } from "@/components/client-profile-avatar";
 import { ROUTES } from "@/constants/routes";
 import {
   ListPageDataTable,
@@ -49,7 +49,11 @@ import {
   formatCustomerName,
   formatDisplayDate,
 } from "@/features/customers/utils/format-customer";
+import {
+  isEmployeeBasedOrganization,
+} from "@/features/settings/utils/organization-type";
 import { useToast } from "@/providers/toast-provider";
+import { useUser } from "@/providers/user-provider";
 
 type CustomersTableProps = {
   customers: Customer[];
@@ -78,9 +82,10 @@ function CustomerHoverPreview({ customer }: { customer: Customer }) {
     <div className="overflow-hidden">
       <div className="space-y-3 px-4 pb-3 pt-4">
         <div className="flex items-start gap-3">
-          <UserIdenticon
+          <ClientProfileAvatar
             seed={customer.uuid || customer.customer_identifier || name}
             name={name}
+            photoUrl={customer.photo_url}
             className="size-10 shrink-0 rounded-[0.7rem]"
             fallbackClassName="rounded-[0.7rem]"
           />
@@ -112,7 +117,10 @@ function CustomerHoverPreview({ customer }: { customer: Customer }) {
         <div className="flex items-center justify-between gap-3">
           <dt className="text-dash-muted">Visit status</dt>
           <dd className="shrink-0">
-            <CustomerVisitStatusBadge status={customer.visit_status} />
+            <CustomerVisitStatusBadge
+              status={customer.visit_status}
+              lastVisitAt={customer.last_visit_at}
+            />
           </dd>
         </div>
         <div className="flex items-center justify-between gap-3">
@@ -158,6 +166,8 @@ export function CustomersTable({
 }: CustomersTableProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const { userData } = useUser();
+  const employeeBased = isEmployeeBasedOrganization(userData?.tenant);
   const [copiedUuid, setCopiedUuid] = useState<string | null>(null);
 
   const handleCopyMrn = (event: React.MouseEvent, customer: Customer) => {
@@ -225,9 +235,10 @@ export function CustomersTable({
                     className="w-[17.5rem] p-0"
                     trigger={
                       <div className="flex min-w-0 items-center gap-2">
-                        <UserIdenticon
+                        <ClientProfileAvatar
                           seed={customer.uuid || identifier || name}
                           name={name}
+                          photoUrl={customer.photo_url}
                           className="size-6 shrink-0 rounded-md"
                           fallbackClassName="rounded-md"
                         />
@@ -240,7 +251,15 @@ export function CustomersTable({
                             {name}
                           </Link>
                           <div className="mt-0.5 flex items-center gap-2 truncate text-[11px] text-dash-muted">
-                            {customer.phone_number ? (
+                            {employeeBased ? (
+                              customer.internal_reference?.trim() ? (
+                                <span className="font-mono">
+                                  {customer.internal_reference.trim()}
+                                </span>
+                              ) : (
+                                <span className="text-dash-muted">No employee number</span>
+                              )
+                            ) : customer.phone_number ? (
                               <span>{customer.phone_number}</span>
                             ) : customer.email ? (
                               <span className="truncate">{customer.email}</span>
@@ -286,7 +305,10 @@ export function CustomersTable({
                 </ListPageDataTableCell>
 
                 <ListPageDataTableCell>
-                  <CustomerVisitStatusBadge status={customer.visit_status} />
+                  <CustomerVisitStatusBadge
+                    status={customer.visit_status}
+                    lastVisitAt={customer.last_visit_at}
+                  />
                 </ListPageDataTableCell>
 
                 <ListPageDataTableCell>

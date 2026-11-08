@@ -7,6 +7,7 @@ import type {
 } from "@/features/customers/types/customer.types";
 import { bffError, bffSuccess } from "@/lib/server/bff-response";
 import { hmisApiRequest } from "@/lib/server/hmis-api";
+import { withBrowserCustomerPhoto } from "@/lib/server/media-url";
 import { requireAccessToken } from "@/lib/server/require-access-token";
 
 type RouteContext = {
@@ -26,7 +27,7 @@ export async function GET(_request: Request, context: RouteContext) {
       { token: auth.accessToken },
     );
 
-    return bffSuccess(customer);
+    return bffSuccess(withBrowserCustomerPhoto(customer));
   } catch (error) {
     return bffError(error);
   }
@@ -58,7 +59,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       },
     );
 
-    return bffSuccess(customer);
+    return bffSuccess(withBrowserCustomerPhoto(customer));
   } catch (error) {
     return bffError(error);
   }

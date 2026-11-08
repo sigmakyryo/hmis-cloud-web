@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { ClientAvatar } from "@/components/client-avatar";
+import { ClientProfileAvatar } from "@/components/client-profile-avatar";
 import { Badge } from "@/components/ui/badge";
 import { SecondaryButton } from "@/components/ui/app-buttons";
 import { DetailPageAsideSummaryField } from "@/features/app-shell/components/page-layout";
@@ -58,7 +58,12 @@ export function DetailClientProfile({
     <div className="space-y-6" data-testid={testId}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
-          <ClientAvatar name={fullName} className="size-11 text-sm" />
+          <ClientProfileAvatar
+            name={fullName}
+            seed={customer.uuid || customer.customer_identifier || fullName}
+            photoUrl={customer.photo_url}
+            className="size-11 text-sm"
+          />
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="truncate text-base font-semibold text-brand-navy">

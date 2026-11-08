@@ -216,6 +216,9 @@ export function CustomersListPage() {
   }, [listFilters]);
 
   useEffect(() => {
+    if (!membershipSearchOpen || membershipPayers.length > 0) {
+      return;
+    }
     let active = true;
     void fetchOrganizationPayers()
       .then((response) => {
@@ -231,7 +234,7 @@ export function CustomersListPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [membershipPayers.length, membershipSearchOpen]);
 
   useEffect(() => {
     let cancelled = false;

@@ -509,6 +509,20 @@ export async function updateOrganizationCurrency(
   return data.currency;
 }
 
+export async function updateOrganizationType(
+  organizationType: "public" | "employee",
+): Promise<"public" | "employee"> {
+  const data = await bffRequest<{ organization_type: "public" | "employee" }>(
+    BFF_SETTINGS_ROUTES.organizationType,
+    {
+      method: "PATCH",
+      body: { organization_type: organizationType },
+    },
+  );
+
+  return data.organization_type;
+}
+
 export async function fetchTenantEmailConfiguration(): Promise<TenantEmailConfiguration | null> {
   const data = await bffRequest<{ configuration: TenantEmailConfiguration | null }>(
     BFF_SETTINGS_ROUTES.emailConfiguration,

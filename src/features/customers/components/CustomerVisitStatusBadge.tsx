@@ -7,6 +7,7 @@ import { formatCustomerVisitStatusLabel } from "@/features/customers/utils/custo
 
 type CustomerVisitStatusBadgeProps = {
   status: CustomerVisitStatus | string | undefined;
+  lastVisitAt?: string | null;
   className?: string;
 };
 
@@ -18,11 +19,20 @@ const TONES: Record<string, StatusDotBadgeTone> = {
 
 export function CustomerVisitStatusBadge({
   status,
+  lastVisitAt,
   className,
 }: CustomerVisitStatusBadgeProps) {
+  const resolvedStatus = status ?? "not_started";
+  const tone =
+    resolvedStatus === "completed" || resolvedStatus === "not_started"
+      ? lastVisitAt
+        ? "primary"
+        : "neutral"
+      : (TONES[resolvedStatus] ?? "neutral");
+
   return (
-    <StatusDotBadge tone={TONES[status ?? ""] ?? "neutral"} className={className}>
-      {formatCustomerVisitStatusLabel(status)}
+    <StatusDotBadge tone={tone} className={className}>
+      {formatCustomerVisitStatusLabel(resolvedStatus, { lastVisitAt })}
     </StatusDotBadge>
   );
 }

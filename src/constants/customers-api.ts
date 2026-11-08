@@ -17,6 +17,7 @@ export const CUSTOMERS_API_PATHS = {
   memberBenefitsCheck: (uuid: string) =>
     `/customers/${uuid}/member-benefits/check/`,
   tags: (uuid: string) => `/customers/${uuid}/tags/`,
+  photo: (uuid: string) => `/customers/${uuid}/photo/`,
   visits: (uuid: string, query?: { limit?: number }) =>
     VISITS_API_PATHS.customerVisits(uuid, query),
 } as const;

@@ -26,8 +26,10 @@ import {
   fieldIconPaddingClassName,
 } from "@/features/customers/components/FieldWithIcon";
 import type { CreateCustomerFormValues } from "@/features/customers/schemas/customer.schema";
+import { getInternalReferenceLabel } from "@/features/settings/utils/organization-type";
 import { appFont } from "@/lib/fonts";
 import { validateDateInput } from "@/lib/validate-date-input";
+import { useUser } from "@/providers/user-provider";
 import { formatCapitalizedName } from "@/utils/format-capitalized-name";
 
 type CustomerFormFieldsProps = {
@@ -43,7 +45,9 @@ export function CustomerFormFields({
   fieldsDisabled = false,
   idPrefix = "customer",
 }: CustomerFormFieldsProps) {
+  const { userData } = useUser();
   const disabled = isSubmitting || fieldsDisabled;
+  const internalReferenceLabel = getInternalReferenceLabel(userData?.tenant);
 
   function handleNameBlur(value: string, onChange: (value: string) => void) {
     const formatted = formatCapitalizedName(value);
@@ -280,7 +284,7 @@ export function CustomerFormFields({
         name="internal_reference"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Internal reference</FormLabel>
+            <FormLabel>{internalReferenceLabel}</FormLabel>
             <FieldWithIcon icon={Hash}>
               <FormControl>
                 <Input

@@ -1,4 +1,5 @@
 import type { CustomerVisitStatus } from "@/features/customers/types/customer-visit-status.types";
+import { formatLastVisitBadgeLabel } from "@/lib/format-relative-time";
 
 export function isCustomerVisitActive(
   status: CustomerVisitStatus | string | undefined,
@@ -8,17 +9,21 @@ export function isCustomerVisitActive(
 
 export function formatCustomerVisitStatusLabel(
   status: CustomerVisitStatus | string | undefined,
+  options?: { lastVisitAt?: string | null; now?: Date },
 ): string {
   switch (status) {
     case "active":
       return "Active";
-    case "completed":
-      return "Completed";
     case "cancelled":
       return "Cancelled";
+    case "completed":
+      return formatLastVisitBadgeLabel(options?.lastVisitAt, { now: options?.now });
     case "not_started":
     default:
-      return "Not started";
+      if (options?.lastVisitAt) {
+        return formatLastVisitBadgeLabel(options.lastVisitAt, { now: options?.now });
+      }
+      return "No visits";
   }
 }
 

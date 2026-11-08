@@ -32,6 +32,7 @@ export interface User {
     name: string;
     code: string;
     country?: string;
+    organization_type?: "public" | "employee";
     is_active: boolean;
   } | null;
   clinics: Array<{
