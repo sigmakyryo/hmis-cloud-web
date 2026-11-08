@@ -14,6 +14,7 @@ import {
   useUpsertEncounterDisposition,
 } from "@/features/clinical-opd/hooks/use-clinical-opd";
 import { dispositionSchema } from "@/features/clinical-opd/schemas/clinical-opd.schema";
+import { assertClinicalFormsClear } from "@/features/occupational-health/services/oh.service";
 import { BffError } from "@/lib/bff-client";
 import { formatBffErrorMessage } from "@/lib/bff-field-errors";
 import { useToast } from "@/providers/toast-provider";
@@ -71,6 +72,14 @@ export function OpdDispositionTabPanel({
       data-testid="opd-disposition-tab-panel"
       onSubmit={form.handleSubmit(async (values) => {
         try {
+          if (values.outcome === "admitted") {
+            await assertClinicalFormsClear({
+              encounter_uuid: encounterUuid,
+              trigger: "transition",
+              from: "opd",
+              to: "ipd",
+            });
+          }
           await upsert.mutateAsync({
             ...values,
             follow_up_at: values.follow_up_at || null,

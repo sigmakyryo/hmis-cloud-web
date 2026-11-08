@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useRef, useState } from "react";
 
 import { createNursingNote } from "@/features/clinical-opd/services/clinical-opd.service";
+import { assertClinicalFormsClear } from "@/features/occupational-health/services/oh.service";
 import type {
   OpdQueueEncounter,
   OpdQueueStage,
@@ -71,6 +72,20 @@ export function useOpdQueueBoardMove(encounters: OpdQueueEncounter[]) {
       const from = resolveOpdQueueStage(encounter);
       const move = getOpdBoardMove(from, stage);
       if (!move || movingRef.current) {
+        return false;
+      }
+      try {
+        await assertClinicalFormsClear({
+          encounter_uuid: encounter.encounter_uuid,
+          trigger: "stage",
+          stage: from,
+        });
+      } catch (error) {
+        toast({
+          variant: "error",
+          title: "A required form is still open",
+          description: error instanceof Error ? error.message : "Complete the form for this stage first.",
+        });
         return false;
       }
 

@@ -451,6 +451,16 @@ export const BFF_OCCUPATIONAL_HEALTH_ROUTES = {
   employeeFormTemplateSection: (uuid: string) =>
     `/api/occupational-health/employee-form-template-sections/${uuid}`,
   employeeFormResponses: "/api/occupational-health/employee-form-responses",
+  employeeFormOpen: "/api/occupational-health/employee-form-responses/open",
+  employeeFormInvites: (uuid: string) =>
+    `/api/occupational-health/employee-form-responses/${uuid}/invites`,
+  employeeFormDocument: (uuid: string) =>
+    `/api/occupational-health/employee-form-responses/${uuid}/document`,
+  clinicalForms: "/api/occupational-health/clinical-forms",
+  clinicalFormsAssertClear: "/api/occupational-health/clinical-forms/assert-clear",
+  clinicalFormResponses: (uuid: string) =>
+    `/api/occupational-health/clinical-forms/${uuid}/responses`,
+  workforceForm: (token: string) => `/api/workforce-forms/${token}`,
   employeeFormResponseResponses: (uuid: string) =>
     `/api/occupational-health/employee-form-responses/${uuid}/responses`,
   cofResponses: "/api/occupational-health/cof-responses",

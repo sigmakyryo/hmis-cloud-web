@@ -1,4 +1,5 @@
 import { BFF_OCCUPATIONAL_HEALTH_ROUTES } from "@/constants/api";
+import type { ClinicalFormRecord } from "@/features/occupational-health/lib/oh-form-catalog";
 import type { CustomerListFilters, CustomersListResponse } from "@/features/customers/types/customer.types";
 import type { CustomerSummaryStats } from "@/features/customers/utils/customer-stats";
 import type {
@@ -470,12 +471,68 @@ export async function createOhEmployeeFormResponse(payload: { encounter: number 
 
 export async function patchOhEmployeeFormResponses(
   uuid: string,
-  payload: { responses_json: Record<string, unknown>; row_version: number },
+  payload: { responses_json: Record<string, unknown>; row_version: number; submit?: boolean },
 ) {
   return bffRequest<OhTemplateCapture>(BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormResponseResponses(uuid), {
     method: "PATCH",
     body: payload,
   });
+}
+
+export async function openOhEmployeeForm(customerUuid: string) {
+  return bffRequest<OhTemplateCapture>(BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormOpen, {
+    method: "POST",
+    body: { customer_uuid: customerUuid },
+  });
+}
+
+export async function createOhEmployeeFormInvite(uuid: string) {
+  return bffRequest<{ token: string; expires_at: string }>(
+    BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormInvites(uuid),
+    { method: "POST", body: {} },
+  );
+}
+
+export async function uploadOhEmployeeFormDocument(uuid: string, file: File) {
+  const body = new FormData();
+  body.set("document", file);
+  return bffRequest<OhTemplateCapture>(BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormDocument(uuid), {
+    method: "POST",
+    body,
+  });
+}
+
+export async function fetchClinicalForms() {
+  return bffRequest<ClinicalFormRecord[]>(
+    BFF_OCCUPATIONAL_HEALTH_ROUTES.clinicalForms,
+  );
+}
+
+export async function createClinicalForm(payload: Record<string, unknown>) {
+  return bffRequest<ClinicalFormRecord>(
+    BFF_OCCUPATIONAL_HEALTH_ROUTES.clinicalForms,
+    { method: "POST", body: payload },
+  );
+}
+
+export async function assertClinicalFormsClear(payload: {
+  encounter_uuid: string;
+  trigger: "stage" | "transition";
+  stage?: string;
+  from?: string;
+  to?: string;
+}) {
+  return bffRequest<{ clear: boolean }>(BFF_OCCUPATIONAL_HEALTH_ROUTES.clinicalFormsAssertClear, {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export async function submitClinicalForm(uuid: string, encounterUuid: string, note: string) {
+  return bffRequest<{ uuid: string; status: string }>(
+    BFF_OCCUPATIONAL_HEALTH_ROUTES.clinicalFormResponses(uuid),
+    { method: "POST", body: { encounter_uuid: encounterUuid, note } },
+  );
 }
 
 export async function fetchOhCofResponses() {

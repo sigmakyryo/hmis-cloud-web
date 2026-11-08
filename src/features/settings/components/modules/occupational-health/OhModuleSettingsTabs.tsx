@@ -4,20 +4,16 @@ import { Suspense, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { SettingsContentSkeleton } from "@/features/settings/components/SettingsContentSkeleton";
-import { OhCatalogSettingsTab } from "@/features/settings/components/modules/occupational-health/OhCatalogSettingsTab";
 import { OhEmployerSettingsPage } from "@/features/settings/components/modules/occupational-health/OhEmployerSettingsPage";
 import { OhEmployersSettingsTab } from "@/features/settings/components/modules/occupational-health/OhEmployersSettingsTab";
-import { OhEmployeeFormTemplatesSettingsTab } from "@/features/settings/components/modules/occupational-health/OhEmployeeFormTemplatesSettingsTab";
-import { OhExamTemplatesSettingsTab } from "@/features/settings/components/modules/occupational-health/OhExamTemplatesSettingsTab";
+import { OhVisitTypesSettingsTab } from "@/features/settings/components/modules/occupational-health/OhVisitTypesSettingsTab";
 import { cn } from "@/lib/utils";
 
-export type OhModuleTabId = "employers" | "employee-forms" | "catalog" | "exam-templates";
+export type OhModuleTabId = "employers" | "visit-types";
 
 export const OH_MODULE_TABS: Array<{ id: OhModuleTabId; label: string }> = [
   { id: "employers", label: "Employers" },
-  { id: "employee-forms", label: "Employee form templates" },
-  { id: "catalog", label: "COF templates" },
-  { id: "exam-templates", label: "Exam templates" },
+  { id: "visit-types", label: "Visit types" },
 ];
 
 function parseTab(value: string | null): OhModuleTabId {
@@ -78,11 +74,7 @@ function OhModuleSettingsTabsInner() {
       </nav>
       <div>
         <OhEmployersSettingsTab isActive={activeTab === "employers"} />
-        <OhEmployeeFormTemplatesSettingsTab isActive={activeTab === "employee-forms"} />
-        <OhCatalogSettingsTab isActive={activeTab === "catalog"} />
-        <OhExamTemplatesSettingsTab
-          isActive={activeTab === "exam-templates"}
-        />
+        <OhVisitTypesSettingsTab isActive={activeTab === "visit-types"} />
       </div>
     </div>
   );

@@ -468,7 +468,11 @@ export type OhPublishedFormConfig = {
 export type OhTemplateCapture = {
   id: number;
   uuid: string;
-  encounter: number;
+  encounter: number | null;
+  employment_episode?: number | null;
+  customer_uuid?: string | null;
+  status?: "not_started" | "in_progress" | "submitted" | "uploaded" | null;
+  document_original_name?: string | null;
   responses_json?: Record<string, unknown>;
   row_version?: number;
   template_version_uuid?: string | null;
