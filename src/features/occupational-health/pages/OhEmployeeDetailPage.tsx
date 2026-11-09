@@ -1,18 +1,15 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { FileWarning } from "lucide-react";
-import { useState } from "react";
+import type { ReactNode } from "react";
+import { usePathname } from "next/navigation";
 
 import {
   PAGE_CONTENT_LOADER_BELOW_PAGE_CHROME_CLASS,
   PageLoader,
 } from "@/components/page-loader";
-import { EmptyState } from "@/components/ui/empty-state";
 import {
   DetailPageLayout,
-  DetailPageMainAsideGrid,
-  DetailPageMainSection,
   DetailPageNotFound,
   DetailPageTabNavItem,
   DetailPageTabsNavSection,
@@ -21,35 +18,30 @@ import {
 import { useAppBreadcrumb } from "@/features/app-shell/hooks/use-app-breadcrumb";
 import { fetchCustomer } from "@/features/customers/services/customers.service";
 import { formatCustomerName } from "@/features/customers/utils/format-customer";
-import { OhEmployeeFormsTab } from "@/features/occupational-health/components/OhEmployeeFormsTab";
+import { OhEmployeeDetailProvider } from "@/features/occupational-health/components/oh-employee-detail-context";
 import {
   OhEmployeeDetailHeader,
-  OhEmployeeEmploymentPanel,
-  OhEmployeeSummaryAside,
   OhEmployeeTabLabel,
 } from "@/features/occupational-health/components/OhEmployeeDetailSections";
 import { useEmploymentEpisodes } from "@/features/occupational-health/hooks/use-occupational-health";
+import {
+  OH_EMPLOYEE_DETAIL_TABS,
+  ohEmployeeDetailHref,
+  ohEmployeeDetailTabFromPathname,
+} from "@/features/occupational-health/lib/oh-employee-detail-tabs";
 import {
   fetchOhEmployers,
   fetchOhHazardProfiles,
   fetchOhJobTitles,
 } from "@/features/occupational-health/services/oh.service";
 
-const TABS = [
-  { id: "employment", label: "Employment", icon: "building" },
-  { id: "forms", label: "Forms", icon: "file" },
-  { id: "immunizations", label: "Immunizations", icon: "shield" },
-  { id: "drug-alcohol", label: "Drug & alcohol", icon: "flask" },
-] as const;
-
-type TabId = (typeof TABS)[number]["id"];
-
 type OhEmployeeDetailPageProps = {
   customerUuid: string;
+  children: ReactNode;
 };
 
-export function OhEmployeeDetailPage({ customerUuid }: OhEmployeeDetailPageProps) {
-  const [tab, setTab] = useState<TabId>("employment");
+export function OhEmployeeDetailPage({ customerUuid, children }: OhEmployeeDetailPageProps) {
+  const pathname = usePathname();
   const customer = useQuery({
     queryKey: ["customer", customerUuid],
     queryFn: () => fetchCustomer(customerUuid),
@@ -71,6 +63,7 @@ export function OhEmployeeDetailPage({ customerUuid }: OhEmployeeDetailPageProps
     profiles: new Map((profiles.data ?? []).map((item) => [item.id, item.name])),
   };
   const name = customer.data ? formatCustomerName(customer.data) : null;
+  const activeTab = ohEmployeeDetailTabFromPathname(pathname, customerUuid);
   useAppBreadcrumb(name);
 
   if (customer.isLoading || episodes.isLoading) {
@@ -87,60 +80,39 @@ export function OhEmployeeDetailPage({ customerUuid }: OhEmployeeDetailPageProps
   }
 
   return (
-    <DetailPageLayout data-testid="oh-employee-detail">
-      <OhEmployeeDetailHeader customer={customer.data} />
-      <DetailPageTabsSection>
-        <DetailPageTabsNavSection aria-label="Employee">
-          {TABS.map((item) => (
-            <DetailPageTabNavItem
-              key={item.id}
-              isActive={tab === item.id}
-              onClick={() => setTab(item.id)}
-              className="inline-flex items-center gap-1 px-2 py-1.5 text-[13px]"
-            >
-              <OhEmployeeTabLabel icon={item.icon} label={item.label} />
-            </DetailPageTabNavItem>
-          ))}
-        </DetailPageTabsNavSection>
-        <DetailPageMainAsideGrid>
-          <DetailPageMainSection>
-            {tab === "employment" ? (
-              <OhEmployeeEmploymentPanel episodes={episodes.data ?? []} names={names} />
-            ) : null}
-            {tab === "forms" ? (
-              <OhEmployeeFormsTab
-                customerUuid={customerUuid}
-                employerId={active?.employer ?? null}
-                employerUuid={employer?.uuid ?? profile?.employer_uuid ?? null}
-                employerName={employer?.name ?? null}
-                hazardProfileId={active?.hazard_profile ?? null}
-              />
-            ) : null}
-            {tab === "immunizations" ? (
-              <EmptyState
-                icon={FileWarning}
-                title="Immunizations are not recorded here yet"
-                description="Infectious-disease records for this employee will appear in this tab."
-                data-testid="oh-employee-immunizations"
-              />
-            ) : null}
-            {tab === "drug-alcohol" ? (
-              <EmptyState
-                icon={FileWarning}
-                title="Drug and alcohol testing is not recorded here yet"
-                description="Test results for this employee will appear in this tab."
-                data-testid="oh-employee-drug-alcohol"
-              />
-            ) : null}
-          </DetailPageMainSection>
-          <OhEmployeeSummaryAside
-            customer={customer.data}
-            episode={active}
-            profile={profile}
-            names={names}
-          />
-        </DetailPageMainAsideGrid>
-      </DetailPageTabsSection>
-    </DetailPageLayout>
+    <OhEmployeeDetailProvider
+      value={{
+        customer: customer.data,
+        episodes: episodes.data ?? [],
+        names,
+        activeEpisode: active,
+        employer,
+        profile,
+      }}
+    >
+      <DetailPageLayout data-testid="oh-employee-detail">
+        <OhEmployeeDetailHeader
+          customer={customer.data}
+          episode={active}
+          profile={profile}
+          names={names}
+        />
+        <DetailPageTabsSection>
+          <DetailPageTabsNavSection aria-label="Employee">
+            {OH_EMPLOYEE_DETAIL_TABS.map((item) => (
+              <DetailPageTabNavItem
+                key={item.id}
+                href={ohEmployeeDetailHref(customerUuid, item.id)}
+                isActive={activeTab === item.id}
+                className="inline-flex items-center gap-1 px-2 py-1.5 text-[13px]"
+              >
+                <OhEmployeeTabLabel icon={item.icon} label={item.label} />
+              </DetailPageTabNavItem>
+            ))}
+          </DetailPageTabsNavSection>
+          <div className="min-w-0 flex-1 px-4 py-4 md:px-6">{children}</div>
+        </DetailPageTabsSection>
+      </DetailPageLayout>
+    </OhEmployeeDetailProvider>
   );
 }

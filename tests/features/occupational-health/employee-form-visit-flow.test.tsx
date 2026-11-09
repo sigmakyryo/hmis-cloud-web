@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { OhEmployeeFormsTab } from "@/features/occupational-health/components/OhEmployeeFormsTab";
@@ -28,8 +28,37 @@ vi.mock("@/features/occupational-health/services/oh.service", async () => {
     ]),
     openOhEmployeeForm: vi.fn(),
     patchOhEmployeeFormResponses: vi.fn(),
-    createOhEmployeeFormInvite: vi.fn(),
+    createOhEmployeeFormInvite: vi.fn(async () => ({ token: "public-token", expires_at: "2026-11-23T00:00:00Z" })),
     uploadOhEmployeeFormDocument: vi.fn(),
+    fetchOhEncounters: vi.fn(async () => [
+      {
+        id: 7,
+        uuid: "enc-1",
+        visit: "visit-1",
+        customer_uuid: "customer-1",
+        status: "completed",
+        visit_date: "2026-11-01T08:00:00Z",
+        created_at: "2026-11-01T08:00:00Z",
+        updated_at: "2026-11-01T08:00:00Z",
+        visit_type: { uuid: "type-1", code: "periodic", name: "Periodic", forms: [] },
+      },
+    ]),
+    fetchOhExaminations: vi.fn(async () => [
+      {
+        id: 11,
+        uuid: "exam-1",
+        encounter: 7,
+        exam_type: "periodic",
+        occupational_attendance: true,
+        template_code: "",
+        notes: "",
+        examined_at: "2026-11-01T09:00:00Z",
+        created_at: "2026-11-01T09:00:00Z",
+        updated_at: "2026-11-01T09:00:00Z",
+        row_version: 2,
+      },
+    ]),
+    fetchOhCofResponses: vi.fn(async () => []),
   };
 });
 
@@ -70,11 +99,37 @@ describe("employee form visit flow", () => {
         <OhEmployeeFormsTab customerUuid="customer-1" />
       </QueryClientProvider>,
     );
+    expect(await screen.findByTestId("oh-employee-form-status")).toHaveTextContent("Not started");
+    expect(screen.getByRole("row", { name: /Employee form/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Fill" }));
+    expect(await screen.findByRole("button", { name: /Enter manually/ })).toBeTruthy();
+    const writeText = vi.fn(async () => undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    fireEvent.click(screen.getByRole("button", { name: /Copy public link/ }));
+    expect(await screen.findByTestId("oh-employee-form-link")).toHaveTextContent("/workforce-forms/public-token");
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/workforce-forms/public-token`);
+    });
+    expect(screen.getByText("Upload")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Enter manually/ }));
     expect(await screen.findByRole("button", { name: "Save" })).toBeTruthy();
-    expect(screen.getByTestId("oh-employee-form-status")).toHaveTextContent("Not started");
     expect(screen.getByRole("button", { name: "Submit" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Send link" })).toBeTruthy();
-    expect(screen.getByText("Upload document")).toBeTruthy();
+  });
+
+  it("expands a visit to the forms recorded in that session", async () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <OhEmployeeFormsTab customerUuid="customer-1" />
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByText("Periodic")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Show forms" }));
+    const forms = await screen.findByTestId("oh-employee-session-forms");
+    expect(forms).toHaveTextContent("Examination");
+    expect(forms).toHaveTextContent("Submitted");
+    expect(forms).toHaveTextContent("Certificate of fitness");
+    expect(forms).toHaveTextContent("Not started");
+    expect(forms).not.toHaveTextContent("Employee form");
   });
 
   it("keeps the certificate closed until the examination is saved", () => {

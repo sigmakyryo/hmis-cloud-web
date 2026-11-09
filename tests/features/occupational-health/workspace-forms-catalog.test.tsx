@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { navigation } from "@/features/app-shell/constants/navigation-config";
@@ -51,5 +51,42 @@ describe("workspace forms catalog", () => {
     expect(screen.getByRole("option", { name: "Examination" })).toBeTruthy();
     expect(screen.getByRole("option", { name: "Certificate of fitness" })).toBeTruthy();
     expect(await screen.findByText("Warehouse employee form")).toBeTruthy();
+  });
+
+  it("creates an employee form from the same dialog", async () => {
+    const service = await import("@/features/occupational-health/services/oh.service");
+    vi.mocked(service.createClinicalForm).mockResolvedValue({
+      uuid: "form-1",
+      name: "Site induction",
+      family: "occupational_health",
+      system_type: "employee_form",
+      placement: null,
+      group: null,
+      template_kind: "employee",
+      template_uuid: "template-new",
+    });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <OhFormsPage />
+      </QueryClientProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "New form" }));
+    const dialog = await screen.findByTestId("oh-create-form-dialog");
+    const name = dialog.querySelector("input[required]") as HTMLInputElement;
+    fireEvent.change(name, { target: { value: "Site induction" } });
+    const button = screen.getByRole("button", { name: "Create" });
+    expect(button).toBeEnabled();
+    fireEvent.click(button);
+    await waitFor(() => {
+      expect(service.createClinicalForm).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "Site induction",
+          family: "occupational_health",
+          system_type: "employee_form",
+        }),
+        expect.anything(),
+      );
+    });
   });
 });

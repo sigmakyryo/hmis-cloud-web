@@ -40,7 +40,7 @@ export type OhVisitTypeRecord = {
   name: string;
   description: string;
   is_default: boolean;
-  forms: Array<{ uuid: string; name: string }>;
+  forms: Array<{ uuid: string; name: string; system_type?: string | null }>;
 };
 
 export type FormGroupRecord = {

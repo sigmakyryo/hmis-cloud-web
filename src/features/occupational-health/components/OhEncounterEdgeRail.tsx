@@ -33,7 +33,6 @@ type OhEncounterEdgeRailProps = {
   examinations: OhExamination[];
   activeExamUuid?: string | null;
   findingCount: number;
-  iodCount: number;
   episodes: EmploymentEpisode[];
   onManageEmployment: () => void;
   onOpenExamination: (exam: OhExamination) => void;
@@ -52,7 +51,6 @@ export function OhEncounterEdgeRail({
   examinations,
   activeExamUuid = null,
   findingCount,
-  iodCount,
   episodes,
   onManageEmployment,
   onOpenExamination,
@@ -139,7 +137,6 @@ export function OhEncounterEdgeRail({
               <OhEncounterSummaryRail
                 examinationCount={examinations.length}
                 findingCount={findingCount}
-                iodCount={iodCount}
                 episodes={episodes}
                 onManageEmployment={() => {
                   setPanel(null);

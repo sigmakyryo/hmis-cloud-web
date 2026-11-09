@@ -6,9 +6,13 @@ import { AppIcon, type AppIconName } from "@/components/icons/app-icon";
 import { ClientProfileAvatar } from "@/components/client-profile-avatar";
 import { SecondaryButton } from "@/components/ui/app-buttons";
 import {
-  DetailPageAsidePanelSection,
-  DetailPageAsideSummaryField,
-  DetailPageAsideSummarySection,
+  ListPageDataTable,
+  ListPageDataTableBody,
+  ListPageDataTableCell,
+  ListPageDataTableHeader,
+  ListPageDataTableHeaderCell,
+  ListPageDataTableHeaderRow,
+  ListPageDataTableRow,
   DetailPageHeaderSection,
   DetailPageTitle,
 } from "@/features/app-shell/components/page-layout";
@@ -27,37 +31,7 @@ type NameMaps = {
   profiles: Map<number, string>;
 };
 
-export function OhEmployeeDetailHeader({ customer }: { customer: Customer }) {
-  const name = formatCustomerName(customer);
-  const meta = [customer.customer_identifier, customer.gender, formatAdaptiveAge(customer.dob)]
-    .filter(Boolean)
-    .join(" · ");
-
-  return (
-    <DetailPageHeaderSection className="bg-white px-4 py-3 sm:py-3 md:px-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <ClientProfileAvatar
-            seed={customer.uuid || customer.customer_identifier || name}
-            name={name}
-            photoUrl={customer.photo_url}
-            className="size-10 rounded-lg"
-            fallbackClassName="text-sm font-semibold"
-          />
-          <div className="min-w-0">
-            <DetailPageTitle className="text-xl">{name}</DetailPageTitle>
-            <p className="mt-0.5 text-[12px] text-dash-muted">{meta}</p>
-          </div>
-        </div>
-        <SecondaryButton asChild className="shrink-0">
-          <Link href={ROUTES.customerDetail(customer.uuid)}>Open client record</Link>
-        </SecondaryButton>
-      </div>
-    </DetailPageHeaderSection>
-  );
-}
-
-export function OhEmployeeSummaryAside({
+export function OhEmployeeDetailHeader({
   customer,
   episode,
   profile,
@@ -68,37 +42,69 @@ export function OhEmployeeSummaryAside({
   profile: OhHazardProfile | null;
   names: NameMaps;
 }) {
+  const name = formatCustomerName(customer);
+  const facts = [
+    ["Client ID", customer.customer_identifier || "—"],
+    ["Gender", customer.gender || "—"],
+    ["Age", formatAdaptiveAge(customer.dob) || "—"],
+    ["Date of birth", formatRecordDate(customer.dob)],
+    ["Phone", customer.phone_number || "—"],
+    ["Email", customer.email || "—"],
+    ["Employer", episode ? names.employers.get(episode.employer) ?? "—" : "—"],
+    ["Job", episode ? names.jobs.get(episode.job_title) ?? "—" : "—"],
+    ["Employee number", episode?.employee_number || "—"],
+    ["Department", episode?.department_name || "—"],
+    ["Site", episode?.site || "—"],
+    ["Risk profile", profile?.name || customer.oh_hazard_profile_name || "—"],
+    ["Employment", episode?.is_active ? "Active" : episode ? "Ended" : "Not recorded"],
+    ["Fitness required", episode ? (episode.requires_fitness ? "Yes" : "No") : "—"],
+  ];
+
   return (
-    <DetailPageAsidePanelSection data-testid="oh-employee-summary">
-      <DetailPageAsideSummarySection title="Employment" className="border-t-0 pt-0">
-        <Fact label="Status" value={episode?.is_active ? "Active" : episode ? "Ended" : "Not recorded"} />
-        <Fact label="Employer" value={episode ? names.employers.get(episode.employer) ?? "—" : "—"} />
-        <Fact label="Job" value={episode ? names.jobs.get(episode.job_title) ?? "—" : "—"} />
-        <Fact label="Department" value={episode?.department_name || "—"} />
-        <Fact label="Site" value={episode?.site || "—"} />
-        <Fact label="Type" value={episode ? employmentTypeLabel(episode.employment_type) : "—"} />
-        <Fact label="Employee number" value={episode?.employee_number || "—"} />
-        <Fact label="Started" value={formatRecordDate(episode?.start_date)} />
-        <Fact label="Ended" value={formatRecordDate(episode?.end_date)} />
-        <Fact label="Fitness required" value={episode ? (episode.requires_fitness ? "Yes" : "No") : "—"} />
-      </DetailPageAsideSummarySection>
-      <DetailPageAsideSummarySection title="Risk profile">
-        <Fact label="Profile" value={profile?.name || customer.oh_hazard_profile_name || "—"} />
-        <Fact label="Employee form" value={profile?.employee_form_template_name || "Not attached"} />
-        <Fact label="Examination" value={profile?.exam_template_name || "Not attached"} />
-        <Fact label="Certificate" value={profile?.cof_template_name || "Not attached"} />
-      </DetailPageAsideSummarySection>
-      <DetailPageAsideSummarySection title="Client">
-        <Fact label="Phone" value={customer.phone_number || "—"} />
-        <Fact label="Email" value={customer.email || "—"} />
-      </DetailPageAsideSummarySection>
-    </DetailPageAsidePanelSection>
+    <DetailPageHeaderSection className="bg-white px-4 py-3 sm:py-3 md:px-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <ClientProfileAvatar
+            seed={customer.uuid || customer.customer_identifier || name}
+            name={name}
+            photoUrl={customer.photo_url}
+            className="size-10 rounded-lg"
+            fallbackClassName="text-sm font-semibold"
+          />
+          <div className="min-w-0">
+            <DetailPageTitle className="text-xl">{name}</DetailPageTitle>
+            <p className="mt-0.5 text-[12px] text-dash-muted">Occupational health employee</p>
+          </div>
+        </div>
+        <SecondaryButton asChild className="shrink-0">
+          <Link href={ROUTES.customerDetail(customer.uuid)}>Open client record</Link>
+        </SecondaryButton>
+      </div>
+      <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+        {facts.map(([label, value]) => (
+          <div key={label} className="min-w-0">
+            <dt className="text-[11px] text-dash-muted">{label}</dt>
+            <dd className="truncate text-[13px] font-medium text-brand-navy">{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </DetailPageHeaderSection>
   );
 }
 
-function Fact({ label, value }: { label: string; value: string }) {
-  return <DetailPageAsideSummaryField label={label} value={value} />;
-}
+const EMPLOYMENT_COLUMNS = [
+  "Job",
+  "Employer",
+  "Employee number",
+  "Department",
+  "Site",
+  "Type",
+  "Started",
+  "Ended",
+  "Risk profile",
+  "Fitness",
+  "Status",
+] as const;
 
 export function OhEmployeeEmploymentPanel({
   episodes,
@@ -116,27 +122,35 @@ export function OhEmployeeEmploymentPanel({
   }
 
   return (
-    <div className="space-y-4" data-testid="oh-employee-employment-tab">
-      {episodes.map((episode) => (
-        <article key={episode.uuid} className="rounded-xl border border-dash-border/80 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-brand-navy">
-              {names.jobs.get(episode.job_title) ?? "Employment"}
-            </h2>
-            <span className="text-[12px] text-dash-muted">{episode.is_active ? "Active" : "Ended"}</span>
-          </div>
-          <dl className="mt-3 grid gap-3 sm:grid-cols-2">
-            <DetailPageAsideSummaryField label="Employer" value={names.employers.get(episode.employer) ?? "—"} />
-            <DetailPageAsideSummaryField label="Department" value={episode.department_name || "—"} />
-            <DetailPageAsideSummaryField label="Site" value={episode.site || "—"} />
-            <DetailPageAsideSummaryField label="Type" value={employmentTypeLabel(episode.employment_type)} />
-            <DetailPageAsideSummaryField label="Employee number" value={episode.employee_number || "—"} />
-            <DetailPageAsideSummaryField label="Dates" value={`${formatRecordDate(episode.start_date)} – ${formatRecordDate(episode.end_date)}`} />
-            <DetailPageAsideSummaryField label="Risk profile" value={names.profiles.get(episode.hazard_profile ?? -1) ?? "—"} />
-            <DetailPageAsideSummaryField label="Fitness required" value={episode.requires_fitness ? "Yes" : "No"} />
-          </dl>
-        </article>
-      ))}
+    <div data-testid="oh-employee-employment-tab">
+      <ListPageDataTable>
+        <ListPageDataTableHeader>
+          <ListPageDataTableHeaderRow>
+            {EMPLOYMENT_COLUMNS.map((column) => (
+              <ListPageDataTableHeaderCell key={column}>{column}</ListPageDataTableHeaderCell>
+            ))}
+          </ListPageDataTableHeaderRow>
+        </ListPageDataTableHeader>
+        <ListPageDataTableBody>
+          {episodes.map((episode) => (
+            <ListPageDataTableRow key={episode.uuid}>
+              <ListPageDataTableCell>
+                <p className="font-medium text-brand-navy">{names.jobs.get(episode.job_title) ?? "Employment"}</p>
+              </ListPageDataTableCell>
+              <ListPageDataTableCell>{names.employers.get(episode.employer) ?? "—"}</ListPageDataTableCell>
+              <ListPageDataTableCell className="font-mono">{episode.employee_number || "—"}</ListPageDataTableCell>
+              <ListPageDataTableCell>{episode.department_name || "—"}</ListPageDataTableCell>
+              <ListPageDataTableCell>{episode.site || "—"}</ListPageDataTableCell>
+              <ListPageDataTableCell>{employmentTypeLabel(episode.employment_type)}</ListPageDataTableCell>
+              <ListPageDataTableCell>{formatRecordDate(episode.start_date)}</ListPageDataTableCell>
+              <ListPageDataTableCell>{formatRecordDate(episode.end_date)}</ListPageDataTableCell>
+              <ListPageDataTableCell>{names.profiles.get(episode.hazard_profile ?? -1) ?? "—"}</ListPageDataTableCell>
+              <ListPageDataTableCell>{episode.requires_fitness ? "Required" : "Not required"}</ListPageDataTableCell>
+              <ListPageDataTableCell>{episode.is_active ? "Active" : "Ended"}</ListPageDataTableCell>
+            </ListPageDataTableRow>
+          ))}
+        </ListPageDataTableBody>
+      </ListPageDataTable>
     </div>
   );
 }

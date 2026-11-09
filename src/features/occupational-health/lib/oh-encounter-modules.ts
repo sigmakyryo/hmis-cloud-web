@@ -1,6 +1,5 @@
 import {
   FileBadge2,
-  ShieldAlert,
   Stethoscope,
   type LucideIcon,
 } from "lucide-react";
@@ -17,12 +16,6 @@ export const OH_ENCOUNTER_MODULES = [
     label: "Occupational Health Certificate",
     description: "Issue fitness certificates for HR",
     icon: FileBadge2,
-  },
-  {
-    id: "iod",
-    label: "Injury on Duty Management",
-    description: "Record and manage injury-on-duty cases",
-    icon: ShieldAlert,
   },
 ] as const;
 

@@ -1,8 +1,5 @@
-import { OhEmployeeDetailPage } from "@/features/occupational-health/pages/OhEmployeeDetailPage";
+import { OhEmployeeEmploymentRoute } from "@/features/occupational-health/pages/OhEmployeeDetailRoutes";
 
-type PageProps = { params: Promise<{ customerUuid: string }> };
-
-export default async function Page({ params }: PageProps) {
-  const { customerUuid } = await params;
-  return <OhEmployeeDetailPage customerUuid={customerUuid} />;
+export default function Page() {
+  return <OhEmployeeEmploymentRoute />;
 }

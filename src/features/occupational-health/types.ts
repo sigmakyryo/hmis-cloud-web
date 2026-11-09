@@ -25,6 +25,13 @@ export type OhVisitEncounter = {
   hazard_profile_name?: string | null;
   status: string;
   billing_mode: string | null;
+  visit_date?: string | null;
+  visit_type?: {
+    uuid: string;
+    code: string;
+    name: string;
+    forms: Array<{ uuid: string; name: string; system_type?: string | null }>;
+  } | null;
   started_at: string | null;
   ended_at: string | null;
   notes: string;
@@ -472,6 +479,7 @@ export type OhTemplateCapture = {
   employment_episode?: number | null;
   customer_uuid?: string | null;
   status?: "not_started" | "in_progress" | "submitted" | "uploaded" | null;
+  submitted_at?: string | null;
   document_original_name?: string | null;
   responses_json?: Record<string, unknown>;
   row_version?: number;
@@ -480,6 +488,8 @@ export type OhTemplateCapture = {
   template_version_number?: number | null;
   template_snapshot?: Record<string, unknown> | null;
   is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
 };
 
 export type OhExamination = {

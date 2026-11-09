@@ -54,6 +54,7 @@ import type {
 import { resolveActiveRiskProfileEpisode } from "@/features/occupational-health/utils/customer-has-risk-profile";
 import { newestFirst } from "@/features/occupational-health/utils/oh-format";
 import {
+  examTypeForVisitCode,
   formatExamTypeLabel,
   MEDICAL_EXAM_START_TYPES,
 } from "@/features/occupational-health/utils/oh-labels";
@@ -209,7 +210,11 @@ export function OhMedicalExaminationsPanel({
   const [examTypeOverride, setExamTypeOverride] = useState<MedicalExamStartType | null>(
     null,
   );
-  const selectedExamType = examTypeOverride ?? focusedStartType ?? inferredExamType;
+  const visitExamType = examTypeForVisitCode(encounter.visit_type?.code);
+  const typeFromVisit = visitExamType != null;
+  const selectedExamType = typeFromVisit
+    ? visitExamType
+    : examTypeOverride ?? focusedStartType ?? inferredExamType;
   const [examNotes, setExamNotes] = useState("");
   const [detailsConfirmed, setDetailsConfirmed] = useState(false);
   const [editingDetails, setEditingDetails] = useState(false);
@@ -257,7 +262,7 @@ export function OhMedicalExaminationsPanel({
     completionRef.current = async () => {
       if (encounter.is_active === false) return false;
       setValidationShown(true);
-      if (!snapshot || !selectedExamType || (!detailsConfirmed && !examination)) {
+      if (!snapshot || !selectedExamType || (!typeFromVisit && !detailsConfirmed && !examination)) {
         setValidationMessage("Choose the examination type and continue before completing this visit.");
         return false;
       }
@@ -376,7 +381,7 @@ export function OhMedicalExaminationsPanel({
   }, [detailsConfirmed, encounter.id, focusedExam, selectedExamType, examTemplateUuid, workspace.examinations]);
 
   async function resolveExamination(
-    examType: MedicalExamStartType,
+    examType: string,
   ): Promise<OhExamination | null> {
     const existing = findExamForType(
       workspace.examinations,
@@ -596,8 +601,7 @@ export function OhMedicalExaminationsPanel({
   const openedFocusedExam = focusedStartType != null && examTypeOverride == null;
   const showTemplate =
     Boolean(selectedExamType) &&
-    !editingDetails &&
-    (detailsConfirmed || resumedExistingExam || openedFocusedExam);
+    (typeFromVisit || (!editingDetails && (detailsConfirmed || resumedExistingExam || openedFocusedExam)));
   const saveLabel =
     isResolvingExam
       ? "Starting"
@@ -617,7 +621,7 @@ export function OhMedicalExaminationsPanel({
             <header className="space-y-1.5">
               <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
                 <h2 className="text-[15px] font-semibold text-brand-navy">{historicalEnvelope?.template_name ?? riskProfile?.exam_template_name ?? "Examination"}</h2>
-                <div className="flex flex-wrap items-center gap-3"><span className="text-xs text-dash-muted" aria-live="polite">{saveLabel}</span>{definitionsMissing && encounter.is_active !== false && !hasEnteredResponses && (canConfigure || readyReplacement) ? <SecondaryButton type="button" disabled={recovering || completing} onClick={() => { setRecoveryError(null); setRecoveryOpen(true); }}>Load configured fields</SecondaryButton> : null}<button type="button" disabled={encounter.is_active === false || completing} onClick={() => setEditingDetails(true)} data-testid="oh-exam-change-type" className="text-[13px] font-medium text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30 disabled:opacity-50">Change type</button></div>
+                <div className="flex flex-wrap items-center gap-3"><span className="text-xs text-dash-muted" aria-live="polite">{saveLabel}</span>{definitionsMissing && encounter.is_active !== false && !hasEnteredResponses && (canConfigure || readyReplacement) ? <SecondaryButton type="button" disabled={recovering || completing} onClick={() => { setRecoveryError(null); setRecoveryOpen(true); }}>Load configured fields</SecondaryButton> : null}{typeFromVisit ? null : <button type="button" disabled={encounter.is_active === false || completing} onClick={() => setEditingDetails(true)} data-testid="oh-exam-change-type" className="text-[13px] font-medium text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30 disabled:opacity-50">Change type</button>}</div>
               </div>
               <p className="text-xs text-dash-muted"><span>{formatExamTypeLabel(selectedExamType!)}</span><span aria-hidden> · </span><span>{riskProfile?.name ?? "Examination"}</span>{examination?.template_version_number || captureVersion?.number ? ` · Version ${examination?.template_version_number ?? captureVersion?.number}` : ""}</p>
             </header>
@@ -639,7 +643,7 @@ export function OhMedicalExaminationsPanel({
               onChanged={workspace.refetchAll}
             /></fieldset>
           </div>
-        ) : (
+        ) : typeFromVisit ? null : (
           <div>{validationMessage ? <p role="alert" className="px-5 pt-4 text-sm text-red-700">{validationMessage}</p> : null}<ExamDetailsStep
             initialType={
               selectedExamType && isMedicalExamStartType(selectedExamType)

@@ -1,30 +1,20 @@
 "use client";
 
-import type { Customer } from "@/features/customers/types/customer.types";
-import { OhCertificateForm } from "@/features/occupational-health/components/OhCertificateTabPanel";
-import { OhCertificateRecords } from "@/features/occupational-health/components/OhCertificateRecords";
 import { OhEmploymentForm } from "@/features/occupational-health/components/OhEmploymentTabPanel";
 import { OhEmploymentRecords } from "@/features/occupational-health/components/OhEmploymentRecords";
-import { OhEncounterModulePlaceholder } from "@/features/occupational-health/components/OhEncounterModulePlaceholder";
-import { OhMedicalExaminationsPanel } from "@/features/occupational-health/components/OhMedicalExaminationsPanel";
-import { OhVisitTemplateStep } from "@/features/occupational-health/components/OhVisitTemplateStep";
+import { OhSessionForms } from "@/features/occupational-health/components/OhSessionForms";
 import {
   OhColumnPanel,
   OhEncounterColumns,
 } from "@/features/occupational-health/components/OhEncounterColumns";
 import type { useOhEncounterWorkspaceData } from "@/features/occupational-health/hooks/use-occupational-health";
-import {
-  COF_TEMPLATE_RESPONSE_KEY,
-  isVisitStepOpen,
-  type OhEncounterPanelId,
-} from "@/features/occupational-health/lib/oh-encounter-modules";
-import type {
-  EmploymentEpisode,
-  OhVisitEncounter,
-} from "@/features/occupational-health/types";
+import type { OhEncounterPanelId } from "@/features/occupational-health/lib/oh-encounter-modules";
+import type { Customer } from "@/features/customers/types/customer.types";
+import type { EmploymentEpisode, OhVisitEncounter } from "@/features/occupational-health/types";
 
 type OhEncounterContextPanelProps = {
   activePanel: OhEncounterPanelId;
+  activeStep: string;
   encounter: OhVisitEncounter;
   completionRef?: { current: (() => Promise<boolean>) | null };
   cofCompletionRef?: { current: (() => Promise<boolean>) | null };
@@ -33,6 +23,7 @@ type OhEncounterContextPanelProps = {
   episodes: EmploymentEpisode[];
   workspace: ReturnType<typeof useOhEncounterWorkspaceData>;
   onManageEmployment: () => void;
+  onShowForms: () => void;
   focusedExamUuid?: string | null;
   examFocusRequest?: number;
   onActiveExamChange?: (examUuid: string | null) => void;
@@ -40,6 +31,7 @@ type OhEncounterContextPanelProps = {
 
 export function OhEncounterContextPanel({
   activePanel,
+  activeStep,
   encounter,
   completionRef,
   cofCompletionRef,
@@ -48,76 +40,44 @@ export function OhEncounterContextPanel({
   episodes,
   workspace,
   onManageEmployment,
+  onShowForms,
   focusedExamUuid = null,
   examFocusRequest = 0,
   onActiveExamChange,
 }: OhEncounterContextPanelProps) {
-  const native = encounter.origin === "laravel";
-  const saved = {
-    exam: workspace.examinations.some((exam) => (exam.row_version ?? 0) > 1),
-  };
-  const cofLocked = !isVisitStepOpen("certificate", saved, native);
-  const cofStep = native ? (
-    <div hidden={activePanel !== "certificate"} className={activePanel === "certificate" ? "flex min-h-0 flex-1 flex-col" : "hidden"}>
-      <OhVisitTemplateStep
-        family="cof"
-        title="Certificate"
-        responseKey={COF_TEMPLATE_RESPONSE_KEY}
-        encounter={encounter}
-        records={workspace.cofResponses}
-        locked={cofLocked}
-        completionRef={cofCompletionRef}
-        onSaved={workspace.refetchAll}
-      />
-    </div>
-  ) : null;
-  const medical = <div hidden={activePanel !== "medical-examinations"} className={activePanel === "medical-examinations" ? "flex min-h-0 flex-1 flex-col" : "hidden"}>
-    <OhMedicalExaminationsPanel
-        encounter={encounter}
-        completionRef={completionRef}
-        completing={completing}
-        episodes={episodes}
-        workspace={workspace}
-        onManageEmployment={onManageEmployment}
-        focusedExamUuid={focusedExamUuid}
-        examFocusRequest={examFocusRequest}
-        onActiveExamChange={onActiveExamChange}
-      /></div>;
-  if (activePanel === "medical-examinations") return <>{medical}{cofStep}</>;
+  const forms = (
+    <OhSessionForms
+      activeStep={activeStep}
+      encounter={encounter}
+      completionRef={completionRef}
+      cofCompletionRef={cofCompletionRef}
+      completing={completing}
+      episodes={episodes}
+      workspace={workspace}
+      onManageEmployment={onManageEmployment}
+      focusedExamUuid={focusedExamUuid}
+      examFocusRequest={examFocusRequest}
+      onActiveExamChange={onActiveExamChange}
+    />
+  );
 
-  if (activePanel === "certificate") {
-    return (
-      <>{medical}{cofStep}{cofLocked ? null : <OhEncounterColumns
-        sectionKey="certificate"
-        form={
-          <OhColumnPanel eyebrow="Record" title="Certificate" className="bg-white">
-            <OhCertificateForm
-              assessments={workspace.fitness}
-              onCreated={workspace.refetchAll}
-            />
-          </OhColumnPanel>
-        }
-        records={
-          <OhColumnPanel
-            eyebrow="This encounter"
-            title="Certificates"
-            count={workspace.fitnessCertificates.length}
-            className="bg-white"
-          >
-            <OhCertificateRecords
-              assessments={workspace.fitness}
-              certificates={workspace.fitnessCertificates}
-              onChanged={workspace.refetchAll}
-            />
-          </OhColumnPanel>
-        }
-      />}</>
-    );
+  if (activePanel !== "employment") {
+    return forms;
   }
 
-  if (activePanel === "employment") {
-    return (
-      <>{medical}{cofStep}<OhEncounterColumns
+  return (
+    <>
+      <div className="hidden">{forms}</div>
+      <div className="border-b border-dash-border px-5 py-3">
+        <button
+          type="button"
+          onClick={onShowForms}
+          className="text-[13px] font-medium text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
+        >
+          Back to forms
+        </button>
+      </div>
+      <OhEncounterColumns
         sectionKey="employment"
         form={
           <OhColumnPanel eyebrow="Record" title="Employment" className="bg-white">
@@ -125,18 +85,11 @@ export function OhEncounterContextPanel({
           </OhColumnPanel>
         }
         records={
-          <OhColumnPanel
-            eyebrow="This encounter"
-            title="Employment"
-            count={episodes.length}
-            className="bg-white"
-          >
+          <OhColumnPanel eyebrow="This encounter" title="Employment" count={episodes.length} className="bg-white">
             <OhEmploymentRecords customer={customer} />
           </OhColumnPanel>
         }
-      /></>
-    );
-  }
-
-  return <>{medical}{cofStep}<OhEncounterModulePlaceholder moduleId={activePanel} /></>;
+      />
+    </>
+  );
 }

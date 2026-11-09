@@ -8,6 +8,8 @@ const ohService = vi.hoisted(() => ({
   fetchOhEncounters: vi.fn(),
   fetchOhEncounter: vi.fn(),
   fetchOhExaminations: vi.fn(),
+  fetchOhEmployeeFormResponses: vi.fn(),
+  fetchOhCofResponses: vi.fn(),
   fetchOhExamFindings: vi.fn(),
   fetchFitnessAssessments: vi.fn(),
   fetchFitnessCertificates: vi.fn(),
@@ -18,6 +20,9 @@ const ohService = vi.hoisted(() => ({
   fetchOhHazardProfiles: vi.fn(),
   fetchOhExamTemplateVersions: vi.fn(),
   createOhExamination: vi.fn(),
+  createOhEmployeeFormResponse: vi.fn(),
+  createOhEmployeeFormInvite: vi.fn(),
+  patchOhEmployeeFormResponses: vi.fn(),
   createFitnessAssessment: vi.fn(),
   createFitnessCertificate: vi.fn(),
   withdrawFitnessCertificate: vi.fn(),
@@ -147,6 +152,8 @@ beforeEach(() => {
     dob: "1990-01-01",
   });
   ohService.fetchOhExaminations.mockResolvedValue([]);
+  ohService.fetchOhEmployeeFormResponses.mockResolvedValue([]);
+  ohService.fetchOhCofResponses.mockResolvedValue([]);
   ohService.fetchOhExamFindings.mockResolvedValue([]);
   ohService.fetchFitnessAssessments.mockResolvedValue([]);
   ohService.fetchFitnessCertificates.mockResolvedValue([]);
@@ -207,14 +214,14 @@ afterEach(() => {
 });
 
 describe("OhEncounterWorkspacePage", () => {
-  it("renders the module nav and the examination details step", async () => {
+  it("renders the session forms and the examination details step", async () => {
     renderPage();
 
-    expect(await screen.findByTestId("oh-encounter-module-layout")).toBeInTheDocument();
-    const nav = screen.getByTestId("oh-encounter-module-nav");
-    expect(within(nav).getByText("Medical Examinations")).toBeInTheDocument();
-    expect(within(nav).getByText("Occupational Health Certificate")).toBeInTheDocument();
-    expect(within(nav).getByText("Injury on Duty Management")).toBeInTheDocument();
+    expect(await screen.findByTestId("oh-session-forms")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Examination" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Certificate of fitness" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Certificate of fitness" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Injury on Duty Management")).not.toBeInTheDocument();
     expect(await screen.findByTestId("oh-exam-details-step")).toBeInTheDocument();
     expect(ohService.fetchOhEncounters).not.toHaveBeenCalled();
   });
@@ -270,8 +277,6 @@ describe("OhEncounterWorkspacePage", () => {
     });
     expect(await screen.findByTestId("oh-exam-template-capture")).toBeInTheDocument();
     expect(screen.queryByTestId("oh-fitness-certificate-form")).not.toBeInTheDocument();
-    const nav = screen.getByTestId("oh-encounter-module-nav");
-    expect(within(nav).getByText("Occupational Health Certificate")).toBeInTheDocument();
   });
 
   it("asks for confirmation before withdrawing a certificate", async () => {
@@ -320,6 +325,40 @@ describe("OhEncounterWorkspacePage", () => {
       expect(ohService.withdrawFitnessCertificate).toHaveBeenCalledWith("cert-1"),
     );
   });
+  it("fills the pre-employment employee form for this session", async () => {
+    ohService.fetchOhEncounter.mockResolvedValue({
+      ...ENCOUNTER,
+      origin: "laravel",
+      visit_type: { uuid: "type-1", code: "pre_employment", name: "Pre-employment", forms: [] },
+    });
+    ohService.createOhEmployeeFormResponse.mockResolvedValue({
+      id: 3,
+      uuid: "form-1",
+      encounter: 7,
+      status: "not_started",
+      row_version: 1,
+      template_snapshot: { schema_version: 3, sections: [] },
+      responses_json: { __employee_form__: { answers: { picks: {}, fields: {} } } },
+    });
+    ohService.createOhEmployeeFormInvite.mockResolvedValue({ token: "session-token", expires_at: "2026-11-23T00:00:00Z" });
+    renderPage();
+
+    expect(await screen.findByText("Pre-employment")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Employee form" })).toHaveAttribute("aria-current", "page");
+    expect(screen.queryByTestId("oh-exam-details-step")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Enter manually/ }));
+    expect(await screen.findByTestId("oh-exam-template-capture")).toBeInTheDocument();
+    expect(ohService.createOhEmployeeFormResponse).toHaveBeenCalledWith({ encounter: 7 });
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    fireEvent.click(screen.getByRole("button", { name: /Copy link/ }));
+    await waitFor(() => expect(ohService.createOhEmployeeFormInvite).toHaveBeenCalledWith("form-1"));
+    expect(await screen.findByTestId("oh-session-employee-link")).toHaveTextContent("/workforce-forms/session-token");
+    expect(ohService.createOhEmployeeFormResponse).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: "Examination" }));
+    expect(screen.queryByTestId("oh-exam-details-step")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Exam type/)).not.toBeInTheDocument();
+  });
+
   it("validates and saves pinned answers before completing from the header", async () => {
     const examination = { id: 11, uuid: "exam-pinned", encounter: 7, exam_type: "periodic", template_uuid: "tmpl-1", template_version_uuid: "ver-1", template_version_number: 1,
       template_snapshot: { schema_version: 3, sections: [{ code: "vitals", name: "Vitals", content_mode: "direct", response_fields: [{ code: "bp", label: "BP", response_type: "text", required: true }], items: [] }] },
@@ -333,7 +372,6 @@ describe("OhEncounterWorkspacePage", () => {
     const header = screen.getByTestId("oh-encounter-header");
     const button = within(header).getByRole("button", { name: "Complete visit" });
     expect(within(header).getByRole("link", { name: "OHS Queue" }).compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    fireEvent.click(within(screen.getByTestId("oh-encounter-module-nav")).getByRole("button", { name: "Occupational Health Certificate" }));
     fireEvent.click(button);
     expect(await screen.findByText("BP is required.")).toBeVisible();
     await waitFor(() => expect(input).toHaveFocus());
@@ -341,13 +379,10 @@ describe("OhEncounterWorkspacePage", () => {
     fireEvent.change(input, { target: { value: "120/80" } });
     expect(screen.queryByText("BP is required.")).toBeNull();
     fireEvent.click(button);
-    fireEvent.click(button);
-    await waitFor(() => expect(completeMock).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText("Complete the certificate before completing this visit.")).toBeVisible();
     expect(ohService.patchOhExaminationResponses).toHaveBeenCalledWith("exam-pinned", expect.objectContaining({ responses_json: expect.objectContaining({ __exam_template__: expect.objectContaining({ template_version_uuid: "ver-1" }) }) }));
-    expect(ohService.patchOhExaminationResponses.mock.invocationCallOrder[0]).toBeLessThan(completeMock.mock.invocationCallOrder[0]);
-    expect(await screen.findByText("Completed")).toBeVisible();
-    expect(screen.getByLabelText(/BP/)).toBeDisabled();
-    expect(screen.queryByRole("button", { name: "Complete visit" })).toBeNull();
+    expect(completeMock).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Complete visit" })).toBeVisible();
     expect(fetchVisitMock).not.toHaveBeenCalled();
   });
 

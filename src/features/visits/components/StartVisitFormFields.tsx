@@ -39,6 +39,7 @@ type StartVisitFormFieldsProps = {
   onStepChange: (step: StartVisitStep) => void;
   defaultClinicName: string;
   departments: ClinicalDepartment[];
+  visitTypes?: Array<{ uuid: string; name: string }>;
   consultationServices: ConsultationServiceCatalogItem[];
   isLoadingConsultationServices?: boolean;
   insuranceSchemes: CustomerInsurance[];
@@ -61,6 +62,7 @@ export function StartVisitFormFields({
   onStepChange,
   defaultClinicName,
   departments,
+  visitTypes = [],
   consultationServices,
   isLoadingConsultationServices = false,
   insuranceSchemes,
@@ -76,6 +78,8 @@ export function StartVisitFormFields({
 }: StartVisitFormFieldsProps) {
   const [departmentSelectOpen, setDepartmentSelectOpen] = useState(false);
   const [departmentSearch, setDepartmentSearch] = useState("");
+  const [typeSelectOpen, setTypeSelectOpen] = useState(false);
+  const [typeSearch, setTypeSearch] = useState("");
   const [serviceSelectOpen, setServiceSelectOpen] = useState(false);
 
   useEffect(() => {
@@ -95,6 +99,7 @@ export function StartVisitFormFields({
   }, [form, insuranceSchemes]);
 
   const selectedDepartmentUuid = form.watch("department");
+  const selectedVisitTypeUuid = form.watch("visit_type");
   const selectedServiceUuid = form.watch("consultation_service");
   const visitDate = form.watch("visit_date");
   const canSelectConsultationService = Boolean(selectedDepartmentUuid);
@@ -112,6 +117,16 @@ export function StartVisitFormFields({
       null,
     [consultationServices, selectedServiceUuid],
   );
+
+  const selectedVisitType = useMemo(
+    () => visitTypes.find((type) => type.uuid === selectedVisitTypeUuid) ?? null,
+    [selectedVisitTypeUuid, visitTypes],
+  );
+  const filteredVisitTypes = useMemo(() => {
+    const query = typeSearch.trim().toLowerCase();
+    if (!query) return visitTypes;
+    return visitTypes.filter((type) => type.name.toLowerCase().includes(query));
+  }, [typeSearch, visitTypes]);
 
   const filteredDepartments = useMemo(() => {
     const query = departmentSearch.trim().toLowerCase();
@@ -244,6 +259,7 @@ export function StartVisitFormFields({
                     onValueChange={(value) => {
                       field.onChange(value);
                       form.setValue("consultation_service", "");
+                      form.setValue("visit_type", "");
                     }}
                     open={departmentSelectOpen}
                     onOpenChange={(open) => {
@@ -282,6 +298,48 @@ export function StartVisitFormFields({
               </FormItem>
             )}
           />
+
+          {nativeOh ? (
+            <FormField
+              control={form.control}
+              name="visit_type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    Type <RequiredFieldMarker />
+                  </FormLabel>
+                  <FormControl>
+                    <SearchableSelect
+                      value={field.value || undefined}
+                      onValueChange={field.onChange}
+                      open={typeSelectOpen}
+                      onOpenChange={(open) => {
+                        setTypeSelectOpen(open);
+                        if (!open) setTypeSearch("");
+                      }}
+                      disabled={visitTypes.length === 0}
+                      searchValue={typeSearch}
+                      onSearchChange={setTypeSearch}
+                      searchPlaceholder="Search visit types"
+                      placeholder="Select a type"
+                      displayValue={selectedVisitType?.name}
+                      minSearchLength={0}
+                      noResultsMessage="No visit types found"
+                      contentClassName="z-[60]"
+                      data-testid="start-visit-type"
+                    >
+                      {filteredVisitTypes.map((type) => (
+                        <SelectItem key={type.uuid} value={type.uuid}>
+                          {type.name}
+                        </SelectItem>
+                      ))}
+                    </SearchableSelect>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          ) : null}
 
           {riskProfileNotice ? null : (
           <>

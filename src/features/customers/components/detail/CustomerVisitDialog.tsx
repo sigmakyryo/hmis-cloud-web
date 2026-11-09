@@ -57,6 +57,7 @@ import {
   formatCustomerName,
 } from "@/features/customers/utils/format-customer";
 import { OhRiskProfileRequiredNotice } from "@/features/occupational-health/components/OhRiskProfileRequiredNotice";
+import { fetchOhVisitTypes } from "@/features/occupational-health/services/oh.service";
 import { fetchOhVisitEligibility } from "@/features/occupational-health/services/visit-eligibility.service";
 import {
   OH_RISK_PROFILE_REQUIRED_MESSAGE,
@@ -171,6 +172,11 @@ export function CustomerVisitDialog({
     [departments, selectedDepartmentUuid],
   );
   const isOhDepartment = selectedDepartment?.department_type === OH_DEPARTMENT_TYPE;
+  const visitTypes = useQuery({
+    queryKey: ["oh-visit-types"],
+    queryFn: fetchOhVisitTypes,
+    enabled: open && isOhDepartment,
+  });
   const eligibility = useQuery({
     queryKey: ["oh-visit-eligibility", customer.uuid, selectedDepartmentUuid],
     queryFn: () => fetchOhVisitEligibility(customer.uuid),
@@ -357,10 +363,15 @@ export function CustomerVisitDialog({
         }
       }
       if (department?.department_type === OH_DEPARTMENT_TYPE) {
+        if (!values.visit_type) {
+          form.setError("visit_type", { type: "manual", message: "Select a visit type" });
+          return;
+        }
         nativeSubmissionKey.current ??= crypto.randomUUID();
         const native = await createNativeOhVisit({
           customer_uuid: customer.uuid, department_uuid: values.department, clinic_uuid: values.clinic,
-          visit_date: new Date(values.visit_date).toISOString(), idempotency_key: nativeSubmissionKey.current,
+          visit_date: new Date(values.visit_date).toISOString(), visit_type_uuid: values.visit_type,
+          idempotency_key: nativeSubmissionKey.current,
         });
         if (generation !== contextGeneration.current) return;
         void queryClient.invalidateQueries({ queryKey: ["oh-encounters"] });
@@ -579,6 +590,7 @@ export function CustomerVisitDialog({
                   }
                   defaultClinicName={defaultClinic?.name ?? "Your clinic"}
                   departments={departments}
+                  visitTypes={visitTypes.data ?? []}
                   consultationServices={consultationServices}
                   isLoadingConsultationServices={isLoadingConsultationServices}
                   insuranceSchemes={insuranceSchemes}

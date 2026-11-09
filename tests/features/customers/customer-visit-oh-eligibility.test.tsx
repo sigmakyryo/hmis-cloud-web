@@ -18,6 +18,9 @@ vi.mock("@/features/occupational-health/services/native-visit.service", () => ({
 vi.mock("@/providers/user-provider", () => ({ useUser: () => ({ userData: mocks.user }) }));
 vi.mock("@/providers/toast-provider", () => ({ useToast: () => ({ toast: mocks.toast }) }));
 vi.mock("@/features/occupational-health/services/visit-eligibility.service", () => ({ fetchOhVisitEligibility: mocks.eligibility }));
+vi.mock("@/features/occupational-health/services/oh.service", () => ({
+  fetchOhVisitTypes: vi.fn(async () => [{ uuid: "type-1", code: "periodic", name: "Periodic", description: "", is_default: true, forms: [] }]),
+}));
 vi.mock("@/features/clinical/services/clinical-catalog.service", () => ({
   fetchClinicalClinics: vi.fn().mockResolvedValue([{ id: 1, uuid: "clinic" }]),
   fetchClinicalDepartments: mocks.departments,
@@ -35,7 +38,7 @@ vi.mock("@/features/visits/components/StartVisitFormFields", () => ({
     onStepChange: (step: "attachments") => void;
     riskProfileNotice?: ReactNode;
     form: UseFormReturn<StartVisitFormValues>;
-  }) => <div><p>Fields {step}</p><button type="button" onClick={() => form.setValue("department", "opd")}>Select OPD</button><button type="button" onClick={() => form.setValue("department", "department")}>Select OH</button>{riskProfileNotice}<button type="button" onClick={() => onStepChange("attachments")}>Attachments step</button></div>,
+  }) => <div><p>Fields {step}</p><button type="button" onClick={() => form.setValue("department", "opd")}>Select OPD</button><button type="button" onClick={() => form.setValue("department", "department")}>Select OH</button><button type="button" onClick={() => form.setValue("visit_type", "type-1")}>Select type</button>{riskProfileNotice}<button type="button" onClick={() => onStepChange("attachments")}>Attachments step</button></div>,
 }));
 const customer = { uuid: "customer-a", first_name: "Test", last_name: "Customer", dob: null } as Customer;
 const ready = { eligible: true, code: "eligible", templates: { cof: null, exam: null } };
@@ -89,6 +92,7 @@ it("does not turn an ambiguous legacy referral rejection into missing-risk state
   mocks.native.mockRejectedValue(new BffError("Reference unavailable", 503));
   mount();
   await waitFor(() => expect(screen.getByRole("button", { name: "Start OH visit" })).toBeEnabled());
+  fireEvent.click(screen.getByRole("button", { name: "Select type" }));
   fireEvent.click(screen.getByRole("button", { name: "Attachments step" }));
   fireEvent.click(screen.getByRole("button", { name: "Start OH visit" }));
   await waitFor(() => expect(mocks.toast).toHaveBeenCalledWith(expect.objectContaining({ description: expect.stringContaining("Reference unavailable") })));
@@ -112,6 +116,7 @@ it("keeps non-OH submission unchanged without an OH query", async () => {
 it("prevents double submission while final eligibility is pending", async () => {
   mount();
   await waitFor(() => expect(screen.getByRole("button", { name: "Start OH visit" })).toBeEnabled());
+  fireEvent.click(screen.getByRole("button", { name: "Select type" }));
   let resolve!: (value: typeof ready) => void;
   mocks.eligibility.mockImplementationOnce(() => new Promise((done) => { resolve = done; }));
 
@@ -192,9 +197,10 @@ it("does not create the previous department after selection changes during the f
 it("creates OH only through Laravel and navigates directly to the Laravel-backed workspace", async () => {
   mount();
   await waitFor(() => expect(screen.getByRole("button", { name: "Start OH visit" })).toBeEnabled());
+  fireEvent.click(screen.getByRole("button", { name: "Select type" }));
   fireEvent.click(screen.getByRole("button", { name: "Start OH visit" }));
   await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/occupational-health/native-visit/native-encounter"));
   expect(mocks.create).not.toHaveBeenCalled();
-  expect(mocks.native).toHaveBeenCalledWith(expect.objectContaining({ customer_uuid: "customer-a", department_uuid: "department", clinic_uuid: "clinic", idempotency_key: expect.any(String) }));
+  expect(mocks.native).toHaveBeenCalledWith(expect.objectContaining({ customer_uuid: "customer-a", department_uuid: "department", clinic_uuid: "clinic", visit_type_uuid: "type-1", idempotency_key: expect.any(String) }));
   expect(mocks.native.mock.calls[0][0]).not.toHaveProperty("mode_of_payment");
 });

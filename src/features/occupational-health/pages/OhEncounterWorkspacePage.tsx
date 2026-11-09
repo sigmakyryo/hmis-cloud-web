@@ -19,10 +19,11 @@ import { useAppBreadcrumb } from "@/features/app-shell/hooks/use-app-breadcrumb"
 import { OhEncounterContextPanel } from "@/features/occupational-health/components/OhEncounterContextPanel";
 import { OhEncounterEdgeRail } from "@/features/occupational-health/components/OhEncounterEdgeRail";
 import { OhEncounterHeader } from "@/features/occupational-health/components/OhEncounterHeader";
-import { OhEncounterModuleNav } from "@/features/occupational-health/components/OhEncounterModuleNav";
+import { OhSessionFormNav } from "@/features/occupational-health/components/OhSessionForms";
 import { OhRiskProfileRequiredEmptyState } from "@/features/occupational-health/components/OhRiskProfileRequiredEmptyState";
 import { useOhEncounterModuleParam } from "@/features/occupational-health/hooks/use-oh-encounter-module-param";
-import { isVisitStepOpen } from "@/features/occupational-health/lib/oh-encounter-modules";
+import type { OhEncounterPanelId } from "@/features/occupational-health/lib/oh-encounter-modules";
+import { sessionFormStepKey, sessionFormSteps, type SessionFormStep } from "@/features/occupational-health/lib/oh-session-forms";
 import {
   useEmploymentEpisodes,
   useOhEncounterWorkspaceData,
@@ -85,6 +86,7 @@ export function OhEncounterWorkspacePage({
   const cofCompletionRef = useRef<(() => Promise<boolean>) | null>(null);
   const completionBusy = useRef(false);
   const [activeExamUuid, setActiveExamUuid] = useState<string | null>(null);
+  const [chosenStep, setChosenStep] = useState<string | null>(null);
 
   const encounterQuery = useQuery({
     queryKey: ["oh-encounter", encounterUuid],
@@ -103,16 +105,6 @@ export function OhEncounterWorkspacePage({
 
   const episodesLoading = Boolean(customer?.uuid) && episodesQuery.isLoading;
   const hasRiskProfile = customerHasActiveRiskProfile(episodes);
-  const nativeVisit = encounter?.origin === "laravel";
-  const captureSaved = {
-    exam: workspace.examinations.some((exam) => (exam.row_version ?? 0) > 1),
-  };
-  const lockedPanels = nativeVisit
-    ? ([
-        isVisitStepOpen("certificate", captureSaved, true) ? null : "certificate",
-      ].filter(Boolean) as Array<"certificate">)
-    : [];
-
   const showRiskProfileEmpty =
     Boolean(customer?.uuid) &&
     !episodesLoading &&
@@ -159,6 +151,9 @@ export function OhEncounterWorkspacePage({
     );
   }
 
+  const formSteps = sessionFormSteps(encounter.visit_type ?? null);
+  const activeStep = activeSessionStep(formSteps, chosenStep, activePanel);
+
   return (
     <DetailPageLayout data-testid="oh-encounter-workspace">
       <div className="flex min-h-full flex-col xl:h-full">
@@ -173,12 +168,14 @@ export function OhEncounterWorkspacePage({
               setCompleting(true); setCompleteError(null);
               try {
                 if (!completionRef.current || !(await completionRef.current())) {
+                  setChosenStep("examination");
                   setActivePanel("medical-examinations");
                   if (!completionRef.current) setCompleteError("Review the examination setup before completing this visit.");
                   return;
                 }
                 if (encounter.origin === "laravel") {
                   if (!cofCompletionRef.current || !(await cofCompletionRef.current())) {
+                    setChosenStep("certificate");
                     setActivePanel("certificate");
                     setCompleteError("Complete the certificate before completing this visit.");
                     return;
@@ -191,6 +188,7 @@ export function OhEncounterWorkspacePage({
                   if (schema && envelope?.answers?.picks && envelope.answers.fields && Object.keys(validateExamAnswers(schema, envelope.answers)).length) {
                     setFocusedExamUuid(exam.uuid);
                     setExamFocusRequest((current) => current + 1);
+                    setChosenStep("examination");
                     setActivePanel("medical-examinations");
                     setCompleteError("Complete the highlighted responses in this examination before completing the visit.");
                     return;
@@ -199,25 +197,27 @@ export function OhEncounterWorkspacePage({
                 await completeNativeOhVisit(encounter.uuid);
                 await encounterQuery.refetch();
               } catch (error) {
+                setChosenStep("examination");
                 setActivePanel("medical-examinations");
                 setCompleteError(error instanceof Error ? error.message : "Could not complete visit. Your responses have been kept.");
               } finally { completionBusy.current = false; setCompleting(false); }
             }}>{completing ? "Completing…" : "Complete visit"}</PrimaryButton> : null}
           </div>}
         />
+        <OhSessionFormNav
+          visitTypeName={encounter.visit_type?.name}
+          steps={formSteps}
+          activeStep={activeStep}
+          onSelect={(step) => {
+            setChosenStep(step);
+            setActivePanel(step === "certificate" ? "certificate" : step === "employment" ? "employment" : "medical-examinations");
+          }}
+        />
         {completeError ? <p role="alert" className="px-5 py-3 text-sm text-red-700">{completeError}</p> : null}
         <div className="flex min-h-0 flex-1">
-          <div
-            className="grid min-h-0 min-w-0 flex-1 grid-cols-1 xl:grid-cols-[17.5rem_minmax(0,1fr)] xl:grid-rows-[minmax(0,1fr)] 2xl:grid-cols-[19rem_minmax(0,1fr)]"
-            data-testid="oh-encounter-module-layout"
-          >
-            <OhEncounterModuleNav
-              activePanel={activePanel}
-              onPanelChange={setActivePanel}
-              lockedPanels={lockedPanels}
-            />
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col" data-testid="oh-encounter-module-layout">
             <section
-              className="flex min-h-0 min-w-0 flex-col bg-white"
+              className="flex min-h-0 min-w-0 flex-1 flex-col bg-white"
               aria-label="Occupational health content"
               data-testid="oh-encounter-context-panel"
             >
@@ -231,11 +231,13 @@ export function OhEncounterWorkspacePage({
                   cofCompletionRef={cofCompletionRef}
                   completing={completing}
                   activePanel={activePanel}
+                  activeStep={activeStep}
                   encounter={encounter}
                   customer={customer}
                   episodes={episodes}
                   workspace={workspace}
                   onManageEmployment={() => setActivePanel("employment")}
+                  onShowForms={() => setActivePanel("medical-examinations")}
                   focusedExamUuid={focusedExamUuid}
                   examFocusRequest={examFocusRequest}
                   onActiveExamChange={setActiveExamUuid}
@@ -249,16 +251,17 @@ export function OhEncounterWorkspacePage({
             examinations={workspace.examinations}
             activeExamUuid={activeExamUuid}
             findingCount={workspace.findings.length}
-            iodCount={workspace.iodCases.length}
             episodes={episodes}
             onManageEmployment={() => setActivePanel("employment")}
             onOpenExamination={(exam: OhExamination) => {
               setFocusedExamUuid(exam.uuid);
               setExamFocusRequest((current) => current + 1);
+              setChosenStep("examination");
               setActivePanel("medical-examinations");
             }}
             onStartExamination={() => {
               setFocusedExamUuid(null);
+              setChosenStep("examination");
               setActivePanel("medical-examinations");
             }}
           />
@@ -266,4 +269,14 @@ export function OhEncounterWorkspacePage({
       </div>
     </DetailPageLayout>
   );
+}
+
+function activeSessionStep(steps: SessionFormStep[], chosen: string | null, panel: OhEncounterPanelId): string {
+  if (chosen && steps.some((step) => sessionFormStepKey(step) === chosen)) {
+    return chosen;
+  }
+  if (panel === "certificate" && steps.some((step) => step.kind === "certificate")) {
+    return "certificate";
+  }
+  return sessionFormStepKey(steps[0] ?? { kind: "examination", title: "Examination" });
 }

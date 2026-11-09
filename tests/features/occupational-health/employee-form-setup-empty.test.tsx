@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { OhEmployeeFormsTab } from "@/features/occupational-health/components/OhEmployeeFormsTab";
@@ -18,6 +18,7 @@ vi.mock("@/features/occupational-health/services/oh.service", () => ({
       employee_form_template_name: null,
     },
   ]),
+  fetchClinicalForms: vi.fn(async () => []),
   fetchOhEmployeeFormTemplates: vi.fn(async () => []),
   fetchOhExamTemplates: vi.fn(async () => []),
   fetchOhCofTemplates: vi.fn(async () => []),
@@ -25,6 +26,9 @@ vi.mock("@/features/occupational-health/services/oh.service", () => ({
   patchOhEmployeeFormResponses: vi.fn(),
   createOhEmployeeFormInvite: vi.fn(),
   uploadOhEmployeeFormDocument: vi.fn(),
+  fetchOhEncounters: vi.fn(async () => []),
+  fetchOhExaminations: vi.fn(async () => []),
+  fetchOhCofResponses: vi.fn(async () => []),
 }));
 
 afterEach(() => {
@@ -45,6 +49,7 @@ describe("employee form setup empty state", () => {
       </QueryClientProvider>,
     );
 
+    fireEvent.click(await screen.findByRole("button", { name: "Fill" }));
     expect(await screen.findByTestId("oh-employee-form-setup-empty")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Set up the risk profile" })).toHaveAttribute(
       "href",
@@ -68,6 +73,7 @@ describe("employee form setup empty state", () => {
       </QueryClientProvider>,
     );
 
+    fireEvent.click(await screen.findByRole("button", { name: "Fill" }));
     expect(await screen.findByRole("link", { name: "Assign a risk profile" })).toHaveAttribute(
       "href",
       "/customers/3077af73-dd86-4163-bf1f-50d6836d624e/employment?sheet=edit",
