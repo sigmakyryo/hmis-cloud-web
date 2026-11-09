@@ -135,6 +135,12 @@ export const ROUTES = {
     `/clinical/ipd/${visitUuid}/${encounterUuid}`,
   occupationalHealth: "/occupational-health",
   occupationalHealthEmployees: "/occupational-health/employees",
+  occupationalHealthEmployee: (customerUuid: string) =>
+    `/occupational-health/employees/${customerUuid}`,
+  occupationalHealthForms: "/occupational-health/forms",
+  occupationalHealthImmunizations: "/occupational-health/immunizations",
+  occupationalHealthDrugAlcohol: "/occupational-health/drug-alcohol",
+  workforceForm: (token: string) => `/workforce-forms/${token}`,
   occupationalHealthCompliance: "/occupational-health/compliance",
   occupationalHealthSurveillance: "/occupational-health/surveillance",
   occupationalHealthRecalls: (customerUuid?: string) =>
@@ -221,7 +227,7 @@ export const ROUTES = {
     return `/settings/modules/occupational-health?${params.toString()}`;
   },
   settingsModule: (slug: string) => `/settings/modules/${slug}`,
-  ohTemplateBuilder: (kind: "exam" | "certificate", uuid: string) =>
+  ohTemplateBuilder: (kind: "employee" | "exam" | "certificate", uuid: string) =>
     `/templates/${kind}/${uuid}`,
   settingsIntegrations: "/settings/integrations",
   settingsIntegrationsEmail: "/settings/integrations/email",
@@ -342,6 +348,7 @@ export const APP_ROUTE_PREFIXES = [
   ROUTES.appointments,
   ROUTES.clinicalOpd,
   ROUTES.occupationalHealth,
+  "/workforce-forms",
   "/clinical",
   "/reports",
   "/visits",

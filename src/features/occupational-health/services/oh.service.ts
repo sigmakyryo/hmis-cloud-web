@@ -1,4 +1,9 @@
 import { BFF_OCCUPATIONAL_HEALTH_ROUTES } from "@/constants/api";
+import type {
+  ClinicalFormRecord,
+  FormGroupRecord,
+  OhVisitTypeRecord,
+} from "@/features/occupational-health/lib/oh-form-catalog";
 import type { CustomerListFilters, CustomersListResponse } from "@/features/customers/types/customer.types";
 import type { CustomerSummaryStats } from "@/features/customers/utils/customer-stats";
 import type {
@@ -30,6 +35,7 @@ import type {
   OhEmployerSite,
   OhExamFinding,
   OhExamination,
+  OhTemplateCapture,
   OhFitnessValidityAlert,
   OhFeatureFlag,
   OhHazard,
@@ -125,12 +131,22 @@ export async function fetchOhEmployeeSummary(): Promise<CustomerSummaryStats> {
 }
 
 export async function fetchEmploymentEpisodes(customerUuid?: string) {
-  const response = await bffRequest<ListResponse<EmploymentEpisode>>(
-    `${BFF_OCCUPATIONAL_HEALTH_ROUTES.employmentEpisodes}${listQuery({
-      customer: customerUuid,
-    })}`,
-  );
-  return response.results;
+  const episodes: EmploymentEpisode[] = [];
+  let page = 1;
+  const seen = new Set<string>();
+  while (true) {
+    const response = await bffRequest<ListResponse<EmploymentEpisode>>(
+      `${BFF_OCCUPATIONAL_HEALTH_ROUTES.employmentEpisodes}${listQuery({
+        customer: customerUuid, page: page > 1 ? String(page) : undefined,
+      })}`,
+    );
+    episodes.push(...response.results);
+    const next = response.pagination?.next;
+    if (!next) return episodes;
+    if (seen.has(next)) throw new Error("Employment pagination did not advance. Please retry.");
+    seen.add(next);
+    page += 1;
+  }
 }
 
 export async function createEmploymentEpisode(payload: Record<string, unknown>) {
@@ -366,6 +382,7 @@ export async function updateOhHazardProfile(
     hazards?: number[];
     cof_template?: string | null;
     exam_template?: string | null;
+    employee_form_template?: string | null;
   },
 ) {
   return bffRequest<OhHazardProfile>(
@@ -434,11 +451,174 @@ export async function createOhHazardProfile(payload: {
   hazards?: number[];
   cof_template?: string | null;
   exam_template?: string | null;
+  employee_form_template?: string | null;
 }) {
   return bffRequest<OhHazardProfile>(
     BFF_OCCUPATIONAL_HEALTH_ROUTES.hazardProfiles,
     { method: "POST", body: payload },
   );
+}
+
+export async function fetchOhEmployeeFormResponses() {
+  const response = await bffRequest<ListResponse<OhTemplateCapture>>(
+    BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormResponses,
+  );
+  return response.results;
+}
+
+export async function createOhEmployeeFormResponse(payload: { encounter: number }) {
+  return bffRequest<OhTemplateCapture>(BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormResponses, {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export async function patchOhEmployeeFormResponses(
+  uuid: string,
+  payload: { responses_json: Record<string, unknown>; row_version: number; submit?: boolean },
+) {
+  return bffRequest<OhTemplateCapture>(BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormResponseResponses(uuid), {
+    method: "PATCH",
+    body: payload,
+  });
+}
+
+export async function openOhEmployeeForm(customerUuid: string) {
+  return bffRequest<OhTemplateCapture>(BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormOpen, {
+    method: "POST",
+    body: { customer_uuid: customerUuid },
+  });
+}
+
+export async function createOhEmployeeFormInvite(uuid: string) {
+  return bffRequest<{ token: string; expires_at: string }>(
+    BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormInvites(uuid),
+    { method: "POST", body: {} },
+  );
+}
+
+export async function uploadOhEmployeeFormDocument(uuid: string, file: File) {
+  const body = new FormData();
+  body.set("document", file);
+  return bffRequest<OhTemplateCapture>(BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormDocument(uuid), {
+    method: "POST",
+    body,
+  });
+}
+
+export async function fetchClinicalForms() {
+  return bffRequest<ClinicalFormRecord[]>(
+    BFF_OCCUPATIONAL_HEALTH_ROUTES.clinicalForms,
+  );
+}
+
+export async function createClinicalForm(payload: Record<string, unknown>) {
+  return bffRequest<ClinicalFormRecord>(
+    BFF_OCCUPATIONAL_HEALTH_ROUTES.clinicalForms,
+    { method: "POST", body: payload },
+  );
+}
+
+export async function assertClinicalFormsClear(payload: {
+  encounter_uuid?: string;
+  customer_uuid?: string;
+  trigger: "stage" | "transition" | "onboarding";
+  stage?: string;
+  from?: string;
+  to?: string;
+}) {
+  return bffRequest<{ clear: boolean }>(BFF_OCCUPATIONAL_HEALTH_ROUTES.clinicalFormsAssertClear, {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export async function submitClinicalForm(
+  uuid: string,
+  payload: { encounter_uuid?: string; customer_uuid?: string; note?: string },
+) {
+  return bffRequest<{ uuid: string; status: string }>(
+    BFF_OCCUPATIONAL_HEALTH_ROUTES.clinicalFormResponses(uuid),
+    { method: "POST", body: payload },
+  );
+}
+
+export async function uploadClinicalFormDocument(
+  uuid: string,
+  payload: { encounter_uuid?: string; customer_uuid?: string; file: File },
+) {
+  const body = new FormData();
+  if (payload.encounter_uuid) {
+    body.set("encounter_uuid", payload.encounter_uuid);
+  }
+  if (payload.customer_uuid) {
+    body.set("customer_uuid", payload.customer_uuid);
+  }
+  body.set("document", payload.file);
+  return bffRequest<{ uuid: string; status: string }>(
+    BFF_OCCUPATIONAL_HEALTH_ROUTES.clinicalFormResponses(uuid),
+    { method: "POST", body },
+  );
+}
+
+export async function fetchFormGroups() {
+  return bffRequest<FormGroupRecord[]>(BFF_OCCUPATIONAL_HEALTH_ROUTES.formGroups);
+}
+
+export async function createFormGroup(name: string) {
+  return bffRequest<FormGroupRecord>(BFF_OCCUPATIONAL_HEALTH_ROUTES.formGroups, {
+    method: "POST",
+    body: { name },
+  });
+}
+
+export async function fetchOhVisitTypes() {
+  return bffRequest<OhVisitTypeRecord[]>(BFF_OCCUPATIONAL_HEALTH_ROUTES.visitTypes);
+}
+
+export async function createOhVisitType(payload: { name: string; description?: string }) {
+  return bffRequest<OhVisitTypeRecord>(BFF_OCCUPATIONAL_HEALTH_ROUTES.visitTypes, {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export async function archiveOhVisitType(uuid: string) {
+  return bffRequest<OhVisitTypeRecord>(BFF_OCCUPATIONAL_HEALTH_ROUTES.visitTypeArchive(uuid), {
+    method: "POST",
+    body: {},
+  });
+}
+
+export async function attachOhVisitTypeForms(uuid: string, formUuids: string[]) {
+  return bffRequest<OhVisitTypeRecord>(BFF_OCCUPATIONAL_HEALTH_ROUTES.visitTypeForms(uuid), {
+    method: "PUT",
+    body: { form_uuids: formUuids },
+  });
+}
+
+export async function fetchOhCofResponses() {
+  const response = await bffRequest<ListResponse<OhTemplateCapture>>(
+    BFF_OCCUPATIONAL_HEALTH_ROUTES.cofResponses,
+  );
+  return response.results;
+}
+
+export async function createOhCofResponse(payload: { encounter: number }) {
+  return bffRequest<OhTemplateCapture>(BFF_OCCUPATIONAL_HEALTH_ROUTES.cofResponses, {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export async function patchOhCofResponses(
+  uuid: string,
+  payload: { responses_json: Record<string, unknown>; row_version: number },
+) {
+  return bffRequest<OhTemplateCapture>(BFF_OCCUPATIONAL_HEALTH_ROUTES.cofResponseResponses(uuid), {
+    method: "PATCH",
+    body: payload,
+  });
 }
 
 export async function fetchOhExaminations() {
@@ -1151,7 +1331,11 @@ export async function createOhCofTemplate(payload: {
 
 export async function updateOhCofTemplate(
   uuid: string,
-  payload: { name?: string; active?: boolean },
+  payload: {
+    name?: string;
+    active?: boolean;
+    billing_json?: import("@/features/occupational-health/types").OhBillingFormConfig | null;
+  },
 ) {
   return bffRequest<OhCofTemplate>(
     BFF_OCCUPATIONAL_HEALTH_ROUTES.cofTemplate(uuid),
@@ -1280,7 +1464,8 @@ export async function createOhLibrarySectionItem(payload: {
   names_i18n?: Record<string, string>;
   override_response_fields?: OhResponseField[] | null;
   sort_order?: number;
-  active?: boolean;
+  billing_json?: import("@/features/occupational-health/types").OhBillingItemConfig | null;
+    active?: boolean;
 }) {
   return bffRequest<OhLibrarySectionItem>(
     BFF_OCCUPATIONAL_HEALTH_ROUTES.librarySectionItems,
@@ -1294,6 +1479,7 @@ export async function updateOhLibrarySectionItem(
     code?: string;
     names_i18n?: Record<string, string>;
     override_response_fields?: OhResponseField[] | null;
+    billing_json?: import("@/features/occupational-health/types").OhBillingItemConfig | null;
     sort_order?: number;
     active?: boolean;
   },
@@ -1425,7 +1611,11 @@ export async function createOhExamTemplate(payload: {
 
 export async function updateOhExamTemplate(
   uuid: string,
-  payload: { name?: string; active?: boolean },
+  payload: {
+    name?: string;
+    active?: boolean;
+    billing_json?: import("@/features/occupational-health/types").OhBillingFormConfig | null;
+  },
 ) {
   return bffRequest<OhExamTemplate>(
     BFF_OCCUPATIONAL_HEALTH_ROUTES.examTemplate(uuid),
@@ -1502,4 +1692,99 @@ export async function detachOhExamTemplateSection(uuid: string) {
   );
 }
 
+export async function fetchOhEmployeeFormTemplates() {
+  const response = await bffRequest<ListResponse<OhExamTemplate>>(
+    BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormTemplates,
+  );
+  return response.results;
+}
+
+export async function fetchOhEmployeeFormTemplate(uuid: string) {
+  return bffRequest<OhExamTemplate>(BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormTemplate(uuid));
+}
+
+export async function createOhEmployeeFormTemplate(payload: { name: string; code: string }) {
+  return bffRequest<OhExamTemplate>(BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormTemplates, {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export async function updateOhEmployeeFormTemplate(uuid: string, payload: {
+  name?: string;
+  active?: boolean;
+  billing_json?: import("@/features/occupational-health/types").OhBillingFormConfig | null;
+}) {
+  return bffRequest<OhExamTemplate>(BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormTemplate(uuid), {
+    method: "PATCH",
+    body: payload,
+  });
+}
+
+export async function archiveOhEmployeeFormTemplate(uuid: string) {
+  return bffRequest<null>(BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormTemplate(uuid), { method: "DELETE" });
+}
+
+export async function fetchOhEmployeeFormTemplateSections(templateUuid: string) {
+  const response = await bffRequest<ListResponse<OhExamTemplateSection>>(
+    `${BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormTemplateSections}${listQuery({ template: templateUuid })}`,
+  );
+  return response.results;
+}
+
+export async function attachOhEmployeeFormTemplateSection(payload: {
+  template: string;
+  library_section: string;
+  sort_order?: number;
+}) {
+  return bffRequest<OhExamTemplateSection>(BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormTemplateSections, {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export async function updateOhEmployeeFormTemplateSection(uuid: string, payload: { sort_order?: number; active?: boolean }) {
+  return bffRequest<OhExamTemplateSection>(BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormTemplateSection(uuid), {
+    method: "PATCH",
+    body: payload,
+  });
+}
+
+export async function detachOhEmployeeFormTemplateSection(uuid: string) {
+  return bffRequest<null>(BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormTemplateSection(uuid), { method: "DELETE" });
+}
+
+export async function publishOhEmployeeFormTemplate(templateUuid: string) {
+  return bffRequest<OhExamTemplateVersion>(BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormTemplatePublish(templateUuid), {
+    method: "POST",
+    body: {},
+  });
+}
+
+export async function fetchOhEmployeeFormTemplateVersions(templateUuid: string) {
+  return bffRequest<OhTemplateVersion[]>(
+    BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormTemplateVersions(templateUuid),
+  );
+}
+
+
 export type { OhRequirementsConfig };
+
+export async function recoverOhExaminationVersion(uuid: string, payload: { row_version: number; template_version_uuid: string }) {
+  return bffRequest<OhExamination>(`${BFF_OCCUPATIONAL_HEALTH_ROUTES.examination(uuid).replace(/\/$/, "")}/template-version`, { method: "POST", body: payload });
+}
+
+export async function recoverOhCofResponseVersion(uuid: string, payload: { row_version: number; template_version_uuid: string }) {
+  return bffRequest<OhTemplateCapture>(`${BFF_OCCUPATIONAL_HEALTH_ROUTES.cofResponseTemplateVersion(uuid)}`, { method: "POST", body: payload });
+}
+
+export async function recoverOhEmployeeFormResponseVersion(uuid: string, payload: { row_version: number; template_version_uuid: string }) {
+  return bffRequest<OhTemplateCapture>(`${BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormResponseTemplateVersion(uuid)}`, { method: "POST", body: payload });
+}
+
+export async function reopenOhEmployeeFormResponse(uuid: string, payload: { row_version: number }) {
+  return bffRequest<OhTemplateCapture>(BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormResponseReopen(uuid), {
+    method: "POST",
+    body: payload,
+  });
+}

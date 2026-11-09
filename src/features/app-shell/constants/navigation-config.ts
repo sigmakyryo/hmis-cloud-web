@@ -7,6 +7,8 @@ export type NavigationItem = {
   href: string;
   icon: AppIconName;
   requiredGroup: string | null;
+  /** User may open the item when they belong to any of these groups. */
+  anyOfGroups?: string[];
   moduleName?: string;
   enabledInWebNew: boolean;
 };
@@ -24,6 +26,7 @@ export const moduleDisplayNames: Record<string, string> = {
   Clinical: "EMR",
   Therapy: "Therapy",
   OccupationalHealth: "OHS",
+  Forms: "Forms",
 };
 
 export const moduleIcons: Record<string, AppIconName> = {
@@ -39,6 +42,7 @@ export const moduleIcons: Record<string, AppIconName> = {
   Clinical: "hospital",
   Therapy: "dumbbell",
   OccupationalHealth: "clipboard",
+  Forms: "file",
 };
 
 export const moduleOrder = [
@@ -54,6 +58,7 @@ export const moduleOrder = [
   "Clinical",
   "Therapy",
   "OccupationalHealth",
+  "Forms",
 ] as const;
 
 /** Mirrors web-old navigation; only enabled routes appear in web-new for now. */
@@ -320,6 +325,31 @@ export const navigation: NavigationItem[] = [
     enabledInWebNew: true,
   },
   {
+    name: "Immunizations",
+    href: ROUTES.occupationalHealthImmunizations,
+    icon: "clipboard",
+    requiredGroup: "OccupationalHealth",
+    moduleName: "OccupationalHealth",
+    enabledInWebNew: true,
+  },
+  {
+    name: "Drug & alcohol",
+    href: ROUTES.occupationalHealthDrugAlcohol,
+    icon: "clipboard",
+    requiredGroup: "OccupationalHealth",
+    moduleName: "OccupationalHealth",
+    enabledInWebNew: true,
+  },
+  {
+    name: "Forms",
+    href: ROUTES.occupationalHealthForms,
+    icon: "file",
+    requiredGroup: null,
+    anyOfGroups: ["Registration", "Clinical", "OccupationalHealth"],
+    moduleName: "Forms",
+    enabledInWebNew: true,
+  },
+  {
     name: "OHS Compliance",
     href: ROUTES.occupationalHealthCompliance,
     icon: "clipboard",
@@ -452,6 +482,9 @@ export function hasNavAccess(
     !options.enabledModules.includes(portalModule)
   ) {
     return false;
+  }
+  if (item.anyOfGroups && item.anyOfGroups.length > 0) {
+    return item.anyOfGroups.some((group) => userGroups.includes(group));
   }
   if (!item.requiredGroup) {
     return true;

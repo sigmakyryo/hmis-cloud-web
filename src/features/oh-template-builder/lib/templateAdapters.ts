@@ -1,21 +1,28 @@
 import {
   archiveOhCofTemplate,
+  archiveOhEmployeeFormTemplate,
   archiveOhExamTemplate,
   archiveOhLibrarySection,
   archiveOhLibrarySectionItem,
   attachOhCofTemplateSection,
+  attachOhEmployeeFormTemplateSection,
   attachOhExamTemplateSection,
   createOhCofTemplate,
+  createOhEmployeeFormTemplate,
   createOhExamTemplate,
   createOhLibrarySection,
   createOhLibrarySectionItem,
   detachOhCofTemplateSection,
+  detachOhEmployeeFormTemplateSection,
   detachOhExamTemplateSection,
   fetchOhCofTemplate,
   fetchOhCofTemplateSections,
   fetchOhCofTemplates,
+  fetchOhEmployeeFormTemplate,
   fetchOhExamTemplate,
+  fetchOhEmployeeFormTemplateSections,
   fetchOhExamTemplateSections,
+  fetchOhEmployeeFormTemplates,
   fetchOhExamTemplates,
   fetchOhLibrarySectionItemsPage,
   fetchOhLibrarySections,
@@ -24,7 +31,9 @@ import {
   reorderOhLibrarySectionItems,
   updateOhCofTemplate,
   updateOhCofTemplateSection,
+  updateOhEmployeeFormTemplate,
   updateOhExamTemplate,
+  updateOhEmployeeFormTemplateSection,
   updateOhExamTemplateSection,
   updateOhLibrarySection,
   updateOhLibrarySectionItem,
@@ -66,6 +75,7 @@ export type TemplateAdapter = {
   getTemplate: (uuid: string) => Promise<BuilderTemplate>;
   createTemplate: (input: { name: string; code: string }) => Promise<BuilderTemplate>;
   renameTemplate: (uuid: string, name: string) => Promise<BuilderTemplate>;
+  updateTemplateBilling: (uuid: string, billing: BuilderTemplate["billing"]) => Promise<BuilderTemplate>;
   archiveTemplate: (uuid: string) => Promise<void>;
   listAttachments: (templateUuid: string) => Promise<BuilderAttachment[]>;
   attachSection: (
@@ -89,9 +99,11 @@ export type TemplateAdapter = {
 const LIBRARY_KIND: Record<TemplateKind, OhLibrarySectionKind> = {
   certificate: "cof",
   exam: "exam",
+  employee: "employee",
 };
 
 function toTemplate(row: OhCofTemplate | OhExamTemplate): BuilderTemplate {
+  const billing = row.billing_json ?? null;
   return {
     uuid: row.uuid,
     name: row.name,
@@ -101,6 +113,10 @@ function toTemplate(row: OhCofTemplate | OhExamTemplate): BuilderTemplate {
     publishedVersionNumber: row.published_version_number ?? null,
     publishedVersionStatus: row.published_version_status ?? null,
     updatedAt: row.updated_at ?? null,
+    billing: {
+      billable: Boolean(billing?.billable),
+      productUuid: billing?.product_uuid ?? null,
+    },
   };
 }
 
@@ -142,6 +158,7 @@ function fromLibraryItem(
     row.override_response_fields,
   );
   const effective = row.effective_response_fields ?? fields;
+  const billing = row.billing_json ?? null;
   return {
     uuid: row.uuid,
     code: row.code,
@@ -154,6 +171,11 @@ function fromLibraryItem(
     overrideResponseFields: row.override_response_fields,
     effectiveResponseFields: effective,
     inheritsResponseFields: row.inherits_response_fields ?? inherits,
+    billing: {
+      billable: Boolean(billing?.billable),
+      destination: billing?.destination ?? null,
+      productUuids: Array.isArray(billing?.product_uuids) ? billing.product_uuids : [],
+    },
   };
 }
 
@@ -179,6 +201,13 @@ function itemPayload(_item: BuilderItem | null, input: ItemInput) {
     code: toUpperCode(input.code),
     names_i18n: buildItemNames(input.name),
     override_response_fields: override,
+    billing_json: input.billing?.billable
+      ? {
+          billable: true,
+          destination: input.billing.destination ?? "billing_only",
+          product_uuids: input.billing.productUuids ?? [],
+        }
+      : { billable: false, destination: null, product_uuids: [] },
   };
 }
 
@@ -186,71 +215,76 @@ function createLibraryAdapter(
   templateKind: TemplateKind,
   libraryKind: OhLibrarySectionKind,
 ): TemplateAdapter {
-  const isCertificate = templateKind === "certificate";
+  const templates = {
+    certificate: {
+      list: fetchOhCofTemplates,
+      get: fetchOhCofTemplate,
+      create: createOhCofTemplate,
+      update: updateOhCofTemplate,
+      archive: archiveOhCofTemplate,
+      sections: fetchOhCofTemplateSections,
+      attach: attachOhCofTemplateSection,
+      detach: detachOhCofTemplateSection,
+      move: updateOhCofTemplateSection,
+    },
+    exam: {
+      list: fetchOhExamTemplates,
+      get: fetchOhExamTemplate,
+      create: createOhExamTemplate,
+      update: updateOhExamTemplate,
+      archive: archiveOhExamTemplate,
+      sections: fetchOhExamTemplateSections,
+      attach: attachOhExamTemplateSection,
+      detach: detachOhExamTemplateSection,
+      move: updateOhExamTemplateSection,
+    },
+    employee: {
+      list: fetchOhEmployeeFormTemplates,
+      get: fetchOhEmployeeFormTemplate,
+      create: createOhEmployeeFormTemplate,
+      update: updateOhEmployeeFormTemplate,
+      archive: archiveOhEmployeeFormTemplate,
+      sections: fetchOhEmployeeFormTemplateSections,
+      attach: attachOhEmployeeFormTemplateSection,
+      detach: detachOhEmployeeFormTemplateSection,
+      move: updateOhEmployeeFormTemplateSection,
+    },
+  }[templateKind];
 
   return {
-    listTemplates: async () =>
-      (isCertificate ? await fetchOhCofTemplates() : await fetchOhExamTemplates()).map(
-        toTemplate,
-      ),
-    getTemplate: async (uuid) =>
+    listTemplates: async () => (await templates.list()).map(toTemplate),
+    getTemplate: async (uuid) => toTemplate(await templates.get(uuid)),
+    createTemplate: async (input) => toTemplate(await templates.create(input)),
+    renameTemplate: async (uuid, name) => toTemplate(await templates.update(uuid, { name })),
+    updateTemplateBilling: async (uuid, billing) =>
       toTemplate(
-        isCertificate ? await fetchOhCofTemplate(uuid) : await fetchOhExamTemplate(uuid),
-      ),
-    createTemplate: async (input) =>
-      toTemplate(
-        isCertificate
-          ? await createOhCofTemplate(input)
-          : await createOhExamTemplate(input),
-      ),
-    renameTemplate: async (uuid, name) =>
-      toTemplate(
-        isCertificate
-          ? await updateOhCofTemplate(uuid, { name })
-          : await updateOhExamTemplate(uuid, { name }),
+        await templates.update(uuid, {
+          billing_json: billing.billable
+            ? { billable: true, product_uuid: billing.productUuid }
+            : { billable: false, product_uuid: null },
+        }),
       ),
     archiveTemplate: async (uuid) => {
-      if (isCertificate) {
-        await archiveOhCofTemplate(uuid);
-      } else {
-        await archiveOhExamTemplate(uuid);
-      }
+      await templates.archive(uuid);
     },
     listAttachments: async (templateUuid) =>
-      (isCertificate
-        ? await fetchOhCofTemplateSections(templateUuid)
-        : await fetchOhExamTemplateSections(templateUuid)
-      )
+      (await templates.sections(templateUuid))
         .filter((row) => row.active !== false && row.template === templateUuid)
         .map(fromTemplateAttachment)
         .toSorted(byPosition),
     attachSection: async (templateUuid, sectionUuid, sortOrder) =>
       fromTemplateAttachment(
-        isCertificate
-          ? await attachOhCofTemplateSection({
-              template: templateUuid,
-              library_section: sectionUuid,
-              sort_order: sortOrder,
-            })
-          : await attachOhExamTemplateSection({
-              template: templateUuid,
-              library_section: sectionUuid,
-              sort_order: sortOrder,
-            }),
+        await templates.attach({
+          template: templateUuid,
+          library_section: sectionUuid,
+          sort_order: sortOrder,
+        }),
       ),
     detachSection: async (uuid) => {
-      if (isCertificate) {
-        await detachOhCofTemplateSection(uuid);
-      } else {
-        await detachOhExamTemplateSection(uuid);
-      }
+      await templates.detach(uuid);
     },
     moveAttachment: async (uuid, sortOrder) => {
-      if (isCertificate) {
-        await updateOhCofTemplateSection(uuid, { sort_order: sortOrder });
-      } else {
-        await updateOhExamTemplateSection(uuid, { sort_order: sortOrder });
-      }
+      await templates.move(uuid, { sort_order: sortOrder });
     },
     listLibrary: async () =>
       (await fetchOhLibrarySections({ kind: libraryKind }))
@@ -323,6 +357,7 @@ function createLibraryAdapter(
 const ADAPTERS: Record<TemplateKind, TemplateAdapter> = {
   certificate: createLibraryAdapter("certificate", LIBRARY_KIND.certificate),
   exam: createLibraryAdapter("exam", LIBRARY_KIND.exam),
+  employee: createLibraryAdapter("employee", LIBRARY_KIND.employee),
 };
 
 export function getTemplateAdapter(kind: TemplateKind) {

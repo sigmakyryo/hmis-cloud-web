@@ -54,6 +54,7 @@ export function ResponseConfigFields({
       return;
     }
     const next = defaultResponseConfig(nextType);
+    if (config.validation.required != null) next.validation.required = config.validation.required;
     onChange(next);
   }
 
@@ -92,6 +93,11 @@ export function ResponseConfigFields({
           onCheckedChange={(checked) => patch({ prompt_after_select: checked })}
           aria-label="Ask for a response after selecting an item"
         />
+      </div>
+
+      <div className="flex items-start justify-between gap-3 rounded-xl border border-dash-border px-3 py-3">
+        <div><p className="text-sm font-medium text-brand-navy">Required response</p><p className="mt-0.5 text-xs leading-5 text-dash-muted">Must be answered when applicable before completing the visit.</p></div>
+        <Switch checked={config.validation.required === true} disabled={disabled} onCheckedChange={(required) => patch({ validation: { ...config.validation, required } })} aria-label="Required response" />
       </div>
 
       {showOptions && config.prompt_after_select ? (

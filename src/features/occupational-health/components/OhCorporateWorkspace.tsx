@@ -113,7 +113,6 @@ export function OhExaminationLedger({
 type OhEncounterSummaryRailProps = {
   examinationCount: number;
   findingCount: number;
-  iodCount: number;
   episodes: EmploymentEpisode[];
   onManageEmployment: () => void;
 };
@@ -121,7 +120,6 @@ type OhEncounterSummaryRailProps = {
 export function OhEncounterSummaryRail({
   examinationCount,
   findingCount,
-  iodCount,
   episodes,
   onManageEmployment,
 }: OhEncounterSummaryRailProps) {
@@ -145,7 +143,6 @@ export function OhEncounterSummaryRail({
           rows={[
             { label: "Examinations", value: examinationCount },
             { label: "Findings", value: findingCount },
-            { label: "IOD cases", value: iodCount },
           ]}
         />
       </section>

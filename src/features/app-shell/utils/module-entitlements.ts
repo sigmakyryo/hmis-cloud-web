@@ -132,6 +132,10 @@ export function resolvePortalModuleForPath(
     return "Clinical";
   }
 
+  if (pathname === ROUTES.occupationalHealthForms) {
+    return null;
+  }
+
   if (
     pathname === ROUTES.occupationalHealth ||
     pathname.startsWith(`${ROUTES.occupationalHealth}/`) ||

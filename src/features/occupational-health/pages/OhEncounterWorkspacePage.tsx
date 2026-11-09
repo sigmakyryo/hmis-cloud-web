@@ -4,21 +4,32 @@ import Link from "next/link";
 import { FileQuestion, ShieldAlert } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { completeNativeOhVisit } from "@/features/occupational-health/services/native-visit.service";
+import { useRef, useState } from "react";
 
-import { SecondaryButton } from "@/components/ui/app-buttons";
+import { PrimaryButton, SecondaryButton } from "@/components/ui/app-buttons";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
   DetailPageLayout,
   DetailPageSkeleton,
 } from "@/features/app-shell/components/page-layout";
+import { parseExamTemplateSnapshot, type ExamTemplateResponseEnvelope } from "../lib/exam-template-snapshot";
+import { validateExamAnswers } from "../lib/exam-template-validation";
 import { useAppBreadcrumb } from "@/features/app-shell/hooks/use-app-breadcrumb";
 import { OhEncounterContextPanel } from "@/features/occupational-health/components/OhEncounterContextPanel";
 import { OhEncounterEdgeRail } from "@/features/occupational-health/components/OhEncounterEdgeRail";
 import { OhEncounterHeader } from "@/features/occupational-health/components/OhEncounterHeader";
-import { OhEncounterModuleNav } from "@/features/occupational-health/components/OhEncounterModuleNav";
+import { buildSessionStepStatuses, OhSessionFormNav } from "@/features/occupational-health/components/OhSessionForms";
 import { OhRiskProfileRequiredEmptyState } from "@/features/occupational-health/components/OhRiskProfileRequiredEmptyState";
 import { useOhEncounterModuleParam } from "@/features/occupational-health/hooks/use-oh-encounter-module-param";
+import type { OhEncounterPanelId } from "@/features/occupational-health/lib/oh-encounter-modules";
+import {
+  isLastSessionStep,
+  nextSessionStep,
+  sessionFormStepKey,
+  sessionFormSteps,
+  type SessionFormStep,
+} from "@/features/occupational-health/lib/oh-session-forms";
 import {
   useEmploymentEpisodes,
   useOhEncounterWorkspaceData,
@@ -75,7 +86,14 @@ export function OhEncounterWorkspacePage({
   const [activePanel, setActivePanel] = useOhEncounterModuleParam();
   const [focusedExamUuid, setFocusedExamUuid] = useState<string | null>(null);
   const [examFocusRequest, setExamFocusRequest] = useState(0);
+  const [completeError, setCompleteError] = useState<string | null>(null);
+  const [completing, setCompleting] = useState(false);
+  const completionRef = useRef<(() => Promise<boolean>) | null>(null);
+  const cofCompletionRef = useRef<(() => Promise<boolean>) | null>(null);
+  const employeeContinueRef = useRef<(() => Promise<boolean>) | null>(null);
+  const completionBusy = useRef(false);
   const [activeExamUuid, setActiveExamUuid] = useState<string | null>(null);
+  const [chosenStep, setChosenStep] = useState<string | null>(null);
 
   const encounterQuery = useQuery({
     queryKey: ["oh-encounter", encounterUuid],
@@ -124,7 +142,7 @@ export function OhEncounterWorkspacePage({
     );
   }
 
-  if (!encounter) {
+  if (!encounter || encounter.visit !== visitUuid) {
     return (
       <WorkspaceStateScreen
         icon={FileQuestion}
@@ -140,33 +158,118 @@ export function OhEncounterWorkspacePage({
     );
   }
 
+  const formSteps = sessionFormSteps(encounter.visit_type ?? null);
+  const activeStep = activeSessionStep(formSteps, chosenStep, activePanel);
+
   return (
     <DetailPageLayout data-testid="oh-encounter-workspace">
       <div className="flex min-h-full flex-col xl:h-full">
         <OhEncounterHeader
           customer={customer}
           encounter={encounter}
-          actions={
-            <Link
-              href={ROUTES.occupationalHealth}
-              className="text-[13px] font-medium text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
-            >
-              OHS Queue
-            </Link>
-          }
-        />
+          visitTypeName={encounter.visit_type?.name}
+          actions={<div className="flex flex-wrap items-center justify-end gap-3">
+            <Link href={ROUTES.occupationalHealth} className="text-[13px] font-medium text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30">OHS Queue</Link>
+            {encounter.origin === "laravel" && encounter.is_active ? <PrimaryButton type="button" disabled={completing} onClick={async () => {
+              if (completionBusy.current) return;
+              completionBusy.current = true;
+              setCompleting(true);
+              setCompleteError(null);
+              const goStep = (stepKey: string, message: string, examUuid?: string | null) => {
+                setChosenStep(stepKey);
+                setActivePanel(stepKey === "certificate" ? "certificate" : stepKey === "employment" ? "employment" : "medical-examinations");
+                if (examUuid) {
+                  setFocusedExamUuid(examUuid);
+                  setExamFocusRequest((current) => current + 1);
+                }
+                setCompleteError(message);
+              };
+              try {
+                const last = isLastSessionStep(formSteps, activeStep);
+                if (!last) {
+                  if (activeStep === "employee") {
+                    if (employeeContinueRef.current && !(await employeeContinueRef.current())) {
+                      goStep("employee", "Review the employee form before continuing.");
+                      return;
+                    }
+                  } else if (activeStep === "examination") {
+                    if (!completionRef.current || !(await completionRef.current())) {
+                      goStep("examination", "Complete the highlighted responses before continuing.");
+                      return;
+                    }
+                    await workspace.refetchAll();
+                  } else if (activeStep === "certificate") {
+                    if (!cofCompletionRef.current || !(await cofCompletionRef.current())) {
+                      goStep("certificate", "Complete the certificate before continuing.");
+                      return;
+                    }
+                  }
+                  const next = nextSessionStep(formSteps, activeStep);
+                  if (next) {
+                    const key = sessionFormStepKey(next);
+                    setChosenStep(key);
+                    setActivePanel(key === "certificate" ? "certificate" : "medical-examinations");
+                    setCompleteError(null);
+                  }
+                  return;
+                }
 
+                if (!completionRef.current || !(await completionRef.current())) {
+                  goStep("examination", "Complete the highlighted responses in this examination before completing the visit.");
+                  return;
+                }
+                await workspace.refetchAll();
+                for (const exam of workspace.examinations) {
+                  if (exam.uuid === activeExamUuid) continue;
+                  const schema = parseExamTemplateSnapshot(exam.template_snapshot);
+                  const envelope = exam.responses_json?.__exam_template__ as ExamTemplateResponseEnvelope | undefined;
+                  if (schema && envelope?.answers?.picks && envelope.answers.fields && Object.keys(validateExamAnswers(schema, envelope.answers)).length) {
+                    goStep("examination", "Complete the highlighted responses in this examination before completing the visit.", exam.uuid);
+                    return;
+                  }
+                }
+                if (!cofCompletionRef.current || !(await cofCompletionRef.current())) {
+                  goStep("certificate", "Complete the certificate before completing this visit.");
+                  return;
+                }
+                await completeNativeOhVisit(encounter.uuid);
+                await encounterQuery.refetch();
+              } catch (error) {
+                const message = error instanceof Error ? error.message : "Could not complete visit. Your responses have been kept.";
+                if (/certificate|examination before opening/i.test(message)) {
+                  goStep("certificate", message);
+                } else if (/employee/i.test(message)) {
+                  goStep("employee", message);
+                } else {
+                  goStep("examination", message);
+                }
+              } finally {
+                completionBusy.current = false;
+                setCompleting(false);
+              }
+            }}>{completing ? (isLastSessionStep(formSteps, activeStep) ? "Completing…" : "Saving…") : (isLastSessionStep(formSteps, activeStep) ? "Complete visit" : "Continue")}</PrimaryButton> : null}
+          </div>}
+        />
+        <OhSessionFormNav
+          steps={formSteps}
+          activeStep={activeStep}
+          statuses={buildSessionStepStatuses(formSteps, workspace)}
+          onSelect={(step) => {
+            const status = buildSessionStepStatuses(formSteps, workspace)[step];
+            if (status === "locked") {
+              setCompleteError("Finish and save the examination before opening the certificate.");
+              return;
+            }
+            setChosenStep(step);
+            setActivePanel(step === "certificate" ? "certificate" : step === "employment" ? "employment" : "medical-examinations");
+            setCompleteError(null);
+          }}
+        />
+        {completeError ? <p role="alert" className="px-5 py-3 text-sm text-red-700">{completeError}</p> : null}
         <div className="flex min-h-0 flex-1">
-          <div
-            className="grid min-h-0 min-w-0 flex-1 grid-cols-1 xl:grid-cols-[17.5rem_minmax(0,1fr)] xl:grid-rows-[minmax(0,1fr)] 2xl:grid-cols-[19rem_minmax(0,1fr)]"
-            data-testid="oh-encounter-module-layout"
-          >
-            <OhEncounterModuleNav
-              activePanel={activePanel}
-              onPanelChange={setActivePanel}
-            />
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col" data-testid="oh-encounter-module-layout">
             <section
-              className="flex min-h-0 min-w-0 flex-col bg-white"
+              className="flex min-h-0 min-w-0 flex-1 flex-col bg-white"
               aria-label="Occupational health content"
               data-testid="oh-encounter-context-panel"
             >
@@ -176,12 +279,18 @@ export function OhEncounterWorkspacePage({
                 />
               ) : (
                 <OhEncounterContextPanel
+                  completionRef={completionRef}
+                  cofCompletionRef={cofCompletionRef}
+                  employeeContinueRef={employeeContinueRef}
+                  completing={completing}
                   activePanel={activePanel}
+                  activeStep={activeStep}
                   encounter={encounter}
                   customer={customer}
                   episodes={episodes}
                   workspace={workspace}
                   onManageEmployment={() => setActivePanel("employment")}
+                  onShowForms={() => setActivePanel("medical-examinations")}
                   focusedExamUuid={focusedExamUuid}
                   examFocusRequest={examFocusRequest}
                   onActiveExamChange={setActiveExamUuid}
@@ -195,16 +304,17 @@ export function OhEncounterWorkspacePage({
             examinations={workspace.examinations}
             activeExamUuid={activeExamUuid}
             findingCount={workspace.findings.length}
-            iodCount={workspace.iodCases.length}
             episodes={episodes}
             onManageEmployment={() => setActivePanel("employment")}
             onOpenExamination={(exam: OhExamination) => {
               setFocusedExamUuid(exam.uuid);
               setExamFocusRequest((current) => current + 1);
+              setChosenStep("examination");
               setActivePanel("medical-examinations");
             }}
             onStartExamination={() => {
               setFocusedExamUuid(null);
+              setChosenStep("examination");
               setActivePanel("medical-examinations");
             }}
           />
@@ -212,4 +322,14 @@ export function OhEncounterWorkspacePage({
       </div>
     </DetailPageLayout>
   );
+}
+
+function activeSessionStep(steps: SessionFormStep[], chosen: string | null, panel: OhEncounterPanelId): string {
+  if (chosen && steps.some((step) => sessionFormStepKey(step) === chosen)) {
+    return chosen;
+  }
+  if (panel === "certificate" && steps.some((step) => step.kind === "certificate")) {
+    return "certificate";
+  }
+  return sessionFormStepKey(steps[0] ?? { kind: "examination", title: "Examination" });
 }

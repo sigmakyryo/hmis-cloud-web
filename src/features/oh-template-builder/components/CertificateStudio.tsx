@@ -22,13 +22,14 @@ import {
   toolActivityLabel,
 } from "@/features/oh-template-builder/lib/parseAiStream";
 import {
+  TEMPLATE_KIND_META,
   templateGalleryHref,
   templateQueryKeys,
 } from "@/features/oh-template-builder/lib/templateKinds";
 import { readTemplateAiStream, validateCertificateAiDraft } from "@/features/oh-template-builder/lib/templateAiStream";
 import { useTemplateAiQueue } from "@/features/oh-template-builder/hooks/useTemplateAiQueue";
 import { defaultResponseFields } from "@/features/settings/components/modules/occupational-health/template-library/responseConfig";
-import type { BuilderAttachment } from "@/features/oh-template-builder/template-builder.types";
+import type { BuilderAttachment, TemplateKind } from "@/features/oh-template-builder/template-builder.types";
 import { scrollToCertificateSection } from "@/features/oh-template-builder/lib/certificateEditorScroll";
 import { CERTIFICATE_CONTENT_GUTTERS, CERTIFICATE_CONTENT_WIDTH } from "@/features/oh-template-builder/lib/certificateStudioLayout";
 import { resizeCertificateComposer } from "@/features/oh-template-builder/lib/resizeCertificateComposer";
@@ -39,6 +40,12 @@ import { cn } from "@/lib/utils";
 // The outline/header share a track; configuration grows independently into spare space.
 // Explicit min/max bounds override flex items' content-based automatic minima.
 const SIDEBAR_SIZE = "box-border min-w-0 w-full shrink-0 md:w-[var(--certificate-sidebar-width)] md:min-w-[var(--certificate-sidebar-width)] md:max-w-[var(--certificate-sidebar-width)] md:basis-[var(--certificate-sidebar-width)]";
+
+function studioNoun(kind: TemplateKind) {
+  if (kind === "employee") return "Employee form";
+  if (kind === "exam") return "Exam";
+  return "Certificate";
+}
 
 type PendingAiApproval = { token: string; expires_at: string; approvals: { id: string; label: string; effect: string }[] };
 type AiApprovalDecision = { approval_token: string; conversation_id: string; decisions: Record<string, boolean> };
@@ -115,7 +122,7 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
   const publishing = isPending("template:publish");
 
   if (loadError) {
-    return <div role="alert" className="flex h-full flex-col items-center justify-center gap-3 bg-[#fafaf9] p-6 text-sm text-brand-navy"><h1>This template could not be opened</h1><p>{getErrorMessage(loadError, "It may have been archived or you may no longer have access.")}</p><Link href={templateGalleryHref(kind)} className="text-brand-primary underline">Back to templates</Link></div>;
+    return <div role="alert" className="flex h-full flex-col items-center justify-center gap-3 bg-[#fafaf9] p-6 text-sm text-brand-navy"><h1>This template could not be opened</h1><p>{getErrorMessage(loadError, "It may have been archived or you may no longer have access.")}</p><Link href={templateGalleryHref(kind)} className="text-brand-primary underline">Back to forms</Link></div>;
   }
 
   async function send(text: string, approval?: AiApprovalDecision) {
@@ -288,21 +295,21 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
     <div onKeyDown={(event) => {
       if (event.key === "Escape" && !["INPUT", "TEXTAREA", "SELECT"].includes((event.target as HTMLElement).tagName)) select({ type: "template" });
     }} className={cn("flex h-full min-h-0 flex-col overflow-y-auto bg-[#fafaf9] [--certificate-sidebar-width:14rem] xl:[--certificate-sidebar-width:16rem] [--certificate-document-column:51rem] [--certificate-config-width:16rem] lg:[--certificate-config-width:20rem] xl:[--certificate-config-width:22rem] md:flex-row md:overflow-hidden", appFont.className)}>
-      <div aria-label={`${kind === "exam" ? "Exam" : "Certificate"} workspace`} className="flex min-h-0 min-w-0 flex-1 flex-col bg-inherit md:basis-[calc(var(--certificate-sidebar-width)+var(--certificate-document-column))] md:max-w-[calc(var(--certificate-sidebar-width)+var(--certificate-document-column))]">
-      <header aria-label={`${kind === "exam" ? "Exam" : "Certificate"} editor header`} className="grid shrink-0 items-center gap-y-2 py-2 md:grid-cols-[var(--certificate-sidebar-width)_minmax(0,1fr)]">
+      <div aria-label={`${studioNoun(kind)} workspace`} className="flex min-h-0 min-w-0 flex-1 flex-col bg-inherit md:basis-[calc(var(--certificate-sidebar-width)+var(--certificate-document-column))] md:max-w-[calc(var(--certificate-sidebar-width)+var(--certificate-document-column))]">
+      <header aria-label={`${studioNoun(kind)} editor header`} className="grid shrink-0 items-center gap-y-2 py-2 md:grid-cols-[var(--certificate-sidebar-width)_minmax(0,1fr)]">
           <div className="flex min-w-0 items-center justify-between gap-2 px-3">
             <div className="flex min-w-0 flex-1 items-center gap-1.5">
               <Link
                 href={templateGalleryHref(kind)}
-                aria-label={kind === "exam" ? "Back to exam templates" : "Back to certificate catalog"}
-                title={kind === "exam" ? "Back to exam templates" : "Back to certificate catalog"}
+                aria-label="Back to forms"
+                title="Back to forms"
                 className="grid size-6 shrink-0 place-items-center rounded-full text-dash-muted hover:text-brand-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
               >
                 <ArrowLeft className="size-3.5" aria-hidden />
               </Link>
-              {kind === "exam" && template ? <TemplateNameField key={`${template.uuid}:${template.name}`} initialName={template.name} compact /> : (
-              <h1 title={template?.name || (kind === "exam" ? "Untitled exam template" : "Untitled certificate")} className="min-w-0 truncate text-sm font-semibold tracking-tight text-brand-navy">
-                {isLoading ? "Opening" : template?.name || (kind === "exam" ? "Untitled exam template" : "Untitled certificate")}
+              {kind !== "certificate" && template ? <TemplateNameField key={`${template.uuid}:${template.name}`} initialName={template.name} compact /> : (
+              <h1 title={template?.name || `Untitled ${studioNoun(kind).toLowerCase()}`} className="min-w-0 truncate text-sm font-semibold tracking-tight text-brand-navy">
+                {isLoading ? "Opening" : template?.name || `Untitled ${studioNoun(kind).toLowerCase()}`}
               </h1>              )}
 
             </div>
@@ -347,7 +354,7 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
                   </ViewChip>
                 </div>
               </div>
-              <div aria-label={`${kind === "exam" ? "Exam" : "Certificate"} publishing actions`} className="justify-self-end xl:col-start-3">
+              <div aria-label={`${studioNoun(kind)} publishing actions`} className="justify-self-end xl:col-start-3">
                 <PrimaryButton
 
                   type="button"
@@ -368,9 +375,9 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
           </div>
       </header>
         <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-      <aside aria-label={`${kind === "exam" ? "Exam" : "Certificate"} section outline`} className={cn(SIDEBAR_SIZE, "flex max-h-48 flex-col overflow-hidden bg-inherit md:max-h-none")}>
+      <aside aria-label={`${studioNoun(kind)} section outline`} className={cn(SIDEBAR_SIZE, "flex max-h-48 flex-col overflow-hidden bg-inherit md:max-h-none")}>
         <nav
-          aria-label={`${kind === "exam" ? "Exam" : "Certificate"} sections`}
+          aria-label={`${studioNoun(kind)} sections`}
           className="flex min-h-0 flex-1 flex-col px-2 py-3"
         >
           <div className="mb-2 flex items-center justify-between px-2"><h2 className="text-[11px] font-semibold tracking-widest text-dash-muted uppercase">Document outline</h2><span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs tabular-nums text-dash-muted">{attachments.length}</span></div>
@@ -467,7 +474,7 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
                   </> : null}
                   {reply ? <details className="mt-1 text-dash-muted"><summary className="cursor-pointer">View assistant summary</summary><p className="max-h-24 overflow-y-auto whitespace-pre-wrap py-1 leading-5">{reply}</p></details> : null}
                 </div> : null}
-                {pendingApproval ? <div role="group" aria-label={`Approve ${kind === "exam" ? "exam" : "certificate"} deletions`} className="space-y-2 px-3 py-2 text-xs">
+                {pendingApproval ? <div role="group" aria-label={`Approve ${studioNoun(kind).toLowerCase()} deletions`} className="space-y-2 px-3 py-2 text-xs">
                   <p className="font-medium text-brand-navy">Review exact deletions. Nothing runs until approved.</p>
                   <div className="max-h-40 space-y-2 overflow-y-auto">
                     {pendingApproval.approvals.map((target) => <label key={target.id} className="flex items-start gap-2">
@@ -483,7 +490,7 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
                 <div className="flex items-end gap-3 px-3 py-1.5">
                   <textarea
                     ref={composerRef}
-                    aria-label={`Describe changes for the ${kind === "exam" ? "exam" : "certificate"} assistant`}
+                    aria-label={`Describe changes for the ${studioNoun(kind).toLowerCase()} assistant`}
                     value={prompt}
                     onChange={(event) => setPrompt(event.target.value)}
                     rows={1}
@@ -527,7 +534,7 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
       </div>
       {/* Cap the document column; configuration receives remaining lateral space. */}
       <aside
-        aria-label={`${kind === "exam" ? "Exam" : "Certificate"} editor sidebar`}
+        aria-label={`${studioNoun(kind)} editor sidebar`}
         className="box-border my-3 mr-3 flex min-h-0 min-w-0 max-h-[36dvh] shrink-0 flex-col overflow-hidden rounded-lg border-y border-r border-dash-border bg-white shadow-[0_1px_6px_rgb(31_42_36/0.06)] md:w-[var(--certificate-config-width)] md:min-w-[var(--certificate-config-width)] md:max-h-none md:grow md:basis-[var(--certificate-config-width)]"
       >
         {!previewing ? <>

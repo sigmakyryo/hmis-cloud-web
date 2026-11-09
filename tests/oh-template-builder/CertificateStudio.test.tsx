@@ -75,7 +75,7 @@ describe("certificate studio layout and save guards", () => {
   it("keeps the identity in one top-left flex row and view controls centered", () => {
     render(<CertificateStudio view="edit" />);
     const header = screen.getByRole("banner", { name: "Certificate editor header" });
-    const back = within(header).getByRole("link", { name: "Back to certificate catalog" });
+    const back = within(header).getByRole("link", { name: "Back to forms" });
     const title = within(header).getByRole("heading", { name: "Workplace fitness" });
     expect(back.parentElement).toBe(title.parentElement);
     expect(title.parentElement).toHaveClass("flex", "items-center");
@@ -85,11 +85,11 @@ describe("certificate studio layout and save guards", () => {
     expect(within(controls).getByRole("button", { name: "Preview" })).toBeInTheDocument();
   });
 
-  it("keeps an arrow-only catalog link and dynamic title with circular actions at the other end", () => {
+  it("keeps an arrow-only Forms back link and dynamic title with circular actions at the other end", () => {
     render(<CertificateStudio view="edit" />);
     const header = screen.getByRole("banner", { name: "Certificate editor header" });
-    const back = within(header).getByRole("link", { name: "Back to certificate catalog" });
-    expect(back).toHaveAttribute("href", "/settings/modules/occupational-health?tab=catalog");
+    const back = within(header).getByRole("link", { name: "Back to forms" });
+    expect(back).toHaveAttribute("href", "/occupational-health/forms");
     expect(back.textContent).toBe("");
     expect(within(header).queryByText("Certificates")).not.toBeInTheDocument();
     const title = within(header).getByRole("heading", { name: "Workplace fitness" });
@@ -364,7 +364,7 @@ it("gives exam the approved studio shell but sends drafts only to the exam API",
   const fetch = vi.fn().mockResolvedValue(controlStream({ type: "refusal", message: "Can't help with that." }));
   vi.stubGlobal("fetch", fetch);
   render(<CertificateStudio view="edit" />);
-  expect(screen.getByRole("link", { name: "Back to exam templates" })).toHaveAttribute("href", "/settings/modules/occupational-health?tab=exam-templates");
+  expect(screen.getByRole("link", { name: "Back to forms" })).toHaveAttribute("href", "/occupational-health/forms");
   expect(screen.getByRole("complementary", { name: "Exam editor sidebar" })).toHaveClass("my-3", "mr-3", "rounded-lg", "md:grow");
   expect(screen.getByRole("banner", { name: "Exam editor header" })).toBeInTheDocument();
   fireEvent.change(screen.getByRole("textbox", { name: "Describe changes for the exam assistant" }), { target: { value: "Write a poem" } });

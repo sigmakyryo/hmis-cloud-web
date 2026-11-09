@@ -8,15 +8,18 @@ import { SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { CustomerVisitDialog } from "@/features/customers/components/detail/CustomerVisitDialog";
 import type { Customer } from "@/features/customers/types/customer.types";
 import { BffError } from "@/lib/bff-client";
-import { OH_RISK_PROFILE_REQUIRED_MESSAGE } from "@/features/occupational-health/utils/customer-has-risk-profile";
 
 const mocks = vi.hoisted(() => ({
-  eligibility: vi.fn(), create: vi.fn(), toast: vi.fn(), departments: vi.fn(),
+  eligibility: vi.fn(), create: vi.fn(), native: vi.fn(), toast: vi.fn(), departments: vi.fn(),
   user: { primary_clinic: { id: 1, name: "Test clinic" } },
 }));
+vi.mock("@/features/occupational-health/services/native-visit.service", () => ({ createNativeOhVisit: mocks.native }));
 vi.mock("@/providers/user-provider", () => ({ useUser: () => ({ userData: mocks.user }) }));
 vi.mock("@/providers/toast-provider", () => ({ useToast: () => ({ toast: mocks.toast }) }));
 vi.mock("@/features/occupational-health/services/visit-eligibility.service", () => ({ fetchOhVisitEligibility: mocks.eligibility }));
+vi.mock("@/features/occupational-health/services/oh.service", () => ({
+  fetchOhVisitTypes: vi.fn(async () => [{ uuid: "type-1", code: "periodic", name: "Periodic", description: "", is_default: true, forms: [] }]),
+}));
 vi.mock("@/features/clinical/services/clinical-catalog.service", () => ({
   fetchClinicalClinics: vi.fn().mockResolvedValue([{ id: 1, uuid: "clinic" }]),
   fetchClinicalDepartments: mocks.departments,
@@ -31,10 +34,18 @@ vi.mock("@/features/customers/components/detail/CustomerVisitSheetHeader", () =>
 vi.mock("@/features/visits/components/StartVisitFormFields", () => ({
   StartVisitFormFields: ({ step, onStepChange, riskProfileNotice, form }: {
     step: "visit" | "payment" | "attachments";
-    onStepChange: (step: "attachments") => void;
+    onStepChange: (step: "visit" | "payment" | "attachments") => void;
     riskProfileNotice?: ReactNode;
     form: UseFormReturn<StartVisitFormValues>;
-  }) => <div><p>Fields {step}</p><button type="button" onClick={() => form.setValue("department", "opd")}>Select OPD</button><button type="button" onClick={() => form.setValue("department", "department")}>Select OH</button>{riskProfileNotice}<button type="button" onClick={() => onStepChange("attachments")}>Attachments step</button></div>,
+  }) => <div>
+    <p>Fields {step}</p>
+    <button type="button" onClick={() => form.setValue("department", "opd")}>Select OPD</button>
+    <button type="button" onClick={() => form.setValue("department", "department")}>Select OH</button>
+    <button type="button" onClick={() => form.setValue("visit_type", "type-1")}>Select type</button>
+    {riskProfileNotice}
+    <button type="button" onClick={() => onStepChange("payment")}>Payment step</button>
+    <button type="button" onClick={() => onStepChange("attachments")}>Attachments step</button>
+  </div>,
 }));
 const customer = { uuid: "customer-a", first_name: "Test", last_name: "Customer", dob: null } as Customer;
 const ready = { eligible: true, code: "eligible", templates: { cof: null, exam: null } };
@@ -49,8 +60,16 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.eligibility.mockReset().mockResolvedValue(ready);
   mocks.create.mockReset();
+  mocks.native.mockReset().mockResolvedValue({ visit: "native-visit", uuid: "native-encounter", origin: "laravel" });
   mocks.departments.mockResolvedValue([{ id: 1, uuid: "department", department_type: "occupational_health" }]);
 });
+
+async function continueToOhPayment() {
+  await waitFor(() => expect(screen.getByRole("button", { name: "Continue" })).toBeEnabled());
+  fireEvent.click(screen.getByRole("button", { name: "Select type" }));
+  fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Start OH visit" })).toBeEnabled());
+}
 
 it("shows retryable integration errors without replacing fields with a missing-risk warning", async () => {
   mocks.eligibility.mockRejectedValueOnce(new Error("Session service unavailable"));
@@ -76,22 +95,21 @@ it("resets a missing-risk result on reopen through the authoritative endpoint", 
 it("fresh final eligibility failure prevents core visit writes", async () => {
   mocks.eligibility.mockResolvedValueOnce(ready).mockResolvedValue({ ...ready, eligible: false });
   mount();
-  await waitFor(() => expect(screen.getByRole("button", { name: "Continue" })).toBeEnabled());
-  fireEvent.click(screen.getByRole("button", { name: "Attachments step" }));
-  fireEvent.click(screen.getByRole("button", { name: "Start visit" }));
+  await continueToOhPayment();
+  fireEvent.click(screen.getByRole("button", { name: "Start OH visit" }));
   expect(await screen.findByTestId("oh-risk-profile-required")).toBeVisible();
   expect(mocks.create).not.toHaveBeenCalled();
 });
 
 it("does not turn an ambiguous legacy referral rejection into missing-risk state or retry a write", async () => {
-  mocks.create.mockRejectedValue(new BffError("Rejected", 400, [{ code: "error", field: "department", message: OH_RISK_PROFILE_REQUIRED_MESSAGE }]));
+  mocks.native.mockRejectedValue(new BffError("Reference unavailable", 503));
   mount();
-  await waitFor(() => expect(screen.getByRole("button", { name: "Continue" })).toBeEnabled());
-  fireEvent.click(screen.getByRole("button", { name: "Attachments step" }));
-  fireEvent.click(screen.getByRole("button", { name: "Start visit" }));
-  await waitFor(() => expect(mocks.toast).toHaveBeenCalledWith(expect.objectContaining({ description: expect.stringContaining("did not return the underlying reason") })));
+  await continueToOhPayment();
+  fireEvent.click(screen.getByRole("button", { name: "Start OH visit" }));
+  await waitFor(() => expect(mocks.toast).toHaveBeenCalledWith(expect.objectContaining({ description: expect.stringContaining("Reference unavailable") })));
   expect(screen.queryByTestId("oh-risk-profile-required")).toBeNull();
-  expect(mocks.create).toHaveBeenCalledTimes(1);
+  expect(mocks.native).toHaveBeenCalledTimes(1);
+  expect(mocks.create).not.toHaveBeenCalled();
 });
 
 it("keeps non-OH submission unchanged without an OH query", async () => {
@@ -108,16 +126,15 @@ it("keeps non-OH submission unchanged without an OH query", async () => {
 
 it("prevents double submission while final eligibility is pending", async () => {
   mount();
-  await waitFor(() => expect(screen.getByRole("button", { name: "Continue" })).toBeEnabled());
+  await continueToOhPayment();
   let resolve!: (value: typeof ready) => void;
   mocks.eligibility.mockImplementationOnce(() => new Promise((done) => { resolve = done; }));
-  mocks.create.mockResolvedValue({ uuid: "visit", encounters: [] });
-  fireEvent.click(screen.getByRole("button", { name: "Attachments step" }));
-  const button = screen.getByRole("button", { name: "Start visit" });
+
+  const button = screen.getByRole("button", { name: "Start OH visit" });
   fireEvent.click(button); fireEvent.click(button);
   await waitFor(() => expect(mocks.eligibility).toHaveBeenCalledTimes(2));
   resolve(ready);
-  await waitFor(() => expect(mocks.create).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(mocks.native).toHaveBeenCalledTimes(1));
 });
 
 it("ignores a previous customer's late eligibility result", async () => {
@@ -174,14 +191,34 @@ it("does not create the previous department after selection changes during the f
   await screen.findByText("Fields visit");
   fireEvent.click(screen.getByRole("button", { name: "Select OH" }));
   await waitFor(() => expect(mocks.eligibility).toHaveBeenCalledTimes(1));
-  await waitFor(() => expect(screen.getByRole("button", { name: "Continue" })).toBeEnabled());
+  await continueToOhPayment();
   let resolve!: (value: typeof ready) => void;
   mocks.eligibility.mockImplementationOnce(() => new Promise((done) => { resolve = done; }));
-  fireEvent.click(screen.getByRole("button", { name: "Attachments step" }));
-  fireEvent.click(screen.getByRole("button", { name: "Start visit" }));
+  fireEvent.click(screen.getByRole("button", { name: "Start OH visit" }));
   await waitFor(() => expect(mocks.eligibility).toHaveBeenCalledTimes(2));
   fireEvent.click(screen.getByRole("button", { name: "Select OPD" }));
   resolve(ready);
   await waitFor(() => expect(screen.getByRole("button", { name: "Start visit" })).toBeEnabled());
   expect(mocks.create).not.toHaveBeenCalled();
+});
+
+it("creates OH through Laravel with payment and stays on the list (no workspace redirect)", async () => {
+  mount();
+  await continueToOhPayment();
+  fireEvent.click(screen.getByRole("button", { name: "Start OH visit" }));
+  await waitFor(() => expect(mocks.native).toHaveBeenCalledTimes(1));
+  expect(mocks.create).not.toHaveBeenCalled();
+  expect(mocks.native).toHaveBeenCalledWith(expect.objectContaining({
+    customer_uuid: "customer-a",
+    department_uuid: "department",
+    clinic_uuid: "clinic",
+    visit_type_uuid: "type-1",
+    idempotency_key: expect.any(String),
+    mode_of_payment: "cash",
+    insurance_scheme: null,
+  }));
+  await waitFor(() => expect(mocks.toast).toHaveBeenCalledWith(expect.objectContaining({
+    variant: "success",
+    title: "OH visit started",
+  })));
 });

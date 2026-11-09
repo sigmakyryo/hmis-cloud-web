@@ -1,4 +1,5 @@
 export type OhVisitEncounter = {
+  origin?: "core" | "laravel";
   id: number;
   uuid: string;
   visit: string;
@@ -24,6 +25,13 @@ export type OhVisitEncounter = {
   hazard_profile_name?: string | null;
   status: string;
   billing_mode: string | null;
+  visit_date?: string | null;
+  visit_type?: {
+    uuid: string;
+    code: string;
+    name: string;
+    forms: Array<{ uuid: string; name: string; system_type?: string | null }>;
+  } | null;
   started_at: string | null;
   ended_at: string | null;
   notes: string;
@@ -96,6 +104,7 @@ export type OhHazardProfile = {
   assessment_interval?: number | null;
   assessment_interval_unit?: OhAssessmentIntervalUnit | string;
   employer: number | null;
+  employer_uuid?: string | null;
   employer_name?: string | null;
   hazards?: number[];
   /** Attached COF template UUID (tenant-scoped). */
@@ -106,6 +115,10 @@ export type OhHazardProfile = {
   exam_template?: string | null;
   exam_template_name?: string | null;
   exam_template_code?: string | null;
+  /** Attached employee-form template UUID (tenant-scoped). */
+  employee_form_template?: string | null;
+  employee_form_template_name?: string | null;
+  employee_form_template_code?: string | null;
   is_active?: boolean;
 };
 
@@ -246,7 +259,7 @@ export type OhCatalogSection = {
 /** @deprecated Use OhCatalogSection */
 export type OhCatalogSectionRule = OhCatalogSection;
 
-export type OhLibrarySectionKind = "cof" | "exam";
+export type OhLibrarySectionKind = "cof" | "exam" | "employee";
 
 export type OhLibraryContentMode = "items" | "direct";
 
@@ -256,6 +269,7 @@ export type OhResponseConfigOption = {
 };
 
 export type OhResponseConfigValidation = {
+  required?: boolean;
   min?: number;
   max?: number;
   min_length?: number;
@@ -272,6 +286,8 @@ export type OhResponseConfig = {
 
 /** Named response field on a section or item. */
 export type OhResponseField = OhResponseConfig & {
+  required?: boolean;
+  is_required?: boolean;
   code: string;
   label: string;
 };
@@ -294,6 +310,32 @@ export type OhLibrarySection = {
   updated_at?: string;
 };
 
+
+export type OhBillingDestination = "lab" | "billing_only";
+
+export type OhBillingFormConfig = {
+  billable?: boolean;
+  product_uuid?: string | null;
+};
+
+export type OhBillingItemConfig = {
+  billable?: boolean;
+  destination?: OhBillingDestination | null;
+  product_uuids?: string[];
+};
+
+export type OhVisitBillingCharge = {
+  uuid: string;
+  billing_key: string;
+  scope: "form" | "item" | string;
+  form_uuid?: string | null;
+  item_code?: string | null;
+  product_uuid: string;
+  destination: string;
+  status: "pending" | "sent" | "failed" | "removed" | string;
+  ui_status?: string | null;
+};
+
 export type OhLibrarySectionItem = {
   id: number;
   uuid: string;
@@ -303,6 +345,7 @@ export type OhLibrarySectionItem = {
   override_response_fields: OhResponseField[] | null;
   inherits_response_fields?: boolean;
   effective_response_fields?: OhResponseField[];
+  billing_json?: OhBillingItemConfig | null;
   sort_order: number;
   active: boolean;
   created_at?: string;
@@ -347,6 +390,7 @@ export type OhCofTemplate = {
   section_count?: number;
   published_version_number?: number | null;
   published_version_status?: OhTemplateVersionStatus | null;
+  billing_json?: OhBillingFormConfig | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -363,6 +407,8 @@ export type OhCofTemplateSection = {
   item_count?: number;
 };
 
+export type OhEmployeeFormTemplate = OhExamTemplate;
+
 export type OhExamTemplate = {
   id: number;
   uuid: string;
@@ -372,6 +418,7 @@ export type OhExamTemplate = {
   section_count?: number;
   published_version_number?: number | null;
   published_version_status?: OhTemplateVersionStatus | null;
+  billing_json?: OhBillingFormConfig | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -454,7 +501,33 @@ export type OhPublishedFormConfig = {
   form_engine_enabled: boolean;
 };
 
+export type OhTemplateCapture = {
+  id: number;
+  uuid: string;
+  encounter: number | null;
+  employment_episode?: number | null;
+  customer_uuid?: string | null;
+  status?: "not_started" | "in_progress" | "submitted" | "uploaded" | null;
+  submitted_at?: string | null;
+  document_original_name?: string | null;
+  responses_json?: Record<string, unknown>;
+  row_version?: number;
+  template_version_uuid?: string | null;
+  template_uuid?: string | null;
+  template_version_number?: number | null;
+  template_snapshot?: Record<string, unknown> | null;
+  billing_charges?: OhVisitBillingCharge[];
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
+};
+
 export type OhExamination = {
+  billing_charges?: OhVisitBillingCharge[];
+  template_uuid?: string | null;
+  template_version_number?: number | null;
+  template_version_uuid?: string | null;
+  template_snapshot?: Record<string, unknown> | null;
   id: number;
   uuid: string;
   encounter: number;

@@ -434,6 +434,50 @@ export const BFF_OCCUPATIONAL_HEALTH_ROUTES = {
   examTemplateSections: "/api/occupational-health/exam-template-sections",
   examTemplateSection: (uuid: string) =>
     `/api/occupational-health/exam-template-sections/${uuid}`,
+  employeeFormTemplates: "/api/occupational-health/employee-form-templates",
+  employeeFormTemplate: (uuid: string) =>
+    `/api/occupational-health/employee-form-templates/${uuid}`,
+  employeeFormTemplateAiChat: (uuid: string) =>
+    `/api/occupational-health/employee-form-templates/${encodeURIComponent(uuid)}/ai/chat`,
+  employeeFormTemplateAiStream: (uuid: string) =>
+    `/api/occupational-health/employee-form-templates/${encodeURIComponent(uuid)}/ai/stream`,
+  employeeFormTemplateAiApply: (uuid: string) =>
+    `/api/occupational-health/employee-form-templates/${encodeURIComponent(uuid)}/ai/apply`,
+  employeeFormTemplatePublish: (uuid: string) =>
+    `/api/occupational-health/employee-form-templates/${uuid}/publish`,
+  employeeFormTemplateVersions: (uuid: string) =>
+    `/api/occupational-health/employee-form-templates/${uuid}/versions`,
+  employeeFormTemplateSections: "/api/occupational-health/employee-form-template-sections",
+  employeeFormTemplateSection: (uuid: string) =>
+    `/api/occupational-health/employee-form-template-sections/${uuid}`,
+  employeeFormResponses: "/api/occupational-health/employee-form-responses",
+  employeeFormOpen: "/api/occupational-health/employee-form-responses/open",
+  employeeFormInvites: (uuid: string) =>
+    `/api/occupational-health/employee-form-responses/${uuid}/invites`,
+  employeeFormDocument: (uuid: string) =>
+    `/api/occupational-health/employee-form-responses/${uuid}/document`,
+  clinicalForms: "/api/occupational-health/clinical-forms",
+  clinicalFormsAssertClear: "/api/occupational-health/clinical-forms/assert-clear",
+  clinicalFormResponses: (uuid: string) =>
+    `/api/occupational-health/clinical-forms/${uuid}/responses`,
+  formGroups: "/api/occupational-health/form-groups",
+  visitTypes: "/api/occupational-health/visit-types",
+  visitTypeArchive: (uuid: string) =>
+    `/api/occupational-health/visit-types/${uuid}/archive`,
+  visitTypeForms: (uuid: string) =>
+    `/api/occupational-health/visit-types/${uuid}/forms`,
+  workforceForm: (token: string) => `/api/workforce-forms/${token}`,
+  employeeFormResponseResponses: (uuid: string) =>
+    `/api/occupational-health/employee-form-responses/${uuid}/responses`,
+  cofResponses: "/api/occupational-health/cof-responses",
+  cofResponseResponses: (uuid: string) =>
+    `/api/occupational-health/cof-responses/${uuid}/responses`,
+  cofResponseTemplateVersion: (uuid: string) =>
+    `/api/occupational-health/cof-responses/${uuid}/template-version`,
+  employeeFormResponseTemplateVersion: (uuid: string) =>
+    `/api/occupational-health/employee-form-responses/${uuid}/template-version`,
+  employeeFormResponseReopen: (uuid: string) =>
+    `/api/occupational-health/employee-form-responses/${uuid}/reopen`,
   featureFlags: "/api/occupational-health/feature-flags",
 } as const;
 

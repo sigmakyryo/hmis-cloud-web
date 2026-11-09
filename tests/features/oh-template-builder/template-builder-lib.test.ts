@@ -127,13 +127,10 @@ describe("template kinds and routes", () => {
     expect(isTemplateKind("catalog")).toBe(false);
   });
 
-  it("links back to the matching settings tab", () => {
-    expect(templateGalleryHref("exam")).toBe(
-      "/settings/modules/occupational-health?tab=exam-templates",
-    );
-    expect(templateGalleryHref("certificate")).toBe(
-      "/settings/modules/occupational-health?tab=catalog",
-    );
+  it("links back to the occupational health Forms list", () => {
+    expect(templateGalleryHref("employee")).toBe("/occupational-health/forms");
+    expect(templateGalleryHref("exam")).toBe("/occupational-health/forms");
+    expect(templateGalleryHref("certificate")).toBe("/occupational-health/forms");
   });
 
   it("keeps the list query key from prefixing detail keys", () => {

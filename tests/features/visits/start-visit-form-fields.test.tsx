@@ -18,6 +18,7 @@ afterEach(() => {
 });
 
 function StartVisitFormHarness({
+  nativeOh = false,
   insuranceSchemes = [],
   department = "dept-1",
   step = "visit",
@@ -25,6 +26,7 @@ function StartVisitFormHarness({
   attachmentFile = null,
   onAttachmentFileChange = vi.fn(),
 }: {
+  nativeOh?: boolean;
   insuranceSchemes?: Array<{
     uuid: string;
     scheme_name: string;
@@ -47,6 +49,7 @@ function StartVisitFormHarness({
     <Form {...form}>
       <StartVisitFormFields
         form={form}
+        nativeOh={nativeOh}
         step={step}
         onStepChange={onStepChange}
         defaultClinicName="City Clinic"
@@ -217,5 +220,13 @@ describe("StartVisitFormFields", () => {
 
     expect(screen.getByTestId("visit-attachment-dropzone")).toBeInTheDocument();
     expect(screen.getByText(/PDF only/i)).toBeInTheDocument();
+  });
+  it("hides core billing service attachment steps for a native OH visit", () => {
+    render(<StartVisitFormHarness nativeOh />);
+    expect(screen.getByText("Arrived")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Payment" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Attachments" })).toBeNull();
+    expect(screen.queryByTestId("start-visit-consultation-service")).toBeNull();
+    expect(screen.queryByText(/no payment will be recorded|Laravel OH|Billing, insurance/)).toBeNull();
   });
 });

@@ -8,9 +8,9 @@ import type {
   OhTemplateVersionStatus,
 } from "@/features/occupational-health/types";
 
-export type TemplateKind = "exam" | "certificate";
+export type TemplateKind = "employee" | "exam" | "certificate";
 
-export const TEMPLATE_KINDS: readonly TemplateKind[] = ["exam", "certificate"];
+export const TEMPLATE_KINDS: readonly TemplateKind[] = ["employee", "exam", "certificate"];
 
 export type BuilderTemplate = {
   uuid: string;
@@ -21,6 +21,10 @@ export type BuilderTemplate = {
   publishedVersionNumber: number | null;
   publishedVersionStatus: OhTemplateVersionStatus | null;
   updatedAt: string | null;
+  billing: {
+    billable: boolean;
+    productUuid: string | null;
+  };
 };
 
 export type BuilderSection = {
@@ -57,6 +61,11 @@ export type BuilderItem = {
   overrideResponseFields: OhResponseField[] | null;
   effectiveResponseFields: OhResponseField[];
   inheritsResponseFields: boolean;
+  billing: {
+    billable: boolean;
+    destination: "lab" | "billing_only" | null;
+    productUuids: string[];
+  };
 };
 
 export type SectionInput = {
@@ -77,6 +86,11 @@ export type ItemInput = {
   responses: OhCatalogPossibleResponse[];
   overrideResponseFields: OhResponseField[];
   inheritsResponseFields: boolean;
+  billing: {
+    billable: boolean;
+    destination: "lab" | "billing_only" | null;
+    productUuids: string[];
+  };
 };
 
 export type BuilderSelection =

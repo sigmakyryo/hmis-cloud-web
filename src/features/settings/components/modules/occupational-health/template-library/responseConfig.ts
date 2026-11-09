@@ -92,7 +92,7 @@ export function normalizeResponseField(
     String(value?.code ?? "").trim().toLowerCase().replaceAll(" ", "_") ||
     `field_${index + 1}`;
   const label = String(value?.label ?? "").trim() || `Field ${index + 1}`;
-  return { ...base, code, label };
+  return { ...base, code, label, ...(value?.required != null ? { required: value.required } : {}), ...(value?.is_required != null ? { is_required: value.is_required } : {}) };
 }
 
 /** Accept legacy single-object configs or field arrays. */

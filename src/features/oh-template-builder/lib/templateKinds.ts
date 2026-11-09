@@ -1,4 +1,4 @@
-import { Award, ClipboardList, type LucideIcon } from "lucide-react";
+import { Award, ClipboardList, IdCard, type LucideIcon } from "lucide-react";
 
 import { ROUTES } from "@/constants/routes";
 import {
@@ -14,10 +14,18 @@ type TemplateKindMeta = {
   namePlaceholder: string;
   codePlaceholder: string;
   /** Settings tab id on the occupational health module page. */
-  settingsTab: "exam-templates" | "catalog";
+  settingsTab: "employee-forms" | "exam-templates" | "catalog";
 };
 
 export const TEMPLATE_KIND_META: Record<TemplateKind, TemplateKindMeta> = {
+  employee: {
+    label: "Employee form template",
+    pluralLabel: "Employee form templates",
+    description: "Forms collected at the start of an occupational health visit.",
+    namePlaceholder: "New employee details",
+    codePlaceholder: "EMPLOYEE_DETAILS",
+    settingsTab: "employee-forms",
+  },
   exam: {
     label: "Exam template",
     pluralLabel: "Exam templates",
@@ -39,6 +47,7 @@ export const TEMPLATE_KIND_META: Record<TemplateKind, TemplateKindMeta> = {
 };
 
 export const TEMPLATE_KIND_ICONS: Record<TemplateKind, LucideIcon> = {
+  employee: IdCard,
   exam: ClipboardList,
   certificate: Award,
 };
@@ -47,8 +56,9 @@ export function isTemplateKind(value: string): value is TemplateKind {
   return (TEMPLATE_KINDS as readonly string[]).includes(value);
 }
 
-export function templateGalleryHref(kind: TemplateKind) {
-  return `${ROUTES.settingsModuleOccupationalHealth}?tab=${TEMPLATE_KIND_META[kind].settingsTab}`;
+/** Back-target for the template builder. Forms opened from OHS Forms return there. */
+export function templateGalleryHref(_kind: TemplateKind) {
+  return ROUTES.occupationalHealthForms;
 }
 
 export const templateQueryKeys = {

@@ -1,30 +1,30 @@
 "use client";
 
-import type { Customer } from "@/features/customers/types/customer.types";
-import { OhCertificateForm } from "@/features/occupational-health/components/OhCertificateTabPanel";
-import { OhCertificateRecords } from "@/features/occupational-health/components/OhCertificateRecords";
 import { OhEmploymentForm } from "@/features/occupational-health/components/OhEmploymentTabPanel";
 import { OhEmploymentRecords } from "@/features/occupational-health/components/OhEmploymentRecords";
-import { OhEncounterModulePlaceholder } from "@/features/occupational-health/components/OhEncounterModulePlaceholder";
-import { OhMedicalExaminationsPanel } from "@/features/occupational-health/components/OhMedicalExaminationsPanel";
+import { OhSessionForms } from "@/features/occupational-health/components/OhSessionForms";
 import {
   OhColumnPanel,
   OhEncounterColumns,
 } from "@/features/occupational-health/components/OhEncounterColumns";
 import type { useOhEncounterWorkspaceData } from "@/features/occupational-health/hooks/use-occupational-health";
 import type { OhEncounterPanelId } from "@/features/occupational-health/lib/oh-encounter-modules";
-import type {
-  EmploymentEpisode,
-  OhVisitEncounter,
-} from "@/features/occupational-health/types";
+import type { Customer } from "@/features/customers/types/customer.types";
+import type { EmploymentEpisode, OhVisitEncounter } from "@/features/occupational-health/types";
 
 type OhEncounterContextPanelProps = {
   activePanel: OhEncounterPanelId;
+  activeStep: string;
   encounter: OhVisitEncounter;
+  completionRef?: { current: (() => Promise<boolean>) | null };
+  cofCompletionRef?: { current: (() => Promise<boolean>) | null };
+  employeeContinueRef?: { current: (() => Promise<boolean>) | null };
+  completing?: boolean;
   customer: Customer | null;
   episodes: EmploymentEpisode[];
   workspace: ReturnType<typeof useOhEncounterWorkspaceData>;
   onManageEmployment: () => void;
+  onShowForms: () => void;
   focusedExamUuid?: string | null;
   examFocusRequest?: number;
   onActiveExamChange?: (examUuid: string | null) => void;
@@ -32,61 +32,54 @@ type OhEncounterContextPanelProps = {
 
 export function OhEncounterContextPanel({
   activePanel,
+  activeStep,
   encounter,
+  completionRef,
+  cofCompletionRef,
+  employeeContinueRef,
+  completing,
   customer,
   episodes,
   workspace,
   onManageEmployment,
+  onShowForms,
   focusedExamUuid = null,
   examFocusRequest = 0,
   onActiveExamChange,
 }: OhEncounterContextPanelProps) {
-  if (activePanel === "medical-examinations") {
-    return (
-      <OhMedicalExaminationsPanel
-        encounter={encounter}
-        episodes={episodes}
-        workspace={workspace}
-        onManageEmployment={onManageEmployment}
-        focusedExamUuid={focusedExamUuid}
-        examFocusRequest={examFocusRequest}
-        onActiveExamChange={onActiveExamChange}
-      />
-    );
+  const forms = (
+    <OhSessionForms
+      activeStep={activeStep}
+      encounter={encounter}
+      completionRef={completionRef}
+      cofCompletionRef={cofCompletionRef}
+      employeeContinueRef={employeeContinueRef}
+      completing={completing}
+      episodes={episodes}
+      workspace={workspace}
+      onManageEmployment={onManageEmployment}
+      focusedExamUuid={focusedExamUuid}
+      examFocusRequest={examFocusRequest}
+      onActiveExamChange={onActiveExamChange}
+    />
+  );
+
+  if (activePanel !== "employment") {
+    return forms;
   }
 
-  if (activePanel === "certificate") {
-    return (
-      <OhEncounterColumns
-        sectionKey="certificate"
-        form={
-          <OhColumnPanel eyebrow="Record" title="Certificate" className="bg-white">
-            <OhCertificateForm
-              assessments={workspace.fitness}
-              onCreated={workspace.refetchAll}
-            />
-          </OhColumnPanel>
-        }
-        records={
-          <OhColumnPanel
-            eyebrow="This encounter"
-            title="Certificates"
-            count={workspace.fitnessCertificates.length}
-            className="bg-white"
-          >
-            <OhCertificateRecords
-              assessments={workspace.fitness}
-              certificates={workspace.fitnessCertificates}
-              onChanged={workspace.refetchAll}
-            />
-          </OhColumnPanel>
-        }
-      />
-    );
-  }
-
-  if (activePanel === "employment") {
-    return (
+  return (
+    <>
+      <div className="hidden">{forms}</div>
+      <div className="border-b border-dash-border px-5 py-3">
+        <button
+          type="button"
+          onClick={onShowForms}
+          className="text-[13px] font-medium text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
+        >
+          Back to forms
+        </button>
+      </div>
       <OhEncounterColumns
         sectionKey="employment"
         form={
@@ -95,18 +88,11 @@ export function OhEncounterContextPanel({
           </OhColumnPanel>
         }
         records={
-          <OhColumnPanel
-            eyebrow="This encounter"
-            title="Employment"
-            count={episodes.length}
-            className="bg-white"
-          >
+          <OhColumnPanel eyebrow="This encounter" title="Employment" count={episodes.length} className="bg-white">
             <OhEmploymentRecords customer={customer} />
           </OhColumnPanel>
         }
       />
-    );
-  }
-
-  return <OhEncounterModulePlaceholder moduleId={activePanel} />;
+    </>
+  );
 }

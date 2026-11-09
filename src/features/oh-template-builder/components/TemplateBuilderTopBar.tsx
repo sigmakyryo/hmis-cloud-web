@@ -9,7 +9,6 @@ import { useState, useTransition } from "react";
 import { useTemplateBuilder } from "@/features/oh-template-builder/hooks/useTemplateBuilder";
 import { PublishTemplateButton } from "@/features/settings/components/modules/occupational-health/template-library/PublishTemplateButton";
 import {
-  TEMPLATE_KIND_META,
   templateGalleryHref,
 } from "@/features/oh-template-builder/lib/templateKinds";
 import { cn } from "@/lib/utils";
@@ -22,7 +21,6 @@ type TemplateBuilderTopBarProps = {
 
 export function TemplateBuilderTopBar({ view }: TemplateBuilderTopBarProps) {
   const { kind, template, isBusy } = useTemplateBuilder();
-  const meta = TEMPLATE_KIND_META[kind];
   const galleryHref = templateGalleryHref(kind);
 
   return (
@@ -32,7 +30,7 @@ export function TemplateBuilderTopBar({ view }: TemplateBuilderTopBarProps) {
           href={galleryHref}
           className="shrink-0 text-[13px] text-dash-muted transition-colors hover:text-brand-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
         >
-          {meta.pluralLabel}
+          Forms
         </Link>
         <span aria-hidden className="text-dash-border">
           /

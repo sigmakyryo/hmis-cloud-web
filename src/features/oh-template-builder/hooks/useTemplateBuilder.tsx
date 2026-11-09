@@ -16,6 +16,7 @@ import { getTemplateAdapter } from "@/features/oh-template-builder/lib/templateA
 import { templateQueryKeys } from "@/features/oh-template-builder/lib/templateKinds";
 import {
   publishOhCofTemplate,
+  publishOhEmployeeFormTemplate,
   publishOhExamTemplate,
 } from "@/features/occupational-health/services/oh.service";
 import {
@@ -47,6 +48,7 @@ type TemplateBuilderValue = {
   isBusy: boolean;
   isPending: (key: string) => boolean;
   renameTemplate: (name: string) => Promise<boolean>;
+  updateTemplateBilling: (billing: BuilderTemplate["billing"]) => Promise<boolean>;
   archiveTemplate: () => Promise<boolean>;
   attachSection: (sectionUuid: string) => Promise<BuilderAttachment | null>;
   createSection: (input: NewSectionInput) => Promise<BuilderAttachment | null>;
@@ -178,6 +180,21 @@ function TemplateBuilderSession({
         current ? { ...current, name: updated.name } : updated,
       );
       void queryClient.invalidateQueries({ queryKey: templateQueryKeys.list(kind) });
+      return true;
+    },
+
+    updateTemplateBilling: async (billing) => {
+      const updated = await perform(
+        "template:billing",
+        () => adapter.updateTemplateBilling(templateUuid, billing),
+        { error: "Could not save form billing" },
+      );
+      if (!updated) {
+        return false;
+      }
+      queryClient.setQueryData<BuilderTemplate>(detailKey, (current) =>
+        current ? { ...current, billing: updated.billing } : updated,
+      );
       return true;
     },
 
@@ -409,7 +426,9 @@ function TemplateBuilderSession({
           const version =
             kind === "certificate"
               ? await publishOhCofTemplate(templateUuid)
-              : await publishOhExamTemplate(templateUuid);
+              : kind === "employee"
+                ? await publishOhEmployeeFormTemplate(templateUuid)
+                : await publishOhExamTemplate(templateUuid);
           return version;
         },
         {

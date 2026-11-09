@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { ClipboardList, FileWarning } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { Badge } from "@/components/ui/badge";
-import { EmptyState } from "@/components/ui/empty-state";
+import { focusFirstExamError, validateExamAnswers, type ExamErrors } from "../lib/exam-template-validation";
+import { ROUTES } from "@/constants/routes";
+import { useUser } from "@/providers/user-provider";
+import { OhExaminationSetupState } from "@/features/occupational-health/components/OhExaminationSetupState";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { SecondaryButton } from "@/components/ui/app-buttons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { appFont } from "@/lib/fonts";
 import { OhCorporateWorkspace } from "@/features/occupational-health/components/OhCorporateWorkspace";
@@ -26,6 +29,8 @@ import { OhProcedureChecklistPanel } from "@/features/occupational-health/compon
 import type { useOhEncounterWorkspaceData } from "@/features/occupational-health/hooks/use-occupational-health";
 import {
   emptyExamTemplateAnswers,
+  hasCompleteExamDefinitions,
+  remapUnansweredExamPicks,
   parseExamTemplateSnapshot,
   type ExamTemplateAnswers,
   type ExamTemplateResponseEnvelope,
@@ -33,6 +38,8 @@ import {
 import { EXAM_TEMPLATE_RESPONSE_KEY } from "@/features/occupational-health/lib/oh-encounter-modules";
 import {
   createOhExamination,
+  publishOhExamTemplate,
+  recoverOhExaminationVersion,
   fetchOhExamTemplateVersions,
   fetchOhHazardProfiles,
   patchOhExaminationResponses,
@@ -40,12 +47,14 @@ import {
 import type {
   EmploymentEpisode,
   OhExamination,
+  OhExamTemplateVersion,
   OhHazardProfile,
   OhVisitEncounter,
 } from "@/features/occupational-health/types";
 import { resolveActiveRiskProfileEpisode } from "@/features/occupational-health/utils/customer-has-risk-profile";
 import { newestFirst } from "@/features/occupational-health/utils/oh-format";
 import {
+  examTypeForVisitCode,
   formatExamTypeLabel,
   MEDICAL_EXAM_START_TYPES,
 } from "@/features/occupational-health/utils/oh-labels";
@@ -53,6 +62,8 @@ import { useToast } from "@/providers/toast-provider";
 
 type OhMedicalExaminationsPanelProps = {
   encounter: OhVisitEncounter;
+  completionRef?: { current: (() => Promise<boolean>) | null };
+  completing?: boolean;
   episodes: EmploymentEpisode[];
   workspace: ReturnType<typeof useOhEncounterWorkspaceData>;
   onManageEmployment: () => void;
@@ -128,13 +139,24 @@ function inferExamTypeFromExaminations(
 
 export function OhMedicalExaminationsPanel({
   encounter,
+  completionRef,
+  completing = false,
   episodes,
   workspace,
+  onManageEmployment,
   focusedExamUuid = null,
   examFocusRequest = 0,
   onActiveExamChange,
 }: OhMedicalExaminationsPanelProps) {
   const { toast } = useToast();
+  const { userData } = useUser();
+  const canConfigure = Boolean(userData?.is_admin);
+  const queryClient = useQueryClient();
+  const [recoveryOpen, setRecoveryOpen] = useState(false);
+  const [recovering, setRecovering] = useState(false);
+  const [recoveryError, setRecoveryError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [setupError, setSetupError] = useState<string | null>(null);
   const episode = resolveActiveRiskProfileEpisode(episodes);
   const hazardProfileId = episode?.hazard_profile ?? null;
 
@@ -142,6 +164,7 @@ export function OhMedicalExaminationsPanel({
     queryKey: ["oh-hazard-profiles", episode?.employer ?? "none"],
     queryFn: () => fetchOhHazardProfiles(episode?.employer),
     enabled: Boolean(episode?.employer),
+    retry: false,
   });
 
   const riskProfile: OhHazardProfile | null = useMemo(() => {
@@ -157,31 +180,16 @@ export function OhMedicalExaminationsPanel({
     queryKey: ["oh-exam-template-versions", examTemplateUuid ?? ""],
     queryFn: () => fetchOhExamTemplateVersions(examTemplateUuid!),
     enabled: Boolean(examTemplateUuid),
+    retry: false,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const publishedVersion = useMemo(() => {
     const rows = versionsQuery.data ?? [];
-    return (
-      rows.find((row) => row.status === "published") ??
-      [...rows].sort((a, b) => b.number - a.number)[0] ??
-      null
-    );
+    const published = [...rows].filter((row) => row.status === "published").sort((a, b) => b.number - a.number || b.id - a.id);
+    return published.find((row) => hasCompleteExamDefinitions(row.snapshot_json)) ?? published[0] ?? null;
   }, [versionsQuery.data]);
-
-  const snapshot = useMemo(
-    () => parseExamTemplateSnapshot(publishedVersion?.snapshot_json),
-    [publishedVersion?.snapshot_json],
-  );
-
-  const templateReady = Boolean(
-    episode &&
-      hazardProfileId != null &&
-      riskProfile &&
-      examTemplateUuid &&
-      publishedVersion &&
-      snapshot &&
-      snapshot.sections.length > 0,
-  );
 
   const inferredExamType = useMemo(
     () =>
@@ -202,7 +210,11 @@ export function OhMedicalExaminationsPanel({
   const [examTypeOverride, setExamTypeOverride] = useState<MedicalExamStartType | null>(
     null,
   );
-  const selectedExamType = examTypeOverride ?? focusedStartType ?? inferredExamType;
+  const visitExamType = examTypeForVisitCode(encounter.visit_type?.code);
+  const typeFromVisit = visitExamType != null;
+  const selectedExamType = typeFromVisit
+    ? visitExamType
+    : examTypeOverride ?? focusedStartType ?? inferredExamType;
   const [examNotes, setExamNotes] = useState("");
   const [detailsConfirmed, setDetailsConfirmed] = useState(false);
   const [editingDetails, setEditingDetails] = useState(false);
@@ -213,7 +225,73 @@ export function OhMedicalExaminationsPanel({
   const [isResolvingExam, setIsResolvingExam] = useState(false);
   const createStarted = useRef(false);
   const examinationRef = useRef<OhExamination | null>(null);
+  const [displayedVersion, setDisplayedVersion] = useState<OhExamTemplateVersion | null>(null);
+  const historicalEnvelope = readEnvelope(examination);
+  const historicalTemplateUuid = examination?.template_uuid ?? historicalEnvelope?.template_uuid ?? examTemplateUuid;
+  const historicalVersions = useQuery({
+    queryKey: ["oh-exam-template-versions", historicalTemplateUuid ?? ""],
+    queryFn: () => fetchOhExamTemplateVersions(historicalTemplateUuid!),
+    enabled: Boolean(examination && !examination.template_snapshot && historicalTemplateUuid),
+    retry: false,
+    staleTime: 0,
+  });
+  const historicalVersion = examination ? (historicalVersions.data ?? versionsQuery.data ?? []).find((v) =>
+    v.status === "published" && (examination.template_version_uuid
+      ? v.uuid === examination.template_version_uuid
+      : Boolean(historicalEnvelope?.version_number) && v.number === historicalEnvelope?.version_number && v.template === historicalTemplateUuid)) : null;
+  const captureVersion = examination ? historicalVersion : displayedVersion ?? publishedVersion;
+  const versionUuid = examination?.template_version_uuid ?? captureVersion?.uuid ?? null;
+  const captureTemplateUuid = examination?.template_uuid ?? historicalEnvelope?.template_uuid ?? captureVersion?.template ?? examTemplateUuid;
+  const snapshot = useMemo(() => parseExamTemplateSnapshot(
+    examination?.template_snapshot ?? captureVersion?.snapshot_json,
+  ), [examination?.template_snapshot, captureVersion?.snapshot_json]);
+  const definitionsMissing = Boolean(snapshot?.sections.some((section) => section.content_mode === "direct" ? section.response_definitions_missing : section.items.some((item) => item.response_definitions_missing)));
+  const hasEnteredResponses = Object.values(answers.fields).some((fields) => Object.values(fields).some((value) => typeof value !== "string" || value.trim() !== ""));
+  const readyReplacement = [...(versionsQuery.data ?? [])].filter((row) => row.status === "published" && hasCompleteExamDefinitions(row.snapshot_json) && row.uuid !== versionUuid).sort((a, b) => b.number - a.number || b.id - a.id)[0];
+  const templateReady = Boolean(snapshot?.sections.length && versionUuid);
   const answersHydratedKeyRef = useRef<string | null>(null);
+  const [validationShown, setValidationShown] = useState(false);
+  const [validationMessage, setValidationMessage] = useState<string | null>(null);
+  const answersRef = useRef<ExamTemplateAnswers>(emptyExamTemplateAnswers());
+  const saveQueue = useRef<Promise<boolean>>(Promise.resolve(true));
+  const formRef = useRef<HTMLDivElement>(null);
+  const validationErrors: ExamErrors = validationShown && snapshot ? validateExamAnswers(snapshot, answers) : {};
+  useEffect(() => { answersRef.current = answers; }, [answers]);
+  useEffect(() => {
+    if (!completionRef) return;
+    completionRef.current = async () => {
+      if (encounter.is_active === false) return false;
+      setValidationShown(true);
+      if (!snapshot || !selectedExamType || (!typeFromVisit && !detailsConfirmed && !examination)) {
+        setValidationMessage("Choose the examination type and continue before completing this visit.");
+        return false;
+      }
+      const errors = validateExamAnswers(snapshot, answersRef.current);
+      if (Object.keys(errors).length) {
+        setValidationMessage("Review the highlighted responses before completing this visit.");
+        requestAnimationFrame(() => {
+          focusFirstExamError(formRef.current, errors);
+        });
+        return false;
+      }
+      setValidationMessage(null);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      await saveQueue.current;
+      const result = await persistAnswers(answersRef.current);
+      if (!result) setValidationMessage("Your responses could not be saved. The visit has not been completed. Please try again.");
+      return result;
+    };
+    return () => { completionRef.current = null; };
+  });
+  const focusedValidationRequest = useRef<number | null>(null);
+  useEffect(() => {
+    if (!validationShown || !snapshot || !focusedExamUuid || examination?.uuid !== focusedExamUuid || focusedValidationRequest.current === examFocusRequest) return;
+    const errors = validateExamAnswers(snapshot, answers);
+    if (Object.keys(errors).length) {
+      focusedValidationRequest.current = examFocusRequest;
+      requestAnimationFrame(() => focusFirstExamError(formRef.current, errors));
+    }
+  }, [answers, examFocusRequest, examination?.uuid, focusedExamUuid, snapshot, validationShown]);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -267,7 +345,7 @@ export function OhMedicalExaminationsPanel({
               workspace.examinations,
               selectedExamType,
               examTemplateUuid,
-            );
+            ) ?? (examinationRef.current?.exam_type === selectedExamType && examinationRef.current.encounter === encounter.id ? examinationRef.current : null);
       setExamination((current) => {
         if (
           current &&
@@ -290,11 +368,7 @@ export function OhMedicalExaminationsPanel({
       }
       onActiveExamChangeRef.current?.(matched?.uuid ?? null);
       const envelope = readEnvelope(matched);
-      if (
-        envelope?.template_uuid &&
-        examTemplateUuid &&
-        envelope.template_uuid === examTemplateUuid
-      ) {
+      if (envelope?.template_uuid) {
         setAnswers(envelope.answers ?? emptyExamTemplateAnswers());
       } else {
         setAnswers(emptyExamTemplateAnswers());
@@ -304,10 +378,10 @@ export function OhMedicalExaminationsPanel({
     return () => {
       cancelled = true;
     };
-  }, [detailsConfirmed, focusedExam, selectedExamType, examTemplateUuid, workspace.examinations]);
+  }, [detailsConfirmed, encounter.id, focusedExam, selectedExamType, examTemplateUuid, workspace.examinations]);
 
   async function resolveExamination(
-    examType: MedicalExamStartType,
+    examType: string,
   ): Promise<OhExamination | null> {
     const existing = findExamForType(
       workspace.examinations,
@@ -327,6 +401,7 @@ export function OhMedicalExaminationsPanel({
     try {
       const created = await createOhExamination({
         encounter: encounter.id,
+        template_version_uuid: versionUuid,
         employment_episode: episode?.id ?? null,
         exam_type: examType,
         occupational_attendance: true,
@@ -353,28 +428,32 @@ export function OhMedicalExaminationsPanel({
   }
 
   function handleDetailsContinue(examType: MedicalExamStartType, notes: string) {
+    if (encounter.is_active === false || completing) return;
+    setValidationMessage(null);
     examNotesRef.current = notes;
     setExamTypeOverride(examType);
     setExamNotes(notes);
+    setDisplayedVersion(publishedVersion);
     setDetailsConfirmed(true);
     setEditingDetails(false);
   }
 
   async function persistAnswers(next: ExamTemplateAnswers) {
-    if (!examTemplateUuid || !snapshot || !selectedExamType) {
-      return;
+    if (encounter.is_active === false || !captureTemplateUuid || !versionUuid || !snapshot || !selectedExamType) {
+      return false;
     }
     let exam = examinationRef.current;
     if (!exam) {
       exam = await resolveExamination(selectedExamType);
     }
     if (!exam) {
-      return;
+      return false;
     }
     const envelope: ExamTemplateResponseEnvelope = {
-      template_uuid: examTemplateUuid,
+      template_uuid: captureTemplateUuid,
+      template_version_uuid: exam.template_version_uuid ?? versionUuid,
       template_name: riskProfile?.exam_template_name ?? undefined,
-      version_number: publishedVersion?.number ?? null,
+      version_number: exam.template_version_number ?? captureVersion?.number ?? historicalEnvelope?.version_number ?? null,
       hazard_profile_id: hazardProfileId,
       answers: next,
     };
@@ -391,6 +470,7 @@ export function OhMedicalExaminationsPanel({
       setExamination(updated);
       examinationRef.current = updated;
       setSaveState("saved");
+      return true;
     } catch (error) {
       setSaveState("error");
       toast({
@@ -398,16 +478,46 @@ export function OhMedicalExaminationsPanel({
         title: "Could not save examination",
         description: error instanceof Error ? error.message : undefined,
       });
+      return false;
     }
   }
 
+  async function loadUpdatedForm() {
+    if (!snapshot || !captureTemplateUuid || hasEnteredResponses || encounter.is_active === false || recovering) return;
+    setRecovering(true); setRecoveryError(null);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    try {
+      await saveQueue.current;
+      if (examinationRef.current && !(await persistAnswers(answersRef.current))) throw new Error("Your selections could not be saved. The examination has not been changed.");
+      const target = readyReplacement ?? (canConfigure ? await publishOhExamTemplate(captureTemplateUuid) : null);
+      if (!target || !hasCompleteExamDefinitions(target.snapshot_json)) throw new Error("The configured form could not be loaded. Ask an administrator to review it.");
+      if (examinationRef.current) {
+        const updated = await recoverOhExaminationVersion(examinationRef.current.uuid, { row_version: examinationRef.current.row_version ?? 1, template_version_uuid: target.uuid });
+        setExamination(updated); examinationRef.current = updated;
+        const recovered = readEnvelope(updated)?.answers ?? emptyExamTemplateAnswers();
+        answersRef.current = recovered; setAnswers(recovered);
+        workspace.refetchAll();
+      } else {
+        const recovered = remapUnansweredExamPicks(snapshot, parseExamTemplateSnapshot(target.snapshot_json)!, answersRef.current);
+        answersRef.current = recovered; setAnswers(recovered);
+      }
+      setDisplayedVersion(target);
+      queryClient.setQueryData<OhExamTemplateVersion[]>(["oh-exam-template-versions", captureTemplateUuid], (rows) => [target, ...(rows ?? []).filter((row) => row.uuid !== target.uuid)]);
+      setValidationShown(false); setValidationMessage(null); setRecoveryOpen(false);
+    } catch (error) { setRecoveryError(error instanceof Error ? error.message : "Could not load the updated form. Your examination has not been changed."); }
+    finally { setRecovering(false); }
+  }
+
   function handleAnswersChange(next: ExamTemplateAnswers) {
+    if (encounter.is_active === false || completing || recovering) return;
+    answersRef.current = next;
+    setValidationMessage(null);
     setAnswers(next);
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
     }
     debounceRef.current = setTimeout(() => {
-      void persistAnswers(next);
+      saveQueue.current = saveQueue.current.then(() => persistAnswers(next));
     }, 600);
   }
 
@@ -417,77 +527,73 @@ export function OhMedicalExaminationsPanel({
         clearTimeout(debounceRef.current);
       }
     };
-  }, []);
+  }, [encounter.is_active]);
 
-  if (!episode || hazardProfileId == null) {
-    return (
-      <OhCorporateWorkspace
-        form={
-          <PanelEmpty
-            icon={ClipboardList}
-            title="No risk profile on this visit"
-            description="Assign a risk profile on the Employment panel so the correct examination template can load."
-          />
-        }
-      />
-    );
+  async function recheckSetup() {
+    setRefreshing(true); setSetupError(null);
+    try {
+      if (examination && historicalTemplateUuid) {
+        await queryClient.fetchQuery({
+          queryKey: ["oh-exam-template-versions", historicalTemplateUuid],
+          queryFn: () => fetchOhExamTemplateVersions(historicalTemplateUuid),
+          staleTime: 0,
+        });
+        await workspace.refetchAll();
+        return;
+      }
+      if (encounter.customer_uuid) await queryClient.invalidateQueries({ queryKey: ["oh-employment-episodes", encounter.customer_uuid] });
+      const profiles = await profilesQuery.refetch({ throwOnError: true });
+      const current = profiles.data?.find((row) => row.id === hazardProfileId);
+      if (current?.exam_template) {
+        await queryClient.fetchQuery({
+          queryKey: ["oh-exam-template-versions", current.exam_template],
+          queryFn: () => fetchOhExamTemplateVersions(current.exam_template!),
+          staleTime: 0,
+        });
+      }
+    } catch {
+      setSetupError("We couldn't check the setup. Please try again.");
+    } finally { setRefreshing(false); }
   }
 
-  if (profilesQuery.isLoading || (examTemplateUuid && versionsQuery.isLoading)) {
-    return (
-      <OhCorporateWorkspace
-        form={
-          <div className="space-y-3 p-5" aria-hidden>
-            <Skeleton className="h-6 w-1/3" />
-            <Skeleton className="h-4 w-1/2" />
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-24 w-full" />
-          </div>
-        }
-      />
-    );
+  function setupState(title: string, description: string, href?: string, actionLabel?: string, onAction?: () => void) {
+    return <OhCorporateWorkspace form={<OhExaminationSetupState
+      title={title} description={description} href={canConfigure ? href : undefined}
+      actionLabel={onAction ? actionLabel : canConfigure ? actionLabel : undefined} onAction={onAction}
+      needsAdministrator={Boolean(href) && !canConfigure && !onAction} refreshing={refreshing || profilesQuery.isFetching || versionsQuery.isFetching}
+      onRecheck={() => void recheckSetup()} error={setupError}
+    />} />;
   }
 
-  if (!riskProfile) {
-    return (
-      <OhCorporateWorkspace
-        form={
-          <PanelEmpty
-            icon={FileWarning}
-            title="Risk profile could not be loaded"
-            description="The employment episode references a risk profile that is missing or inactive."
-          />
-        }
-      />
-    );
+  if (!templateReady && (!episode || hazardProfileId == null)) {
+    return setupState("Choose a risk profile", "Add an active employment and risk profile to choose the right examination.", undefined, "Manage employment", onManageEmployment);
   }
 
-  if (!examTemplateUuid) {
-    return (
-      <OhCorporateWorkspace
-        form={
-          <PanelEmpty
-            icon={ClipboardList}
-            title="No examination template on this risk profile"
-            description={`Attach and publish an exam template on “${riskProfile.name}” in Occupational Health settings.`}
-          />
-        }
-      />
-    );
+  if ((!examination && !displayedVersion && (profilesQuery.isFetching || versionsQuery.isFetching)) || (!templateReady && (profilesQuery.isLoading || (examTemplateUuid && versionsQuery.isLoading) || historicalVersions.isLoading))) {
+    return <OhCorporateWorkspace form={<div role="status" aria-label="Loading examination setup" className="space-y-3 p-5">
+      <Skeleton className="h-6 w-1/3" /><Skeleton className="h-4 w-1/2" /><Skeleton className="h-24 w-full" />
+    </div>} />;
   }
-
-  if (!publishedVersion || !snapshot || snapshot.sections.length === 0) {
-    return (
-      <OhCorporateWorkspace
-        form={
-          <PanelEmpty
-            icon={ClipboardList}
-            title="Examination template is not published"
-            description="Publish the exam template linked to this risk profile before completing medical examinations."
-          />
-        }
-      />
-    );
+  if ((!examination && !displayedVersion && (profilesQuery.isError || versionsQuery.isError)) || (!templateReady && (profilesQuery.isError || (examTemplateUuid && versionsQuery.isError) || historicalVersions.isError))) {
+    return setupState("Couldn't load examination setup", "We couldn't check the risk profile and its examination template. Please try again.");
+  }
+  if (!templateReady && !riskProfile) {
+    return setupState("Risk profile needs attention", "Review the active employment and its assigned risk profile.", undefined, "Manage employment", onManageEmployment);
+  }
+  if (!templateReady && !examTemplateUuid) {
+    const href = riskProfile?.employer_uuid
+      ? `${ROUTES.settingsOccupationalHealthEmployer(riskProfile!.employer_uuid!, "risk-profiles")}&profile=${encodeURIComponent(riskProfile!.uuid)}`
+      : ROUTES.settingsModuleOccupationalHealth;
+    return setupState("Set up this examination", `Choose an examination template for “${riskProfile?.name}” to get started.`, href, "Choose exam template");
+  }
+  if (!templateReady && !publishedVersion) {
+    return setupState("Publish the examination template", `Review and publish “${riskProfile?.exam_template_name || "the linked examination template"}” so this examination can begin.`, ROUTES.ohTemplateBuilder("exam", examTemplateUuid!), "Review and publish");
+  }
+  if (examination && !templateReady) {
+    return setupState("Saved examination version unavailable", "The original template version could not be recovered. Your saved answers have been preserved; contact an administrator before making changes.");
+  }
+  if (!snapshot || snapshot.sections.length === 0) {
+    return setupState("Finish the examination template", "Add examination sections and publish an updated version before starting.", ROUTES.ohTemplateBuilder("exam", examTemplateUuid!), "Edit exam template");
   }
 
   const resumedExistingExam =
@@ -495,8 +601,7 @@ export function OhMedicalExaminationsPanel({
   const openedFocusedExam = focusedStartType != null && examTypeOverride == null;
   const showTemplate =
     Boolean(selectedExamType) &&
-    !editingDetails &&
-    (detailsConfirmed || resumedExistingExam || openedFocusedExam);
+    (typeFromVisit || (!editingDetails && (detailsConfirmed || resumedExistingExam || openedFocusedExam)));
   const saveLabel =
     isResolvingExam
       ? "Starting"
@@ -512,48 +617,35 @@ export function OhMedicalExaminationsPanel({
     <OhCorporateWorkspace
       form={
         showTemplate ? (
-          <div className="space-y-8 px-5 py-5">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="flex min-w-0 items-center gap-2">
-                  <h2 className="truncate text-[13.5px] font-semibold text-brand-navy">
-                    {formatExamTypeLabel(selectedExamType!)}
-                  </h2>
-                  <Badge variant="secondary" className="shrink-0">
-                    {riskProfile.name}
-                  </Badge>
-                </div>
-                {examNotes.trim() ? (
-                  <p className="mt-1 text-[13px] text-dash-muted">{examNotes.trim()}</p>
-                ) : null}
+          <div ref={formRef} className="space-y-4 px-5 py-4">
+            <header className="space-y-1.5">
+              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                <h2 className="text-[15px] font-semibold text-brand-navy">{historicalEnvelope?.template_name ?? riskProfile?.exam_template_name ?? "Examination"}</h2>
+                <div className="flex flex-wrap items-center gap-3"><span className="text-xs text-dash-muted" aria-live="polite">{saveLabel}</span>{definitionsMissing && encounter.is_active !== false && !hasEnteredResponses && (canConfigure || readyReplacement) ? <SecondaryButton type="button" disabled={recovering || completing} onClick={() => { setRecoveryError(null); setRecoveryOpen(true); }}>Load configured fields</SecondaryButton> : null}{typeFromVisit ? null : <button type="button" disabled={encounter.is_active === false || completing} onClick={() => setEditingDetails(true)} data-testid="oh-exam-change-type" className="text-[13px] font-medium text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30 disabled:opacity-50">Change type</button>}</div>
               </div>
-              <button
-                type="button"
-                onClick={() => setEditingDetails(true)}
-                data-testid="oh-exam-change-type"
-                className="shrink-0 text-[13px] font-medium text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
-              >
-                Change type
-              </button>
-            </div>
-            {saveLabel ? (
-              <p className="-mt-5 text-[12px] text-dash-muted" aria-live="polite">
-                {saveLabel}
-              </p>
-            ) : null}
+              <p className="text-xs text-dash-muted"><span>{formatExamTypeLabel(selectedExamType!)}</span><span aria-hidden> · </span><span>{riskProfile?.name ?? "Examination"}</span>{examination?.template_version_number || captureVersion?.number ? ` · Version ${examination?.template_version_number ?? captureVersion?.number}` : ""}</p>
+            </header>
+
+            <Dialog open={recoveryOpen} onOpenChange={(open) => { if (!recovering) setRecoveryOpen(open); }}><DialogContent className={appFont.className}><DialogHeader><DialogTitle>Use updated examination form?</DialogTitle><DialogDescription>{readyReplacement ? `Use published version ${readyReplacement.number} for this unanswered examination.` : "Publish the configured fields as a new version and use them for this unanswered examination."} Existing entered responses and completed examinations are not changed. Unchanged item selections are kept.</DialogDescription></DialogHeader>{recoveryError ? <p role="alert" className="text-sm text-red-700">{recoveryError}</p> : null}<DialogFooter><SecondaryButton type="button" disabled={recovering} onClick={() => setRecoveryOpen(false)}>Cancel</SecondaryButton><PrimaryButton type="button" disabled={recovering} onClick={() => void loadUpdatedForm()}>{recovering ? "Loading fields…" : readyReplacement ? "Use published version" : "Publish and load fields"}</PrimaryButton></DialogFooter></DialogContent></Dialog>
+            {validationMessage || Object.keys(validationErrors).length ? <div role="alert" className="border-l-2 border-red-500 px-3 py-1 text-sm text-red-800">{Object.keys(validationErrors).length ? "Review the highlighted responses before completing this visit." : validationMessage}</div> : null}
             <OhExamTemplateCaptureForm
+              disabled={encounter.is_active === false || completing || recovering}
+              errors={validationErrors}
+              setupHref={canConfigure && captureTemplateUuid ? ROUTES.ohTemplateBuilder("exam", captureTemplateUuid) : undefined}
               snapshot={snapshot}
-              templateName={riskProfile.exam_template_name}
+              templateName={historicalEnvelope?.template_name ?? riskProfile?.exam_template_name}
               value={answers}
               onChange={handleAnswersChange}
+              billingCharges={examination?.billing_charges ?? []}
             />
-            <OhProcedureChecklistPanel
+            {examNotes.trim() ? <p className="text-sm text-dash-muted">{examNotes.trim()}</p> : null}
+            <fieldset disabled={encounter.is_active === false || completing}><OhProcedureChecklistPanel
               examination={examination}
               onChanged={workspace.refetchAll}
-            />
+            /></fieldset>
           </div>
-        ) : (
-          <ExamDetailsStep
+        ) : typeFromVisit ? null : (
+          <div>{validationMessage ? <p role="alert" className="px-5 pt-4 text-sm text-red-700">{validationMessage}</p> : null}<ExamDetailsStep
             initialType={
               selectedExamType && isMedicalExamStartType(selectedExamType)
                 ? selectedExamType
@@ -561,7 +653,7 @@ export function OhMedicalExaminationsPanel({
             }
             initialNotes={examNotes}
             onContinue={handleDetailsContinue}
-          />
+          /></div>
         )
       }
     />
@@ -648,18 +740,3 @@ function ExamDetailsStep({
   );
 }
 
-function PanelEmpty({
-  icon,
-  title,
-  description,
-}: {
-  icon: typeof ClipboardList;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="flex min-h-full flex-1 items-center justify-center bg-white px-6 py-16">
-      <EmptyState icon={icon} title={title} description={description} />
-    </div>
-  );
-}

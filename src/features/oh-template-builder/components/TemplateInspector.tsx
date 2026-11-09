@@ -2,8 +2,11 @@
 
 import { Archive } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useCallback, useState } from "react";
 
+import { PrimaryButton } from "@/components/ui/app-buttons";
 import { ConfirmActionButton } from "@/features/oh-template-builder/components/ConfirmActionButton";
+import { FormBillingFields } from "@/features/oh-template-builder/components/BillingFields";
 import { SelectionIllustration } from "@/features/oh-template-builder/components/UndrawIllustrations";
 import { ItemInspector } from "@/features/oh-template-builder/components/ItemInspector";
 import { SectionInspector } from "@/features/oh-template-builder/components/SectionInspector";
@@ -61,7 +64,24 @@ function InspectorPending({ label }: { label: string }) {
 
 function TemplateDetailsPanel() {
   const router = useRouter();
-  const { kind, archiveTemplate, isPending } = useTemplateBuilder();
+  const { kind, template, archiveTemplate, updateTemplateBilling, isPending } =
+    useTemplateBuilder();
+  const [draft, setDraft] = useState<{
+    billable: boolean;
+    productUuid: string | null;
+  } | null>(null);
+  const billing = draft ?? template?.billing ?? { billable: false, productUuid: null };
+  const dirty = draft !== null;
+  const saving = isPending("template:billing");
+
+  const onBillingChange = useCallback((next: typeof billing) => {
+    setDraft(next);
+  }, []);
+
+  async function onSaveBilling() {
+    const ok = await updateTemplateBilling(billing);
+    if (ok) setDraft(null);
+  }
 
   async function onArchive() {
     const archived = await archiveTemplate();
@@ -72,14 +92,21 @@ function TemplateDetailsPanel() {
 
   return (
     <div className="flex h-full min-h-0 min-w-0 w-full flex-col bg-white">
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-3 text-center">
-        <SelectionIllustration className="h-16 w-auto text-brand-primary" />
-        <p className="mt-3 text-sm font-semibold text-brand-navy">Nothing selected</p>
-        <p className="mt-1.5 w-full text-[13px] leading-5 text-dash-muted">
-          Choose a section or an item on the form. What you can edit opens here.
-        </p>
+      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-4">
+        <div>
+          <p className="text-sm font-semibold text-brand-navy">Form settings</p>
+          <p className="mt-1 text-[13px] leading-5 text-dash-muted">
+            Choose a section or item to edit it, or set whether this whole form is charged.
+          </p>
+        </div>
+        <FormBillingFields value={billing} onChange={onBillingChange} />
+        {!template ? (
+          <div className="flex flex-col items-center justify-center px-3 py-8 text-center">
+            <SelectionIllustration className="h-16 w-auto text-brand-primary" />
+          </div>
+        ) : null}
       </div>
-      <div className="border-t border-dash-border px-3 py-2">
+      <div className="flex items-center justify-between gap-2 border-t border-dash-border px-3 py-2">
         <ConfirmActionButton
           confirmLabel="Archive template"
           disabled={isPending("template:archive")}
@@ -88,8 +115,15 @@ function TemplateDetailsPanel() {
           <Archive className="size-3.5" aria-hidden />
           Archive template
         </ConfirmActionButton>
+        <PrimaryButton
+          type="button"
+          size="sm"
+          disabled={!dirty || saving}
+          onClick={() => void onSaveBilling()}
+        >
+          {saving ? "Saving" : "Save"}
+        </PrimaryButton>
       </div>
     </div>
   );
 }
-
