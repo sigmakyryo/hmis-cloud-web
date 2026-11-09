@@ -46,6 +46,7 @@ import type { CustomerVisit } from "@/features/customers/types/customer-visit.ty
 import type { InsuranceScheme } from "@/features/customers/types/customer-insurance.types";
 import type { ClinicalFormRecord } from "@/features/occupational-health/lib/oh-form-catalog";
 import { fetchClinicalForms } from "@/features/occupational-health/services/oh.service";
+import { BffError } from "@/lib/bff-client";
 import { formatBffErrorMessage, mapBffErrorsToForm } from "@/lib/bff-field-errors";
 import { appFont } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
@@ -61,7 +62,7 @@ type CreateCustomerDialogProps = {
   mode?: "full" | "quick";
 };
 
-type CreateCustomerTab = "personal" | "insurance" | "whats-next";
+type CreateCustomerTab = "personal" | "onboarding" | "insurance" | "whats-next";
 
 function getCustomerDisplayName(customer: Customer) {
   return (
@@ -88,6 +89,7 @@ export function CreateCustomerDialog({
   const [isLoadingSchemes, setIsLoadingSchemes] = useState(false);
   const [visitDialogOpen, setVisitDialogOpen] = useState(false);
   const [appointmentDialogOpen, setAppointmentDialogOpen] = useState(false);
+  const [onboardingForms, setOnboardingForms] = useState<ClinicalFormRecord[]>([]);
 
   const personalForm = useForm<CreateCustomerFormValues>({
     resolver: zodResolver(createCustomerSchema),
@@ -176,6 +178,7 @@ export function CreateCustomerDialog({
     setIsLoadingSchemes(false);
     setVisitDialogOpen(false);
     setAppointmentDialogOpen(false);
+    setOnboardingForms([]);
     personalForm.reset(createCustomerDefaultValues);
     insuranceForm.reset(createCustomerInsuranceDefaultValues);
   }, [insuranceForm, personalForm]);
@@ -234,7 +237,47 @@ export function CreateCustomerDialog({
     [onCreated, onOpenChange, resetDialogState],
   );
 
+  async function requiredOnboardingForms() {
+    try {
+      const forms = await fetchClinicalForms();
+      return forms.filter((form) => (
+        form.family === "custom"
+        && form.placement?.trigger === "onboarding"
+        && form.placement.required === true
+      ));
+    } catch (error) {
+      toast({
+        variant: "error",
+        title: "Could not check onboarding forms",
+        description: error instanceof Error ? error.message : "Something went wrong.",
+      });
+      return [];
+    }
+  }
+
+  function continueAfterOnboarding() {
+    setOnboardingForms([]);
+    if (!createdCustomer) {
+      return;
+    }
+    if (mode === "quick") {
+      finalizeCreatedCustomer(createdCustomer);
+      return;
+    }
+    setActiveTab("insurance");
+    void loadInsuranceSchemes();
+  }
+
   function handleOpenChange(nextOpen: boolean) {
+    if (!nextOpen && onboardingForms.length > 0) {
+      toast({
+        variant: "error",
+        title: "Finish the required forms",
+        description: "This client is saved. Submit or upload each required form before closing.",
+      });
+      return;
+    }
+
     if (!nextOpen) {
       if (createdCustomer) {
         finalizeCreatedCustomer(createdCustomer);
@@ -258,11 +301,17 @@ export function CreateCustomerDialog({
             ? `${getCustomerDisplayName(customer)} was added.`
             : `${getCustomerDisplayName(customer)} was added. Continue with insurance, or skip ahead.`,
       });
+      const pending = await requiredOnboardingForms();
+      setCreatedCustomer(customer);
+      if (pending.length > 0) {
+        setOnboardingForms(pending);
+        setActiveTab("onboarding");
+        return;
+      }
       if (mode === "quick") {
         finalizeCreatedCustomer(customer);
         return;
       }
-      setCreatedCustomer(customer);
       setActiveTab("insurance");
       void loadInsuranceSchemes();
     } catch (error) {
@@ -339,17 +388,26 @@ export function CreateCustomerDialog({
     }
   }
 
+  const onboardingPending = onboardingForms.length > 0;
   const tabs: Array<{
     id: CreateCustomerTab;
     label: string;
     disabled?: boolean;
   }> =
     mode === "quick"
-      ? [{ id: "personal", label: "Client" }]
+      ? onboardingPending
+        ? [
+            { id: "personal", label: "Client" },
+            { id: "onboarding", label: "Forms" },
+          ]
+        : [{ id: "personal", label: "Client" }]
       : [
           { id: "personal", label: "Personal" },
-          { id: "insurance", label: "Insurance", disabled: !isCustomerCreated },
-          { id: "whats-next", label: "What's next?", disabled: !isCustomerCreated },
+          ...(onboardingPending
+            ? [{ id: "onboarding" as const, label: "Forms", disabled: !isCustomerCreated }]
+            : []),
+          { id: "insurance", label: "Insurance", disabled: !isCustomerCreated || onboardingPending },
+          { id: "whats-next", label: "What's next?", disabled: !isCustomerCreated || onboardingPending },
         ];
 
   const whatsNextOptions = useMemo(() => {
@@ -552,6 +610,7 @@ export function CreateCustomerDialog({
                       if (
                         !tab.disabled &&
                         (tab.id === "personal" ||
+                          tab.id === "onboarding" ||
                           tab.id === "insurance" ||
                           tab.id === "whats-next")
                       ) {
@@ -599,6 +658,14 @@ export function CreateCustomerDialog({
                   />
                 </form>
               </Form>
+            ) : null}
+
+            {activeTab === "onboarding" && createdCustomer && onboardingForms.length > 0 ? (
+              <CustomerOnboardingForms
+                customerUuid={createdCustomer.uuid}
+                forms={onboardingForms}
+                onFinished={continueAfterOnboarding}
+              />
             ) : null}
 
             {activeTab === "insurance" && isCustomerCreated ? (

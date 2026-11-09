@@ -27,6 +27,7 @@ describe("module entitlements", () => {
     expect(resolvePortalModuleForPath(ROUTES.occupationalHealth)).toBe(
       "OccupationalHealth",
     );
+    expect(resolvePortalModuleForPath(ROUTES.occupationalHealthForms)).toBeNull();
     expect(resolvePortalModuleForPath(ROUTES.therapyPhysio)).toBe("Therapy");
     expect(resolvePortalModuleForPath(ROUTES.therapySpeech)).toBe("Therapy");
     expect(resolvePortalModuleForPath(ROUTES.therapyOccupational)).toBe(

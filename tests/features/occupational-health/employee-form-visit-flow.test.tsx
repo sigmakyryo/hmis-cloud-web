@@ -53,7 +53,7 @@ describe("employee form visit flow", () => {
     expect(tabs.map((tab) => tab.textContent)).toEqual(["Employers", "Visit types"]);
   });
 
-  it("puts employees and forms in Workforce and keeps the employee form off the visit", () => {
+  it("gives Forms its own section and keeps the employee form off the visit", () => {
     expect(navigation.some((item) => item.moduleName === "Workforce")).toBe(false);
     const forms = navigation.find((item) => item.name === "Forms");
     expect(forms?.moduleName).toBe("Forms");
