@@ -1767,3 +1767,10 @@ export async function recoverOhCofResponseVersion(uuid: string, payload: { row_v
 export async function recoverOhEmployeeFormResponseVersion(uuid: string, payload: { row_version: number; template_version_uuid: string }) {
   return bffRequest<OhTemplateCapture>(`${BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormResponseTemplateVersion(uuid)}`, { method: "POST", body: payload });
 }
+
+export async function reopenOhEmployeeFormResponse(uuid: string, payload: { row_version: number }) {
+  return bffRequest<OhTemplateCapture>(BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormResponseReopen(uuid), {
+    method: "POST",
+    body: payload,
+  });
+}

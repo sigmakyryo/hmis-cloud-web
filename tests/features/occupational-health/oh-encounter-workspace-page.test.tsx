@@ -29,6 +29,7 @@ const ohService = vi.hoisted(() => ({
   publishOhCofTemplate: vi.fn(),
   recoverOhCofResponseVersion: vi.fn(),
   recoverOhEmployeeFormResponseVersion: vi.fn(),
+  reopenOhEmployeeFormResponse: vi.fn(),
   createFitnessAssessment: vi.fn(),
   createFitnessCertificate: vi.fn(),
   withdrawFitnessCertificate: vi.fn(),
@@ -250,7 +251,7 @@ describe("OhEncounterWorkspacePage", () => {
 
     expect(await screen.findByTestId("oh-session-forms")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Examination" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Certificate of fitness" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Certificate of fitness/ })).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Certificate of fitness" })).not.toBeInTheDocument();
     expect(screen.queryByText("Injury on Duty Management")).not.toBeInTheDocument();
     expect(await screen.findByTestId("oh-exam-details-step")).toBeInTheDocument();
@@ -375,7 +376,7 @@ describe("OhEncounterWorkspacePage", () => {
     renderPage();
 
     expect(await screen.findByText("Pre-employment")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Employee form" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("button", { name: /Employee form/ })).toHaveAttribute("aria-current", "page");
     expect(screen.queryByTestId("oh-exam-details-step")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Enter manually/ }));
     expect(await screen.findByTestId("oh-exam-template-capture")).toBeInTheDocument();
@@ -385,7 +386,7 @@ describe("OhEncounterWorkspacePage", () => {
     await waitFor(() => expect(ohService.createOhEmployeeFormInvite).toHaveBeenCalledWith("form-1"));
     expect(await screen.findByTestId("oh-session-employee-link")).toHaveTextContent("/workforce-forms/session-token");
     expect(ohService.createOhEmployeeFormResponse).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByRole("button", { name: "Examination" }));
+    fireEvent.click(screen.getByTestId("oh-session-step-examination"));
     expect(screen.queryByTestId("oh-exam-details-step")).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/Exam type/)).not.toBeInTheDocument();
   });
@@ -396,24 +397,28 @@ describe("OhEncounterWorkspacePage", () => {
       responses_json: { __exam_template__: { template_uuid: "tmpl-1", template_version_uuid: "ver-1", version_number: 1, answers: { picks: {}, fields: { vitals: { bp: "" } } } } }, row_version: 1 };
     ohService.fetchOhEncounter.mockResolvedValue({ ...ENCOUNTER, origin: "laravel" });
     ohService.fetchOhExaminations.mockResolvedValue([examination]);
-    ohService.patchOhExaminationResponses.mockImplementation(async (_uuid, payload) => ({ ...examination, responses_json: payload.responses_json, row_version: 2 }));
+    ohService.patchOhExaminationResponses.mockImplementation(async (_uuid, payload) => {
+      const next = { ...examination, responses_json: payload.responses_json, row_version: 2 };
+      ohService.fetchOhExaminations.mockResolvedValue([next]);
+      return next;
+    });
     completeMock.mockImplementation(async () => { ohService.fetchOhEncounter.mockResolvedValue({ ...ENCOUNTER, origin: "laravel", is_active: false, status: "completed" }); });
     renderPage();
     const input = await screen.findByLabelText(/BP/);
     const header = screen.getByTestId("oh-encounter-header");
-    const button = within(header).getByRole("button", { name: "Complete visit" });
+    const button = within(header).getByRole("button", { name: "Continue" });
     expect(within(header).getByRole("link", { name: "OHS Queue" }).compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     fireEvent.click(button);
     expect(await screen.findByText("BP is required.")).toBeVisible();
     await waitFor(() => expect(input).toHaveFocus());
     expect(completeMock).not.toHaveBeenCalled();
     fireEvent.change(input, { target: { value: "120/80" } });
-    expect(screen.queryByText("BP is required.")).toBeNull();
-    fireEvent.click(button);
-    expect(await screen.findByText("Complete the certificate before completing this visit.")).toBeVisible();
-    expect(ohService.patchOhExaminationResponses).toHaveBeenCalledWith("exam-pinned", expect.objectContaining({ responses_json: expect.objectContaining({ __exam_template__: expect.objectContaining({ template_version_uuid: "ver-1" }) }) }));
+    await waitFor(() => expect(screen.queryByText("BP is required.")).toBeNull());
+    fireEvent.click(within(header).getByRole("button", { name: "Continue" }));
+    await waitFor(() => expect(ohService.patchOhExaminationResponses).toHaveBeenCalledWith("exam-pinned", expect.objectContaining({ responses_json: expect.objectContaining({ __exam_template__: expect.objectContaining({ template_version_uuid: "ver-1" }) }) })));
     expect(completeMock).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "Complete visit" })).toBeVisible();
+    await waitFor(() => expect(screen.getByTestId("oh-session-certificate-step")).toHaveAttribute("aria-hidden", "false"));
+    expect(within(header).getByRole("button", { name: "Complete visit" })).toBeVisible();
     expect(fetchVisitMock).not.toHaveBeenCalled();
   });
 
@@ -444,10 +449,11 @@ describe("OhEncounterWorkspacePage", () => {
     ohService.patchOhExaminationResponses.mockRejectedValue(new Error("Save unavailable"));
     renderPage();
     await screen.findByTestId("oh-session-examination-step");
-    fireEvent.click(within(screen.getByTestId("oh-encounter-header")).getByRole("button", { name: "Complete visit" }));
+    const primary = within(screen.getByTestId("oh-encounter-header")).getByRole("button", { name: /Continue|Complete visit/ });
+    fireEvent.click(primary);
     expect(await screen.findByText(/could not be saved|Save unavailable|responses could not be saved/i)).toBeVisible();
     expect(completeMock).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "Complete visit" })).toBeEnabled();
+    expect(within(screen.getByTestId("oh-encounter-header")).getByRole("button", { name: /Continue|Complete visit/ })).toBeEnabled();
   });
   it("loads the editor's real additional fields through explicit publication without cards or warning copy", async () => {
     useUserMock.mockReturnValue({ isLoading: false, userData: { id: 3, is_admin: true, groups: ["OccupationalHealth"], enabled_modules: ["OccupationalHealth"], tenant: { id: 1 } } });
@@ -527,12 +533,24 @@ describe("OhEncounterWorkspacePage", () => {
     renderPage();
     await screen.findByTestId("oh-session-examination-step");
     expect(screen.getByTestId("oh-session-certificate-step")).toHaveAttribute("aria-hidden", "true");
-    // Fill required certificate field while the panel stays mounted/hidden.
+    // Exam answers already valid; continue unlocks certificate, then complete.
+    ohService.fetchOhExaminations.mockResolvedValue([{
+      ...examination,
+      responses_json: {
+        __exam_template__: {
+          template_uuid: "tmpl-1",
+          template_version_uuid: "ver-1",
+          version_number: 1,
+          answers: { picks: {}, fields: { vitals: { bp: "120/80" } } },
+        },
+      },
+    }]);
+    fireEvent.click(within(screen.getByTestId("oh-encounter-header")).getByRole("button", { name: "Continue" }));
+    await waitFor(() => expect(screen.getByTestId("oh-session-certificate-step")).toHaveAttribute("aria-hidden", "false"));
     const outcome = await screen.findByLabelText(/Outcome/);
     fireEvent.change(outcome, { target: { value: "Fit" } });
     fireEvent.click(within(screen.getByTestId("oh-encounter-header")).getByRole("button", { name: "Complete visit" }));
     await waitFor(() => expect(completeMock).toHaveBeenCalledWith("enc-1"));
-    expect(ohService.patchOhExaminationResponses).toHaveBeenCalled();
     expect(ohService.patchOhCofResponses).toHaveBeenCalled();
     expect(screen.queryByText("Complete the certificate before completing this visit.")).toBeNull();
   });
@@ -562,15 +580,19 @@ describe("OhEncounterWorkspacePage", () => {
     };
     ohService.fetchOhEncounter.mockResolvedValue({ ...ENCOUNTER, origin: "laravel" });
     ohService.fetchOhExaminations.mockResolvedValue([examination]);
-    ohService.patchOhExaminationResponses.mockResolvedValue({ ...examination, row_version: 3 });
+    ohService.patchOhExaminationResponses.mockImplementation(async (_uuid, payload) => {
+      const next = { ...examination, responses_json: payload?.responses_json ?? examination.responses_json, row_version: 3 };
+      ohService.fetchOhExaminations.mockResolvedValue([next]);
+      return next;
+    });
     renderPage();
     await screen.findByTestId("oh-session-examination-step");
     await screen.findByTestId("oh-session-certificate-step");
+    fireEvent.click(within(screen.getByTestId("oh-encounter-header")).getByRole("button", { name: "Continue" }));
+    await waitFor(() => expect(screen.getByTestId("oh-session-certificate-step")).toHaveAttribute("aria-hidden", "false"));
     fireEvent.click(within(screen.getByTestId("oh-encounter-header")).getByRole("button", { name: "Complete visit" }));
     expect(await screen.findByText("Complete the certificate before completing this visit.")).toBeVisible();
-    expect(screen.getByTestId("oh-session-certificate-step")).toHaveAttribute("aria-hidden", "false");
     expect(completeMock).not.toHaveBeenCalled();
-    // Second click stays on certificate validation rather than bouncing back to examination.
     fireEvent.click(within(screen.getByTestId("oh-encounter-header")).getByRole("button", { name: "Complete visit" }));
     expect(await screen.findByText("Complete the certificate before completing this visit.")).toBeVisible();
     expect(screen.getByTestId("oh-session-certificate-step")).toHaveAttribute("aria-hidden", "false");

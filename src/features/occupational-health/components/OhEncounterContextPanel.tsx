@@ -18,6 +18,7 @@ type OhEncounterContextPanelProps = {
   encounter: OhVisitEncounter;
   completionRef?: { current: (() => Promise<boolean>) | null };
   cofCompletionRef?: { current: (() => Promise<boolean>) | null };
+  employeeContinueRef?: { current: (() => Promise<boolean>) | null };
   completing?: boolean;
   customer: Customer | null;
   episodes: EmploymentEpisode[];
@@ -35,6 +36,7 @@ export function OhEncounterContextPanel({
   encounter,
   completionRef,
   cofCompletionRef,
+  employeeContinueRef,
   completing,
   customer,
   episodes,
@@ -51,6 +53,7 @@ export function OhEncounterContextPanel({
       encounter={encounter}
       completionRef={completionRef}
       cofCompletionRef={cofCompletionRef}
+      employeeContinueRef={employeeContinueRef}
       completing={completing}
       episodes={episodes}
       workspace={workspace}

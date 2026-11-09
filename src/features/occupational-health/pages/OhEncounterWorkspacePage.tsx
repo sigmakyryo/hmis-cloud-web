@@ -19,11 +19,17 @@ import { useAppBreadcrumb } from "@/features/app-shell/hooks/use-app-breadcrumb"
 import { OhEncounterContextPanel } from "@/features/occupational-health/components/OhEncounterContextPanel";
 import { OhEncounterEdgeRail } from "@/features/occupational-health/components/OhEncounterEdgeRail";
 import { OhEncounterHeader } from "@/features/occupational-health/components/OhEncounterHeader";
-import { OhSessionFormNav } from "@/features/occupational-health/components/OhSessionForms";
+import { buildSessionStepStatuses, OhSessionFormNav } from "@/features/occupational-health/components/OhSessionForms";
 import { OhRiskProfileRequiredEmptyState } from "@/features/occupational-health/components/OhRiskProfileRequiredEmptyState";
 import { useOhEncounterModuleParam } from "@/features/occupational-health/hooks/use-oh-encounter-module-param";
 import type { OhEncounterPanelId } from "@/features/occupational-health/lib/oh-encounter-modules";
-import { sessionFormStepKey, sessionFormSteps, type SessionFormStep } from "@/features/occupational-health/lib/oh-session-forms";
+import {
+  isLastSessionStep,
+  nextSessionStep,
+  sessionFormStepKey,
+  sessionFormSteps,
+  type SessionFormStep,
+} from "@/features/occupational-health/lib/oh-session-forms";
 import {
   useEmploymentEpisodes,
   useOhEncounterWorkspaceData,
@@ -84,6 +90,7 @@ export function OhEncounterWorkspacePage({
   const [completing, setCompleting] = useState(false);
   const completionRef = useRef<(() => Promise<boolean>) | null>(null);
   const cofCompletionRef = useRef<(() => Promise<boolean>) | null>(null);
+  const employeeContinueRef = useRef<(() => Promise<boolean>) | null>(null);
   const completionBusy = useRef(false);
   const [activeExamUuid, setActiveExamUuid] = useState<string | null>(null);
   const [chosenStep, setChosenStep] = useState<string | null>(null);
@@ -167,70 +174,95 @@ export function OhEncounterWorkspacePage({
               completionBusy.current = true;
               setCompleting(true);
               setCompleteError(null);
-              const goExam = (message: string, examUuid?: string | null) => {
-                setChosenStep("examination");
-                setActivePanel("medical-examinations");
+              const goStep = (stepKey: string, message: string, examUuid?: string | null) => {
+                setChosenStep(stepKey);
+                setActivePanel(stepKey === "certificate" ? "certificate" : stepKey === "employment" ? "employment" : "medical-examinations");
                 if (examUuid) {
                   setFocusedExamUuid(examUuid);
                   setExamFocusRequest((current) => current + 1);
                 }
                 setCompleteError(message);
               };
-              const goCertificate = (message: string) => {
-                setChosenStep("certificate");
-                setActivePanel("certificate");
-                setCompleteError(message);
-              };
               try {
-                // Flush both keep-mounted panels in one click; never bounce solely because a panel was inactive.
-                if (!completionRef.current) {
-                  goExam("Review the examination setup before completing this visit.");
+                const last = isLastSessionStep(formSteps, activeStep);
+                if (!last) {
+                  if (activeStep === "employee") {
+                    if (employeeContinueRef.current && !(await employeeContinueRef.current())) {
+                      goStep("employee", "Review the employee form before continuing.");
+                      return;
+                    }
+                  } else if (activeStep === "examination") {
+                    if (!completionRef.current || !(await completionRef.current())) {
+                      goStep("examination", "Complete the highlighted responses before continuing.");
+                      return;
+                    }
+                    await workspace.refetchAll();
+                  } else if (activeStep === "certificate") {
+                    if (!cofCompletionRef.current || !(await cofCompletionRef.current())) {
+                      goStep("certificate", "Complete the certificate before continuing.");
+                      return;
+                    }
+                  }
+                  const next = nextSessionStep(formSteps, activeStep);
+                  if (next) {
+                    const key = sessionFormStepKey(next);
+                    setChosenStep(key);
+                    setActivePanel(key === "certificate" ? "certificate" : "medical-examinations");
+                    setCompleteError(null);
+                  }
                   return;
                 }
-                if (!(await completionRef.current())) {
-                  goExam("Complete the highlighted responses in this examination before completing the visit.");
+
+                if (!completionRef.current || !(await completionRef.current())) {
+                  goStep("examination", "Complete the highlighted responses in this examination before completing the visit.");
                   return;
                 }
+                await workspace.refetchAll();
                 for (const exam of workspace.examinations) {
                   if (exam.uuid === activeExamUuid) continue;
                   const schema = parseExamTemplateSnapshot(exam.template_snapshot);
                   const envelope = exam.responses_json?.__exam_template__ as ExamTemplateResponseEnvelope | undefined;
                   if (schema && envelope?.answers?.picks && envelope.answers.fields && Object.keys(validateExamAnswers(schema, envelope.answers)).length) {
-                    goExam("Complete the highlighted responses in this examination before completing the visit.", exam.uuid);
+                    goStep("examination", "Complete the highlighted responses in this examination before completing the visit.", exam.uuid);
                     return;
                   }
                 }
-                if (!cofCompletionRef.current) {
-                  goCertificate("Complete the certificate before completing this visit.");
-                  return;
-                }
-                if (!(await cofCompletionRef.current())) {
-                  goCertificate("Complete the certificate before completing this visit.");
+                if (!cofCompletionRef.current || !(await cofCompletionRef.current())) {
+                  goStep("certificate", "Complete the certificate before completing this visit.");
                   return;
                 }
                 await completeNativeOhVisit(encounter.uuid);
                 await encounterQuery.refetch();
               } catch (error) {
                 const message = error instanceof Error ? error.message : "Could not complete visit. Your responses have been kept.";
-                if (/certificate/i.test(message)) {
-                  goCertificate(message);
+                if (/certificate|examination before opening/i.test(message)) {
+                  goStep("certificate", message);
+                } else if (/employee/i.test(message)) {
+                  goStep("employee", message);
                 } else {
-                  goExam(message);
+                  goStep("examination", message);
                 }
               } finally {
                 completionBusy.current = false;
                 setCompleting(false);
               }
-            }}>{completing ? "Completing…" : "Complete visit"}</PrimaryButton> : null}
+            }}>{completing ? (isLastSessionStep(formSteps, activeStep) ? "Completing…" : "Saving…") : (isLastSessionStep(formSteps, activeStep) ? "Complete visit" : "Continue")}</PrimaryButton> : null}
           </div>}
         />
         <OhSessionFormNav
           visitTypeName={encounter.visit_type?.name}
           steps={formSteps}
           activeStep={activeStep}
+          statuses={buildSessionStepStatuses(formSteps, workspace)}
           onSelect={(step) => {
+            const status = buildSessionStepStatuses(formSteps, workspace)[step];
+            if (status === "locked") {
+              setCompleteError("Finish and save the examination before opening the certificate.");
+              return;
+            }
             setChosenStep(step);
             setActivePanel(step === "certificate" ? "certificate" : step === "employment" ? "employment" : "medical-examinations");
+            setCompleteError(null);
           }}
         />
         {completeError ? <p role="alert" className="px-5 py-3 text-sm text-red-700">{completeError}</p> : null}
@@ -249,6 +281,7 @@ export function OhEncounterWorkspacePage({
                 <OhEncounterContextPanel
                   completionRef={completionRef}
                   cofCompletionRef={cofCompletionRef}
+                  employeeContinueRef={employeeContinueRef}
                   completing={completing}
                   activePanel={activePanel}
                   activeStep={activeStep}

@@ -296,14 +296,16 @@ export function useOhEncounterWorkspaceData(encounterId: number | null) {
       fitnessQuery.isError ||
       certificatesQuery.isError ||
       iodQuery.isError,
-    refetchAll: () => {
-      void examinationsQuery.refetch();
-      void employeeFormsQuery.refetch();
-      void cofResponsesQuery.refetch();
-      void findingsQuery.refetch();
-      void fitnessQuery.refetch();
-      void certificatesQuery.refetch();
-      void iodQuery.refetch();
+    refetchAll: async () => {
+      await Promise.all([
+        examinationsQuery.refetch(),
+        employeeFormsQuery.refetch(),
+        cofResponsesQuery.refetch(),
+        findingsQuery.refetch(),
+        fitnessQuery.refetch(),
+        certificatesQuery.refetch(),
+        iodQuery.refetch(),
+      ]);
     },
   };
 }

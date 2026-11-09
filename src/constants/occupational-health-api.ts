@@ -115,5 +115,6 @@ export const OCCUPATIONAL_HEALTH_API_PATHS = {
   ohCofResponseResponses: (uuid: string) => `/oh-cof-responses/${uuid}/responses/`,
   ohCofResponseTemplateVersion: (uuid: string) => `/oh-cof-responses/${uuid}/template-version/`,
   ohEmployeeFormResponseTemplateVersion: (uuid: string) => `/oh-employee-form-responses/${uuid}/template-version/`,
+  ohEmployeeFormResponseReopen: (uuid: string) => `/oh-employee-form-responses/${uuid}/reopen/`,
   ohFeatureFlags: "/oh-feature-flags/",
 } as const;
