@@ -1,7 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { ROUTES } from "@/constants/routes";
 import { createNativeOhVisit } from "@/features/occupational-health/services/native-visit.service";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -97,7 +95,6 @@ export function CustomerVisitDialog({
   onVisitChanged,
 }: CustomerVisitDialogProps) {
   const { toast } = useToast();
-  const router = useRouter();
   const queryClient = useQueryClient();
   const nativeSubmissionKey = useRef<string | null>(null);
   const { userData } = useUser();
@@ -365,19 +362,42 @@ export function CustomerVisitDialog({
       if (department?.department_type === OH_DEPARTMENT_TYPE) {
         if (!values.visit_type) {
           form.setError("visit_type", { type: "manual", message: "Select a visit type" });
+          setStartStep("visit");
           return;
         }
         nativeSubmissionKey.current ??= crypto.randomUUID();
-        const native = await createNativeOhVisit({
-          customer_uuid: customer.uuid, department_uuid: values.department, clinic_uuid: values.clinic,
-          visit_date: new Date(values.visit_date).toISOString(), visit_type_uuid: values.visit_type,
+        await createNativeOhVisit({
+          customer_uuid: customer.uuid,
+          department_uuid: values.department,
+          clinic_uuid: values.clinic,
+          visit_date: new Date(values.visit_date).toISOString(),
+          visit_type_uuid: values.visit_type,
           idempotency_key: nativeSubmissionKey.current,
+          mode_of_payment: values.mode_of_payment,
+          insurance_scheme:
+            values.mode_of_payment === "insurance"
+              ? values.insurance_scheme || null
+              : null,
+          requires_pre_authorization:
+            values.mode_of_payment === "insurance"
+              ? values.requires_pre_authorization
+              : false,
+          pre_authorization_number: values.requires_pre_authorization
+            ? values.pre_authorization_number.trim()
+            : "",
+          pre_authorization_comments: values.requires_pre_authorization
+            ? values.pre_authorization_comments.trim()
+            : "",
         });
         if (generation !== contextGeneration.current) return;
         void queryClient.invalidateQueries({ queryKey: ["oh-encounters"] });
+        void queryClient.invalidateQueries({ queryKey: ["customers"] });
         onOpenChange(false);
-        router.push(ROUTES.occupationalHealthEncounter(native.visit, native.uuid));
-        toast({ variant: "success", title: "OH visit started" });
+        toast({
+          variant: "success",
+          title: "OH visit started",
+          description: `Successfully started visit for ${customerName}.`,
+        });
         return;
       }
       const visit = await createCustomerVisit(
@@ -485,7 +505,10 @@ export function CustomerVisitDialog({
   const footerRecap = activeVisit ? "This will end the current visit." : null;
 
   async function handleContinueToPayment() {
-    const valid = await form.trigger(["clinic", "department", "visit_date"]);
+    const fields = isOhDepartment
+      ? (["clinic", "department", "visit_date", "visit_type"] as const)
+      : (["clinic", "department", "visit_date"] as const);
+    const valid = await form.trigger([...fields]);
     if (!valid) {
       return;
     }
@@ -572,7 +595,7 @@ export function CustomerVisitDialog({
                 <StartVisitFormFields
                   form={form}
                   nativeOh={isOhDepartment}
-                  step={isOhDepartment ? "visit" : startStep}
+                  step={startStep}
                   onStepChange={(step) => {
                     if (step !== "visit" && (showRiskProfileNotice || eligibilityUnavailable)) {
                       return;
@@ -646,12 +669,38 @@ export function CustomerVisitDialog({
                   </DestructiveButton>
                 )}
               </>
+            ) : hasDefaultClinic && isOhDepartment && startStep === "payment" ? (
+              <>
+                <SecondaryButton type="button" disabled={isSubmitting} onClick={() => setStartStep("visit")}>
+                  Back
+                </SecondaryButton>
+                <PrimaryButton
+                  type="button"
+                  disabled={
+                    isSubmitting || eligibilityUnavailable || showRiskProfileNotice ||
+                    (modeOfPayment === "insurance" && insuranceSchemes.length === 0)
+                  }
+                  onClick={() => void handleStartVisit()}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                      Starting…
+                    </>
+                  ) : (
+                    "Start OH visit"
+                  )}
+                </PrimaryButton>
+              </>
             ) : hasDefaultClinic && isOhDepartment ? (
               <>
                 <SecondaryButton type="button" onClick={() => onOpenChange(false)} disabled={isSubmitting}>Cancel</SecondaryButton>
-                <PrimaryButton type="button" disabled={isSubmitting || eligibilityUnavailable || showRiskProfileNotice}
-                  onClick={() => void handleStartVisit()}>
-                  {isSubmitting ? "Starting…" : "Start OH visit"}
+                <PrimaryButton
+                  type="button"
+                  disabled={isSubmitting || eligibilityUnavailable || showRiskProfileNotice}
+                  onClick={() => void handleContinueToPayment()}
+                >
+                  Continue
                 </PrimaryButton>
               </>
             ) : hasDefaultClinic && startStep === "attachments" ? (

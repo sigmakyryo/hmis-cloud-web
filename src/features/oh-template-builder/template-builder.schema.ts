@@ -48,6 +48,45 @@ export const templateFormSchema = z.object({
   code: upperCode,
 });
 
+export const templateBillingSchema = z
+  .object({
+    billable: z.boolean(),
+    productUuid: z.string().uuid().nullable(),
+  })
+  .superRefine((values, ctx) => {
+    if (values.billable && !values.productUuid) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["productUuid"],
+        message: "Choose the product used for this form's charge.",
+      });
+    }
+  });
+
+export const itemBillingSchema = z
+  .object({
+    billable: z.boolean(),
+    destination: z.enum(["lab", "billing_only"]).nullable(),
+    productUuids: z.array(z.string().uuid()),
+  })
+  .superRefine((values, ctx) => {
+    if (!values.billable) return;
+    if (!values.destination) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["destination"],
+        message: "Choose Lab or Billing only.",
+      });
+    }
+    if (values.productUuids.length < 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["productUuids"],
+        message: "Choose at least one product.",
+      });
+    }
+  });
+
 const sectionFormObject = z.object({
   name,
   isMandatory: z.boolean(),
@@ -105,6 +144,11 @@ export const itemFormSchema = z.object({
       code: z.string().trim().max(64),
     }),
   ),
+  billing: itemBillingSchema.default({
+    billable: false,
+    destination: null,
+    productUuids: [],
+  }),
 });
 
 export type TemplateFormInput = z.input<typeof templateFormSchema>;

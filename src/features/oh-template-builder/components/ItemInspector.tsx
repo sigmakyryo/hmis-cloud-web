@@ -18,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { RequiredFieldMarker } from "@/components/ui/required-field-marker";
 import { Switch } from "@/components/ui/switch";
+import { ItemBillingFields } from "@/features/oh-template-builder/components/BillingFields";
 import { ConfirmActionButton } from "@/features/oh-template-builder/components/ConfirmActionButton";
 import {
   InspectorShell,
@@ -45,7 +46,7 @@ type ItemInspectorProps = {
 };
 
 export function ItemInspector({ attachment, item }: ItemInspectorProps) {
-  const { updateItem, archiveItem, isPending, select } = useTemplateBuilder();
+  const { updateItem, archiveItem, isPending, select, template } = useTemplateBuilder();
   const form = useForm<ItemFormInput, unknown, ItemFormValues>({
     resolver: zodResolver(itemFormSchema),
     values: {
@@ -62,6 +63,11 @@ export function ItemInspector({ attachment, item }: ItemInspectorProps) {
       overrideResponseFields: normalizeResponseFields(
         item.overrideResponseFields ?? item.effectiveResponseFields,
       ),
+      billing: {
+        billable: item.billing.billable,
+        destination: item.billing.destination,
+        productUuids: item.billing.productUuids,
+      },
     },
   });
   const inheritsFields = useWatch({ control: form.control, name: "inheritsResponseFields" });
@@ -207,6 +213,17 @@ export function ItemInspector({ attachment, item }: ItemInspectorProps) {
                     )}
                   />
                   <ItemScheduleEditor />
+                  <FormField
+                    control={form.control}
+                    name="billing"
+                    render={({ field }) => (
+                      <ItemBillingFields
+                        value={field.value}
+                        onChange={field.onChange}
+                        formBillable={Boolean(template?.billing.billable)}
+                      />
+                    )}
+                  />
                 </div>
               ),
             },

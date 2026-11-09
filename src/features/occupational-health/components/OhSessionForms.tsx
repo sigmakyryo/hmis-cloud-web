@@ -40,13 +40,11 @@ type OhSessionFormsProps = {
 };
 
 export function OhSessionFormNav({
-  visitTypeName,
   steps,
   activeStep,
   statuses,
   onSelect,
 }: {
-  visitTypeName?: string | null;
   steps: SessionFormStep[];
   activeStep: string;
   statuses: Record<string, SessionStepStatus>;
@@ -54,20 +52,10 @@ export function OhSessionFormNav({
 }) {
   return (
     <div
-      className="shrink-0 border-b border-dash-border bg-white px-5 py-3"
+      className="shrink-0 border-b border-dash-border bg-white px-5 py-2"
       data-testid="oh-session-form-nav"
     >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-brand-primary">
-            Visit forms
-          </p>
-          <p className="truncate text-sm font-semibold text-brand-navy">
-            {visitTypeName || "Occupational health visit"}
-          </p>
-        </div>
-      </div>
-      <nav aria-label="Visit forms" className="mt-3 flex flex-wrap gap-2">
+      <nav aria-label="Visit forms" className="flex flex-wrap gap-2">
         {steps.map((step, index) => {
           const key = sessionFormStepKey(step);
           const current = key === activeStep;

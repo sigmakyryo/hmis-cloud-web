@@ -56,8 +56,9 @@ export function isTemplateKind(value: string): value is TemplateKind {
   return (TEMPLATE_KINDS as readonly string[]).includes(value);
 }
 
-export function templateGalleryHref(kind: TemplateKind) {
-  return `${ROUTES.settingsModuleOccupationalHealth}?tab=${TEMPLATE_KIND_META[kind].settingsTab}`;
+/** Back-target for the template builder. Forms opened from OHS Forms return there. */
+export function templateGalleryHref(_kind: TemplateKind) {
+  return ROUTES.occupationalHealthForms;
 }
 
 export const templateQueryKeys = {

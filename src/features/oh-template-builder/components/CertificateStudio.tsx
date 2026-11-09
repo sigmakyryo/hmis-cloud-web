@@ -122,7 +122,7 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
   const publishing = isPending("template:publish");
 
   if (loadError) {
-    return <div role="alert" className="flex h-full flex-col items-center justify-center gap-3 bg-[#fafaf9] p-6 text-sm text-brand-navy"><h1>This template could not be opened</h1><p>{getErrorMessage(loadError, "It may have been archived or you may no longer have access.")}</p><Link href={templateGalleryHref(kind)} className="text-brand-primary underline">Back to templates</Link></div>;
+    return <div role="alert" className="flex h-full flex-col items-center justify-center gap-3 bg-[#fafaf9] p-6 text-sm text-brand-navy"><h1>This template could not be opened</h1><p>{getErrorMessage(loadError, "It may have been archived or you may no longer have access.")}</p><Link href={templateGalleryHref(kind)} className="text-brand-primary underline">Back to forms</Link></div>;
   }
 
   async function send(text: string, approval?: AiApprovalDecision) {
@@ -301,8 +301,8 @@ export function CertificateStudio({ view }: CertificateStudioProps) {
             <div className="flex min-w-0 flex-1 items-center gap-1.5">
               <Link
                 href={templateGalleryHref(kind)}
-                aria-label={`Back to ${TEMPLATE_KIND_META[kind].pluralLabel.toLowerCase()}`}
-                title={`Back to ${TEMPLATE_KIND_META[kind].pluralLabel.toLowerCase()}`}
+                aria-label="Back to forms"
+                title="Back to forms"
                 className="grid size-6 shrink-0 place-items-center rounded-full text-dash-muted hover:text-brand-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
               >
                 <ArrowLeft className="size-3.5" aria-hidden />

@@ -7,7 +7,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { CertificateStudio } from "@/features/oh-template-builder/components/CertificateStudio";
 import type { BuilderMode } from "@/features/oh-template-builder/components/TemplateBuilderTopBar";
 import { TemplateBuilderProvider } from "@/features/oh-template-builder/hooks/useTemplateBuilder";
-import { TEMPLATE_KIND_META, templateGalleryHref } from "@/features/oh-template-builder/lib/templateKinds";
+import { templateGalleryHref } from "@/features/oh-template-builder/lib/templateKinds";
 import type { TemplateKind } from "@/features/oh-template-builder/template-builder.types";
 import { useUser } from "@/providers/user-provider";
 
@@ -50,7 +50,7 @@ function BackButton({ kind }: { kind: TemplateKind }) {
   return (
     <SecondaryButton asChild>
       <Link href={templateGalleryHref(kind)}>
-        Back to {TEMPLATE_KIND_META[kind].pluralLabel.toLowerCase()}
+        Back to forms
       </Link>
     </SecondaryButton>
   );

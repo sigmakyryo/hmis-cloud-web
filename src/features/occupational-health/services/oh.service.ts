@@ -1331,7 +1331,11 @@ export async function createOhCofTemplate(payload: {
 
 export async function updateOhCofTemplate(
   uuid: string,
-  payload: { name?: string; active?: boolean },
+  payload: {
+    name?: string;
+    active?: boolean;
+    billing_json?: import("@/features/occupational-health/types").OhBillingFormConfig | null;
+  },
 ) {
   return bffRequest<OhCofTemplate>(
     BFF_OCCUPATIONAL_HEALTH_ROUTES.cofTemplate(uuid),
@@ -1460,7 +1464,8 @@ export async function createOhLibrarySectionItem(payload: {
   names_i18n?: Record<string, string>;
   override_response_fields?: OhResponseField[] | null;
   sort_order?: number;
-  active?: boolean;
+  billing_json?: import("@/features/occupational-health/types").OhBillingItemConfig | null;
+    active?: boolean;
 }) {
   return bffRequest<OhLibrarySectionItem>(
     BFF_OCCUPATIONAL_HEALTH_ROUTES.librarySectionItems,
@@ -1474,6 +1479,7 @@ export async function updateOhLibrarySectionItem(
     code?: string;
     names_i18n?: Record<string, string>;
     override_response_fields?: OhResponseField[] | null;
+    billing_json?: import("@/features/occupational-health/types").OhBillingItemConfig | null;
     sort_order?: number;
     active?: boolean;
   },
@@ -1605,7 +1611,11 @@ export async function createOhExamTemplate(payload: {
 
 export async function updateOhExamTemplate(
   uuid: string,
-  payload: { name?: string; active?: boolean },
+  payload: {
+    name?: string;
+    active?: boolean;
+    billing_json?: import("@/features/occupational-health/types").OhBillingFormConfig | null;
+  },
 ) {
   return bffRequest<OhExamTemplate>(
     BFF_OCCUPATIONAL_HEALTH_ROUTES.examTemplate(uuid),
@@ -1700,7 +1710,11 @@ export async function createOhEmployeeFormTemplate(payload: { name: string; code
   });
 }
 
-export async function updateOhEmployeeFormTemplate(uuid: string, payload: { name?: string; active?: boolean }) {
+export async function updateOhEmployeeFormTemplate(uuid: string, payload: {
+  name?: string;
+  active?: boolean;
+  billing_json?: import("@/features/occupational-health/types").OhBillingFormConfig | null;
+}) {
   return bffRequest<OhExamTemplate>(BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormTemplate(uuid), {
     method: "PATCH",
     body: payload,

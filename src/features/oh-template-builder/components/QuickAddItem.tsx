@@ -31,6 +31,7 @@ export function QuickAddItem({ sectionUuid, attachmentUuid }: QuickAddItemProps)
       responses: [],
       inheritsResponseFields: true,
       overrideResponseFields: [],
+      billing: { billable: false, destination: null, productUuids: [] },
     });
     if (created) {
       setName("");

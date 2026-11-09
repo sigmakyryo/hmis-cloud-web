@@ -167,6 +167,7 @@ export function OhEncounterWorkspacePage({
         <OhEncounterHeader
           customer={customer}
           encounter={encounter}
+          visitTypeName={encounter.visit_type?.name}
           actions={<div className="flex flex-wrap items-center justify-end gap-3">
             <Link href={ROUTES.occupationalHealth} className="text-[13px] font-medium text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30">OHS Queue</Link>
             {encounter.origin === "laravel" && encounter.is_active ? <PrimaryButton type="button" disabled={completing} onClick={async () => {
@@ -250,7 +251,6 @@ export function OhEncounterWorkspacePage({
           </div>}
         />
         <OhSessionFormNav
-          visitTypeName={encounter.visit_type?.name}
           steps={formSteps}
           activeStep={activeStep}
           statuses={buildSessionStepStatuses(formSteps, workspace)}

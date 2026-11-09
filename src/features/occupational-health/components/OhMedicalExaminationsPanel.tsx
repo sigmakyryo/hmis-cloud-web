@@ -636,6 +636,7 @@ export function OhMedicalExaminationsPanel({
               templateName={historicalEnvelope?.template_name ?? riskProfile?.exam_template_name}
               value={answers}
               onChange={handleAnswersChange}
+              billingCharges={examination?.billing_charges ?? []}
             />
             {examNotes.trim() ? <p className="text-sm text-dash-muted">{examNotes.trim()}</p> : null}
             <fieldset disabled={encounter.is_active === false || completing}><OhProcedureChecklistPanel

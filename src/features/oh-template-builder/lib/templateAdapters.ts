@@ -75,6 +75,7 @@ export type TemplateAdapter = {
   getTemplate: (uuid: string) => Promise<BuilderTemplate>;
   createTemplate: (input: { name: string; code: string }) => Promise<BuilderTemplate>;
   renameTemplate: (uuid: string, name: string) => Promise<BuilderTemplate>;
+  updateTemplateBilling: (uuid: string, billing: BuilderTemplate["billing"]) => Promise<BuilderTemplate>;
   archiveTemplate: (uuid: string) => Promise<void>;
   listAttachments: (templateUuid: string) => Promise<BuilderAttachment[]>;
   attachSection: (
@@ -102,6 +103,7 @@ const LIBRARY_KIND: Record<TemplateKind, OhLibrarySectionKind> = {
 };
 
 function toTemplate(row: OhCofTemplate | OhExamTemplate): BuilderTemplate {
+  const billing = row.billing_json ?? null;
   return {
     uuid: row.uuid,
     name: row.name,
@@ -111,6 +113,10 @@ function toTemplate(row: OhCofTemplate | OhExamTemplate): BuilderTemplate {
     publishedVersionNumber: row.published_version_number ?? null,
     publishedVersionStatus: row.published_version_status ?? null,
     updatedAt: row.updated_at ?? null,
+    billing: {
+      billable: Boolean(billing?.billable),
+      productUuid: billing?.product_uuid ?? null,
+    },
   };
 }
 
@@ -152,6 +158,7 @@ function fromLibraryItem(
     row.override_response_fields,
   );
   const effective = row.effective_response_fields ?? fields;
+  const billing = row.billing_json ?? null;
   return {
     uuid: row.uuid,
     code: row.code,
@@ -164,6 +171,11 @@ function fromLibraryItem(
     overrideResponseFields: row.override_response_fields,
     effectiveResponseFields: effective,
     inheritsResponseFields: row.inherits_response_fields ?? inherits,
+    billing: {
+      billable: Boolean(billing?.billable),
+      destination: billing?.destination ?? null,
+      productUuids: Array.isArray(billing?.product_uuids) ? billing.product_uuids : [],
+    },
   };
 }
 
@@ -189,6 +201,13 @@ function itemPayload(_item: BuilderItem | null, input: ItemInput) {
     code: toUpperCode(input.code),
     names_i18n: buildItemNames(input.name),
     override_response_fields: override,
+    billing_json: input.billing?.billable
+      ? {
+          billable: true,
+          destination: input.billing.destination ?? "billing_only",
+          product_uuids: input.billing.productUuids ?? [],
+        }
+      : { billable: false, destination: null, product_uuids: [] },
   };
 }
 
@@ -237,6 +256,14 @@ function createLibraryAdapter(
     getTemplate: async (uuid) => toTemplate(await templates.get(uuid)),
     createTemplate: async (input) => toTemplate(await templates.create(input)),
     renameTemplate: async (uuid, name) => toTemplate(await templates.update(uuid, { name })),
+    updateTemplateBilling: async (uuid, billing) =>
+      toTemplate(
+        await templates.update(uuid, {
+          billing_json: billing.billable
+            ? { billable: true, product_uuid: billing.productUuid }
+            : { billable: false, product_uuid: null },
+        }),
+      ),
     archiveTemplate: async (uuid) => {
       await templates.archive(uuid);
     },

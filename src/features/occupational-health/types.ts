@@ -310,6 +310,32 @@ export type OhLibrarySection = {
   updated_at?: string;
 };
 
+
+export type OhBillingDestination = "lab" | "billing_only";
+
+export type OhBillingFormConfig = {
+  billable?: boolean;
+  product_uuid?: string | null;
+};
+
+export type OhBillingItemConfig = {
+  billable?: boolean;
+  destination?: OhBillingDestination | null;
+  product_uuids?: string[];
+};
+
+export type OhVisitBillingCharge = {
+  uuid: string;
+  billing_key: string;
+  scope: "form" | "item" | string;
+  form_uuid?: string | null;
+  item_code?: string | null;
+  product_uuid: string;
+  destination: string;
+  status: "pending" | "sent" | "failed" | "removed" | string;
+  ui_status?: string | null;
+};
+
 export type OhLibrarySectionItem = {
   id: number;
   uuid: string;
@@ -319,6 +345,7 @@ export type OhLibrarySectionItem = {
   override_response_fields: OhResponseField[] | null;
   inherits_response_fields?: boolean;
   effective_response_fields?: OhResponseField[];
+  billing_json?: OhBillingItemConfig | null;
   sort_order: number;
   active: boolean;
   created_at?: string;
@@ -363,6 +390,7 @@ export type OhCofTemplate = {
   section_count?: number;
   published_version_number?: number | null;
   published_version_status?: OhTemplateVersionStatus | null;
+  billing_json?: OhBillingFormConfig | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -390,6 +418,7 @@ export type OhExamTemplate = {
   section_count?: number;
   published_version_number?: number | null;
   published_version_status?: OhTemplateVersionStatus | null;
+  billing_json?: OhBillingFormConfig | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -487,12 +516,14 @@ export type OhTemplateCapture = {
   template_uuid?: string | null;
   template_version_number?: number | null;
   template_snapshot?: Record<string, unknown> | null;
+  billing_charges?: OhVisitBillingCharge[];
   is_active?: boolean;
   created_at?: string;
   updated_at?: string;
 };
 
 export type OhExamination = {
+  billing_charges?: OhVisitBillingCharge[];
   template_uuid?: string | null;
   template_version_number?: number | null;
   template_version_uuid?: string | null;

@@ -241,6 +241,7 @@ export function OhSessionEmployeeForm({
                 value={currentAnswers}
                 disabled={save.isPending || encounter.is_active === false}
                 onChange={setAnswers}
+                billingCharges={form?.billing_charges ?? []}
               />
             ) : incomplete ? (
               <p className="text-sm text-dash-muted">

@@ -13,6 +13,7 @@ import { formatAge } from "@/lib/age";
 type OhEncounterHeaderProps = {
   customer: Customer | null;
   encounter: OhVisitEncounter;
+  visitTypeName?: string | null;
   actions?: ReactNode;
 };
 
@@ -30,10 +31,12 @@ function formatStartedLabel(startedAt: string | null | undefined): string {
 export function OhEncounterHeader({
   customer,
   encounter,
+  visitTypeName,
   actions,
 }: OhEncounterHeaderProps) {
   const fullName = customer ? formatCustomerName(customer) : "OH encounter";
   const identiconSeed = customer?.uuid || customer?.customer_identifier || fullName;
+  const visitLabel = visitTypeName?.trim() || null;
 
   const facts = [
     customer?.customer_identifier,
@@ -47,25 +50,34 @@ export function OhEncounterHeader({
 
   return (
     <header
-      className="flex min-h-14 shrink-0 flex-wrap items-center justify-between gap-3 py-3 sm:flex-nowrap border-b border-dash-border bg-white px-5"
+      className="flex min-h-14 shrink-0 items-center justify-between gap-3 border-b border-dash-border bg-white px-5 py-2.5"
       data-testid="oh-encounter-header"
     >
-      <div className="flex min-w-0 items-center gap-3">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
         <UserIdenticon
           seed={identiconSeed}
           name={fullName}
           className="size-8 shrink-0 rounded-full"
           fallbackClassName="rounded-full text-xs font-semibold"
         />
-        <div className="min-w-0">
-          <div className="flex min-w-0 items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
             <h1 className="truncate text-[15px] font-semibold tracking-tight text-brand-navy">
               {fullName}
             </h1>
             <OpdEncounterStatusBadge status={encounter.status} />
+            {visitLabel ? (
+              <span
+                className="truncate text-[12px] font-semibold text-brand-primary"
+                data-testid="oh-encounter-visit-type"
+                title={visitLabel}
+              >
+                {visitLabel}
+              </span>
+            ) : null}
           </div>
           {facts.length > 0 ? (
-            <p className="truncate text-[12px] text-dash-muted">
+            <p className="mt-0.5 truncate text-[12px] text-dash-muted">
               {facts.map((fact, index) => (
                 <span key={`${fact}-${index}`}>
                   {index > 0 ? <span aria-hidden> · </span> : null}
@@ -90,7 +102,7 @@ export function OhEncounterHeader({
           ) : null}
         </div>
       </div>
-      {actions ? <div className="shrink-0">{actions}</div> : null}
+      {actions ? <div className="shrink-0 self-center">{actions}</div> : null}
     </header>
   );
 }

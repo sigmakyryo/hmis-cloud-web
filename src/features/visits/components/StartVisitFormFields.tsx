@@ -180,7 +180,7 @@ export function StartVisitFormFields({
 
   return (
     <div className="space-y-6">
-      {riskProfileNotice || nativeOh ? null : (
+      {riskProfileNotice ? null : (
       <nav
         aria-label="Start visit steps"
         className="flex items-center gap-5 border-b border-dash-border/70"
@@ -216,6 +216,7 @@ export function StartVisitFormFields({
             <span className="absolute inset-x-0 bottom-0 h-px bg-brand-navy" />
           ) : null}
         </button>
+        {nativeOh ? null : (
         <button
           type="button"
           disabled={lockLaterSteps}
@@ -232,6 +233,7 @@ export function StartVisitFormFields({
             <span className="absolute inset-x-0 bottom-0 h-px bg-brand-navy" />
           ) : null}
         </button>
+        )}
       </nav>
       )}
 

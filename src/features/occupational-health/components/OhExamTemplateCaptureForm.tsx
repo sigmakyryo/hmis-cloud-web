@@ -4,7 +4,7 @@ import { Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RequiredFieldMarker } from "@/components/ui/required-field-marker";
-import type { OhResponseField } from "../types";
+import type { OhResponseField, OhVisitBillingCharge } from "../types";
 import { emptyExamTemplateAnswers, fieldOwnerKey, type ExamTemplateAnswers, type ExamTemplateSnapshot } from "../lib/exam-template-snapshot";
 import { fieldErrorKey, isRequiredField, sectionErrorKey, type ExamErrors } from "../lib/exam-template-validation";
 import { cn } from "@/lib/utils";
@@ -17,9 +17,10 @@ type Props = {
   disabled?: boolean;
   errors?: ExamErrors;
   setupHref?: string;
+  billingCharges?: OhVisitBillingCharge[];
 };
 
-export function OhExamTemplateCaptureForm({ snapshot, value, onChange, disabled, errors = {} }: Props) {
+export function OhExamTemplateCaptureForm({ snapshot, value, onChange, disabled, errors = {}, billingCharges = [] }: Props) {
   const answers = value ?? emptyExamTemplateAnswers();
   function setField(owner: string, code: string, next: string) {
     onChange({ ...answers, fields: { ...answers.fields, [owner]: { ...answers.fields[owner], [code]: next } } });
@@ -51,7 +52,15 @@ export function OhExamTemplateCaptureForm({ snapshot, value, onChange, disabled,
                   }
                   return <li key={item.code} className={cn("min-w-0 border-b border-dash-border/60", checked && "sm:col-span-2")}>
                     <button type="button" role={exclusive ? "radio" : "checkbox"} aria-checked={checked} aria-expanded={checked} aria-controls={panelId} aria-invalid={Boolean(sectionError)} aria-describedby={sectionError ? errorId : undefined} data-exam-error-key={sectionErrorKey(section.code)} disabled={disabled} onClick={toggle} className="flex w-full items-center gap-3 px-1 py-3 text-left text-[13.5px] font-medium text-brand-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 disabled:opacity-60">
-                      <span aria-hidden className={cn("flex size-[18px] shrink-0 items-center justify-center border", exclusive ? "rounded-full" : "rounded", checked ? "border-brand-primary bg-brand-primary text-white" : "border-slate-300 bg-white")}>{checked ? <Check className="size-3" /> : null}</span>{item.name}
+                      <span aria-hidden className={cn("flex size-[18px] shrink-0 items-center justify-center border", exclusive ? "rounded-full" : "rounded", checked ? "border-brand-primary bg-brand-primary text-white" : "border-slate-300 bg-white")}>{checked ? <Check className="size-3" /> : null}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block">{item.name}</span>
+                        {checked ? (() => {
+                          const charge = billingCharges.find((row) => row.item_code === item.code && row.status !== "removed");
+                          if (!charge?.ui_status) return null;
+                          return <span className="mt-0.5 block text-[11px] font-normal text-dash-muted">{charge.ui_status}</span>;
+                        })() : null}
+                      </span>
                     </button>
                     {checked ? <div id={panelId} className="mb-4 ml-8 space-y-4 pt-1">
                       {fields.map((field) => <ResponseField key={field.code} field={field} owner={owner} value={answers.fields[owner]?.[field.code] ?? ""} disabled={disabled} errors={errors} onChange={(next) => setField(owner, field.code, next)} />)}

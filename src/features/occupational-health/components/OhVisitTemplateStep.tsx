@@ -305,6 +305,7 @@ export function OhVisitTemplateStep({
             }}
             disabled={encounter.is_active === false || saving}
             errors={errors}
+            billingCharges={current?.billing_charges ?? []}
           />
         ) : (
           <p className="py-6 text-sm text-dash-muted">Opening the published form.</p>

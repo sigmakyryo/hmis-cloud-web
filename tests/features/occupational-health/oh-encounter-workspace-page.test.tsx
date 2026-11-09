@@ -375,7 +375,9 @@ describe("OhEncounterWorkspacePage", () => {
     ohService.createOhEmployeeFormInvite.mockResolvedValue({ token: "session-token", expires_at: "2026-11-23T00:00:00Z" });
     renderPage();
 
-    expect(await screen.findByText("Pre-employment")).toBeInTheDocument();
+    expect(await screen.findByTestId("oh-encounter-visit-type")).toHaveTextContent("Pre-employment");
+    expect(within(screen.getByTestId("oh-encounter-header")).getByText("Pre-employment")).toBeInTheDocument();
+    expect(screen.queryByText("Visit forms")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Employee form/ })).toHaveAttribute("aria-current", "page");
     expect(screen.queryByTestId("oh-exam-details-step")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Enter manually/ }));
