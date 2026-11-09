@@ -14,6 +14,7 @@ export type OhVaccine = {
   dose_volume_ml: number | null;
   contraindications: string[];
   billing_product_uuid: string | null;
+  titre_lab_product_uuid?: string | null;
   active: boolean;
 };
 
@@ -52,6 +53,7 @@ export type OhImmSchedule = {
 
 export type OhImmStatus = {
   uuid: string;
+  certificate_gate_block?: boolean;
   customer_uuid: string;
   vaccine_uuid: string | null;
   vaccine_code: string;
@@ -185,4 +187,138 @@ export function fetchOhImmDue(withinDays = 7) {
   return list<OhImmStatus>(
     `${BFF_OCCUPATIONAL_HEALTH_ROUTES.ohImmDue}?within_days=${withinDays}`,
   );
+}
+
+export function previewOhImmAssignment(assignment: Record<string, unknown>, pregnancy?: boolean) {
+  return bffRequest<{ matched: number; scanned: number; sample: Array<Record<string, string>> }>(
+    BFF_OCCUPATIONAL_HEALTH_ROUTES.ohImmPreviewAssignment,
+    { method: "POST", body: { assignment, ...(pregnancy != null ? { pregnancy } : {}) } },
+  );
+}
+
+export function remindOhImm(statusUuids: string[], channel: "email" | "sms" = "email") {
+  return bffRequest<Array<Record<string, unknown>>>(BFF_OCCUPATIONAL_HEALTH_ROUTES.ohImmRemind, {
+    method: "POST",
+    body: { status_uuids: statusUuids, channel },
+  });
+}
+
+export function fetchOhImmCompliance(groupBy: "employer" | "department" | "role" = "employer") {
+  return bffRequest<{
+    group_by: string;
+    summary: { people: number; compliant: number; percent_compliant: number; overdue_rows: number };
+    groups: Array<{ group: string; people: number; compliant: number; overdue: number; percent_compliant: number }>;
+    overdue: Array<Record<string, unknown>>;
+  }>(`${BFF_OCCUPATIONAL_HEALTH_ROUTES.ohImmCompliance}?group_by=${groupBy}`);
+}
+
+export async function downloadOhImmComplianceCsv() {
+  const response = await fetch(BFF_OCCUPATIONAL_HEALTH_ROUTES.ohImmComplianceCsv, {
+    method: "GET",
+    credentials: "include",
+  });
+  if (!response.ok) {
+    throw new Error("Could not export immunisation compliance.");
+  }
+  const blob = await response.blob();
+  return { blob, filename: "oh-imm-compliance.csv" };
+}
+
+export function recordOhImmTitre(payload: Record<string, unknown>) {
+  return bffRequest<{ result: Record<string, unknown>; status: OhImmStatus }>(
+    BFF_OCCUPATIONAL_HEALTH_ROUTES.ohImmTitreResults,
+    { method: "POST", body: payload },
+  );
+}
+
+export function orderOhImmTitre(payload: Record<string, unknown>) {
+  return bffRequest<Record<string, unknown>>(BFF_OCCUPATIONAL_HEALTH_ROUTES.ohImmTitreOrder, {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function issueOhImmCertificate(customerUuid: string) {
+  return bffRequest<{
+    uuid: string;
+    display_name: string;
+    verify_url: string;
+    qr_svg: string;
+  }>(BFF_OCCUPATIONAL_HEALTH_ROUTES.ohImmCertificates, {
+    method: "POST",
+    body: { customer_uuid: customerUuid },
+  });
+}
+
+export function fetchOhImmDueFiltered(
+  withinDays = 7,
+  filters: Record<string, string> = {},
+) {
+  const params = new URLSearchParams({ within_days: String(withinDays) });
+  Object.entries(filters).forEach(([k, v]) => {
+    if (v) params.set(k, v);
+  });
+  return list<OhImmStatus>(`${BFF_OCCUPATIONAL_HEALTH_ROUTES.ohImmDue}?${params.toString()}`);
+}
+
+export function fetchOhImmFitnessGate(customerUuid: string) {
+  return bffRequest<{
+    mode: "off" | "warn" | "block";
+    blocking: boolean;
+    issues: Array<{ vaccine_code: string; status: string; message: string; next_due_date?: string | null }>;
+  }>(`${BFF_OCCUPATIONAL_HEALTH_ROUTES.ohImmFitnessGate}?customer_uuid=${encodeURIComponent(customerUuid)}`);
+}
+
+export function fetchOhImmAudits(params: { entity_type?: string; entity_uuid?: string; limit?: number } = {}) {
+  const q = new URLSearchParams();
+  if (params.entity_type) q.set("entity_type", params.entity_type);
+  if (params.entity_uuid) q.set("entity_uuid", params.entity_uuid);
+  if (params.limit) q.set("limit", String(params.limit));
+  const suffix = q.toString() ? `?${q}` : "";
+  return bffRequest<Array<Record<string, unknown>>>(
+    `${BFF_OCCUPATIONAL_HEALTH_ROUTES.ohImmAudits}${suffix}`,
+  );
+}
+
+export function exportOhImmPack(scheduleUuid: string) {
+  return bffRequest<Record<string, unknown>>(
+    BFF_OCCUPATIONAL_HEALTH_ROUTES.ohImmExportPack(scheduleUuid),
+  );
+}
+
+export function importOhImmPack(pack: Record<string, unknown>) {
+  return bffRequest<Record<string, unknown>>(BFF_OCCUPATIONAL_HEALTH_ROUTES.ohImmImportPack, {
+    method: "POST",
+    body: { pack },
+  });
+}
+
+export function fetchOhImmDhisMappings() {
+  return list<Record<string, unknown>>(BFF_OCCUPATIONAL_HEALTH_ROUTES.ohImmDhisMappings);
+}
+
+export function createOhImmDhisMapping(payload: Record<string, unknown>) {
+  return bffRequest<{ uuid: string }>(BFF_OCCUPATIONAL_HEALTH_ROUTES.ohImmDhisMappings, {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export async function downloadOhImmFhirNdjson() {
+  const response = await fetch(BFF_OCCUPATIONAL_HEALTH_ROUTES.ohImmFhirNdjson, {
+    method: "GET",
+    credentials: "include",
+  });
+  if (!response.ok) throw new Error("Could not export FHIR immunizations.");
+  return { blob: await response.blob(), filename: "oh-imm-fhir.ndjson" };
+}
+
+export async function downloadOhImmDhisCsv(period: string, orgUnit: string) {
+  const q = new URLSearchParams({ period, org_unit: orgUnit });
+  const response = await fetch(`${BFF_OCCUPATIONAL_HEALTH_ROUTES.ohImmDhisCsv}?${q}`, {
+    method: "GET",
+    credentials: "include",
+  });
+  if (!response.ok) throw new Error("Could not export DHIS2 values.");
+  return { blob: await response.blob(), filename: "oh-imm-dhis2.csv" };
 }

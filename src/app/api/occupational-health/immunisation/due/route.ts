@@ -3,7 +3,7 @@ import { createOccupationalHealthListHandlers } from "@/lib/server/occupational-
 
 const handlers = createOccupationalHealthListHandlers(
   OCCUPATIONAL_HEALTH_API_PATHS.ohImmDue,
-  ["within_days"],
+  ["within_days", "vaccine_code", "status", "employer", "department", "site", "role"],
 );
 
 export const GET = handlers.GET;

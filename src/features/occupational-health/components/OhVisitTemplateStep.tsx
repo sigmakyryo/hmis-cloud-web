@@ -34,6 +34,8 @@ import {
   recoverOhEmployeeFormResponseVersion,
 } from "@/features/occupational-health/services/oh.service";
 import type { OhTemplateCapture, OhVisitEncounter } from "@/features/occupational-health/types";
+import { fetchOhImmFitnessGate } from "@/features/occupational-health/services/immunisation.service";
+import Link from "next/link";
 import { appFont } from "@/lib/fonts";
 import { useToast } from "@/providers/toast-provider";
 import { useUser } from "@/providers/user-provider";
@@ -73,6 +75,8 @@ export function OhVisitTemplateStep({
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [recovering, setRecovering] = useState(false);
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
+  const [immWarnings, setImmWarnings] = useState<string[]>([]);
+  const [immBlocked, setImmBlocked] = useState<string | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
   const answersRef = useRef(answers);
   const currentRef = useRef(current);
@@ -96,6 +100,29 @@ export function OhVisitTemplateStep({
     Object.values(values).some((value) => String(value ?? "").trim() !== ""),
   );
   const templateUuid = current?.template_uuid ?? null;
+  const fitnessGateQuery = useQuery({
+    queryKey: ["oh-imm-fitness-gate", encounter.customer_uuid],
+    queryFn: () => fetchOhImmFitnessGate(encounter.customer_uuid),
+    enabled: family === "cof" && Boolean(encounter.customer_uuid),
+  });
+  const gateWarnings = useMemo(() => {
+    if (family !== "cof" || !fitnessGateQuery.data) return [] as string[];
+    const data = fitnessGateQuery.data;
+    if (data.mode === "warn" && (data.issues?.length ?? 0) > 0) {
+      return data.issues.map((i) => i.message);
+    }
+    return [] as string[];
+  }, [family, fitnessGateQuery.data]);
+  const gateBlocked = useMemo(() => {
+    if (family !== "cof" || !fitnessGateQuery.data?.blocking) return null as string | null;
+    const data = fitnessGateQuery.data;
+    return (
+      data.issues.map((i) => i.message).join(" ") ||
+      "Required vaccines are incomplete before this certificate can continue."
+    );
+  }, [family, fitnessGateQuery.data]);
+  const displayWarnings = immWarnings.length > 0 ? immWarnings : gateWarnings;
+  const displayBlocked = immBlocked ?? gateBlocked;
   const versionsQuery = useQuery({
     queryKey: ["oh-template-versions", family, templateUuid],
     queryFn: () =>
@@ -137,10 +164,17 @@ export function OhVisitTemplateStep({
         setCurrent(created);
         const envelope = created.responses_json?.[responseKey] as ExamTemplateResponseEnvelope | undefined;
         setAnswers(envelope?.answers ?? emptyExamTemplateAnswers());
+        if (family === "cof" && Array.isArray(created.immunisation_warnings)) {
+          setImmWarnings(created.immunisation_warnings);
+        }
         onSavedRef.current();
       } catch (error) {
         if (!cancelled) {
-          setMessage(error instanceof Error ? error.message : "This form could not be opened.");
+          const msg = error instanceof Error ? error.message : "This form could not be opened.";
+          setMessage(msg);
+          if (family === "cof" && /immunisation|immunization|vaccine/i.test(msg)) {
+            setImmBlocked(msg);
+          }
         }
       }
     }
@@ -181,10 +215,17 @@ export function OhVisitTemplateStep({
       setCurrent(updated);
       currentRef.current = updated;
       setMessage(null);
+      if (family === "cof" && Array.isArray(updated.immunisation_warnings)) {
+        setImmWarnings(updated.immunisation_warnings);
+      }
       onSavedRef.current();
       return true;
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "This form could not be saved.");
+      const msg = error instanceof Error ? error.message : "This form could not be saved.";
+      setMessage(msg);
+      if (family === "cof" && /immunisation|immunization|vaccine/i.test(msg)) {
+        setImmBlocked(msg);
+      }
       toast({
         variant: "error",
         title: "Could not save this form",

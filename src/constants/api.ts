@@ -391,6 +391,25 @@ export const BFF_OCCUPATIONAL_HEALTH_ROUTES = {
     `/api/occupational-health/immunisation/lots/${uuid}/recall`,
   ohImmUpdateVaccine: (uuid: string) =>
     `/api/occupational-health/immunisation/vaccines/${uuid}`,
+  ohImmPreviewAssignment: "/api/occupational-health/immunisation/schedules/preview-assignment",
+  ohImmRemind: "/api/occupational-health/immunisation/remind",
+  ohImmTitreOrder: "/api/occupational-health/immunisation/titre/order",
+  ohImmTitreResults: "/api/occupational-health/immunisation/titre/results",
+  ohImmCompliance: "/api/occupational-health/immunisation/compliance",
+  ohImmComplianceCsv: "/api/occupational-health/immunisation/compliance.csv",
+  ohImmFitnessGate: "/api/occupational-health/immunisation/fitness-gate",
+  ohImmCertificates: "/api/occupational-health/immunisation/certificates",
+  ohImmCertificatePrint: (uuid: string) =>
+    `/api/occupational-health/immunisation/certificates/${uuid}/print`,
+  ohImmPatientTitres: (customerUuid: string) =>
+    `/api/occupational-health/immunisation/patients/${customerUuid}/titres`,
+  ohImmAudits: "/api/occupational-health/immunisation/audits",
+  ohImmExportPack: (uuid: string) =>
+    `/api/occupational-health/immunisation/schedules/${uuid}/export-pack`,
+  ohImmImportPack: "/api/occupational-health/immunisation/packs/import",
+  ohImmDhisMappings: "/api/occupational-health/immunisation/dhis-mappings",
+  ohImmFhirNdjson: "/api/occupational-health/immunisation/export/fhir.ndjson",
+  ohImmDhisCsv: "/api/occupational-health/immunisation/export/dhis2.csv",
   ppeFitTests: "/api/occupational-health/ppe-fit-tests",
   foodHandlerClearances: "/api/occupational-health/food-handler-clearances",
   sickLeaveCertificates: "/api/occupational-health/sick-leave-certificates",

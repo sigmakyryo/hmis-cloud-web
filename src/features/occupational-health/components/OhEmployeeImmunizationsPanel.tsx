@@ -14,9 +14,12 @@ import {
   fetchOhImmLots,
   fetchOhImmPatient,
   fetchOhImmVaccines,
+  issueOhImmCertificate,
+  recordOhImmTitre,
   type OhImmDose,
   type OhImmStatus,
 } from "@/features/occupational-health/services/immunisation.service";
+import { BFF_OCCUPATIONAL_HEALTH_ROUTES } from "@/constants/api";
 import { useToast } from "@/providers/toast-provider";
 import { cn } from "@/lib/utils";
 
@@ -45,6 +48,7 @@ export function OhEmployeeImmunizationsPanel({
   const queryClient = useQueryClient();
   const [recordOpen, setRecordOpen] = useState(false);
   const [exemptionOpen, setExemptionOpen] = useState(false);
+  const [titreOpen, setTitreOpen] = useState(false);
 
   const record = useQuery({
     queryKey: ["oh-imm-patient", customerUuid],
@@ -136,6 +140,35 @@ export function OhEmployeeImmunizationsPanel({
           </p>
         </div>
         <div className="flex gap-2">
+          <SecondaryButton type="button" onClick={() => setTitreOpen(true)}>
+            Record titre
+          </SecondaryButton>
+          <SecondaryButton
+            type="button"
+            onClick={async () => {
+              try {
+                const cert = await issueOhImmCertificate(customerUuid);
+                window.open(
+                  BFF_OCCUPATIONAL_HEALTH_ROUTES.ohImmCertificatePrint(cert.uuid),
+                  "_blank",
+                  "noopener,noreferrer",
+                );
+                toast({
+                  variant: "success",
+                  title: "Certificate ready",
+                  description: "Print view opened with verification QR.",
+                });
+              } catch (error) {
+                toast({
+                  variant: "error",
+                  title: "Could not issue certificate",
+                  description: error instanceof Error ? error.message : "Try again.",
+                });
+              }
+            }}
+          >
+            Vaccination certificate
+          </SecondaryButton>
           <SecondaryButton type="button" onClick={() => setExemptionOpen(true)}>
             Decline / exempt
           </SecondaryButton>
@@ -193,6 +226,27 @@ export function OhEmployeeImmunizationsPanel({
           pending={administer.isPending}
           onClose={() => setRecordOpen(false)}
           onSubmit={(payload) => administer.mutate(payload)}
+        />
+      ) : null}
+      {titreOpen ? (
+        <TitreForm
+          vaccines={vaccines.data ?? []}
+          pending={false}
+          onClose={() => setTitreOpen(false)}
+          onSubmit={async (payload) => {
+            try {
+              await recordOhImmTitre({ ...payload, customer_uuid: customerUuid });
+              invalidate();
+              setTitreOpen(false);
+              toast({ variant: "success", title: "Titre saved" });
+            } catch (error) {
+              toast({
+                variant: "error",
+                title: "Could not save titre",
+                description: error instanceof Error ? error.message : "Try again.",
+              });
+            }
+          }}
         />
       ) : null}
       {exemptionOpen ? (
@@ -487,6 +541,81 @@ function ExemptionForm({
             }
           >
             Save
+          </PrimaryButton>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+function TitreForm({
+  vaccines,
+  pending,
+  onClose,
+  onSubmit,
+}: {
+  vaccines: Array<{ uuid: string; code: string; name: string }>;
+  pending: boolean;
+  onClose: () => void;
+  onSubmit: (payload: Record<string, unknown>) => void;
+}) {
+  const [vaccineUuid, setVaccineUuid] = useState(vaccines[0]?.uuid ?? "");
+  const [value, setValue] = useState("");
+  const [threshold, setThreshold] = useState("10");
+  return (
+    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/30 p-4 sm:items-center">
+      <div className="w-full max-w-md space-y-3 rounded-md border border-dash-border bg-white p-4 shadow-lg">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-brand-navy">Record titre result</h2>
+          <button type="button" className="text-[13px] text-dash-muted" onClick={onClose}>
+            Close
+          </button>
+        </div>
+        <div className="space-y-1.5">
+          <Label>Vaccine</Label>
+          <select
+            className="h-9 w-full rounded-md border border-dash-border bg-white px-3 text-[13px]"
+            value={vaccineUuid}
+            onChange={(e) => setVaccineUuid(e.target.value)}
+          >
+            {vaccines.map((v) => (
+              <option key={v.uuid} value={v.uuid}>
+                {v.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1.5">
+            <Label>Value</Label>
+            <Input value={value} onChange={(e) => setValue(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Threshold</Label>
+            <Input value={threshold} onChange={(e) => setThreshold(e.target.value)} />
+          </div>
+        </div>
+        <p className="text-[12px] text-dash-muted">
+          Below threshold marks the employee as a non-responder and sets a repeat series due.
+        </p>
+        <div className="flex justify-end gap-2">
+          <SecondaryButton type="button" onClick={onClose}>
+            Cancel
+          </SecondaryButton>
+          <PrimaryButton
+            type="button"
+            disabled={pending || !vaccineUuid || value === ""}
+            onClick={() =>
+              onSubmit({
+                vaccine_uuid: vaccineUuid,
+                value: Number(value),
+                threshold: Number(threshold),
+                source: "manual",
+              })
+            }
+          >
+            Save titre
           </PrimaryButton>
         </div>
       </div>
