@@ -373,6 +373,24 @@ export const BFF_OCCUPATIONAL_HEALTH_ROUTES = {
   fitnessCertificateWithdraw: (uuid: string) =>
     `/api/occupational-health/fitness-certificates/${uuid}/withdraw`,
   ohImmunisations: "/api/occupational-health/oh-immunisations",
+
+  ohImmVaccines: "/api/occupational-health/immunisation/vaccines",
+  ohImmLots: "/api/occupational-health/immunisation/lots",
+  ohImmSchedules: "/api/occupational-health/immunisation/schedules",
+  ohImmSeedExamples: "/api/occupational-health/immunisation/schedules/seed-examples",
+  ohImmAdminister: "/api/occupational-health/immunisation/administer",
+  ohImmExemptions: "/api/occupational-health/immunisation/exemptions",
+  ohImmAefi: "/api/occupational-health/immunisation/aefi",
+  ohImmDue: "/api/occupational-health/immunisation/due",
+  ohImmStatusRefresh: "/api/occupational-health/immunisation/status/refresh",
+  ohImmPatient: (customerUuid: string) =>
+    `/api/occupational-health/immunisation/patients/${customerUuid}`,
+  ohImmPublishSchedule: (uuid: string) =>
+    `/api/occupational-health/immunisation/schedules/${uuid}/publish`,
+  ohImmRecallLot: (uuid: string) =>
+    `/api/occupational-health/immunisation/lots/${uuid}/recall`,
+  ohImmUpdateVaccine: (uuid: string) =>
+    `/api/occupational-health/immunisation/vaccines/${uuid}`,
   ppeFitTests: "/api/occupational-health/ppe-fit-tests",
   foodHandlerClearances: "/api/occupational-health/food-handler-clearances",
   sickLeaveCertificates: "/api/occupational-health/sick-leave-certificates",

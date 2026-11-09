@@ -16,12 +16,16 @@ describe("OHS navigation", () => {
     expect(ohItems.map((item) => item.name)).toEqual([
       "OHS Queue",
       "Employees",
+      "Immunizations",
+      "Drug & alcohol",
       "OHS Compliance",
       "OHS Surveillance",
     ]);
     expect(ohItems.map((item) => item.href)).toEqual([
       ROUTES.occupationalHealth,
       ROUTES.occupationalHealthEmployees,
+      ROUTES.occupationalHealthImmunizations,
+      ROUTES.occupationalHealthDrugAlcohol,
       ROUTES.occupationalHealthCompliance,
       ROUTES.occupationalHealthSurveillance,
     ]);

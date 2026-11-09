@@ -306,6 +306,7 @@ export function OhEncounterWorkspacePage({
             findingCount={workspace.findings.length}
             episodes={episodes}
             onManageEmployment={() => setActivePanel("employment")}
+            onOpenImmunizations={() => setActivePanel("immunizations")}
             onOpenExamination={(exam: OhExamination) => {
               setFocusedExamUuid(exam.uuid);
               setExamFocusRequest((current) => current + 1);

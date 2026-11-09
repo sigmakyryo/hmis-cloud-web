@@ -1,5 +1,5 @@
-import { OhWorkforceEmptyPage } from "@/features/occupational-health/pages/OhWorkforceEmptyPage";
+import { OhImmunizationsHubPage } from "@/features/occupational-health/pages/OhImmunizationsHubPage";
 
 export default function Page() {
-  return <OhWorkforceEmptyPage title="Immunizations" testId="oh-immunizations-page" />;
+  return <OhImmunizationsHubPage />;
 }
