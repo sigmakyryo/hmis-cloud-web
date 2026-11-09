@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Briefcase } from "lucide-react";
 
 import { TabAddActionButton } from "@/components/ui/app-buttons";
@@ -38,6 +39,8 @@ export function CustomerEmploymentEpisodesSection({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEpisode, setEditingEpisode] =
     useState<EmploymentEpisode | null>(null);
+  const sheet = useSearchParams().get("sheet");
+  const openedSheet = useRef(false);
 
   const loadEpisodes = useCallback(async () => {
     setIsLoading(true);
@@ -46,6 +49,15 @@ export function CustomerEmploymentEpisodesSection({
       const results = await fetchEmploymentEpisodes(customer.uuid);
       setEpisodes(results);
       setHasLoaded(true);
+      if (sheet && !openedSheet.current) {
+        openedSheet.current = true;
+        const active = results.find((episode) => episode.is_active) ?? results[0] ?? null;
+        if (sheet === "edit" && active) {
+          setEditingEpisode(active);
+        } else {
+          setDialogOpen(true);
+        }
+      }
     } catch (error) {
       setEpisodes([]);
       setLoadError(
@@ -58,7 +70,7 @@ export function CustomerEmploymentEpisodesSection({
     } finally {
       setIsLoading(false);
     }
-  }, [customer.uuid]);
+  }, [customer.uuid, sheet]);
 
   useEffect(() => {
     if (!isActive || !hasOhAccess || hasLoaded || loadError) {

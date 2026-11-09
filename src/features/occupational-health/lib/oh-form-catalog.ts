@@ -3,6 +3,12 @@ export const OH_FORM_FAMILIES = [
   { value: "custom", label: "Custom" },
 ] as const;
 
+export const OH_PREDEFINED_FORM_TYPES = [
+  { value: "employee_form", label: "Employee form" },
+  { value: "examination", label: "Examination" },
+  { value: "certificate", label: "Certificate of fitness" },
+] as const;
+
 export const OPD_FORM_STAGES = [
   { value: "registered", label: "Registered" },
   { value: "triaged", label: "Ready" },

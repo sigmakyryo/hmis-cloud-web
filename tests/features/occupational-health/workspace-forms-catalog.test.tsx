@@ -20,6 +20,11 @@ vi.mock("@/features/occupational-health/services/oh.service", () => ({
   fetchFormGroups: vi.fn(async () => [{ uuid: "group-1", name: "Consent" }]),
   createClinicalForm: vi.fn(),
   createFormGroup: vi.fn(),
+  fetchOhEmployeeFormTemplates: vi.fn(async () => [
+    { uuid: "employee-template-1", name: "Warehouse employee form", code: "WEF", active: true },
+  ]),
+  fetchOhExamTemplates: vi.fn(async () => []),
+  fetchOhCofTemplates: vi.fn(async () => []),
 }));
 
 afterEach(() => {
@@ -41,5 +46,10 @@ describe("workspace forms catalog", () => {
     expect(await screen.findByTestId("oh-form-type-select")).toBeTruthy();
     expect(screen.getByTestId("oh-form-group-select")).toBeTruthy();
     expect(document.querySelector("select:not([aria-hidden='true'])")).toBeNull();
+    fireEvent.click(screen.getByTestId("oh-form-type-select"));
+    expect(await screen.findByRole("option", { name: "Employee form" })).toBeTruthy();
+    expect(screen.getByRole("option", { name: "Examination" })).toBeTruthy();
+    expect(screen.getByRole("option", { name: "Certificate of fitness" })).toBeTruthy();
+    expect(await screen.findByText("Warehouse employee form")).toBeTruthy();
   });
 });

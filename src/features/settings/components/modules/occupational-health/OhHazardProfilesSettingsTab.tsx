@@ -224,6 +224,19 @@ export function OhHazardProfilesSettingsTab({
           setCofTemplates(nextCofTemplates);
           setExamTemplates(nextExamTemplates);
           setEmployeeFormTemplates(nextEmployeeFormTemplates);
+          if (requestedProfile === "new" && handledProfile.current !== `${employer.uuid}:new`) {
+            handledProfile.current = `${employer.uuid}:new`;
+            setEditing(null);
+            setName("");
+            setCode("");
+            setColor(DEFAULT_COLOR);
+            setCofTemplateUuid(NONE_TEMPLATE);
+            setExamTemplateUuid(NONE_TEMPLATE);
+            setEmployeeFormTemplateUuid(NONE_TEMPLATE);
+            setAssessmentInterval("");
+            setAssessmentIntervalUnit("month");
+            setDialogOpen(true);
+          }
         }
       } catch (loadError) {
         if (active) {
@@ -243,7 +256,7 @@ export function OhHazardProfilesSettingsTab({
     return () => {
       active = false;
     };
-  }, [employer.id, isActive]);
+  }, [employer.id, employer.uuid, isActive, requestedProfile]);
 
   const openEdit = useCallback((row: OhHazardProfile) => {
     setEditing(row);

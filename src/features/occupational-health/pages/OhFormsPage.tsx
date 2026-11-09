@@ -11,7 +11,12 @@ import { RequiredFieldMarker } from "@/components/ui/required-field-marker";
 import { ListPageHeaderSection, ListPageLayout } from "@/features/app-shell/components/page-layout";
 import { CatalogSearchSelect } from "@/features/occupational-health/components/CatalogSearchSelect";
 import {
+  DefinedOccupationalForms,
+  useDefinedOccupationalForms,
+} from "@/features/occupational-health/components/DefinedOccupationalForms";
+import {
   OH_FORM_FAMILIES,
+  OH_PREDEFINED_FORM_TYPES,
   OPD_FORM_STAGES,
   type ClinicalFormRecord,
 } from "@/features/occupational-health/lib/oh-form-catalog";
@@ -28,6 +33,7 @@ import { cn } from "@/lib/utils";
 
 export function OhFormsPage() {
   const forms = useQuery({ queryKey: ["clinical-forms"], queryFn: fetchClinicalForms });
+  const defined = useDefinedOccupationalForms();
   const [open, setOpen] = useState(false);
   const sections = useMemo(() => groupForms(forms.data ?? []), [forms.data]);
 
@@ -43,6 +49,7 @@ export function OhFormsPage() {
         </div>
       </ListPageHeaderSection>
       <div className="space-y-6">
+        <DefinedOccupationalForms />
         {sections.map((section) => (
           <section key={section.name}>
             <h2 className="mb-2 text-[13px] font-medium text-dash-muted">{section.name}</h2>
@@ -63,7 +70,7 @@ export function OhFormsPage() {
             </ul>
           </section>
         ))}
-        {forms.data?.length === 0 ? <p className="text-[13px] text-dash-muted">No forms yet.</p> : null}
+        {forms.data?.length === 0 && defined.sections.length === 0 ? <p className="text-[13px] text-dash-muted">No forms yet.</p> : null}
       </div>
       {open ? <CreateFormDialog onClose={() => setOpen(false)} /> : null}
     </ListPageLayout>
@@ -130,10 +137,16 @@ function CreateFormDialog({ onClose }: { onClose: () => void }) {
     mutationFn: createClinicalForm,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["clinical-forms"] });
+      await queryClient.invalidateQueries({ queryKey: ["oh-employee-form-templates"] });
+      await queryClient.invalidateQueries({ queryKey: ["oh-exam-templates"] });
+      await queryClient.invalidateQueries({ queryKey: ["oh-cof-templates"] });
       onClose();
     },
   });
-  const typeOptions = (visitTypes.data ?? []).map((type) => ({ value: type.code, label: type.name }));
+  const typeOptions = [
+    ...OH_PREDEFINED_FORM_TYPES.map((type) => ({ value: type.value, label: type.label })),
+    ...(visitTypes.data ?? []).map((type) => ({ value: type.code, label: type.name })),
+  ];
   const selectedType = systemType || typeOptions[0]?.value || "";
 
   return (
