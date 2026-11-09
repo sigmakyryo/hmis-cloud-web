@@ -10,10 +10,14 @@ export async function POST(request: Request, context: RouteContext) {
     const auth = await requireAccessToken();
     if ("error" in auth) return auth.error;
     const { uuid } = await context.params;
+    const contentType = request.headers.get("content-type") ?? "";
+    const body = contentType.includes("multipart/form-data")
+      ? await request.formData()
+      : await request.json();
     const data = await ohServiceRequest(OCCUPATIONAL_HEALTH_API_PATHS.ohClinicalFormResponses(uuid), {
       method: "POST",
       token: auth.accessToken,
-      body: await request.json(),
+      body,
     });
     return bffSuccess(data);
   } catch (error) {

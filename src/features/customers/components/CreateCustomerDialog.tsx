@@ -19,6 +19,7 @@ import {
 import { CreateAppointmentDialog } from "@/features/appointments/components/CreateAppointmentDialog";
 import type { Appointment } from "@/features/appointments/types/appointment.types";
 import { CustomerFormFields } from "@/features/customers/components/CustomerFormFields";
+import { CustomerOnboardingForms } from "@/features/customers/components/CustomerOnboardingForms";
 import { CustomerInsuranceFormFields } from "@/features/customers/components/CustomerInsuranceFormFields";
 import { CustomerVisitDialog } from "@/features/customers/components/detail/CustomerVisitDialog";
 import { PrimaryButton, SecondaryButton } from "@/components/ui/app-buttons";
@@ -43,7 +44,8 @@ import { fetchInsuranceSchemes } from "@/features/customers/services/insurance-s
 import type { Customer } from "@/features/customers/types/customer.types";
 import type { CustomerVisit } from "@/features/customers/types/customer-visit.types";
 import type { InsuranceScheme } from "@/features/customers/types/customer-insurance.types";
-import { BffError } from "@/lib/bff-client";
+import type { ClinicalFormRecord } from "@/features/occupational-health/lib/oh-form-catalog";
+import { fetchClinicalForms } from "@/features/occupational-health/services/oh.service";
 import { formatBffErrorMessage, mapBffErrorsToForm } from "@/lib/bff-field-errors";
 import { appFont } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
