@@ -14,6 +14,7 @@ import {
   fetchOhImmLots,
   fetchOhImmPatient,
   fetchOhImmVaccines,
+  downloadOhImmCertificatePdf,
   issueOhImmCertificate,
   recordOhImmTitre,
   type OhImmDose,
@@ -145,6 +146,35 @@ export function OhEmployeeImmunizationsPanel({
           </SecondaryButton>
           <SecondaryButton
             type="button"
+            data-testid="oh-imm-download-pdf"
+            onClick={async () => {
+              try {
+                const cert = await issueOhImmCertificate(customerUuid);
+                const { blob, filename } = await downloadOhImmCertificatePdf(cert.uuid);
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = filename;
+                a.click();
+                URL.revokeObjectURL(url);
+                toast({
+                  variant: "success",
+                  title: "PDF downloaded",
+                  description: "Vaccination certificate ready.",
+                });
+              } catch (error) {
+                toast({
+                  variant: "error",
+                  title: "Could not download PDF",
+                  description: error instanceof Error ? error.message : "Try again.",
+                });
+              }
+            }}
+          >
+            Download PDF
+          </SecondaryButton>
+          <SecondaryButton
+            type="button"
             onClick={async () => {
               try {
                 const cert = await issueOhImmCertificate(customerUuid);
@@ -153,21 +183,16 @@ export function OhEmployeeImmunizationsPanel({
                   "_blank",
                   "noopener,noreferrer",
                 );
-                toast({
-                  variant: "success",
-                  title: "Certificate ready",
-                  description: "Print view opened with verification QR.",
-                });
               } catch (error) {
                 toast({
                   variant: "error",
-                  title: "Could not issue certificate",
+                  title: "Could not open print view",
                   description: error instanceof Error ? error.message : "Try again.",
                 });
               }
             }}
           >
-            Vaccination certificate
+            Print view
           </SecondaryButton>
           <SecondaryButton type="button" onClick={() => setExemptionOpen(true)}>
             Decline / exempt

@@ -401,6 +401,8 @@ export const BFF_OCCUPATIONAL_HEALTH_ROUTES = {
   ohImmCertificates: "/api/occupational-health/immunisation/certificates",
   ohImmCertificatePrint: (uuid: string) =>
     `/api/occupational-health/immunisation/certificates/${uuid}/print`,
+  ohImmCertificatePdf: (uuid: string) =>
+    `/api/occupational-health/immunisation/certificates/${uuid}/pdf`,
   ohImmPatientTitres: (customerUuid: string) =>
     `/api/occupational-health/immunisation/patients/${customerUuid}/titres`,
   ohImmAudits: "/api/occupational-health/immunisation/audits",

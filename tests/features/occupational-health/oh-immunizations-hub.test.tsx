@@ -33,6 +33,8 @@ vi.mock("@/features/occupational-health/services/immunisation.service", () => ({
   fetchOhImmAudits: vi.fn(async () => []),
   fetchOhImmDhisMappings: vi.fn(async () => []),
   createOhImmDhisMapping: vi.fn(),
+  issueOhImmCertificate: vi.fn(),
+  downloadOhImmCertificatePdf: vi.fn(),
   fetchOhImmFitnessGate: vi.fn(),
   previewOhImmAssignment: vi.fn(),
   remindOhImm: vi.fn(),

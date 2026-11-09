@@ -139,6 +139,7 @@ export const OCCUPATIONAL_HEALTH_API_PATHS = {
   ohImmFitnessGate: "/oh-imm/fitness-gate",
   ohImmCertificates: "/oh-imm/certificates",
   ohImmCertificatePrint: (uuid: string) => `/oh-imm/certificates/${uuid}/print`,
+  ohImmCertificatePdf: (uuid: string) => `/oh-imm/certificates/${uuid}/pdf`,
   ohImmPatientTitres: (customerUuid: string) => `/oh-imm/patients/${customerUuid}/titres`,
   ohImmAudits: "/oh-imm/audits",
   ohImmExportPack: (uuid: string) => `/oh-imm/schedules/${uuid}/export-pack`,

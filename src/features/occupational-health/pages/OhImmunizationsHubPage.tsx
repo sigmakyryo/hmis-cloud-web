@@ -16,6 +16,8 @@ import {
   createOhImmSchedule,
   createOhImmVaccine,
   createOhImmDhisMapping,
+  downloadOhImmCertificatePdf,
+  issueOhImmCertificate,
   downloadOhImmComplianceCsv,
   downloadOhImmDhisCsv,
   downloadOhImmFhirNdjson,
@@ -1161,6 +1163,56 @@ function ScheduleBuilderSheet({
 
 
 
+
+
+function CertificatePdfForm() {
+  const { toast } = useToast();
+  const [customerUuid, setCustomerUuid] = useState("");
+  const [pending, setPending] = useState(false);
+  return (
+    <div className="flex flex-wrap items-end gap-2">
+      <div className="space-y-1">
+        <Label className="text-[12px]">Employee customer UUID</Label>
+        <Input
+          className="h-8 w-72"
+          value={customerUuid}
+          onChange={(e) => setCustomerUuid(e.target.value)}
+          placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+        />
+      </div>
+      <PrimaryButton
+        type="button"
+        data-testid="oh-imm-hub-download-pdf"
+        disabled={pending || !customerUuid.trim()}
+        onClick={async () => {
+          setPending(true);
+          try {
+            const cert = await issueOhImmCertificate(customerUuid.trim());
+            const { blob, filename } = await downloadOhImmCertificatePdf(cert.uuid);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+            toast({ variant: "success", title: "PDF downloaded" });
+          } catch (error) {
+            toast({
+              variant: "error",
+              title: "Could not download PDF",
+              description: error instanceof Error ? error.message : "Try again.",
+            });
+          } finally {
+            setPending(false);
+          }
+        }}
+      >
+        {pending ? "Preparing…" : "Download PDF"}
+      </PrimaryButton>
+    </div>
+  );
+}
+
 function ToolsPanel({ schedules }: { schedules: OhImmSchedule[] }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -1245,6 +1297,14 @@ function ToolsPanel({ schedules }: { schedules: OhImmSchedule[] }) {
             </SecondaryButton>
           </div>
         </div>
+      </section>
+
+      <section className="space-y-2">
+        <p className="text-[13px] font-medium text-brand-navy">Vaccination certificate PDF</p>
+        <p className="text-[13px] text-dash-muted">
+          Issue and download an A4 PDF for an employee (also available on their immunizations tab).
+        </p>
+        <CertificatePdfForm />
       </section>
 
       <section className="space-y-2">

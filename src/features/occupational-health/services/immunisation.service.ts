@@ -322,3 +322,18 @@ export async function downloadOhImmDhisCsv(period: string, orgUnit: string) {
   if (!response.ok) throw new Error("Could not export DHIS2 values.");
   return { blob: await response.blob(), filename: "oh-imm-dhis2.csv" };
 }
+
+export async function downloadOhImmCertificatePdf(certificateUuid: string) {
+  const response = await fetch(
+    BFF_OCCUPATIONAL_HEALTH_ROUTES.ohImmCertificatePdf(certificateUuid),
+    { method: "GET", credentials: "include" },
+  );
+  if (!response.ok) {
+    throw new Error("Could not download the vaccination certificate PDF.");
+  }
+  const blob = await response.blob();
+  const match = /filename="?([^"]+)"?/i.exec(
+    response.headers.get("Content-Disposition") ?? "",
+  );
+  return { blob, filename: match?.[1] ?? "vaccination-certificate.pdf" };
+}
