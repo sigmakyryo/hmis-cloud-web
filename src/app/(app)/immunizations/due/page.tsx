@@ -1,5 +1,5 @@
-import { OhImmunizationsHubPage } from "@/features/occupational-health/pages/OhImmunizationsHubPage";
+import { DuePage } from "../_components/due/DuePage";
 
 export default function Page() {
-  return <OhImmunizationsHubPage initialTab="due" />;
+  return <DuePage />;
 }

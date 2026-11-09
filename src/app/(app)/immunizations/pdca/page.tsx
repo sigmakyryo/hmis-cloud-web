@@ -1,4 +1,5 @@
-import { OhImmunizationsHubPage } from "@/features/occupational-health/pages/OhImmunizationsHubPage";
+import { PdcaPage } from "../_components/pdca/PdcaPage";
+
 export default function Page() {
-  return <OhImmunizationsHubPage initialTab="pdca" />;
+  return <PdcaPage />;
 }
