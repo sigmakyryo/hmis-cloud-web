@@ -3,17 +3,17 @@ import { bffError, bffSuccess } from "@/lib/server/bff-response";
 import { ohServiceRequest } from "@/lib/server/oh-service";
 import { requireAccessToken } from "@/lib/server/require-access-token";
 
-type Ctx = { params: Promise<{ lotUuid: string }> };
+type Ctx = { params: Promise<{ uuid: string }> };
 
-export async function POST(request: Request, context: Ctx) {
+export async function GET(_request: Request, context: Ctx) {
   try {
     const auth = await requireAccessToken();
     if ("error" in auth) return auth.error;
-    const { lotUuid } = await context.params;
-    const body = await request.json().catch(() => ({}));
+    const { uuid } = await context.params;
+
     const data = await ohServiceRequest(
-      OCCUPATIONAL_HEALTH_API_PATHS.ohImmClearQuarantine(lotUuid),
-      { method: "POST", token: auth.accessToken, body },
+      OCCUPATIONAL_HEALTH_API_PATHS.ohImmTaskHierarchy(uuid),
+      { method: "GET", token: auth.accessToken },
     );
     return bffSuccess(data);
   } catch (error) {

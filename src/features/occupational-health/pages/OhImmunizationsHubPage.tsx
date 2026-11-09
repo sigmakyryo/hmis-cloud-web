@@ -65,7 +65,6 @@ import {
   createOhImmVendor,
   recordOhImmColdChain,
   clearOhImmLotQuarantine,
-  fetchOhImmTasks,
   issueOhImmCertificate,
   downloadOhImmComplianceCsv,
   downloadOhImmDhisCsv,

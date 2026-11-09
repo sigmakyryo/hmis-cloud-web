@@ -5,7 +5,7 @@ import { requireAccessToken } from "@/lib/server/require-access-token";
 
 type Ctx = { params: Promise<{ uuid: string }> };
 
-export async function GET(request: Request, context: Ctx) {
+export async function GET(_request: Request, context: Ctx) {
   try {
     const auth = await requireAccessToken();
     if ("error" in auth) return auth.error;
