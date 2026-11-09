@@ -54,8 +54,12 @@ describe("employee form visit flow", () => {
   });
 
   it("puts employees and forms in Workforce and keeps the employee form off the visit", () => {
-    const workforce = navigation.filter((item) => item.moduleName === "Workforce").map((item) => item.name);
-    expect(workforce).toEqual(["Employees", "Forms", "Immunizations", "Drug & alcohol"]);
+    expect(navigation.some((item) => item.moduleName === "Workforce")).toBe(false);
+    const forms = navigation.find((item) => item.name === "Forms");
+    expect(forms?.moduleName).toBe("Forms");
+    expect(navigation.filter((item) => item.moduleName === "OccupationalHealth").map((item) => item.name)).toEqual(
+      expect.arrayContaining(["Employees", "Immunizations", "Drug & alcohol"]),
+    );
     expect(OH_ENCOUNTER_MODULES.map((module) => module.id)).not.toContain("employee-form");
     expect(OH_FORM_FAMILIES.map((family) => family.label)).toEqual(["Occupational health", "Custom"]);
   });

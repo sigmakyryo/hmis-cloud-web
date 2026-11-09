@@ -62,7 +62,7 @@ export default function PublicWorkforceFormPage({ params }: { params: Promise<{ 
       <h1 className="text-lg font-semibold text-brand-navy">Employee form</h1>
       {error ? <p className="mt-4 text-sm text-red-700">{error}</p> : null}
       {!form && !error ? <p className="mt-4 text-sm text-dash-muted">Loading the form.</p> : null}
-      {form && snapshot ? (
+      {form && snapshot && form.status !== "submitted" && form.status !== "uploaded" ? (
         <div className="mt-6 rounded-md bg-white p-4">
           <OhExamTemplateCaptureForm snapshot={snapshot} value={current} onChange={setAnswers} />
           <div className="mt-4 flex gap-2">

@@ -17,7 +17,7 @@ export function OhWorkforceEmptyPage({ title, testId }: OhWorkforceEmptyPageProp
         <EmptyState
           icon={Construction}
           title={`${title} is not set up yet`}
-          description="This section is ready in Workforce. Capture for these records is not available yet."
+          description="This section is in the occupational health menu. Capture for these records is not available yet."
         />
       </div>
     </ListPageLayout>
