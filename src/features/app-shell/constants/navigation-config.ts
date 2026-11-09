@@ -296,6 +296,14 @@ export const navigation: NavigationItem[] = [
     enabledInWebNew: true,
   },
   {
+    name: "Active stays",
+    href: ROUTES.clinicalIpdStays,
+    icon: "hospital",
+    requiredGroup: "IPD",
+    moduleName: "IPD",
+    enabledInWebNew: true,
+  },
+  {
     name: "OHS Queue",
     href: ROUTES.occupationalHealth,
     icon: "clipboard",

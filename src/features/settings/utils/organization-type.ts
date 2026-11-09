@@ -20,7 +20,7 @@ export function getInternalReferenceLabel(
   tenant: OrganizationTypeSource,
 ): string {
   return isEmployeeBasedOrganization(tenant)
-    ? "Employee Number"
+    ? "Employee number"
     : "Internal reference";
 }
 

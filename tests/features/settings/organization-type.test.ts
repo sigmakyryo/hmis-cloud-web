@@ -25,11 +25,11 @@ describe("organization-type helpers", () => {
       "Internal reference",
     );
     expect(getInternalReferenceLabel({ organization_type: "employee" })).toBe(
-      "Employee Number",
+      "Employee number",
     );
     expect(
       getInternalReferenceShortLabel({ organization_type: "employee" }),
-    ).toBe("Employee Number");
+    ).toBe("Employee number");
     expect(formatOrganizationTypeLabel("employee")).toBe("Employee-based");
   });
 });

@@ -11,6 +11,9 @@ const QUERY_KEYS = [
   "status",
   "stay",
   "admission_source",
+  "visit",
+  "clinician",
+  "q",
 ] as const;
 
 export function buildIpdQuery(request: Request): string {

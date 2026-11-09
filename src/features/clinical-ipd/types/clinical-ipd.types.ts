@@ -1,6 +1,12 @@
 export type IpdWardClass = "general" | "icu" | "maternity" | "other";
 
-export type IpdBedStatus = "available" | "occupied" | "blocked" | "maintenance";
+export type IpdBedStatus =
+  | "available"
+  | "occupied"
+  | "blocked"
+  | "maintenance"
+  | "reserved"
+  | "cleaning";
 
 export type IpdStayStatus =
   | "planned"
@@ -78,6 +84,57 @@ export type IpdCensusRow = {
     } | null;
     clinician_name: string;
   } | null;
+};
+
+export type IpdCensusStats = {
+  beds_total: number;
+  by_status: Partial<Record<IpdBedStatus, number>>;
+  active_stays: number;
+  admitted_today: number;
+};
+
+export type IpdWardPatient = {
+  stay_uuid: string;
+  status: IpdStayStatus;
+  admitted_at: string;
+  hours_since_admission: number;
+  bed_uuid: string | null;
+  bed_code: string | null;
+  visit_uuid: string;
+  encounter_uuid: string;
+  customer: {
+    uuid: string;
+    display_name: string;
+    file_number: string;
+  };
+  clinician_name: string;
+};
+
+export type IpdDischargeSummary = {
+  uuid: string;
+  stay_uuid: string;
+  diagnosis_text: string;
+  procedures: unknown;
+  medications_text: string;
+  follow_up: string;
+  narrative: string;
+  signed_at: string | null;
+  signed_by_name: string;
+  is_signed: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type IpdHandover = {
+  uuid: string;
+  ward_uuid: string;
+  stay_uuid: string | null;
+  shift: "morning" | "afternoon" | "night";
+  handed_over_at: string;
+  summary: string;
+  outstanding_tasks: string;
+  alerts: string;
+  created_at: string;
 };
 
 export type IpdEmarRow = {

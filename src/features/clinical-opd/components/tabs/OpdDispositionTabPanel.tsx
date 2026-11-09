@@ -1,5 +1,8 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -7,6 +10,14 @@ import { PrimaryButton } from "@/components/ui/app-buttons";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { ROUTES } from "@/constants/routes";
+import { IpdBedSelect } from "@/features/clinical-ipd/components/IpdBedSelect";
+import { IpdClinicSelect } from "@/features/clinical-ipd/components/IpdClinicSelect";
+import { IpdWardSelect } from "@/features/clinical-ipd/components/IpdWardSelect";
+import { fetchIpdStays } from "@/features/clinical-ipd/services/clinical-ipd.service";
+import type { IpdBed, IpdWard } from "@/features/clinical-ipd/types/clinical-ipd.types";
+import { fetchClinicalClinics } from "@/features/clinical/services/clinical-catalog.service";
+import type { ClinicalClinic } from "@/features/clinical/types/clinical-catalog.types";
 import { OpdEncounterTabSkeleton } from "@/features/clinical-opd/components/detail/OpdEncounterTabSkeleton";
 import { useOpdEncounterWorkspace } from "@/features/clinical-opd/components/detail/opd-encounter-workspace-context";
 import {
@@ -17,6 +28,7 @@ import { dispositionSchema } from "@/features/clinical-opd/schemas/clinical-opd.
 import { BffError } from "@/lib/bff-client";
 import { formatBffErrorMessage } from "@/lib/bff-field-errors";
 import { useToast } from "@/providers/toast-provider";
+import { useUser } from "@/providers/user-provider";
 
 const OUTCOMES = [
   { value: "discharged", label: "Discharged" },
@@ -38,6 +50,7 @@ export function OpdDispositionTabPanel({
   isActive = true,
 }: OpdDispositionTabPanelProps) {
   const { toast } = useToast();
+  const { userData } = useUser();
   const { isChartLocked, capabilities } = useOpdEncounterWorkspace();
   const disposition = useEncounterDisposition(
     visitUuid,
@@ -46,6 +59,26 @@ export function OpdDispositionTabPanel({
   );
   const upsert = useUpsertEncounterDisposition(visitUuid, encounterUuid);
   const canWrite = capabilities.includes("record_disposition") && !isChartLocked;
+  const [clinic, setClinic] = useState<ClinicalClinic | null>(null);
+  const [ward, setWard] = useState<IpdWard | null>(null);
+  const [bed, setBed] = useState<IpdBed | null>(null);
+  const [ipdLink, setIpdLink] = useState<string | null>(null);
+
+  const clinicsQuery = useQuery({
+    queryKey: ["clinical-clinics"],
+    queryFn: fetchClinicalClinics,
+    enabled: isActive,
+  });
+
+  useEffect(() => {
+    const clinics = clinicsQuery.data ?? [];
+    if (!clinics.length || clinic) return;
+    const primary = userData?.primary_clinic;
+    if (!primary) return;
+    const matched = clinics.find((item) => item.id === primary.id);
+    if (matched) setClinic(matched);
+  }, [clinicsQuery.data, clinic, userData?.primary_clinic]);
+
   const form = useForm({
     resolver: zodResolver(dispositionSchema),
     values: {
@@ -58,10 +91,14 @@ export function OpdDispositionTabPanel({
       follow_up_at: disposition.data?.follow_up_at ?? "",
       notes: disposition.data?.notes ?? "",
       referral_destination: disposition.data?.referral_destination ?? "",
-      ipd_bed: "",
+      ipd_bed: bed?.uuid ?? "",
     },
   });
   const outcome = form.watch("outcome");
+
+  useEffect(() => {
+    form.setValue("ipd_bed", bed?.uuid ?? "");
+  }, [bed, form]);
 
   if (!isActive) return null;
   if (disposition.isLoading) return <OpdEncounterTabSkeleton rows={4} />;
@@ -77,11 +114,29 @@ export function OpdDispositionTabPanel({
             follow_up_at: values.follow_up_at || null,
             ipd_bed: values.ipd_bed || null,
           });
+          if (values.outcome === "admitted" && values.ipd_bed) {
+            const stays = await fetchIpdStays({
+              status: "active",
+              visit: visitUuid,
+            });
+            const stay = stays[0];
+            if (stay?.visit_uuid && stay.encounter_uuid) {
+              const href = ROUTES.clinicalIpdEncounter(
+                stay.visit_uuid,
+                stay.encounter_uuid,
+              );
+              setIpdLink(href);
+              toast({
+                title: "Admitted to IPD",
+                description: "Open the inpatient encounter to continue care.",
+                variant: "success",
+              });
+              return;
+            }
+          }
+          setIpdLink(null);
           toast({
-            title:
-              values.outcome === "admitted" && values.ipd_bed
-                ? "Admitted to IPD"
-                : "Disposition saved",
+            title: "Disposition saved",
             variant: "success",
           });
         } catch (error) {
@@ -136,12 +191,34 @@ export function OpdDispositionTabPanel({
         </div>
       ) : null}
       {outcome === "admitted" ? (
-        <div className="space-y-1.5">
-          <Label>IPD bed UUID (optional handoff)</Label>
-          <Input
+        <div className="space-y-3">
+          <IpdClinicSelect
+            clinics={clinicsQuery.data ?? []}
+            value={clinic}
+            onChange={(next) => {
+              setClinic(next);
+              setWard(null);
+              setBed(null);
+            }}
             disabled={!canWrite}
-            placeholder="Bed UUID to create inpatient stay"
-            {...form.register("ipd_bed")}
+            isLoading={clinicsQuery.isLoading}
+          />
+          <IpdWardSelect
+            clinicUuid={clinic?.uuid}
+            value={ward}
+            onChange={(next) => {
+              setWard(next);
+              setBed(null);
+            }}
+            disabled={!canWrite}
+          />
+          <IpdBedSelect
+            wardUuid={ward?.uuid}
+            value={bed}
+            onChange={setBed}
+            disabled={!canWrite}
+            availableOnly
+            label="Available IPD bed"
           />
         </div>
       ) : null}
@@ -149,6 +226,13 @@ export function OpdDispositionTabPanel({
         <Label>Notes</Label>
         <Textarea rows={3} disabled={!canWrite} {...form.register("notes")} />
       </div>
+      {ipdLink ? (
+        <p className="text-sm">
+          <Link href={ipdLink} className="underline">
+            Open IPD encounter
+          </Link>
+        </p>
+      ) : null}
       {canWrite ? (
         <PrimaryButton type="submit" disabled={upsert.isPending}>
           Save disposition

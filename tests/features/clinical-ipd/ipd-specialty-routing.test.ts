@@ -33,7 +33,14 @@ describe("IPD specialty routing", () => {
   });
 
   it("exposes ward board status labels via bed status values", () => {
-    const statuses = ["available", "occupied", "blocked", "maintenance"] as const;
-    expect(statuses).toHaveLength(4);
+    const statuses = [
+      "available",
+      "occupied",
+      "reserved",
+      "cleaning",
+      "blocked",
+      "maintenance",
+    ] as const;
+    expect(statuses).toHaveLength(6);
   });
 });

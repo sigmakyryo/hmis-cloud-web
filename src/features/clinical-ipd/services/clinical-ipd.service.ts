@@ -2,13 +2,17 @@ import { BFF_CLINICAL_IPD_ROUTES as ROUTES } from "@/constants/clinical-ipd-api"
 import type {
   IpdBed,
   IpdCensusRow,
+  IpdCensusStats,
+  IpdDischargeSummary,
   IpdEmarRow,
+  IpdHandover,
   IpdStay,
   IpdTheatreBooking,
   IpdWard,
+  IpdWardPatient,
   IpdWardRound,
 } from "@/features/clinical-ipd/types/clinical-ipd.types";
-import { bffRequest } from "@/lib/bff-client";
+import { BffError, bffRequest } from "@/lib/bff-client";
 
 function qs(params: Record<string, string | undefined>): string {
   const search = new URLSearchParams();
@@ -35,6 +39,16 @@ export function createIpdBed(payload: Record<string, unknown>) {
   return bffRequest<IpdBed>(ROUTES.beds, { method: "POST", body: payload });
 }
 
+export function updateIpdBed(
+  uuid: string,
+  payload: Record<string, unknown>,
+) {
+  return bffRequest<IpdBed>(ROUTES.bed(uuid), {
+    method: "PATCH",
+    body: payload,
+  });
+}
+
 export function fetchIpdCensus(
   filters: {
     clinic?: string;
@@ -46,7 +60,26 @@ export function fetchIpdCensus(
   return bffRequest<IpdCensusRow[]>(`${ROUTES.census}${qs(filters)}`);
 }
 
-export function fetchIpdStays(filters: { status?: string; ward?: string } = {}) {
+export function fetchIpdCensusStats(
+  filters: { clinic?: string; ward?: string } = {},
+) {
+  return bffRequest<IpdCensusStats>(`${ROUTES.censusStats}${qs(filters)}`);
+}
+
+export function fetchIpdWardPatients(wardUuid: string) {
+  return bffRequest<IpdWardPatient[]>(ROUTES.wardPatients(wardUuid));
+}
+
+export function fetchIpdStays(
+  filters: {
+    status?: string;
+    ward?: string;
+    visit?: string;
+    clinic?: string;
+    clinician?: string;
+    q?: string;
+  } = {},
+) {
   return bffRequest<IpdStay[]>(`${ROUTES.stays}${qs(filters)}`);
 }
 
@@ -73,6 +106,38 @@ export function dischargeIpdStay(
   payload: { summary?: string; close_visit?: boolean },
 ) {
   return bffRequest<IpdStay>(ROUTES.discharge(uuid), {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function fetchIpdDischargeSummary(stayUuid: string) {
+  return bffRequest<IpdDischargeSummary>(
+    ROUTES.dischargeSummary(stayUuid),
+  ).catch((error: unknown) => {
+    if (error instanceof BffError && error.status === 404) {
+      return null;
+    }
+    throw error;
+  });
+}
+
+export function upsertIpdDischargeSummary(
+  stayUuid: string,
+  payload: Record<string, unknown>,
+) {
+  return bffRequest<IpdDischargeSummary>(ROUTES.dischargeSummary(stayUuid), {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function fetchIpdHandovers(filters: { ward?: string; stay?: string } = {}) {
+  return bffRequest<IpdHandover[]>(`${ROUTES.handovers}${qs(filters)}`);
+}
+
+export function createIpdHandover(payload: Record<string, unknown>) {
+  return bffRequest<IpdHandover>(ROUTES.handovers, {
     method: "POST",
     body: payload,
   });

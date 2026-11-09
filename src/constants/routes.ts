@@ -130,6 +130,7 @@ export const ROUTES = {
   clinicalIpdBoard: "/clinical/ipd/board",
   clinicalIpdBeds: "/clinical/ipd/beds",
   clinicalIpdAdmit: "/clinical/ipd/admit",
+  clinicalIpdStays: "/clinical/ipd/stays",
   clinicalIpdEncounter: (visitUuid: string, encounterUuid: string) =>
     `/clinical/ipd/${visitUuid}/${encounterUuid}`,
   occupationalHealth: "/occupational-health",
