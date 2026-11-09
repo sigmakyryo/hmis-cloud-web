@@ -165,42 +165,62 @@ export function OhEncounterWorkspacePage({
             {encounter.origin === "laravel" && encounter.is_active ? <PrimaryButton type="button" disabled={completing} onClick={async () => {
               if (completionBusy.current) return;
               completionBusy.current = true;
-              setCompleting(true); setCompleteError(null);
+              setCompleting(true);
+              setCompleteError(null);
+              const goExam = (message: string, examUuid?: string | null) => {
+                setChosenStep("examination");
+                setActivePanel("medical-examinations");
+                if (examUuid) {
+                  setFocusedExamUuid(examUuid);
+                  setExamFocusRequest((current) => current + 1);
+                }
+                setCompleteError(message);
+              };
+              const goCertificate = (message: string) => {
+                setChosenStep("certificate");
+                setActivePanel("certificate");
+                setCompleteError(message);
+              };
               try {
-                if (!completionRef.current || !(await completionRef.current())) {
-                  setChosenStep("examination");
-                  setActivePanel("medical-examinations");
-                  if (!completionRef.current) setCompleteError("Review the examination setup before completing this visit.");
+                // Flush both keep-mounted panels in one click; never bounce solely because a panel was inactive.
+                if (!completionRef.current) {
+                  goExam("Review the examination setup before completing this visit.");
                   return;
                 }
-                if (encounter.origin === "laravel") {
-                  if (!cofCompletionRef.current || !(await cofCompletionRef.current())) {
-                    setChosenStep("certificate");
-                    setActivePanel("certificate");
-                    setCompleteError("Complete the certificate before completing this visit.");
-                    return;
-                  }
+                if (!(await completionRef.current())) {
+                  goExam("Complete the highlighted responses in this examination before completing the visit.");
+                  return;
                 }
                 for (const exam of workspace.examinations) {
                   if (exam.uuid === activeExamUuid) continue;
                   const schema = parseExamTemplateSnapshot(exam.template_snapshot);
                   const envelope = exam.responses_json?.__exam_template__ as ExamTemplateResponseEnvelope | undefined;
                   if (schema && envelope?.answers?.picks && envelope.answers.fields && Object.keys(validateExamAnswers(schema, envelope.answers)).length) {
-                    setFocusedExamUuid(exam.uuid);
-                    setExamFocusRequest((current) => current + 1);
-                    setChosenStep("examination");
-                    setActivePanel("medical-examinations");
-                    setCompleteError("Complete the highlighted responses in this examination before completing the visit.");
+                    goExam("Complete the highlighted responses in this examination before completing the visit.", exam.uuid);
                     return;
                   }
+                }
+                if (!cofCompletionRef.current) {
+                  goCertificate("Complete the certificate before completing this visit.");
+                  return;
+                }
+                if (!(await cofCompletionRef.current())) {
+                  goCertificate("Complete the certificate before completing this visit.");
+                  return;
                 }
                 await completeNativeOhVisit(encounter.uuid);
                 await encounterQuery.refetch();
               } catch (error) {
-                setChosenStep("examination");
-                setActivePanel("medical-examinations");
-                setCompleteError(error instanceof Error ? error.message : "Could not complete visit. Your responses have been kept.");
-              } finally { completionBusy.current = false; setCompleting(false); }
+                const message = error instanceof Error ? error.message : "Could not complete visit. Your responses have been kept.";
+                if (/certificate/i.test(message)) {
+                  goCertificate(message);
+                } else {
+                  goExam(message);
+                }
+              } finally {
+                completionBusy.current = false;
+                setCompleting(false);
+              }
             }}>{completing ? "Completing…" : "Complete visit"}</PrimaryButton> : null}
           </div>}
         />

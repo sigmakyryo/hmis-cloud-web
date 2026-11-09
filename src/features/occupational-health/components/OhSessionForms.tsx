@@ -10,12 +10,10 @@ import {
   OhEncounterColumns,
 } from "@/features/occupational-health/components/OhEncounterColumns";
 import type { useOhEncounterWorkspaceData } from "@/features/occupational-health/hooks/use-occupational-health";
-import {
-  COF_TEMPLATE_RESPONSE_KEY,
-  isVisitStepOpen,
-} from "@/features/occupational-health/lib/oh-encounter-modules";
+import { COF_TEMPLATE_RESPONSE_KEY } from "@/features/occupational-health/lib/oh-encounter-modules";
 import { sessionFormStepKey, sessionFormSteps, type SessionFormStep } from "@/features/occupational-health/lib/oh-session-forms";
 import type { EmploymentEpisode, OhVisitEncounter } from "@/features/occupational-health/types";
+import { cn } from "@/lib/utils";
 
 type OhSessionFormsProps = {
   encounter: OhVisitEncounter;
@@ -84,13 +82,16 @@ export function OhSessionForms({
   onActiveExamChange,
 }: OhSessionFormsProps) {
   const native = encounter.origin === "laravel";
-  const examSaved = workspace.examinations.some((exam) => (exam.row_version ?? 0) > 1);
   const steps = sessionFormSteps(encounter.visit_type ?? null);
   const step = steps.find((item) => sessionFormStepKey(item) === activeStep) ?? steps[0];
+  const showEmployee = step?.kind === "employee";
+  const showExam = step?.kind === "examination";
+  const showCof = step?.kind === "certificate";
+  const showAttached = step?.kind === "attached";
 
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-testid="oh-session-forms">
-      {step?.kind === "employee" ? (
+      {showEmployee ? (
         <section aria-label="Employee form" className="flex min-h-0 flex-1 flex-col">
           <OhSessionEmployeeForm
             encounter={encounter}
@@ -99,62 +100,73 @@ export function OhSessionForms({
           />
         </section>
       ) : null}
-      {step?.kind === "examination" ? (
-        <section aria-label="Examination" className="flex min-h-0 flex-1 flex-col">
-          <OhMedicalExaminationsPanel
+
+      {/* Keep exam + certificate mounted so Complete can flush both in one click. */}
+      <section
+        aria-label="Examination"
+        aria-hidden={!showExam}
+        className={cn("min-h-0 flex-1 flex-col", showExam ? "flex" : "hidden")}
+        data-testid="oh-session-examination-step"
+      >
+        <OhMedicalExaminationsPanel
+          encounter={encounter}
+          completionRef={completionRef}
+          completing={completing}
+          episodes={episodes}
+          workspace={workspace}
+          onManageEmployment={onManageEmployment}
+          focusedExamUuid={focusedExamUuid}
+          examFocusRequest={examFocusRequest}
+          onActiveExamChange={onActiveExamChange}
+        />
+      </section>
+
+      {native ? (
+        <section
+          aria-label="Certificate of fitness"
+          aria-hidden={!showCof}
+          className={cn("min-h-0 flex-1 flex-col", showCof ? "flex" : "hidden")}
+          data-testid="oh-session-certificate-step"
+        >
+          <OhVisitTemplateStep
+            family="cof"
+            title="Certificate of fitness"
+            responseKey={COF_TEMPLATE_RESPONSE_KEY}
             encounter={encounter}
-            completionRef={completionRef}
-            completing={completing}
-            episodes={episodes}
-            workspace={workspace}
-            onManageEmployment={onManageEmployment}
-            focusedExamUuid={focusedExamUuid}
-            examFocusRequest={examFocusRequest}
-            onActiveExamChange={onActiveExamChange}
+            records={workspace.cofResponses}
+            locked={false}
+            completionRef={cofCompletionRef}
+            onSaved={workspace.refetchAll}
+          />
+        </section>
+      ) : showCof ? (
+        <section aria-label="Certificate of fitness" className="min-h-0 flex-1 overflow-y-auto">
+          <OhEncounterColumns
+            sectionKey="certificate"
+            form={
+              <OhColumnPanel eyebrow="Record" title="Certificate of fitness" className="bg-white">
+                <OhCertificateForm assessments={workspace.fitness} onCreated={workspace.refetchAll} />
+              </OhColumnPanel>
+            }
+            records={
+              <OhColumnPanel
+                eyebrow="This encounter"
+                title="Certificates"
+                count={workspace.fitnessCertificates.length}
+                className="bg-white"
+              >
+                <OhCertificateRecords
+                  assessments={workspace.fitness}
+                  certificates={workspace.fitnessCertificates}
+                  onChanged={workspace.refetchAll}
+                />
+              </OhColumnPanel>
+            }
           />
         </section>
       ) : null}
-      {step?.kind === "certificate" && native ? (
-        <section aria-label="Certificate of fitness" className="flex min-h-0 flex-1 flex-col">
-              <OhVisitTemplateStep
-                family="cof"
-                title="Certificate of fitness"
-                responseKey={COF_TEMPLATE_RESPONSE_KEY}
-                encounter={encounter}
-                records={workspace.cofResponses}
-                locked={!isVisitStepOpen("certificate", { exam: examSaved }, true)}
-                completionRef={cofCompletionRef}
-                onSaved={workspace.refetchAll}
-            />
-        </section>
-      ) : null}
-      {step?.kind === "certificate" && !native ? (
-        <section aria-label="Certificate of fitness" className="min-h-0 flex-1 overflow-y-auto">
-              <OhEncounterColumns
-                sectionKey="certificate"
-                form={
-                  <OhColumnPanel eyebrow="Record" title="Certificate of fitness" className="bg-white">
-                    <OhCertificateForm assessments={workspace.fitness} onCreated={workspace.refetchAll} />
-                  </OhColumnPanel>
-                }
-                records={
-                  <OhColumnPanel
-                    eyebrow="This encounter"
-                    title="Certificates"
-                    count={workspace.fitnessCertificates.length}
-                    className="bg-white"
-                  >
-                    <OhCertificateRecords
-                      assessments={workspace.fitness}
-                      certificates={workspace.fitnessCertificates}
-                      onChanged={workspace.refetchAll}
-                    />
-                  </OhColumnPanel>
-                }
-            />
-        </section>
-      ) : null}
-      {step?.kind === "attached" ? (
+
+      {showAttached ? (
         <section aria-label={step.title} className="px-5 py-4" data-testid="oh-session-attached-form">
           <h2 className="text-sm font-semibold text-brand-navy">{step.title}</h2>
           <p className="mt-1 text-sm text-dash-muted">Included with this visit type.</p>

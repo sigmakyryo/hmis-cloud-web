@@ -5,7 +5,7 @@ import { useMutation } from "@tanstack/react-query";
 
 import { PrimaryButton, SecondaryButton } from "@/components/ui/app-buttons";
 import { OhExamTemplateCaptureForm } from "@/features/occupational-health/components/OhExamTemplateCaptureForm";
-import { parseExamTemplateSnapshot, type ExamTemplateAnswers } from "@/features/occupational-health/lib/exam-template-snapshot";
+import { hasCompleteExamDefinitions, parseExamTemplateSnapshot, type ExamTemplateAnswers } from "@/features/occupational-health/lib/exam-template-snapshot";
 import {
   createOhEmployeeFormInvite,
   createOhEmployeeFormResponse,
@@ -31,6 +31,7 @@ export function OhSessionEmployeeForm({ encounter, records, onSaved }: OhSession
   const [publicLink, setPublicLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const snapshot = parseExamTemplateSnapshot(form?.template_snapshot ?? null);
+  const incomplete = Boolean(snapshot && !hasCompleteExamDefinitions(snapshot));
   const envelope = form?.responses_json?.__employee_form__ as { answers?: ExamTemplateAnswers } | undefined;
   const currentAnswers = answers ?? envelope?.answers ?? { picks: {}, fields: {} };
   const locked = form?.status === "submitted" || form?.status === "uploaded";
@@ -116,6 +117,7 @@ export function OhSessionEmployeeForm({ encounter, records, onSaved }: OhSession
             ) : null}
             {manual.isError ? <p className="text-sm text-red-700">{message(manual.error, "The employee form could not be opened.")}</p> : null}
             {link.isError ? <p className="text-sm text-red-700">{message(link.error, "The public link could not be created.")}</p> : null}
+            {incomplete && !locked ? <p className="text-sm text-dash-muted">This form needs updated fields from Occupational Health settings before it can be completed.</p> : null}
             {locked ? <p className="text-sm text-dash-muted">This form is already complete.</p> : null}
           </div>
         ) : (
@@ -127,6 +129,8 @@ export function OhSessionEmployeeForm({ encounter, records, onSaved }: OhSession
                 disabled={save.isPending || encounter.is_active === false}
                 onChange={setAnswers}
               />
+            ) : incomplete ? (
+              <p className="text-sm text-dash-muted">Ask an administrator to publish the configured fields, then reopen this form.</p>
             ) : (
               <p className="text-sm text-dash-muted">This form has no questions to fill yet.</p>
             )}

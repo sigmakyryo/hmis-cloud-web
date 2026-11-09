@@ -472,6 +472,10 @@ export const BFF_OCCUPATIONAL_HEALTH_ROUTES = {
   cofResponses: "/api/occupational-health/cof-responses",
   cofResponseResponses: (uuid: string) =>
     `/api/occupational-health/cof-responses/${uuid}/responses`,
+  cofResponseTemplateVersion: (uuid: string) =>
+    `/api/occupational-health/cof-responses/${uuid}/template-version`,
+  employeeFormResponseTemplateVersion: (uuid: string) =>
+    `/api/occupational-health/employee-form-responses/${uuid}/template-version`,
   featureFlags: "/api/occupational-health/feature-flags",
 } as const;
 

@@ -1747,8 +1747,23 @@ export async function publishOhEmployeeFormTemplate(templateUuid: string) {
   });
 }
 
+export async function fetchOhEmployeeFormTemplateVersions(templateUuid: string) {
+  return bffRequest<OhTemplateVersion[]>(
+    BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormTemplateVersions(templateUuid),
+  );
+}
+
+
 export type { OhRequirementsConfig };
 
 export async function recoverOhExaminationVersion(uuid: string, payload: { row_version: number; template_version_uuid: string }) {
   return bffRequest<OhExamination>(`${BFF_OCCUPATIONAL_HEALTH_ROUTES.examination(uuid).replace(/\/$/, "")}/template-version`, { method: "POST", body: payload });
+}
+
+export async function recoverOhCofResponseVersion(uuid: string, payload: { row_version: number; template_version_uuid: string }) {
+  return bffRequest<OhTemplateCapture>(`${BFF_OCCUPATIONAL_HEALTH_ROUTES.cofResponseTemplateVersion(uuid)}`, { method: "POST", body: payload });
+}
+
+export async function recoverOhEmployeeFormResponseVersion(uuid: string, payload: { row_version: number; template_version_uuid: string }) {
+  return bffRequest<OhTemplateCapture>(`${BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormResponseTemplateVersion(uuid)}`, { method: "POST", body: payload });
 }

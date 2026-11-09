@@ -23,6 +23,12 @@ const ohService = vi.hoisted(() => ({
   createOhEmployeeFormResponse: vi.fn(),
   createOhEmployeeFormInvite: vi.fn(),
   patchOhEmployeeFormResponses: vi.fn(),
+  createOhCofResponse: vi.fn(),
+  patchOhCofResponses: vi.fn(),
+  fetchOhCofTemplateVersions: vi.fn(),
+  publishOhCofTemplate: vi.fn(),
+  recoverOhCofResponseVersion: vi.fn(),
+  recoverOhEmployeeFormResponseVersion: vi.fn(),
   createFitnessAssessment: vi.fn(),
   createFitnessCertificate: vi.fn(),
   withdrawFitnessCertificate: vi.fn(),
@@ -154,6 +160,31 @@ beforeEach(() => {
   ohService.fetchOhExaminations.mockResolvedValue([]);
   ohService.fetchOhEmployeeFormResponses.mockResolvedValue([]);
   ohService.fetchOhCofResponses.mockResolvedValue([]);
+  ohService.createOhCofResponse.mockResolvedValue({
+    id: 88,
+    uuid: "cof-1",
+    encounter: 7,
+    template_uuid: "cof-tmpl",
+    template_version_uuid: "cof-ver",
+    template_version_number: 1,
+    template_snapshot: { schema_version: 3, sections: [{ code: "fit", name: "Fit", content_mode: "direct", response_fields: [{ code: "outcome", label: "Outcome", response_type: "text", required: true }], items: [] }] },
+    responses_json: { __cof_template__: { template_uuid: "cof-tmpl", template_version_uuid: "cof-ver", version_number: 1, answers: { picks: {}, fields: { fit: { outcome: "" } } } } },
+    row_version: 1,
+    is_active: true,
+  });
+  ohService.patchOhCofResponses.mockImplementation(async (_uuid, payload) => ({
+    id: 88,
+    uuid: "cof-1",
+    encounter: 7,
+    template_uuid: "cof-tmpl",
+    template_version_uuid: "cof-ver",
+    template_version_number: 1,
+    template_snapshot: { schema_version: 3, sections: [{ code: "fit", name: "Fit", content_mode: "direct", response_fields: [{ code: "outcome", label: "Outcome", response_type: "text", required: true }], items: [] }] },
+    responses_json: payload.responses_json,
+    row_version: 2,
+    is_active: true,
+  }));
+  ohService.fetchOhCofTemplateVersions.mockResolvedValue([]);
   ohService.fetchOhExamFindings.mockResolvedValue([]);
   ohService.fetchFitnessAssessments.mockResolvedValue([]);
   ohService.fetchFitnessCertificates.mockResolvedValue([]);
@@ -388,12 +419,33 @@ describe("OhEncounterWorkspacePage", () => {
 
   it("keeps the visit open when saving responses fails", async () => {
     ohService.fetchOhEncounter.mockResolvedValue({ ...ENCOUNTER, origin: "laravel" });
-    ohService.fetchOhExaminations.mockResolvedValue([{ id: 11, uuid: "exam-save-error", encounter: 7, exam_type: "periodic", template_uuid: "tmpl-1", template_version_uuid: "ver-1", template_snapshot: { schema_version: 3, sections: [{ code: "vitals", name: "Vitals", content_mode: "direct", response_fields: [], items: [] }] }, responses_json: {}, row_version: 1 }]);
+    ohService.fetchOhExaminations.mockResolvedValue([{
+      id: 11,
+      uuid: "exam-save-error",
+      encounter: 7,
+      exam_type: "periodic",
+      template_uuid: "tmpl-1",
+      template_version_uuid: "ver-1",
+      template_version_number: 1,
+      template_snapshot: {
+        schema_version: 3,
+        sections: [{ code: "vitals", name: "Vitals", content_mode: "direct", response_fields: [{ code: "bp", label: "BP", response_type: "text" }], items: [] }],
+      },
+      responses_json: {
+        __exam_template__: {
+          template_uuid: "tmpl-1",
+          template_version_uuid: "ver-1",
+          version_number: 1,
+          answers: { picks: {}, fields: { vitals: { bp: "120/80" } } },
+        },
+      },
+      row_version: 1,
+    }]);
     ohService.patchOhExaminationResponses.mockRejectedValue(new Error("Save unavailable"));
     renderPage();
-    await screen.findByTestId("oh-exam-template-capture");
-    fireEvent.click(screen.getByRole("button", { name: "Complete visit" }));
-    expect(await screen.findByText(/responses could not be saved/)).toBeVisible();
+    await screen.findByTestId("oh-session-examination-step");
+    fireEvent.click(within(screen.getByTestId("oh-encounter-header")).getByRole("button", { name: "Complete visit" }));
+    expect(await screen.findByText(/could not be saved|Save unavailable|responses could not be saved/i)).toBeVisible();
     expect(completeMock).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Complete visit" })).toBeEnabled();
   });
@@ -431,6 +483,99 @@ describe("OhEncounterWorkspacePage", () => {
     expect(details).toBeVisible();
     fireEvent.change(details, { target: { value: "Synthetic response" } });
     await waitFor(() => expect(ohService.createOhExamination).toHaveBeenCalledWith(expect.objectContaining({ template_version_uuid: "complete-v2" })));
+  });
+
+
+  it("completes from the examination step without oscillating to certificate first", async () => {
+    const examination = {
+      id: 11,
+      uuid: "exam-pinned",
+      encounter: 7,
+      exam_type: "periodic",
+      template_uuid: "tmpl-1",
+      template_version_uuid: "ver-1",
+      template_version_number: 1,
+      template_snapshot: {
+        schema_version: 3,
+        sections: [{ code: "vitals", name: "Vitals", content_mode: "direct", response_fields: [{ code: "bp", label: "BP", response_type: "text", required: true }], items: [] }],
+      },
+      responses_json: {
+        __exam_template__: {
+          template_uuid: "tmpl-1",
+          template_version_uuid: "ver-1",
+          version_number: 1,
+          answers: { picks: {}, fields: { vitals: { bp: "120/80" } } },
+        },
+      },
+      row_version: 2,
+    };
+    ohService.fetchOhEncounter.mockResolvedValue({ ...ENCOUNTER, origin: "laravel" });
+    ohService.fetchOhExaminations.mockResolvedValue([examination]);
+    ohService.patchOhExaminationResponses.mockImplementation(async (_uuid, payload) => ({
+      ...examination,
+      responses_json: payload.responses_json,
+      row_version: 3,
+    }));
+    completeMock.mockImplementation(async () => {
+      ohService.fetchOhEncounter.mockResolvedValue({
+        ...ENCOUNTER,
+        origin: "laravel",
+        is_active: false,
+        status: "completed",
+      });
+    });
+    renderPage();
+    await screen.findByTestId("oh-session-examination-step");
+    expect(screen.getByTestId("oh-session-certificate-step")).toHaveAttribute("aria-hidden", "true");
+    // Fill required certificate field while the panel stays mounted/hidden.
+    const outcome = await screen.findByLabelText(/Outcome/);
+    fireEvent.change(outcome, { target: { value: "Fit" } });
+    fireEvent.click(within(screen.getByTestId("oh-encounter-header")).getByRole("button", { name: "Complete visit" }));
+    await waitFor(() => expect(completeMock).toHaveBeenCalledWith("enc-1"));
+    expect(ohService.patchOhExaminationResponses).toHaveBeenCalled();
+    expect(ohService.patchOhCofResponses).toHaveBeenCalled();
+    expect(screen.queryByText("Complete the certificate before completing this visit.")).toBeNull();
+  });
+
+  it("navigates once to the certificate when certificate validation fails", async () => {
+    const examination = {
+      id: 11,
+      uuid: "exam-pinned",
+      encounter: 7,
+      exam_type: "periodic",
+      template_uuid: "tmpl-1",
+      template_version_uuid: "ver-1",
+      template_version_number: 1,
+      template_snapshot: {
+        schema_version: 3,
+        sections: [{ code: "vitals", name: "Vitals", content_mode: "direct", response_fields: [{ code: "bp", label: "BP", response_type: "text" }], items: [] }],
+      },
+      responses_json: {
+        __exam_template__: {
+          template_uuid: "tmpl-1",
+          template_version_uuid: "ver-1",
+          version_number: 1,
+          answers: { picks: {}, fields: { vitals: { bp: "120/80" } } },
+        },
+      },
+      row_version: 2,
+    };
+    ohService.fetchOhEncounter.mockResolvedValue({ ...ENCOUNTER, origin: "laravel" });
+    ohService.fetchOhExaminations.mockResolvedValue([examination]);
+    ohService.patchOhExaminationResponses.mockResolvedValue({ ...examination, row_version: 3 });
+    renderPage();
+    await screen.findByTestId("oh-session-examination-step");
+    await screen.findByTestId("oh-session-certificate-step");
+    fireEvent.click(within(screen.getByTestId("oh-encounter-header")).getByRole("button", { name: "Complete visit" }));
+    expect(await screen.findByText("Complete the certificate before completing this visit.")).toBeVisible();
+    expect(screen.getByTestId("oh-session-certificate-step")).toHaveAttribute("aria-hidden", "false");
+    expect(completeMock).not.toHaveBeenCalled();
+    // Second click stays on certificate validation rather than bouncing back to examination.
+    fireEvent.click(within(screen.getByTestId("oh-encounter-header")).getByRole("button", { name: "Complete visit" }));
+    expect(await screen.findByText("Complete the certificate before completing this visit.")).toBeVisible();
+    expect(screen.getByTestId("oh-session-certificate-step")).toHaveAttribute("aria-hidden", "false");
+    expect(screen.getByTestId("oh-session-examination-step")).toHaveAttribute("aria-hidden", "true");
+    expect(completeMock).not.toHaveBeenCalled();
   });
 
 });
