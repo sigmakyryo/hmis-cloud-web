@@ -26,6 +26,7 @@ export const moduleDisplayNames: Record<string, string> = {
   Clinical: "EMR",
   Therapy: "Therapy",
   OccupationalHealth: "OHS",
+  Immunizations: "Immunizations",
   Forms: "Forms",
 };
 
@@ -42,6 +43,7 @@ export const moduleIcons: Record<string, AppIconName> = {
   Clinical: "hospital",
   Therapy: "dumbbell",
   OccupationalHealth: "clipboard",
+  Immunizations: "shield",
   Forms: "file",
 };
 
@@ -58,6 +60,7 @@ export const moduleOrder = [
   "Clinical",
   "Therapy",
   "OccupationalHealth",
+  "Immunizations",
   "Forms",
 ] as const;
 
@@ -293,14 +296,6 @@ export const navigation: NavigationItem[] = [
     enabledInWebNew: true,
   },
   {
-    name: "Immunizations",
-    href: ROUTES.occupationalHealthImmunizations,
-    icon: "clipboard",
-    requiredGroup: "OccupationalHealth",
-    moduleName: "OccupationalHealth",
-    enabledInWebNew: true,
-  },
-  {
     name: "Drug & alcohol",
     href: ROUTES.occupationalHealthDrugAlcohol,
     icon: "clipboard",
@@ -331,6 +326,78 @@ export const navigation: NavigationItem[] = [
     icon: "clipboard",
     requiredGroup: "OccupationalHealth",
     moduleName: "OccupationalHealth",
+    enabledInWebNew: true,
+  },
+  {
+    name: "Due",
+    href: ROUTES.immunizationsDue,
+    icon: "shield",
+    requiredGroup: "OccupationalHealth",
+    moduleName: "Immunizations",
+    enabledInWebNew: true,
+  },
+  {
+    name: "Vaccines & lots",
+    href: ROUTES.immunizationsVaccines,
+    icon: "shield",
+    requiredGroup: "OccupationalHealth",
+    moduleName: "Immunizations",
+    enabledInWebNew: true,
+  },
+  {
+    name: "Schedules",
+    href: ROUTES.immunizationsSchedules,
+    icon: "shield",
+    requiredGroup: "OccupationalHealth",
+    moduleName: "Immunizations",
+    enabledInWebNew: true,
+  },
+  {
+    name: "Compliance",
+    href: ROUTES.immunizationsCompliance,
+    icon: "shield",
+    requiredGroup: "OccupationalHealth",
+    moduleName: "Immunizations",
+    enabledInWebNew: true,
+  },
+  {
+    name: "Risk & tasks",
+    href: ROUTES.immunizationsRisk,
+    icon: "shield",
+    requiredGroup: "OccupationalHealth",
+    moduleName: "Immunizations",
+    enabledInWebNew: true,
+  },
+  {
+    name: "Exposures",
+    href: ROUTES.immunizationsExposures,
+    icon: "shield",
+    requiredGroup: "OccupationalHealth",
+    moduleName: "Immunizations",
+    enabledInWebNew: true,
+  },
+  {
+    name: "Governance",
+    href: ROUTES.immunizationsGovernance,
+    icon: "shield",
+    requiredGroup: "OccupationalHealth",
+    moduleName: "Immunizations",
+    enabledInWebNew: true,
+  },
+  {
+    name: "PDCA",
+    href: ROUTES.immunizationsPdca,
+    icon: "shield",
+    requiredGroup: "OccupationalHealth",
+    moduleName: "Immunizations",
+    enabledInWebNew: true,
+  },
+  {
+    name: "Exports & audit",
+    href: ROUTES.immunizationsExports,
+    icon: "shield",
+    requiredGroup: "OccupationalHealth",
+    moduleName: "Immunizations",
     enabledInWebNew: true,
   },
   {

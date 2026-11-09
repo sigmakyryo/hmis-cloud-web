@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Plus } from "lucide-react";
@@ -17,6 +18,54 @@ import {
   createOhImmVaccine,
   createOhImmDhisMapping,
   downloadOhImmCertificatePdf,
+  fetchOhImmPathways,
+  createOhImmPathway,
+  fetchOhImmTasks,
+  createOhImmTask,
+  assignOhImmTask,
+  seedOhImmRiskExamples,
+  fetchOhImmNrProtocols,
+  createOhImmNrProtocol,
+  seedOhImmNrHepb,
+  type OhImmPathway,
+  type OhImmTask,
+  type OhImmNrProtocol,
+  fetchOhImmExposures,
+  createOhImmExposure,
+  recordOhImmExposureAction,
+  updateOhImmExposureSource,
+  fetchOhImmExposureDueFollowups,
+  completeOhImmExposureFollowup,
+  fetchOhImmExposureOncall,
+  createOhImmExposureOncall,
+  seedOhImmExposureTypes,
+  type OhImmExposure,
+  fetchOhImmZones,
+  seedOhImmZones,
+  fetchOhImmZoneClearance,
+  fetchOhImmAccessClients,
+  createOhImmAccessClient,
+  seedOhImmControls,
+  fetchOhImmControls,
+  fetchOhImmTaskHierarchy,
+  createOhImmFitTest,
+  fetchOhImmFitTestsDue,
+  fetchOhImmBoardMembers,
+  createOhImmBoardMember,
+  fetchOhImmAccommodations,
+  fileOhImmDeclination,
+  decideOhImmAccommodation,
+  fetchOhImmPdca,
+  updateOhImmRca,
+  addOhImmRcaAction,
+  fetchOhImmSeroAudits,
+  createOhImmSeroAudit,
+  recordOhImmSeroAggregates,
+  fetchOhImmVendors,
+  createOhImmVendor,
+  recordOhImmColdChain,
+  clearOhImmLotQuarantine,
+  fetchOhImmTasks,
   issueOhImmCertificate,
   downloadOhImmComplianceCsv,
   downloadOhImmDhisCsv,
@@ -40,9 +89,10 @@ import {
   type OhVaccineLot,
 } from "@/features/occupational-health/services/immunisation.service";
 import { useToast } from "@/providers/toast-provider";
+import { ROUTES } from "@/constants/routes";
 import { cn } from "@/lib/utils";
 
-type HubTab = "due" | "catalog" | "schedules" | "compliance" | "tools";
+export type HubTab = "due" | "catalog" | "schedules" | "compliance" | "tools" | "risk" | "exposures" | "governance" | "pdca";
 
 const STATUS_LABEL: Record<string, string> = {
   up_to_date: "Up to date",
@@ -52,8 +102,24 @@ const STATUS_LABEL: Record<string, string> = {
   non_responder: "Non-responder",
 };
 
-export function OhImmunizationsHubPage() {
-  const [tab, setTab] = useState<HubTab>("due");
+export function OhImmunizationsHubPage({
+  initialTab = "due",
+}: {
+  initialTab?: HubTab;
+} = {}) {
+  const [tab, setTab] = useState<HubTab>(initialTab);
+  const router = useRouter();
+  const tabHref: Record<HubTab, string> = {
+    due: ROUTES.immunizationsDue,
+    catalog: ROUTES.immunizationsVaccines,
+    schedules: ROUTES.immunizationsSchedules,
+    compliance: ROUTES.immunizationsCompliance,
+    risk: ROUTES.immunizationsRisk,
+    exposures: ROUTES.immunizationsExposures,
+    governance: ROUTES.immunizationsGovernance,
+    pdca: ROUTES.immunizationsPdca,
+    tools: ROUTES.immunizationsExports,
+  };
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -133,13 +199,17 @@ export function OhImmunizationsHubPage() {
               ["catalog", "Vaccines & lots"],
               ["schedules", "Schedules"],
               ["compliance", "Compliance"],
+              ["risk", "Risk & tasks"],
+              ["exposures", "Exposures"],
+              ["governance", "Governance"],
+              ["pdca", "PDCA"],
               ["tools", "Exports & audit"],
             ] as const
           ).map(([id, label]) => (
             <button
               key={id}
               type="button"
-              onClick={() => setTab(id)}
+              onClick={() => { setTab(id); router.push(tabHref[id]); }}
               className={cn(
                 "relative -mb-px pb-2.5 text-sm",
                 tab === id
@@ -178,6 +248,10 @@ export function OhImmunizationsHubPage() {
           loading={compliance.isLoading}
         />
       ) : null}
+      {tab === "risk" ? <RiskPanel /> : null}
+      {tab === "exposures" ? <ExposuresPanel /> : null}
+      {tab === "governance" ? <GovernancePanel /> : null}
+      {tab === "pdca" ? <PdcaPanel /> : null}
       {tab === "tools" ? <ToolsPanel schedules={schedules.data ?? []} /> : null}
     </ListPageLayout>
   );
@@ -190,6 +264,14 @@ function DuePanel({
   rows: OhImmStatus[];
   loading: boolean;
 }) {
+  const expFollowups = useQuery({
+    queryKey: ["oh-imm-exp-followups-due"],
+    queryFn: () => fetchOhImmExposureDueFollowups(14),
+  });
+  const fitDueInDue = useQuery({
+    queryKey: ["oh-imm-fit-due-in-due"],
+    queryFn: () => fetchOhImmFitTestsDue(30),
+  });
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<string[]>([]);
@@ -275,6 +357,31 @@ function DuePanel({
           Remind selected ({selected.length})
         </PrimaryButton>
       </div>
+
+      {(fitDueInDue?.data ?? []).length > 0 ? (
+        <div className="mt-4 space-y-1" data-testid="oh-imm-fit-due-panel">
+          <h3 className="text-sm font-semibold text-primary">Fit-tests due</h3>
+          <ul className="text-sm">
+            {(fitDueInDue.data ?? []).map((f) => (
+              <li key={String(f.uuid)} className="border-b border-border/60 py-1">
+                {String(f.customer_uuid).slice(0, 8)} · expires {String(f.expires_on)} · {String(f.status)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {(expFollowups.data ?? []).length > 0 ? (
+        <div className="mt-4 space-y-1">
+          <h3 className="text-sm font-semibold text-primary">Exposure follow-ups</h3>
+          <ul className="text-sm">
+            {(expFollowups.data ?? []).map((f) => (
+              <li key={String(f.uuid)} className="border-b border-border/60 py-1">
+                {String(f.customer_initials)} · {String(f.label)} · due {String(f.due_date)} · {String(f.status)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       {list.length === 0 ? (
         <EmptyAction
@@ -1533,6 +1640,1030 @@ function EmptyAction({
     <div className="rounded-md border border-dashed border-dash-border px-4 py-8 text-center">
       <p className="text-[13px] font-medium text-brand-navy">{title}</p>
       <p className="mt-1 text-[13px] text-dash-muted">{description}</p>
+    </div>
+  );
+}
+
+
+function RiskPanel() {
+  const pathwaysQ = useQuery({ queryKey: ["oh-imm-pathways"], queryFn: fetchOhImmPathways });
+  const tasksQ = useQuery({ queryKey: ["oh-imm-tasks"], queryFn: fetchOhImmTasks });
+  const protocolsQ = useQuery({ queryKey: ["oh-imm-nr-protocols"], queryFn: fetchOhImmNrProtocols });
+  const qc = useQueryClient();
+  const [pathwayForm, setPathwayForm] = useState({ code: "", name: "", description: "", vaccine_code: "" });
+  const [taskForm, setTaskForm] = useState({
+    pathway_uuid: "",
+    code: "",
+    name: "",
+    likelihood: 3,
+    severity: 3,
+  });
+  const [assignForm, setAssignForm] = useState({
+    task_uuid: "",
+    department_name: "",
+    site: "",
+    customer_uuid: "",
+  });
+  const [protocolForm, setProtocolForm] = useState({
+    vaccine_code: "HEPB",
+    titre_threshold: 10,
+    max_series: 2,
+    titre_interval_days: 28,
+  });
+  const [msg, setMsg] = useState("");
+
+  const seedRisk = useMutation({
+    mutationFn: seedOhImmRiskExamples,
+    onSuccess: (r) => {
+      setMsg(`Loaded ${r.pathways} pathways and ${r.tasks} example tasks.`);
+      void qc.invalidateQueries({ queryKey: ["oh-imm-pathways"] });
+      void qc.invalidateQueries({ queryKey: ["oh-imm-tasks"] });
+    },
+    onError: (e: Error) => setMsg(e.message),
+  });
+  const seedNr = useMutation({
+    mutationFn: seedOhImmNrHepb,
+    onSuccess: () => {
+      setMsg("HepB non-responder protocol ready.");
+      void qc.invalidateQueries({ queryKey: ["oh-imm-nr-protocols"] });
+    },
+    onError: (e: Error) => setMsg(e.message),
+  });
+  const createPathway = useMutation({
+    mutationFn: () =>
+      createOhImmPathway({
+        code: pathwayForm.code,
+        name: pathwayForm.name,
+        description: pathwayForm.description,
+        requirements: pathwayForm.vaccine_code
+          ? [
+              {
+                vaccine_code: pathwayForm.vaccine_code,
+                schedule_code: "",
+                titre_required: pathwayForm.vaccine_code.toUpperCase() === "HEPB",
+                control_codes: [],
+              },
+            ]
+          : [],
+      }),
+    onSuccess: () => {
+      setPathwayForm({ code: "", name: "", description: "", vaccine_code: "" });
+      void qc.invalidateQueries({ queryKey: ["oh-imm-pathways"] });
+    },
+    onError: (e: Error) => setMsg(e.message),
+  });
+  const createTask = useMutation({
+    mutationFn: () => createOhImmTask(taskForm),
+    onSuccess: () => {
+      setTaskForm({ pathway_uuid: "", code: "", name: "", likelihood: 3, severity: 3 });
+      void qc.invalidateQueries({ queryKey: ["oh-imm-tasks"] });
+    },
+    onError: (e: Error) => setMsg(e.message),
+  });
+  const assignTask = useMutation({
+    mutationFn: () =>
+      assignOhImmTask({
+        task_uuid: assignForm.task_uuid,
+        department_name: assignForm.department_name || undefined,
+        site: assignForm.site || undefined,
+        customer_uuid: assignForm.customer_uuid || undefined,
+      }),
+    onSuccess: () => setMsg("Task assigned."),
+    onError: (e: Error) => setMsg(e.message),
+  });
+  const createProtocol = useMutation({
+    mutationFn: () =>
+      createOhImmNrProtocol({
+        ...protocolForm,
+        flag_on_true_non_responder: true,
+        recommend_role_change: true,
+        recommend_ppe_plan: true,
+        enable_hbig_fast_track: true,
+        require_quantitative_titre: true,
+      }),
+    onSuccess: () => {
+      setMsg("Non-responder protocol saved.");
+      void qc.invalidateQueries({ queryKey: ["oh-imm-nr-protocols"] });
+    },
+    onError: (e: Error) => setMsg(e.message),
+  });
+
+  const pathways = pathwaysQ.data ?? [];
+  const tasks = tasksQ.data ?? [];
+  const protocols = protocolsQ.data ?? [];
+
+  if (pathwaysQ.isLoading || tasksQ.isLoading || protocolsQ.isLoading) return <QuietLoading />;
+  if (pathwaysQ.isError || tasksQ.isError || protocolsQ.isError) {
+    return (
+      <p className="text-sm text-destructive" role="alert">
+        Could not load risk pathways. Check your connection and try again.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-6" data-testid="oh-imm-risk-panel">
+      <div className="flex flex-wrap items-center gap-2">
+        <SecondaryButton type="button" className="h-8" onClick={() => seedRisk.mutate()} disabled={seedRisk.isPending}>
+          Load example pathways
+        </SecondaryButton>
+        <SecondaryButton type="button" className="h-8" onClick={() => seedNr.mutate()} disabled={seedNr.isPending}>
+          Load HepB non-responder protocol
+        </SecondaryButton>
+        {msg ? <span className="text-sm text-muted-foreground">{msg}</span> : null}
+      </div>
+
+      <section className="space-y-2">
+        <h3 className="text-sm font-semibold text-primary">Exposure pathways</h3>
+        <p className="text-sm text-muted-foreground">
+          Pathways drive required vaccines, titre checks, and controls. Examples are labelled and editable.
+        </p>
+        {(pathwaysQ.isLoading || pathways.length === 0) && !pathwaysQ.isLoading ? (
+          <p className="text-sm text-muted-foreground">
+            No pathways yet.{" "}
+            <button type="button" className="text-primary underline" onClick={() => seedRisk.mutate()}>
+              Load examples
+            </button>
+          </p>
+        ) : null}
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left text-muted-foreground">
+                <th className="py-1 pr-3 font-medium">Code</th>
+                <th className="py-1 pr-3 font-medium">Name</th>
+                <th className="py-1 pr-3 font-medium">Vaccines</th>
+                <th className="py-1 font-medium">Controls</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pathways.map((p: OhImmPathway) => (
+                <tr key={p.uuid} className="border-b border-border/60">
+                  <td className="py-1.5 pr-3 font-mono text-xs">
+                    {p.code}
+                    {p.is_example ? (
+                      <span className="ml-1 rounded bg-amber-100 px-1 text-[10px] text-amber-800">example</span>
+                    ) : null}
+                  </td>
+                  <td className="py-1.5 pr-3">{p.name}</td>
+                  <td className="py-1.5 pr-3">
+                    {p.requirements.map((r) => r.vaccine_code).filter(Boolean).join(", ") || "—"}
+                  </td>
+                  <td className="py-1.5">
+                    {Array.from(
+                      new Set(p.requirements.flatMap((r) => r.control_codes ?? [])),
+                    ).join(", ") || "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="flex flex-wrap gap-2 pt-1">
+          <input
+            className="h-8 w-28 rounded border px-2 text-sm"
+            placeholder="Code"
+            value={pathwayForm.code}
+            onChange={(e) => setPathwayForm((f) => ({ ...f, code: e.target.value }))}
+          />
+          <input
+            className="h-8 w-40 rounded border px-2 text-sm"
+            placeholder="Name"
+            value={pathwayForm.name}
+            onChange={(e) => setPathwayForm((f) => ({ ...f, name: e.target.value }))}
+          />
+          <input
+            className="h-8 w-28 rounded border px-2 text-sm"
+            placeholder="Vaccine code"
+            value={pathwayForm.vaccine_code}
+            onChange={(e) => setPathwayForm((f) => ({ ...f, vaccine_code: e.target.value }))}
+          />
+          <PrimaryButton type="button" className="h-8" onClick={() => createPathway.mutate()} disabled={createPathway.isPending}>
+            Add pathway
+          </PrimaryButton>
+        </div>
+      </section>
+
+      <section className="space-y-2">
+        <h3 className="text-sm font-semibold text-primary">Tasks & scoring</h3>
+        <p className="text-sm text-muted-foreground">
+          Likelihood × severity (1–5). Assign tasks to departments, sites, roles, or a specific employee.
+        </p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left text-muted-foreground">
+                <th className="py-1 pr-3 font-medium">Task</th>
+                <th className="py-1 pr-3 font-medium">Pathway</th>
+                <th className="py-1 pr-3 font-medium">L×S</th>
+                <th className="py-1 font-medium">Score</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tasks.map((task: OhImmTask) => (
+                <tr key={task.uuid} className="border-b border-border/60">
+                  <td className="py-1.5 pr-3">
+                    <span className="font-mono text-xs">{task.code}</span> {task.name}
+                    {task.is_example ? (
+                      <span className="ml-1 rounded bg-amber-100 px-1 text-[10px] text-amber-800">example</span>
+                    ) : null}
+                  </td>
+                  <td className="py-1.5 pr-3">{task.pathway_code ?? "—"}</td>
+                  <td className="py-1.5 pr-3">
+                    {task.likelihood}×{task.severity}
+                  </td>
+                  <td className="py-1.5 font-medium">{task.score}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="flex flex-wrap gap-2 pt-1">
+          <select
+            className="h-8 rounded border px-2 text-sm"
+            value={taskForm.pathway_uuid}
+            onChange={(e) => setTaskForm((f) => ({ ...f, pathway_uuid: e.target.value }))}
+          >
+            <option value="">Pathway…</option>
+            {pathways.map((p: OhImmPathway) => (
+              <option key={p.uuid} value={p.uuid}>
+                {p.code}
+              </option>
+            ))}
+          </select>
+          <input
+            className="h-8 w-28 rounded border px-2 text-sm"
+            placeholder="Task code"
+            value={taskForm.code}
+            onChange={(e) => setTaskForm((f) => ({ ...f, code: e.target.value }))}
+          />
+          <input
+            className="h-8 w-40 rounded border px-2 text-sm"
+            placeholder="Name"
+            value={taskForm.name}
+            onChange={(e) => setTaskForm((f) => ({ ...f, name: e.target.value }))}
+          />
+          <input
+            type="number"
+            min={1}
+            max={5}
+            className="h-8 w-16 rounded border px-2 text-sm"
+            value={taskForm.likelihood}
+            onChange={(e) => setTaskForm((f) => ({ ...f, likelihood: Number(e.target.value) }))}
+          />
+          <input
+            type="number"
+            min={1}
+            max={5}
+            className="h-8 w-16 rounded border px-2 text-sm"
+            value={taskForm.severity}
+            onChange={(e) => setTaskForm((f) => ({ ...f, severity: Number(e.target.value) }))}
+          />
+          <PrimaryButton type="button" className="h-8" onClick={() => createTask.mutate()} disabled={createTask.isPending}>
+            Add task
+          </PrimaryButton>
+        </div>
+        <div className="flex flex-wrap gap-2 pt-2">
+          <select
+            className="h-8 rounded border px-2 text-sm"
+            value={assignForm.task_uuid}
+            onChange={(e) => setAssignForm((f) => ({ ...f, task_uuid: e.target.value }))}
+          >
+            <option value="">Assign task…</option>
+            {tasks.map((task: OhImmTask) => (
+              <option key={task.uuid} value={task.uuid}>
+                {task.code}
+              </option>
+            ))}
+          </select>
+          <input
+            className="h-8 w-36 rounded border px-2 text-sm"
+            placeholder="Department"
+            value={assignForm.department_name}
+            onChange={(e) => setAssignForm((f) => ({ ...f, department_name: e.target.value }))}
+          />
+          <input
+            className="h-8 w-28 rounded border px-2 text-sm"
+            placeholder="Site"
+            value={assignForm.site}
+            onChange={(e) => setAssignForm((f) => ({ ...f, site: e.target.value }))}
+          />
+          <input
+            className="h-8 w-52 rounded border px-2 text-sm"
+            placeholder="Employee UUID (override)"
+            value={assignForm.customer_uuid}
+            onChange={(e) => setAssignForm((f) => ({ ...f, customer_uuid: e.target.value }))}
+          />
+          <SecondaryButton type="button" className="h-8" onClick={() => assignTask.mutate()} disabled={assignTask.isPending}>
+            Assign
+          </SecondaryButton>
+        </div>
+      </section>
+
+      <section className="space-y-2">
+        <h3 className="text-sm font-semibold text-primary">Non-responder protocols</h3>
+        <p className="text-sm text-muted-foreground">
+          After series + quantitative titre: 1st fail → second series; 2nd fail → true non-responder with HBIG fast-track.
+        </p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left text-muted-foreground">
+                <th className="py-1 pr-3 font-medium">Vaccine</th>
+                <th className="py-1 pr-3 font-medium">Threshold</th>
+                <th className="py-1 pr-3 font-medium">Max series</th>
+                <th className="py-1 font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {protocols.map((p: OhImmNrProtocol) => (
+                <tr key={p.uuid} className="border-b border-border/60">
+                  <td className="py-1.5 pr-3 font-mono text-xs">{p.vaccine_code}</td>
+                  <td className="py-1.5 pr-3">
+                    {p.titre_threshold} {p.titre_unit}
+                  </td>
+                  <td className="py-1.5 pr-3">{p.max_series}</td>
+                  <td className="py-1.5 text-xs text-muted-foreground">
+                    {[
+                      p.flag_on_true_non_responder ? "flag" : null,
+                      p.recommend_role_change ? "role change" : null,
+                      p.recommend_ppe_plan ? "PPE plan" : null,
+                      p.enable_hbig_fast_track ? "HBIG fast-track" : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ") || "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="flex flex-wrap gap-2 pt-1">
+          <input
+            className="h-8 w-28 rounded border px-2 text-sm"
+            placeholder="Vaccine"
+            value={protocolForm.vaccine_code}
+            onChange={(e) => setProtocolForm((f) => ({ ...f, vaccine_code: e.target.value }))}
+          />
+          <input
+            type="number"
+            className="h-8 w-24 rounded border px-2 text-sm"
+            placeholder="Threshold"
+            value={protocolForm.titre_threshold}
+            onChange={(e) => setProtocolForm((f) => ({ ...f, titre_threshold: Number(e.target.value) }))}
+          />
+          <input
+            type="number"
+            className="h-8 w-20 rounded border px-2 text-sm"
+            placeholder="Max series"
+            value={protocolForm.max_series}
+            onChange={(e) => setProtocolForm((f) => ({ ...f, max_series: Number(e.target.value) }))}
+          />
+          <PrimaryButton type="button" className="h-8" onClick={() => createProtocol.mutate()} disabled={createProtocol.isPending}>
+            Save protocol
+          </PrimaryButton>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+
+function formatClock(seconds?: number) {
+  if (seconds == null) return "—";
+  const overdue = seconds < 0;
+  const abs = Math.abs(seconds);
+  const h = Math.floor(abs / 3600);
+  const m = Math.floor((abs % 3600) / 60);
+  const label = h > 0 ? `${h}h ${m}m` : `${m}m`;
+  return overdue ? `${label} overdue` : `${label} left`;
+}
+
+function ExposuresPanel() {
+  const qc = useQueryClient();
+  const listQ = useQuery({ queryKey: ["oh-imm-exposures"], queryFn: () => fetchOhImmExposures({ status: "open" }) });
+  const followQ = useQuery({ queryKey: ["oh-imm-exp-followups"], queryFn: () => fetchOhImmExposureDueFollowups(30) });
+  const oncallQ = useQuery({ queryKey: ["oh-imm-exp-oncall"], queryFn: () => fetchOhImmExposureOncall() });
+  const [form, setForm] = useState({
+    customer_uuid: "",
+    exposed_at: new Date().toISOString().slice(0, 16),
+    exposure_type: "needlestick",
+    body_site: "",
+    device: "",
+    source_known: "unknown",
+    first_aid_done: false,
+    site: "",
+    pathway_code: "",
+  });
+  const [oncall, setOncall] = useState({ name: "", phone: "", email: "", site: "", shift: "any" });
+  const [msg, setMsg] = useState("");
+  const [selected, setSelected] = useState<string | null>(null);
+
+  const create = useMutation({
+    mutationFn: () =>
+      createOhImmExposure({
+        ...form,
+        exposed_at: new Date(form.exposed_at).toISOString(),
+        first_aid_done: form.first_aid_done,
+      }),
+    onSuccess: (row) => {
+      setMsg(`Logged ${row.exposure_type} · triage ${row.triage_band}`);
+      setSelected(row.uuid);
+      void qc.invalidateQueries({ queryKey: ["oh-imm-exposures"] });
+      void qc.invalidateQueries({ queryKey: ["oh-imm-exp-followups"] });
+    },
+    onError: (e: Error) => setMsg(e.message),
+  });
+  const seed = useMutation({
+    mutationFn: seedOhImmExposureTypes,
+    onSuccess: (r) => setMsg(`Type defaults ready (${r.seeded} new).`),
+  });
+  const addOncall = useMutation({
+    mutationFn: () => createOhImmExposureOncall(oncall),
+    onSuccess: () => {
+      setOncall({ name: "", phone: "", email: "", site: "", shift: "any" });
+      void qc.invalidateQueries({ queryKey: ["oh-imm-exp-oncall"] });
+    },
+    onError: (e: Error) => setMsg(e.message),
+  });
+
+  const rows = listQ.data ?? [];
+  const active = rows.find((r) => r.uuid === selected) ?? rows[0] ?? null;
+
+  if (listQ.isLoading) return <QuietLoading />;
+  if (listQ.isError) {
+    return (
+      <p className="text-sm text-destructive" role="alert">
+        Could not load exposures. Check your connection and try again.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-6" data-testid="oh-imm-exposures-panel">
+      <div className="flex flex-wrap items-center gap-2">
+        <SecondaryButton type="button" className="h-8" onClick={() => seed.mutate()} disabled={seed.isPending}>
+          Seed exposure types
+        </SecondaryButton>
+        {msg ? <span className="text-sm text-muted-foreground">{msg}</span> : null}
+      </div>
+
+      <section className="space-y-2">
+        <h3 className="text-sm font-semibold text-primary">Log exposure</h3>
+        <p className="text-sm text-muted-foreground">
+          Quick log — clocks start from exposure time. HIV PEP target ≤2h (max 72h); HBIG ≤24h (max 7d).
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <input
+            className="h-9 min-w-[12rem] flex-1 rounded border px-2 text-sm"
+            placeholder="Employee UUID"
+            value={form.customer_uuid}
+            onChange={(e) => setForm((f) => ({ ...f, customer_uuid: e.target.value }))}
+          />
+          <input
+            type="datetime-local"
+            className="h-9 rounded border px-2 text-sm"
+            value={form.exposed_at}
+            onChange={(e) => setForm((f) => ({ ...f, exposed_at: e.target.value }))}
+          />
+          <select
+            className="h-9 rounded border px-2 text-sm"
+            value={form.exposure_type}
+            onChange={(e) => setForm((f) => ({ ...f, exposure_type: e.target.value }))}
+          >
+            <option value="needlestick">Needlestick</option>
+            <option value="sharps">Sharps</option>
+            <option value="splash_mucous">Splash (mucous)</option>
+            <option value="bite">Bite</option>
+            <option value="airborne">Airborne</option>
+            <option value="other">Other</option>
+          </select>
+          <input
+            className="h-9 w-28 rounded border px-2 text-sm"
+            placeholder="Body site"
+            value={form.body_site}
+            onChange={(e) => setForm((f) => ({ ...f, body_site: e.target.value }))}
+          />
+          <input
+            className="h-9 w-28 rounded border px-2 text-sm"
+            placeholder="Device"
+            value={form.device}
+            onChange={(e) => setForm((f) => ({ ...f, device: e.target.value }))}
+          />
+          <select
+            className="h-9 rounded border px-2 text-sm"
+            value={form.source_known}
+            onChange={(e) => setForm((f) => ({ ...f, source_known: e.target.value }))}
+          >
+            <option value="unknown">Source unknown</option>
+            <option value="known">Source known</option>
+          </select>
+          <label className="flex h-9 items-center gap-1 text-sm">
+            <input
+              type="checkbox"
+              checked={form.first_aid_done}
+              onChange={(e) => setForm((f) => ({ ...f, first_aid_done: e.target.checked }))}
+            />
+            First aid done
+          </label>
+          <input
+            className="h-9 w-28 rounded border px-2 text-sm"
+            placeholder="Site"
+            value={form.site}
+            onChange={(e) => setForm((f) => ({ ...f, site: e.target.value }))}
+          />
+          <PrimaryButton type="button" className="h-9" onClick={() => create.mutate()} disabled={create.isPending}>
+            Log incident
+          </PrimaryButton>
+        </div>
+      </section>
+
+      <section className="space-y-2">
+        <h3 className="text-sm font-semibold text-primary">Open incidents</h3>
+        {listQ.isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : null}
+        {!listQ.isLoading && rows.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No open exposures. Log one above.</p>
+        ) : null}
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left text-muted-foreground">
+                <th className="py-1 pr-3 font-medium">When</th>
+                <th className="py-1 pr-3 font-medium">Who</th>
+                <th className="py-1 pr-3 font-medium">Type</th>
+                <th className="py-1 pr-3 font-medium">Band</th>
+                <th className="py-1 font-medium">Clocks</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r: OhImmExposure) => (
+                <tr
+                  key={r.uuid}
+                  className={`cursor-pointer border-b border-border/60 ${selected === r.uuid ? "bg-primary/5" : ""}`}
+                  onClick={() => setSelected(r.uuid)}
+                >
+                  <td className="py-1.5 pr-3 whitespace-nowrap">{r.exposed_at?.slice(0, 16).replace("T", " ")}</td>
+                  <td className="py-1.5 pr-3 font-mono text-xs">{r.customer_initials}</td>
+                  <td className="py-1.5 pr-3">{r.exposure_type}</td>
+                  <td className="py-1.5 pr-3">
+                    <span
+                      className={
+                        r.triage_band === "urgent"
+                          ? "text-red-700"
+                          : r.triage_band === "high"
+                            ? "text-amber-700"
+                            : ""
+                      }
+                    >
+                      {r.triage_band}
+                    </span>
+                  </td>
+                  <td className="py-1.5 text-xs">
+                    {(r.clocks ?? [])
+                      .map((c) => `${c.label}: ${formatClock(c.seconds_remaining)}`)
+                      .join(" · ") || "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {active ? (
+        <section className="space-y-2 border-t border-border/60 pt-4">
+          <h3 className="text-sm font-semibold text-primary">
+            Incident actions · {active.exposure_type} · RCA {active.rca_uuid?.slice(0, 8)}
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {["pep", "hbig", "vaccine", "tetanus", "lab_baseline", "consent_exposed"].map((a) => (
+              <SecondaryButton
+                key={a}
+                type="button"
+                className="h-8"
+                onClick={() =>
+                  void recordOhImmExposureAction(active.uuid, {
+                    action_type: a,
+                    consent_captured: a === "consent_exposed" || a === "lab_baseline",
+                    performed_by: "OH",
+                  })
+                    .then(() => {
+                      setMsg(`Recorded ${a}`);
+                      void qc.invalidateQueries({ queryKey: ["oh-imm-exposures"] });
+                    })
+                    .catch((e: Error) => setMsg(e.message))
+                }
+              >
+                {a === "pep" ? "HIV PEP" : a === "lab_baseline" ? "Baseline labs" : a.toUpperCase()}
+              </SecondaryButton>
+            ))}
+            {active.source_known === "known" || active.source ? (
+              <>
+                <SecondaryButton
+                  type="button"
+                  className="h-8"
+                  onClick={() =>
+                    void updateOhImmExposureSource(active.uuid, { consent_status: "given", legal_basis_note: "Consent obtained" })
+                      .then(() => setMsg("Source consent: given"))
+                      .catch((e: Error) => setMsg(e.message))
+                  }
+                >
+                  Source consent given
+                </SecondaryButton>
+                <SecondaryButton
+                  type="button"
+                  className="h-8"
+                  onClick={() =>
+                    void updateOhImmExposureSource(active.uuid, { consent_status: "refused" })
+                      .then(() => setMsg("Source consent: refused"))
+                      .catch((e: Error) => setMsg(e.message))
+                  }
+                >
+                  Source refused
+                </SecondaryButton>
+              </>
+            ) : null}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            Billable PEP/HBIG/vaccine/labs need a visit on the incident (encounter_uuid). Actions without a product UUID are recorded without billing.
+          </div>
+          {(active.followups ?? []).length > 0 ? (
+            <div className="pt-2">
+              <p className="text-sm font-medium">Follow-ups</p>
+              <ul className="text-sm text-muted-foreground">
+                {(active.followups as Array<Record<string, unknown>>).map((f) => (
+                  <li key={String(f.uuid)} className="flex flex-wrap items-center gap-2 py-0.5">
+                    <span>
+                      {String(f.label)} · due {String(f.due_date)} · {String(f.status)}
+                    </span>
+                    {f.status !== "done" ? (
+                      <button
+                        type="button"
+                        className="text-primary underline"
+                        onClick={() =>
+                          void completeOhImmExposureFollowup(String(f.uuid)).then(() => {
+                            void qc.invalidateQueries({ queryKey: ["oh-imm-exposures"] });
+                            void qc.invalidateQueries({ queryKey: ["oh-imm-exp-followups"] });
+                          })
+                        }
+                      >
+                        Mark done
+                      </button>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      <section className="space-y-2">
+        <h3 className="text-sm font-semibold text-primary">Due follow-up labs</h3>
+        {(followQ.data ?? []).length === 0 ? (
+          <p className="text-sm text-muted-foreground">No exposure follow-ups due in the next 30 days.</p>
+        ) : (
+          <ul className="text-sm">
+            {(followQ.data ?? []).map((f) => (
+              <li key={String(f.uuid)} className="border-b border-border/60 py-1">
+                {String(f.customer_initials)} · {String(f.label)} · {String(f.due_date)} · {String(f.exposure_type)}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="space-y-2">
+        <h3 className="text-sm font-semibold text-primary">24/7 on-call</h3>
+        <p className="text-sm text-muted-foreground">
+          Escalation list per site/shift. Notifications use the reminder channels; skipped_unconfigured when mail/SMS env is empty.
+        </p>
+        <ul className="text-sm">
+          {(oncallQ.data ?? []).map((c) => (
+            <li key={String(c.uuid)} className="border-b border-border/60 py-1">
+              #{String(c.escalation_order)} {String(c.name)} · {String(c.site) || "any site"} · {String(c.shift)} ·{" "}
+              {String(c.phone) || "—"} · {String(c.email) || "—"}
+            </li>
+          ))}
+        </ul>
+        <div className="flex flex-wrap gap-2">
+          <input
+            className="h-8 w-32 rounded border px-2 text-sm"
+            placeholder="Name"
+            value={oncall.name}
+            onChange={(e) => setOncall((o) => ({ ...o, name: e.target.value }))}
+          />
+          <input
+            className="h-8 w-28 rounded border px-2 text-sm"
+            placeholder="Phone"
+            value={oncall.phone}
+            onChange={(e) => setOncall((o) => ({ ...o, phone: e.target.value }))}
+          />
+          <input
+            className="h-8 w-40 rounded border px-2 text-sm"
+            placeholder="Email"
+            value={oncall.email}
+            onChange={(e) => setOncall((o) => ({ ...o, email: e.target.value }))}
+          />
+          <input
+            className="h-8 w-24 rounded border px-2 text-sm"
+            placeholder="Site"
+            value={oncall.site}
+            onChange={(e) => setOncall((o) => ({ ...o, site: e.target.value }))}
+          />
+          <select
+            className="h-8 rounded border px-2 text-sm"
+            value={oncall.shift}
+            onChange={(e) => setOncall((o) => ({ ...o, shift: e.target.value }))}
+          >
+            <option value="any">Any shift</option>
+            <option value="day">Day</option>
+            <option value="night">Night</option>
+            <option value="weekend">Weekend</option>
+          </select>
+          <PrimaryButton type="button" className="h-8" onClick={() => addOncall.mutate()} disabled={addOncall.isPending}>
+            Add contact
+          </PrimaryButton>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+
+function GovernancePanel() {
+  const qc = useQueryClient();
+  const zonesQ = useQuery({ queryKey: ["oh-imm-zones"], queryFn: fetchOhImmZones });
+  const clientsQ = useQuery({ queryKey: ["oh-imm-access-clients"], queryFn: fetchOhImmAccessClients });
+  const controlsQ = useQuery({ queryKey: ["oh-imm-controls"], queryFn: fetchOhImmControls });
+  const tasksQ = useQuery({ queryKey: ["oh-imm-tasks"], queryFn: fetchOhImmTasks });
+  const boardQ = useQuery({ queryKey: ["oh-imm-board"], queryFn: fetchOhImmBoardMembers });
+  const accQ = useQuery({ queryKey: ["oh-imm-accommodations"], queryFn: () => fetchOhImmAccommodations() });
+  const fitDueQ = useQuery({ queryKey: ["oh-imm-fit-due"], queryFn: () => fetchOhImmFitTestsDue(45) });
+  const [msg, setMsg] = useState("");
+  const [secretOnce, setSecretOnce] = useState("");
+  const [zoneSel, setZoneSel] = useState("");
+  const [clearance, setClearance] = useState<Array<Record<string, unknown>>>([]);
+  const [hier, setHier] = useState<Record<string, unknown> | null>(null);
+  const [decl, setDecl] = useState({ customer_uuid: "", vaccine_code: "HEPB", signed_by: "Employee" });
+
+  const loading = zonesQ.isLoading || clientsQ.isLoading || controlsQ.isLoading || boardQ.isLoading || accQ.isLoading || fitDueQ.isLoading;
+  const errored = zonesQ.isError || clientsQ.isError || controlsQ.isError || boardQ.isError || accQ.isError || fitDueQ.isError;
+
+  if (loading) return <QuietLoading />;
+  if (errored) {
+    return (
+      <p className="text-sm text-destructive" role="alert">
+        Could not load governance data. Check your connection and try again.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-6" data-testid="oh-imm-governance-panel">
+      {msg ? <p className="text-sm text-muted-foreground">{msg}</p> : null}
+      {secretOnce ? (
+        <p className="text-sm text-amber-800">
+          Client secret (shown once): <span className="font-mono">{secretOnce}</span>
+        </p>
+      ) : null}
+
+      <section className="space-y-2">
+        <h3 className="text-sm font-semibold text-primary">Zone clearance</h3>
+        <p className="text-sm text-muted-foreground">
+          Privacy-shielded feed: cleared / not_cleared / expiring + valid_until only — no clinical detail.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {(zonesQ.data ?? []).length === 0 ? (
+            <EmptyAction title="No zones yet" description="Add labs, clean rooms, or wards with required vaccines and risk controls." />
+          ) : null}
+          <SecondaryButton type="button" className="h-8" onClick={() => void seedOhImmZones().then((r) => { setMsg(`Zones seeded (${r.seeded})`); void qc.invalidateQueries({ queryKey: ["oh-imm-zones"] }); }).catch((e: Error) => setMsg(e.message))}>
+            Seed example zones
+          </SecondaryButton>
+          <select className="h-8 rounded border px-2 text-sm" value={zoneSel} onChange={(e) => setZoneSel(e.target.value)}>
+            <option value="">Zone…</option>
+            {(zonesQ.data ?? []).map((z) => (
+              <option key={String(z.uuid)} value={String(z.uuid)}>{String(z.code)} — {String(z.name)}</option>
+            ))}
+          </select>
+          <PrimaryButton type="button" className="h-8" disabled={!zoneSel} onClick={() => void fetchOhImmZoneClearance(zoneSel).then((rows) => setClearance(rows))}>
+            View clearance
+          </PrimaryButton>
+        </div>
+        {clearance.length > 0 ? (
+          <table className="w-full text-sm">
+            <thead><tr className="border-b text-left text-muted-foreground"><th className="py-1">Employee</th><th>Status</th><th>Valid until</th></tr></thead>
+            <tbody>
+              {clearance.map((r) => (
+                <tr key={String(r.customer_uuid)} className="border-b border-border/60">
+                  <td className="py-1 font-mono text-xs">{String(r.customer_uuid).slice(0, 8)}</td>
+                  <td>{String(r.status)}</td>
+                  <td>{String(r.valid_until ?? "—")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : null}
+      </section>
+
+      <section className="space-y-2">
+        <h3 className="text-sm font-semibold text-primary">Access clients (HMAC)</h3>
+        <div className="flex flex-wrap gap-2">
+          <PrimaryButton type="button" className="h-8" onClick={() => void createOhImmAccessClient({ name: `HR card ${Date.now()}` }).then((r) => { setSecretOnce(r.secret); setMsg(`Client ${r.client.client_key}`); void qc.invalidateQueries({ queryKey: ["oh-imm-access-clients"] }); })}>
+            Create client
+          </PrimaryButton>
+        </div>
+        {(clientsQ.data ?? []).length === 0 ? (
+          <p className="text-sm text-muted-foreground">No HMAC clients yet. Create one for HR or access-card systems (secret shown once).</p>
+        ) : null}
+        <ul className="text-sm">
+          {(clientsQ.data ?? []).map((c) => (
+            <li key={String(c.uuid)} className="border-b border-border/60 py-1 font-mono text-xs">
+              {String(c.client_key)} · {String(c.name)} · webhook {c.has_webhook ? "yes" : "skipped_unconfigured"}
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="space-y-2">
+        <h3 className="text-sm font-semibold text-primary">Hierarchy of controls</h3>
+        <div className="flex flex-wrap gap-2">
+          <SecondaryButton type="button" className="h-8" onClick={() => void seedOhImmControls().then((r) => { setMsg(`Controls seeded (${r.seeded})`); void qc.invalidateQueries({ queryKey: ["oh-imm-controls"] }); })}>
+            Seed controls
+          </SecondaryButton>
+          <select className="h-8 rounded border px-2 text-sm" onChange={(e) => { const v = e.target.value; if (v) void fetchOhImmTaskHierarchy(v).then(setHier); }}>
+            <option value="">Task hierarchy…</option>
+            {(tasksQ.data ?? []).map((task) => (
+              <option key={task.uuid} value={task.uuid}>{task.code}</option>
+            ))}
+          </select>
+        </div>
+        {hier ? (
+          <div className="space-y-1 text-sm">
+            <p>Inherent {String(hier.inherent_score)} → residual {String(hier.residual_score)} ({String(hier.band)})</p>
+            {Object.entries((hier.levels as Record<string, Array<Record<string, unknown>>>) ?? {}).map(([lvl, items]) => (
+              <div key={lvl} className="border-l-2 border-primary/40 pl-2">
+                <div className="font-medium capitalize">{lvl}</div>
+                {items.length === 0 ? <div className="text-muted-foreground">—</div> : items.map((c) => <div key={String(c.uuid)}>{String(c.name)} (−{String(c.residual_risk_delta)})</div>)}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <ul className="text-sm text-muted-foreground">
+            {(controlsQ.data ?? []).slice(0, 8).map((c) => (
+              <li key={String(c.uuid)}>{String(c.level)} · {String(c.code)} · {String(c.name)}</li>
+            ))}
+          </ul>
+        )}
+        <div className="pt-2">
+          <p className="text-sm font-medium">Fit-tests due</p>
+          {(fitDueQ.data ?? []).length === 0 ? <p className="text-sm text-muted-foreground">None due.</p> : (
+            <ul className="text-sm">{(fitDueQ.data ?? []).map((f) => <li key={String(f.uuid)}>{String(f.customer_uuid).slice(0, 8)} · expires {String(f.expires_on)} · {String(f.status)}</li>)}</ul>
+          )}
+          <div className="mt-2 flex flex-wrap gap-2">
+            <PrimaryButton type="button" className="h-8" onClick={() => {
+              const customer = prompt("Employee UUID for fit-test");
+              if (!customer) return;
+              void createOhImmFitTest({ customer_uuid: customer, respirator_model: "N95", result: "pass", tested_by: "OH" }).then(() => { setMsg("Fit-test saved"); void qc.invalidateQueries({ queryKey: ["oh-imm-fit-due"] }); });
+            }}>Record fit-test</PrimaryButton>
+          </div>
+        </div>
+      </section>
+
+      <section className="space-y-2">
+        <h3 className="text-sm font-semibold text-primary">Declinations & medical board</h3>
+        <p className="text-sm text-muted-foreground">Non-punitive informed declination → board decision → compliance / zone clearance.</p>
+        <div className="flex flex-wrap gap-2">
+          <SecondaryButton type="button" className="h-8" onClick={() => void createOhImmBoardMember({ name: "OH Physician", role: "chair" }).then(() => void qc.invalidateQueries({ queryKey: ["oh-imm-board"] }))}>Add board chair</SecondaryButton>
+          <input className="h-8 w-48 rounded border px-2 text-sm" placeholder="Employee UUID" value={decl.customer_uuid} onChange={(e) => setDecl((d) => ({ ...d, customer_uuid: e.target.value }))} />
+          <PrimaryButton type="button" className="h-8" onClick={() => void fileOhImmDeclination({ ...decl, informed_signed: true }).then(() => { setMsg("Declination filed"); void qc.invalidateQueries({ queryKey: ["oh-imm-accommodations"] }); })}>File declination</PrimaryButton>
+        </div>
+        <ul className="text-sm">
+          {(boardQ.data ?? []).map((m) => <li key={String(m.uuid)}>{String(m.role)} · {String(m.name)}</li>)}
+        </ul>
+        {(accQ.data ?? []).length === 0 ? (
+          <p className="text-sm text-muted-foreground">No declinations or accommodations on file.</p>
+        ) : null}
+        <ul className="text-sm">
+          {(accQ.data ?? []).map((a) => (
+            <li key={String(a.uuid)} className="flex flex-wrap items-center gap-2 border-b border-border/60 py-1">
+              <span className="font-mono text-xs">{String(a.vaccine_code)}</span>
+              <span>{String(a.board_status)} {String(a.decision || "")}</span>
+              {a.board_status === "pending" ? (
+                <SecondaryButton type="button" className="h-7 px-2 text-xs" onClick={() => void decideOhImmAccommodation(String(a.uuid), { decision: "specialized_ppe", decided_by: "board", conditions: "PPE plan" }).then(() => void qc.invalidateQueries({ queryKey: ["oh-imm-accommodations"] }))}>Approve PPE</SecondaryButton>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
+  );
+}
+
+function PdcaPanel() {
+  const qc = useQueryClient();
+  const boardQ = useQuery({ queryKey: ["oh-imm-pdca"], queryFn: fetchOhImmPdca });
+  const seroQ = useQuery({ queryKey: ["oh-imm-sero"], queryFn: fetchOhImmSeroAudits });
+  const vendorsQ = useQuery({ queryKey: ["oh-imm-vendors"], queryFn: fetchOhImmVendors });
+  const [msg, setMsg] = useState("");
+  const stages = ["plan", "do", "check", "act"] as const;
+
+  const loading = boardQ.isLoading || seroQ.isLoading || vendorsQ.isLoading;
+  const errored = boardQ.isError || seroQ.isError || vendorsQ.isError;
+  if (loading) return <QuietLoading />;
+  if (errored) {
+    return (
+      <p className="text-sm text-destructive" role="alert">
+        Could not load PDCA board. Check your connection and try again.
+      </p>
+    );
+  }
+
+  const totalRca = stages.reduce((n, s) => n + (((boardQ.data?.[s] as Array<Record<string, unknown>>) ?? []).length), 0);
+
+  return (
+    <div className="space-y-6" data-testid="oh-imm-pdca-panel">
+      {msg ? <p className="text-sm text-muted-foreground">{msg}</p> : null}
+      <section className="space-y-2">
+        <h3 className="text-sm font-semibold text-primary">PDCA board</h3>
+        <p className="text-sm text-muted-foreground">Complete RCA stubs from exposures — team, 5-whys, fishbone, actions, effectiveness.</p>
+        {totalRca === 0 ? (
+          <EmptyAction title="No RCA items yet" description="Complete exposure RCAs from Exposures — stubs appear here under Plan." />
+        ) : null}
+        <div className="grid gap-3 md:grid-cols-4">
+          {stages.map((stage) => (
+            <div key={stage} className="min-h-[8rem] border-t-2 border-primary/50 pt-2">
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary">{stage}</div>
+              {((boardQ.data?.[stage] as Array<Record<string, unknown>>) ?? []).length === 0 ? (
+                <p className="text-xs text-muted-foreground">Empty</p>
+              ) : null}
+              {((boardQ.data?.[stage] as Array<Record<string, unknown>>) ?? []).map((rca) => (
+                <div key={String(rca.uuid)} className="mb-2 border-b border-border/60 pb-2 text-sm">
+                  <div className="font-medium">{String(rca.status)}</div>
+                  <div className="text-xs text-muted-foreground">{String(rca.summary || rca.uuid).slice(0, 80)}</div>
+                  {stage === "plan" && rca.status === "stub" ? (
+                    <SecondaryButton type="button" className="mt-1 h-7 px-2 text-xs" onClick={() => void updateOhImmRca(String(rca.uuid), {
+                      team: { oh_physician: "OH MD", biosafety_officer: "BSO", line_manager: "LM" },
+                      five_whys: ["Unsafe disposal", "No sharps near point of use", "Stockout", "Ordering lag", "No buffer stock"],
+                      fishbone: { people: ["fatigue"], process: ["SOP gap"], equipment: ["no safety needle"] },
+                      pdca_stage: "do",
+                      summary: "RCA in progress",
+                    }).then(() => { setMsg("RCA opened"); void qc.invalidateQueries({ queryKey: ["oh-imm-pdca"] }); })}>
+                      Open RCA
+                    </SecondaryButton>
+                  ) : null}
+                  {stage === "do" ? (
+                    <SecondaryButton type="button" className="mt-1 h-7 px-2 text-xs" onClick={() => void addOhImmRcaAction(String(rca.uuid), { title: "Restock safety sharps", owner: "Ward lead", due_date: new Date(Date.now()+7*864e5).toISOString().slice(0,10), pdca_stage: "do" }).then(() => void qc.invalidateQueries({ queryKey: ["oh-imm-pdca"] }))}>
+                      Add action
+                    </SecondaryButton>
+                  ) : null}
+                  {stage === "do" || stage === "check" ? (
+                    <SecondaryButton type="button" className="mt-1 h-7 px-2 text-xs" onClick={() => void updateOhImmRca(String(rca.uuid), { effectiveness_notes: "No repeat incidents in 30d", pdca_stage: "check" }).then(() => void qc.invalidateQueries({ queryKey: ["oh-imm-pdca"] }))}>
+                      Effectiveness
+                    </SecondaryButton>
+                  ) : null}
+                  {stage === "check" ? (
+                    <SecondaryButton type="button" className="mt-1 h-7 px-2 text-xs" onClick={() => void updateOhImmRca(String(rca.uuid), { pdca_stage: "act", status: "complete" }).then(() => void qc.invalidateQueries({ queryKey: ["oh-imm-pdca"] }))}>
+                      Close Act
+                    </SecondaryButton>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-2">
+        <h3 className="text-sm font-semibold text-primary">Seroprevalence audits</h3>
+        <p className="text-sm text-muted-foreground">Aggregate results only; cells below k-anonymity threshold are hidden.</p>
+        <PrimaryButton type="button" className="h-8" onClick={() => void createOhImmSeroAudit({ title: `Audit ${new Date().toISOString().slice(0,10)}`, cohort_type: "risk_band", cohort_value: "high", k_anonymity: 5 }).then((a) => {
+          void recordOhImmSeroAggregates(String(a.uuid), [
+            { cell: "high", n: 12, positive: 3 },
+            { cell: "low", n: 3, positive: 1 },
+          ]).then(() => { setMsg("Sero audit recorded (small cell hidden)"); void qc.invalidateQueries({ queryKey: ["oh-imm-sero"] }); });
+        })}>Run sample audit</PrimaryButton>
+        {(seroQ.data ?? []).length === 0 ? (
+          <p className="text-sm text-muted-foreground">No seroprevalence audits yet. Results stay aggregate-only (k-anonymity).</p>
+        ) : null}
+        <ul className="text-sm">
+          {(seroQ.data ?? []).map((s) => (
+            <li key={String(s.uuid)}>{String(s.title)} · k={String(s.k_anonymity)} · {String(s.status)} · cells {Array.isArray((s.aggregate as { cells?: unknown[] } | null)?.cells) ? (s.aggregate as { cells: unknown[] }).cells.length : 0} · hidden {(s.aggregate as { hidden_cells?: number } | null)?.hidden_cells ?? "—"}</li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="space-y-2">
+        <h3 className="text-sm font-semibold text-primary">Cold-chain / vendors</h3>
+        <div className="flex flex-wrap gap-2">
+          <SecondaryButton type="button" className="h-8" onClick={() => void createOhImmVendor({ code: "VACCO", name: "VacCo Supplies", audit_result: "pass", last_audit_on: new Date().toISOString().slice(0,10) }).then(() => void qc.invalidateQueries({ queryKey: ["oh-imm-vendors"] }))}>Add vendor</SecondaryButton>
+          <PrimaryButton type="button" className="h-8" onClick={() => {
+            const lot = prompt("Lot UUID to log (optional)");
+            void recordOhImmColdChain({ storage_unit: "Fridge-1", temperature_c: 12, lot_uuid: lot || undefined, lot_number: "demo", recorded_by: "OH" }).then((r) => setMsg(r.excursion ? "Excursion — lot quarantined if provided" : "Temp OK"));
+          }}>Log temp (excursion demo 12°C)</PrimaryButton>
+        </div>
+        <ul className="text-sm">{(vendorsQ.data ?? []).map((v) => <li key={String(v.uuid)}>{String(v.code)} · {String(v.name)} · {String(v.audit_result || "—")}</li>)}</ul>
+      </section>
     </div>
   );
 }

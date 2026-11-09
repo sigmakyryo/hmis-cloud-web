@@ -14,6 +14,12 @@ const mocks = vi.hoisted(() => ({
   toast: vi.fn(),
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
+  usePathname: () => "/immunizations/due",
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 vi.mock("@/providers/toast-provider", () => ({
   useToast: () => ({ toast: mocks.toast }),
 }));
@@ -43,6 +49,49 @@ vi.mock("@/features/occupational-health/services/immunisation.service", () => ({
   createOhImmLot: vi.fn(),
   createOhImmSchedule: vi.fn(),
   publishOhImmSchedule: vi.fn(),
+  fetchOhImmPathways: vi.fn(async () => []),
+  createOhImmPathway: vi.fn(),
+  fetchOhImmTasks: vi.fn(async () => []),
+  createOhImmTask: vi.fn(),
+  assignOhImmTask: vi.fn(),
+  seedOhImmRiskExamples: vi.fn(),
+  fetchOhImmNrProtocols: vi.fn(async () => []),
+  createOhImmNrProtocol: vi.fn(),
+  seedOhImmNrHepb: vi.fn(),
+  fetchOhImmExposures: vi.fn(async () => []),
+  createOhImmExposure: vi.fn(),
+  recordOhImmExposureAction: vi.fn(),
+  updateOhImmExposureSource: vi.fn(),
+  fetchOhImmExposureDueFollowups: vi.fn(async () => []),
+  completeOhImmExposureFollowup: vi.fn(),
+  fetchOhImmExposureOncall: vi.fn(async () => []),
+  createOhImmExposureOncall: vi.fn(),
+  seedOhImmExposureTypes: vi.fn(),
+  fetchOhImmZones: vi.fn(async () => []),
+  seedOhImmZones: vi.fn(),
+  fetchOhImmZoneClearance: vi.fn(async () => []),
+  fetchOhImmAccessClients: vi.fn(async () => []),
+  createOhImmAccessClient: vi.fn(),
+  seedOhImmControls: vi.fn(),
+  fetchOhImmControls: vi.fn(async () => []),
+  fetchOhImmTaskHierarchy: vi.fn(),
+  createOhImmFitTest: vi.fn(),
+  fetchOhImmFitTestsDue: vi.fn(async () => []),
+  fetchOhImmBoardMembers: vi.fn(async () => []),
+  createOhImmBoardMember: vi.fn(),
+  fetchOhImmAccommodations: vi.fn(async () => []),
+  fileOhImmDeclination: vi.fn(),
+  decideOhImmAccommodation: vi.fn(),
+  fetchOhImmPdca: vi.fn(async () => ({ plan: [], do: [], check: [], act: [] })),
+  updateOhImmRca: vi.fn(),
+  addOhImmRcaAction: vi.fn(),
+  fetchOhImmSeroAudits: vi.fn(async () => []),
+  createOhImmSeroAudit: vi.fn(),
+  recordOhImmSeroAggregates: vi.fn(),
+  fetchOhImmVendors: vi.fn(async () => []),
+  createOhImmVendor: vi.fn(),
+  recordOhImmColdChain: vi.fn(),
+  clearOhImmLotQuarantine: vi.fn(),
 }));
 
 afterEach(cleanup);
@@ -77,5 +126,9 @@ it("renders immunizations hub with due catalog schedules and compliance tabs", a
   expect(screen.getByRole("button", { name: "Vaccines & lots" })).toBeVisible();
   expect(screen.getByRole("button", { name: "Schedules" })).toBeVisible();
   expect(screen.getByRole("button", { name: "Compliance" })).toBeVisible();
+  expect(screen.getByRole("button", { name: "Risk & tasks" })).toBeVisible();
+  expect(screen.getByRole("button", { name: "Exposures" })).toBeVisible();
+  expect(screen.getByRole("button", { name: "Governance" })).toBeVisible();
+  expect(screen.getByRole("button", { name: "PDCA" })).toBeVisible();
   expect(screen.getByRole("button", { name: "Exports & audit" })).toBeVisible();
 });

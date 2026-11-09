@@ -87,8 +87,12 @@ describe("employee form visit flow", () => {
     const forms = navigation.find((item) => item.name === "Forms");
     expect(forms?.moduleName).toBe("Forms");
     expect(navigation.filter((item) => item.moduleName === "OccupationalHealth").map((item) => item.name)).toEqual(
-      expect.arrayContaining(["Employees", "Immunizations", "Drug & alcohol"]),
+      expect.arrayContaining(["Employees", "Drug & alcohol"]),
     );
+    expect(
+      navigation.filter((item) => item.moduleName === "OccupationalHealth").map((item) => item.name),
+    ).not.toContain("Immunizations");
+    expect(navigation.some((item) => item.moduleName === "Immunizations")).toBe(true);
     expect(OH_ENCOUNTER_MODULES.map((module) => module.id)).not.toContain("employee-form");
     expect(OH_FORM_FAMILIES.map((family) => family.label)).toEqual(["Occupational health", "Custom"]);
   });

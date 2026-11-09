@@ -17,6 +17,12 @@ import {
   downloadOhImmCertificatePdf,
   issueOhImmCertificate,
   recordOhImmTitre,
+  fetchOhImmPatientRisk,
+  fetchOhImmPatientControls,
+  fetchOhImmPatientNrFlags,
+  decideOhImmNrCase,
+  fetchOhImmPatientExposures,
+  type OhImmExposure,
   type OhImmDose,
   type OhImmStatus,
 } from "@/features/occupational-health/services/immunisation.service";
@@ -30,6 +36,8 @@ const STATUS_LABEL: Record<string, string> = {
   overdue: "Overdue",
   exempt: "Exempt",
   non_responder: "Non-responder",
+  true_non_responder: "True non-responder",
+  second_series: "Second series",
 };
 
 type Props = {
@@ -58,6 +66,23 @@ export function OhEmployeeImmunizationsPanel({
   const vaccines = useQuery({
     queryKey: ["oh-imm-vaccines"],
     queryFn: fetchOhImmVaccines,
+  });
+  const risk = useQuery({
+    queryKey: ["oh-imm-patient-risk", customerUuid],
+    queryFn: () => fetchOhImmPatientRisk(customerUuid),
+  });
+  const applicableControls = useQuery({
+    queryKey: ["oh-imm-patient-controls", customerUuid],
+    queryFn: () => fetchOhImmPatientControls(customerUuid),
+    enabled: Boolean(customerUuid),
+  });
+  const nrFlags = useQuery({
+    queryKey: ["oh-imm-patient-nr", customerUuid],
+    queryFn: () => fetchOhImmPatientNrFlags(customerUuid),
+  });
+  const openExposures = useQuery({
+    queryKey: ["oh-imm-patient-exposures", customerUuid],
+    queryFn: () => fetchOhImmPatientExposures(customerUuid),
   });
 
   const invalidate = () => {
@@ -203,6 +228,139 @@ export function OhEmployeeImmunizationsPanel({
         </div>
       </div>
 
+            {(openExposures.data ?? []).length > 0 ? (
+        <div className="mb-3 space-y-1 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm">
+          <div className="font-semibold text-amber-950">Open exposure</div>
+          {(openExposures.data as OhImmExposure[]).map((ex) => (
+            <div key={ex.uuid} className="text-amber-900">
+              <span className="font-medium">{ex.exposure_type}</span>
+              {" · "}
+              {(ex.clocks ?? [])
+                .filter((c) => c.status !== "done")
+                .map((c) => {
+                  const sec = c.seconds_remaining ?? 0;
+                  const overdue = sec < 0;
+                  const abs = Math.abs(sec);
+                  const h = Math.floor(abs / 3600);
+                  const m = Math.floor((abs % 3600) / 60);
+                  const clock = h > 0 ? `${h}h ${m}m` : `${m}m`;
+                  return `${c.label}: ${overdue ? clock + " overdue" : clock + " left"}`;
+                })
+                .join(" · ") || "clocks clear"}
+              {ex.rca_uuid ? ` · RCA ${ex.rca_uuid.slice(0, 8)}` : ""}
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+{(nrFlags.data?.hbig_fast_track || nrFlags.data?.true_non_responder) ? (
+        <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+          {nrFlags.data?.hbig_fast_track ? (
+            <span className="rounded bg-amber-100 px-2 py-0.5 font-medium text-amber-900">
+              HBIG fast-track
+            </span>
+          ) : null}
+          {nrFlags.data?.true_non_responder ? (
+            <span className="rounded bg-red-100 px-2 py-0.5 font-medium text-red-900">
+              True non-responder
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+
+      {risk.data && (risk.data.tasks.length > 0 || risk.data.required_vaccines.length > 0) ? (
+        <div className="mb-4 space-y-1 border-b border-border/60 pb-3">
+          <div className="flex flex-wrap items-baseline gap-2 text-sm">
+            <span className="font-semibold text-primary">Risk profile</span>
+            <span className="text-muted-foreground">
+              Score {risk.data.score} ({risk.data.band})
+            </span>
+          </div>
+          {risk.data.tasks.length > 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Tasks: {risk.data.tasks.map((x) => x.name).join(", ")}
+            </p>
+          ) : null}
+          {risk.data.required_vaccines.length > 0 ? (
+            <p className="text-sm">
+              Required from risk:{" "}
+              {risk.data.required_vaccines
+                .map((v) => `${v.vaccine_code || v.schedule_code}${v.titre_required ? " (titre)" : ""}`)
+                .join(", ")}
+            </p>
+          ) : null}
+          {risk.data.required_controls.length > 0 ? (
+            <p className="text-xs text-muted-foreground">
+              Controls: {risk.data.required_controls.join(", ")}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {Array.isArray(applicableControls.data) && applicableControls.data.length > 0 ? (
+        <div className="mb-4 space-y-1 border-b border-border/60 pb-3">
+          <div className="text-sm font-semibold text-primary">Applicable controls</div>
+          <ul className="text-sm">
+            {(applicableControls.data as Array<Record<string, unknown>>).map((c, i) => (
+              <li key={String(c.uuid ?? i)} className="text-muted-foreground">
+                <span className="font-medium text-foreground">{String(c.level ?? "")}</span>
+                {" · "}
+                {String(c.name ?? c.code ?? "Control")}
+                {c.requires_fit_test ? " · fit-test required" : ""}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {nrFlags.data?.cases?.length ? (
+        <div className="mb-4 space-y-2">
+          {(nrFlags.data.cases as Array<Record<string, unknown>>).map((c) => (
+            <div key={String(c.uuid)} className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="font-mono text-xs">{String(c.vaccine_code)}</span>
+              <span>{STATUS_LABEL[String(c.status)] ?? String(c.status)}</span>
+              <span className="text-muted-foreground">
+                fails {String(c.titre_fail_count)} · series {String(c.series_attempt)}
+              </span>
+              {c.status === "true_non_responder" && c.decision === "pending" ? (
+                <>
+                  <SecondaryButton
+                    type="button"
+                    className="h-7 px-2 text-xs"
+                    onClick={() =>
+                      void decideOhImmNrCase(String(c.uuid), {
+                        decision: "ppe_plan",
+                        reviewer_name: "OH clinician",
+                        decision_notes: "Tailored PPE plan recorded",
+                      }).then(() => {
+                        void queryClient.invalidateQueries({ queryKey: ["oh-imm-patient-nr", customerUuid] });
+                      })
+                    }
+                  >
+                    Record PPE plan
+                  </SecondaryButton>
+                  <SecondaryButton
+                    type="button"
+                    className="h-7 px-2 text-xs"
+                    onClick={() =>
+                      void decideOhImmNrCase(String(c.uuid), {
+                        decision: "role_change",
+                        reviewer_name: "OH clinician",
+                        decision_notes: "Role reassignment recommended",
+                      }).then(() => {
+                        void queryClient.invalidateQueries({ queryKey: ["oh-imm-patient-nr", customerUuid] });
+                      })
+                    }
+                  >
+                    Recommend role change
+                  </SecondaryButton>
+                </>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
+
       {statuses.length === 0 && doses.length === 0 ? (
         <div className="rounded-md border border-dashed border-dash-border px-4 py-6 text-center">
           <p className="text-[13px] font-medium text-brand-navy">No immunization record yet</p>
@@ -313,6 +471,10 @@ function StatusRow({ status }: { status: OhImmStatus }) {
         )}
       >
         {STATUS_LABEL[status.status] ?? status.status}
+        {status.hbig_fast_track ? " · HBIG" : ""}
+        {status.series_attempt && status.series_attempt > 1
+          ? ` · series ${status.series_attempt}`
+          : ""}
       </span>
     </li>
   );
