@@ -1,4 +1,8 @@
 "use client";
+
+import Link from "next/link";
+
+import { ROUTES } from "@/constants/routes";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { PrimaryButton, SecondaryButton } from "@/components/ui/app-buttons";
@@ -84,6 +88,32 @@ export function ExposuresWorkbench() {
           Seed exposure types
         </SecondaryButton>
         {msg ? <span className="text-sm text-muted-foreground">{msg}</span> : null}
+        {active ? (
+          <p className="w-full text-sm text-muted-foreground" data-testid="oh-imm-exposure-visit-link">
+            {active.billing_ready || active.visit_linked || active.encounter_uuid ? (
+              <>
+                Linked to OH visit{" "}
+                {String(active.encounter_uuid || active.visit_uuid || "").slice(0, 8)} — charges
+                can bill to the visit sales order.
+              </>
+            ) : (
+              <>
+                No open OH visit for this employee — prophylaxis/lab charges will be recorded
+                without billing.{" "}
+                <Link
+                  href={
+                    active.customer_uuid
+                      ? ROUTES.occupationalHealthEmployee(String(active.customer_uuid))
+                      : ROUTES.occupationalHealthEmployees
+                  }
+                  className="underline underline-offset-2"
+                >
+                  Open employee / start a visit
+                </Link>
+              </>
+            )}
+          </p>
+        ) : null}
       </div>
 
       <section className="space-y-2">

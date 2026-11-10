@@ -37,6 +37,7 @@ import type { OhTemplateCapture, OhVisitEncounter } from "@/features/occupationa
 import { fetchOhImmFitnessGate } from "@/features/occupational-health/services/immunisation.service";
 import Link from "next/link";
 import { appFont } from "@/lib/fonts";
+import { ROUTES } from "@/constants/routes";
 import { useToast } from "@/providers/toast-provider";
 import { useUser } from "@/providers/user-provider";
 
@@ -186,7 +187,7 @@ export function OhVisitTemplateStep({
 
   async function persist(next: ExamTemplateAnswers, requireComplete: boolean) {
     const active = currentRef.current;
-    if (!active || !snapshot || encounter.is_active === false) return false;
+    if (!active || !snapshot || encounter.is_active === false || Boolean(displayBlocked)) return false;
     if (requireComplete) {
       const nextErrors = validateExamAnswers(snapshot, next);
       if (Object.keys(nextErrors).length) {
@@ -322,7 +323,7 @@ export function OhVisitTemplateStep({
           ) : null}
           <PrimaryButton
             type="button"
-            disabled={saving || encounter.is_active === false || !snapshot}
+            disabled={saving || encounter.is_active === false || !snapshot || Boolean(displayBlocked)}
             onClick={() => void persist(answers, false)}
           >
             {saving ? "Saving…" : "Save"}
@@ -333,6 +334,36 @@ export function OhVisitTemplateStep({
         <p className="px-5 py-3 text-sm text-dash-muted" role="status">
           This form needs updated fields from Occupational Health settings before it can be completed.
         </p>
+      ) : null}
+      {displayBlocked ? (
+        <div
+          role="alert"
+          data-testid="oh-imm-fitness-blocked"
+          className="mx-5 mt-3 space-y-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"
+        >
+          <p className="font-medium">Certificate blocked until immunizations are complete</p>
+          <p>{displayBlocked}</p>
+          <Link
+            href={ROUTES.immunizationsDue}
+            className="inline-flex text-sm font-medium text-brand-navy underline-offset-2 hover:underline"
+          >
+            Record a dose
+          </Link>
+        </div>
+      ) : null}
+      {!displayBlocked && displayWarnings.length > 0 ? (
+        <div
+          role="status"
+          data-testid="oh-imm-fitness-warnings"
+          className="mx-5 mt-3 space-y-1 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"
+        >
+          <p className="font-medium">Immunization warning</p>
+          <ul className="list-disc space-y-0.5 pl-5">
+            {displayWarnings.map((w) => (
+              <li key={w}>{w}</li>
+            ))}
+          </ul>
+        </div>
       ) : null}
       {message ? <p role="alert" className="px-5 py-3 text-sm text-red-700">{message}</p> : null}
       <div ref={formRef} className="min-h-0 flex-1 overflow-y-auto px-5">

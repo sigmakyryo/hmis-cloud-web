@@ -37,6 +37,7 @@ import type {
   OhExamination,
   OhTemplateCapture,
   OhFitnessValidityAlert,
+  OhDispensingSettings,
   OhFeatureFlag,
   OhHazard,
   OhHazardProfile,
@@ -1787,4 +1788,22 @@ export async function reopenOhEmployeeFormResponse(uuid: string, payload: { row_
     method: "POST",
     body: payload,
   });
+}
+
+
+export async function fetchOhDispensingSettings() {
+  return bffRequest<OhDispensingSettings>(
+    BFF_OCCUPATIONAL_HEALTH_ROUTES.dispensingSettings,
+  );
+}
+
+export async function updateOhDispensingSettings(payload: {
+  enabled?: boolean;
+  dispenser_user?: number | null;
+  location?: number | null;
+}) {
+  return bffRequest<OhDispensingSettings>(
+    BFF_OCCUPATIONAL_HEALTH_ROUTES.dispensingSettings,
+    { method: "PUT", body: payload },
+  );
 }

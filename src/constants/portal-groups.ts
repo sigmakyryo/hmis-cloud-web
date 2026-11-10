@@ -12,6 +12,8 @@ export const PORTAL_GROUP_OPTIONS = [
   { name: "Clinical", label: "Clinical" },
   { name: "OccupationalHealth", label: "Occupational health" },
   { name: "Therapy", label: "Therapy" },
+  // Specialty under OH (not a Platform Admin module entitlement):
+  { name: "OHExposureSource", label: "OH exposure source identity" },
 ] as const;
 
 /** Discipline Auth groups nested under Therapy (not Platform Admin entitlements). */
@@ -21,6 +23,9 @@ export const THERAPY_DISCIPLINE_GROUPS = [
   "Speech",
 ] as const;
 
+/** Specialty Auth groups nested under OccupationalHealth. */
+export const OH_SPECIALTY_GROUPS = ["OHExposureSource"] as const;
+
 export type PortalGroupName = (typeof PORTAL_GROUP_OPTIONS)[number]["name"];
 
 export const PORTAL_GROUP_NAMES: PortalGroupName[] = PORTAL_GROUP_OPTIONS.map(
@@ -29,6 +34,14 @@ export const PORTAL_GROUP_NAMES: PortalGroupName[] = PORTAL_GROUP_OPTIONS.map(
 
 export function isPortalGroupName(value: string): value is PortalGroupName {
   return (PORTAL_GROUP_NAMES as string[]).includes(value);
+}
+
+/** Module entitlements only — excludes OH/Therapy specialty groups. */
+export function isPortalModuleGroupName(value: string): boolean {
+  return (
+    (PORTAL_GROUP_NAMES as string[]).includes(value) &&
+    !(OH_SPECIALTY_GROUPS as readonly string[]).includes(value)
+  );
 }
 
 export function portalGroupLabel(name: string): string {

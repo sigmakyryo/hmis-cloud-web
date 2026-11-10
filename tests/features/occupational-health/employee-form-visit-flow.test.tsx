@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ToastProvider } from "@/providers/toast-provider";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -71,15 +72,27 @@ vi.mock("next/navigation", () => ({
 afterEach(cleanup);
 
 describe("employee form visit flow", () => {
-  it("lists settings tabs as employers and visit types", () => {
-    expect(OH_MODULE_TABS.map((tab) => tab.label)).toEqual(["Employers", "Visit types"]);
+  it("lists settings tabs as employers, visit types, and dispensing", () => {
+    expect(OH_MODULE_TABS.map((tab) => tab.label)).toEqual([
+      "Employers",
+      "Visit types",
+      "Dispensing",
+    ]);
     render(
-      <QueryClientProvider client={new QueryClient()}>
-        <OhModuleSettingsTabs />
-      </QueryClientProvider>,
+      <ToastProvider>
+        <QueryClientProvider client={new QueryClient()}>
+          <OhModuleSettingsTabs />
+        </QueryClientProvider>
+      </ToastProvider>,
     );
-    const tabs = screen.getAllByRole("button", { name: /Employers|Visit types/ });
-    expect(tabs.map((tab) => tab.textContent)).toEqual(["Employers", "Visit types"]);
+    const tabs = screen.getAllByRole("button", {
+      name: /Employers|Visit types|Dispensing/,
+    });
+    expect(tabs.map((tab) => tab.textContent)).toEqual([
+      "Employers",
+      "Visit types",
+      "Dispensing",
+    ]);
   });
 
   it("gives Forms its own section and keeps the employee form off the visit", () => {
