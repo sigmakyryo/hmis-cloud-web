@@ -1,16 +1,33 @@
 "use client";
+
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { PrimaryButton, SecondaryButton } from "@/components/ui/app-buttons";
-import { QuietLoading } from "../shared/QuietLoading";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { X } from "lucide-react";
+
+import { AppIcon } from "@/components/icons/app-icon";
+import { PageActionButton, SecondaryButton } from "@/components/ui/app-buttons";
+import { ListPageDataTableCell, ListPageDataTableRow } from "@/features/app-shell/components/page-layout";
+import { EmptyAction } from "../shared/EmptyAction";
+import { ImmInsightStrip } from "../shared/ImmInsightStrip";
+import {
+  ImmPrimaryCell,
+  ImmRecordTable,
+  ImmRowAction,
+  ImmSelectBox,
+  ImmStatusBadge,
+  humanize,
+} from "../shared/ImmRecordTable";
+import { ImmFilterSelect, ImmSearchBar } from "../shared/ImmSearchBar";
+import { ImmNotice, ImmTabsBar } from "../shared/ImmTabsBar";
+import { ImmCodeChips, ImmScoreChip } from "../shared/ImmVisuals";
+import { LoadError, QuietLoading } from "../shared/QuietLoading";
+import { useImmList } from "../shared/use-imm-list";
+import { type RiskCell, RiskMatrix, riskBand } from "./RiskMatrix";
+import { AssignSheet, PathwayDetailSheet, PathwaySheet, ProtocolSheet, TaskDetailSheet, TaskSheet } from "./RiskSheets";
 import {
   type OhImmNrProtocol,
   type OhImmPathway,
   type OhImmTask,
-  assignOhImmTask,
-  createOhImmNrProtocol,
-  createOhImmPathway,
-  createOhImmTask,
   fetchOhImmNrProtocols,
   fetchOhImmPathways,
   fetchOhImmTasks,
@@ -18,32 +35,77 @@ import {
   seedOhImmRiskExamples,
 } from "@/features/occupational-health/services/immunisation.service";
 
+type RiskView = "pathways" | "tasks" | "protocols";
+type RiskSheet =
+  | { kind: "pathway" }
+  | { kind: "task"; pathwayUuid?: string }
+  | { kind: "assign"; taskUuids: string[] }
+  | { kind: "protocol" }
+  | { kind: "pathway-detail"; uuid: string }
+  | { kind: "task-detail"; uuid: string }
+  | null;
+
+function pathwayVaccines(pathway: OhImmPathway): string[] {
+  return Array.from(new Set(pathway.requirements.map((item) => item.vaccine_code).filter(Boolean)));
+}
+
+function pathwayControls(pathway: OhImmPathway): string[] {
+  return Array.from(new Set(pathway.requirements.flatMap((item) => item.control_codes ?? [])));
+}
+
 export function RiskTasks() {
+  const qc = useQueryClient();
   const pathwaysQ = useQuery({ queryKey: ["oh-imm-pathways"], queryFn: fetchOhImmPathways });
   const tasksQ = useQuery({ queryKey: ["oh-imm-tasks"], queryFn: fetchOhImmTasks });
   const protocolsQ = useQuery({ queryKey: ["oh-imm-nr-protocols"], queryFn: fetchOhImmNrProtocols });
-  const qc = useQueryClient();
-  const [pathwayForm, setPathwayForm] = useState({ code: "", name: "", description: "", vaccine_code: "" });
-  const [taskForm, setTaskForm] = useState({
-    pathway_uuid: "",
-    code: "",
-    name: "",
-    likelihood: 3,
-    severity: 3,
-  });
-  const [assignForm, setAssignForm] = useState({
-    task_uuid: "",
-    department_name: "",
-    site: "",
-    customer_uuid: "",
-  });
-  const [protocolForm, setProtocolForm] = useState({
-    vaccine_code: "HEPB",
-    titre_threshold: 10,
-    max_series: 2,
-    titre_interval_days: 28,
-  });
+  const [view, setView] = useState<RiskView>("pathways");
+  const [sheet, setSheet] = useState<RiskSheet>(null);
   const [msg, setMsg] = useState("");
+  const [band, setBand] = useState("");
+  const [pathwayFilter, setPathwayFilter] = useState("");
+  const [cell, setCell] = useState<RiskCell | null>(null);
+  const [selected, setSelected] = useState<string[]>([]);
+
+  const pathways = pathwaysQ.data ?? [];
+  const tasks = tasksQ.data ?? [];
+  const protocols = protocolsQ.data ?? [];
+
+  const tasksByPathway = new Map<string, OhImmTask[]>();
+  for (const task of tasks) {
+    const key = task.pathway_code ?? "";
+    tasksByPathway.set(key, [...(tasksByPathway.get(key) ?? []), task]);
+  }
+  const filteredTasks = tasks.filter(
+    (task) =>
+      (!band || riskBand(task.score) === band) &&
+      (!pathwayFilter || task.pathway_code === pathwayFilter) &&
+      (!cell || (task.likelihood === cell.likelihood && task.severity === cell.severity)),
+  );
+
+  const pathwayList = useImmList({
+    rows: pathways,
+    searchText: (p) => [p.name, p.code, p.description, ...pathwayVaccines(p)].join(" "),
+    sortValue: (p, key) =>
+      key === "name"
+        ? p.name
+        : key === "tasks"
+          ? (tasksByPathway.get(p.code) ?? []).length
+          : Math.max(0, ...(tasksByPathway.get(p.code) ?? []).map((t) => t.score)),
+    defaultSort: { key: "name", direction: "asc" },
+  });
+  const taskList = useImmList({
+    rows: filteredTasks,
+    searchText: (t) => [t.name, t.code, t.pathway_code, t.pathway_name].join(" "),
+    sortValue: (t, key) =>
+      key === "name" ? t.name : key === "pathway" ? (t.pathway_name ?? t.pathway_code) : key === "likelihood" ? t.likelihood : key === "severity" ? t.severity : t.score,
+    defaultSort: { key: "score", direction: "desc" },
+  });
+  const protocolList = useImmList({
+    rows: protocols,
+    searchText: (p) => p.vaccine_code,
+    sortValue: (p, key) => (key === "vaccine" ? p.vaccine_code : p.max_series),
+    defaultSort: { key: "vaccine", direction: "asc" },
+  });
 
   const seedRisk = useMutation({
     mutationFn: seedOhImmRiskExamples,
@@ -62,343 +124,430 @@ export function RiskTasks() {
     },
     onError: (e: Error) => setMsg(e.message),
   });
-  const createPathway = useMutation({
-    mutationFn: () =>
-      createOhImmPathway({
-        code: pathwayForm.code,
-        name: pathwayForm.name,
-        description: pathwayForm.description,
-        requirements: pathwayForm.vaccine_code
-          ? [
-              {
-                vaccine_code: pathwayForm.vaccine_code,
-                schedule_code: "",
-                titre_required: pathwayForm.vaccine_code.toUpperCase() === "HEPB",
-                control_codes: [],
-              },
-            ]
-          : [],
-      }),
-    onSuccess: () => {
-      setPathwayForm({ code: "", name: "", description: "", vaccine_code: "" });
-      void qc.invalidateQueries({ queryKey: ["oh-imm-pathways"] });
-    },
-    onError: (e: Error) => setMsg(e.message),
-  });
-  const createTask = useMutation({
-    mutationFn: () => createOhImmTask(taskForm),
-    onSuccess: () => {
-      setTaskForm({ pathway_uuid: "", code: "", name: "", likelihood: 3, severity: 3 });
-      void qc.invalidateQueries({ queryKey: ["oh-imm-tasks"] });
-    },
-    onError: (e: Error) => setMsg(e.message),
-  });
-  const assignTask = useMutation({
-    mutationFn: () =>
-      assignOhImmTask({
-        task_uuid: assignForm.task_uuid,
-        department_name: assignForm.department_name || undefined,
-        site: assignForm.site || undefined,
-        customer_uuid: assignForm.customer_uuid || undefined,
-      }),
-    onSuccess: () => setMsg("Task assigned."),
-    onError: (e: Error) => setMsg(e.message),
-  });
-  const createProtocol = useMutation({
-    mutationFn: () =>
-      createOhImmNrProtocol({
-        ...protocolForm,
-        flag_on_true_non_responder: true,
-        recommend_role_change: true,
-        recommend_ppe_plan: true,
-        enable_hbig_fast_track: true,
-        require_quantitative_titre: true,
-      }),
-    onSuccess: () => {
-      setMsg("Non-responder protocol saved.");
-      void qc.invalidateQueries({ queryKey: ["oh-imm-nr-protocols"] });
-    },
-    onError: (e: Error) => setMsg(e.message),
-  });
-
-  const pathways = pathwaysQ.data ?? [];
-  const tasks = tasksQ.data ?? [];
-  const protocols = protocolsQ.data ?? [];
 
   if (pathwaysQ.isLoading || tasksQ.isLoading || protocolsQ.isLoading) return <QuietLoading />;
   if (pathwaysQ.isError || tasksQ.isError || protocolsQ.isError) {
-    return (
-      <p className="text-sm text-destructive" role="alert">
-        Could not load risk pathways. Check your connection and try again.
-      </p>
-    );
+    return <LoadError>Could not load risk pathways. Check your connection and try again.</LoadError>;
   }
 
+  const urgentCount = tasks.filter((t) => riskBand(t.score) === "urgent").length;
+  const highCount = tasks.filter((t) => riskBand(t.score) === "high").length;
+  const averageScore = tasks.length ? (tasks.reduce((sum, t) => sum + t.score, 0) / tasks.length).toFixed(1) : "—";
+  const pageTaskIds = taskList.pageRows.map((t) => t.uuid);
+  const pageAllSelected = pageTaskIds.length > 0 && pageTaskIds.every((id) => selected.includes(id));
+  const pageSomeSelected = pageTaskIds.some((id) => selected.includes(id));
+  const hasTaskFilters = Boolean(band || pathwayFilter || cell || taskList.query);
+
+  const done = (message: string) => {
+    setMsg(message);
+    setSheet(null);
+  };
+  const showBand = (next: string) => {
+    setView("tasks");
+    setCell(null);
+    setBand((current) => (current === next ? "" : next));
+  };
+  const clearTaskFilters = () => {
+    setBand("");
+    setPathwayFilter("");
+    setCell(null);
+    taskList.setQuery("");
+  };
+  const detailPathway = sheet?.kind === "pathway-detail" ? pathways.find((p) => p.uuid === sheet.uuid) : undefined;
+  const detailTask = sheet?.kind === "task-detail" ? tasks.find((t) => t.uuid === sheet.uuid) : undefined;
+
   return (
-    <div className="space-y-6" data-testid="oh-imm-risk-panel">
-      <div className="flex flex-wrap items-center gap-2">
-        <SecondaryButton type="button" className="h-8" onClick={() => seedRisk.mutate()} disabled={seedRisk.isPending}>
-          Load example pathways
-        </SecondaryButton>
-        <SecondaryButton type="button" className="h-8" onClick={() => seedNr.mutate()} disabled={seedNr.isPending}>
-          Load HepB non-responder protocol
-        </SecondaryButton>
-        {msg ? <span className="text-sm text-muted-foreground">{msg}</span> : null}
-      </div>
+    <>
+      <ImmTabsBar
+        testId="oh-imm-risk-panel"
+        label="Risk records"
+        active={view}
+        onChange={setView}
+        tabs={[
+          { key: "pathways", label: "Exposure pathways", count: pathways.length },
+          { key: "tasks", label: "Tasks & scoring", count: tasks.length },
+          { key: "protocols", label: "Non-responder protocols", count: protocols.length },
+        ]}
+        actions={
+          view === "pathways" ? (
+            <>
+              <SecondaryButton type="button" className="h-8" disabled={seedRisk.isPending} onClick={() => seedRisk.mutate()}>
+                Load examples
+              </SecondaryButton>
+              <PageActionButton type="button" onClick={() => setSheet({ kind: "pathway" })}>
+                <AppIcon name="add" className="size-3.5" />
+                Add pathway
+              </PageActionButton>
+            </>
+          ) : view === "tasks" ? (
+            <>
+              <SecondaryButton
+                type="button"
+                className="h-8"
+                disabled={tasks.length === 0}
+                onClick={() => setSheet({ kind: "assign", taskUuids: selected })}
+              >
+                {selected.length > 0 ? `Assign selected (${selected.length})` : "Assign task"}
+              </SecondaryButton>
+              <PageActionButton type="button" disabled={pathways.length === 0} onClick={() => setSheet({ kind: "task" })}>
+                <AppIcon name="add" className="size-3.5" />
+                Add task
+              </PageActionButton>
+            </>
+          ) : (
+            <>
+              <SecondaryButton type="button" className="h-8" disabled={seedNr.isPending} onClick={() => seedNr.mutate()}>
+                Load HepB protocol
+              </SecondaryButton>
+              <PageActionButton type="button" onClick={() => setSheet({ kind: "protocol" })}>
+                <AppIcon name="add" className="size-3.5" />
+                Add protocol
+              </PageActionButton>
+            </>
+          )
+        }
+      />
+      {tasks.length > 0 || pathways.length > 0 ? (
+        <ImmInsightStrip
+          testId="oh-imm-risk-insights"
+          items={[
+            { label: "pathways", value: pathways.length },
+            { label: "scored tasks", value: tasks.length, hint: `avg ${averageScore}` },
+            {
+              label: "urgent",
+              value: urgentCount,
+              tone: urgentCount > 0 ? "danger" : "default",
+              hint: "score 15+",
+              onSelect: () => showBand("urgent"),
+              active: view === "tasks" && band === "urgent",
+            },
+            {
+              label: "high",
+              value: highCount,
+              tone: highCount > 0 ? "warning" : "default",
+              hint: "score 8–14",
+              onSelect: () => showBand("high"),
+              active: view === "tasks" && band === "high",
+            },
+            { label: "protocols", value: protocols.length },
+          ]}
+        />
+      ) : null}
+      {msg ? <ImmNotice>{msg}</ImmNotice> : null}
 
-      <section className="space-y-2">
-        <h3 className="text-sm font-semibold text-primary">Exposure pathways</h3>
-        <p className="text-sm text-muted-foreground">
-          Pathways drive required vaccines, titre checks, and controls. Examples are labelled and editable.
-        </p>
-        {(pathwaysQ.isLoading || pathways.length === 0) && !pathwaysQ.isLoading ? (
-          <p className="text-sm text-muted-foreground">
-            No pathways yet.{" "}
-            <button type="button" className="text-primary underline" onClick={() => seedRisk.mutate()}>
-              Load examples
-            </button>
-          </p>
-        ) : null}
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left text-muted-foreground">
-                <th className="py-1 pr-3 font-medium">Code</th>
-                <th className="py-1 pr-3 font-medium">Name</th>
-                <th className="py-1 pr-3 font-medium">Vaccines</th>
-                <th className="py-1 font-medium">Controls</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pathways.map((p: OhImmPathway) => (
-                <tr key={p.uuid} className="border-b border-border/60">
-                  <td className="py-1.5 pr-3 font-mono text-xs">
-                    {p.code}
-                    {p.is_example ? (
-                      <span className="ml-1 rounded bg-amber-100 px-1 text-[10px] text-amber-800">example</span>
-                    ) : null}
-                  </td>
-                  <td className="py-1.5 pr-3">{p.name}</td>
-                  <td className="py-1.5 pr-3">
-                    {p.requirements.map((r) => r.vaccine_code).filter(Boolean).join(", ") || "—"}
-                  </td>
-                  <td className="py-1.5">
-                    {Array.from(
-                      new Set(p.requirements.flatMap((r) => r.control_codes ?? [])),
-                    ).join(", ") || "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="flex flex-wrap gap-2 pt-1">
-          <input
-            className="h-8 w-28 rounded border px-2 text-sm"
-            placeholder="Code"
-            value={pathwayForm.code}
-            onChange={(e) => setPathwayForm((f) => ({ ...f, code: e.target.value }))}
+      {view === "pathways" ? (
+        pathways.length === 0 ? (
+          <EmptyAction
+            icon="shield"
+            title="No pathways yet"
+            description="A pathway lists the vaccines, titre checks, and controls for one kind of exposure. Load the examples or add your own."
           />
-          <input
-            className="h-8 w-40 rounded border px-2 text-sm"
-            placeholder="Name"
-            value={pathwayForm.name}
-            onChange={(e) => setPathwayForm((f) => ({ ...f, name: e.target.value }))}
-          />
-          <input
-            className="h-8 w-28 rounded border px-2 text-sm"
-            placeholder="Vaccine code"
-            value={pathwayForm.vaccine_code}
-            onChange={(e) => setPathwayForm((f) => ({ ...f, vaccine_code: e.target.value }))}
-          />
-          <PrimaryButton type="button" className="h-8" onClick={() => createPathway.mutate()} disabled={createPathway.isPending}>
-            Add pathway
-          </PrimaryButton>
-        </div>
-      </section>
+        ) : (
+          <>
+            <ImmSearchBar
+              value={pathwayList.query}
+              onChange={pathwayList.setQuery}
+              placeholder="Search pathways or vaccines"
+              matched={pathwayList.controls.matched}
+              total={pathwayList.total}
+              onClear={() => pathwayList.setQuery("")}
+            />
+            {pathwayList.pageRows.length === 0 ? (
+              <EmptyAction icon="search" title="No matching pathways" description="Try another name, code, or vaccine." />
+            ) : (
+              <ImmRecordTable
+                list={pathwayList.controls}
+                columns={[
+                  { label: "Pathway", sortKey: "name" },
+                  "Vaccines",
+                  "Titre check",
+                  "Controls",
+                  { label: "Tasks", sortKey: "tasks", align: "right" },
+                  { label: "Top score", sortKey: "top", align: "right" },
+                  "Actions",
+                ]}
+              >
+                {pathwayList.pageRows.map((pathway) => {
+                  const pathwayTasks = tasksByPathway.get(pathway.code) ?? [];
+                  const top = Math.max(0, ...pathwayTasks.map((t) => t.score));
+                  return (
+                    <ListPageDataTableRow
+                      key={pathway.uuid}
+                      className="cursor-pointer"
+                      onClick={() => setSheet({ kind: "pathway-detail", uuid: pathway.uuid })}
+                    >
+                      <ListPageDataTableCell className="pl-4 md:pl-6">
+                        <ImmPrimaryCell
+                          title={pathway.name}
+                          detail={
+                            <>
+                              <span className="font-mono">{pathway.code}</span>
+                              {pathway.is_example ? " · Example" : ""}
+                            </>
+                          }
+                        />
+                      </ListPageDataTableCell>
+                      <ListPageDataTableCell>
+                        <ImmCodeChips codes={pathwayVaccines(pathway)} />
+                      </ListPageDataTableCell>
+                      <ListPageDataTableCell>
+                        {pathway.requirements.some((item) => item.titre_required) ? (
+                          <ImmStatusBadge status="pending" label="Required" />
+                        ) : (
+                          <span className="text-dash-muted">—</span>
+                        )}
+                      </ListPageDataTableCell>
+                      <ListPageDataTableCell className="max-w-[14rem] truncate">
+                        {pathwayControls(pathway).map(humanize).join(", ") || "—"}
+                      </ListPageDataTableCell>
+                      <ListPageDataTableCell className="text-right tabular-nums">{pathwayTasks.length}</ListPageDataTableCell>
+                      <ListPageDataTableCell className="text-right">
+                        {pathwayTasks.length > 0 ? <ImmScoreChip score={top} /> : <span className="text-dash-muted">—</span>}
+                      </ListPageDataTableCell>
+                      <ListPageDataTableCell className="pr-4 text-right md:pr-6">
+                        <ImmRowAction onClick={() => setSheet({ kind: "task", pathwayUuid: pathway.uuid })}>Add task</ImmRowAction>
+                      </ListPageDataTableCell>
+                    </ListPageDataTableRow>
+                  );
+                })}
+              </ImmRecordTable>
+            )}
+          </>
+        )
+      ) : null}
 
-      <section className="space-y-2">
-        <h3 className="text-sm font-semibold text-primary">Tasks & scoring</h3>
-        <p className="text-sm text-muted-foreground">
-          Likelihood × severity (1–5). Assign tasks to departments, sites, roles, or a specific employee.
-        </p>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left text-muted-foreground">
-                <th className="py-1 pr-3 font-medium">Task</th>
-                <th className="py-1 pr-3 font-medium">Pathway</th>
-                <th className="py-1 pr-3 font-medium">L×S</th>
-                <th className="py-1 font-medium">Score</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tasks.map((task: OhImmTask) => (
-                <tr key={task.uuid} className="border-b border-border/60">
-                  <td className="py-1.5 pr-3">
-                    <span className="font-mono text-xs">{task.code}</span> {task.name}
-                    {task.is_example ? (
-                      <span className="ml-1 rounded bg-amber-100 px-1 text-[10px] text-amber-800">example</span>
-                    ) : null}
-                  </td>
-                  <td className="py-1.5 pr-3">{task.pathway_code ?? "—"}</td>
-                  <td className="py-1.5 pr-3">
-                    {task.likelihood}×{task.severity}
-                  </td>
-                  <td className="py-1.5 font-medium">{task.score}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="flex flex-wrap gap-2 pt-1">
-          <select
-            className="h-8 rounded border px-2 text-sm"
-            value={taskForm.pathway_uuid}
-            onChange={(e) => setTaskForm((f) => ({ ...f, pathway_uuid: e.target.value }))}
+      {view === "tasks" ? (
+        tasks.length === 0 ? (
+          <EmptyAction
+            icon="clipboard"
+            title="No tasks yet"
+            description="Score a task by likelihood and severity from 1 to 5, then assign it to a department, site, or one employee."
+          />
+        ) : (
+          <>
+            <RiskMatrix
+              tasks={tasks}
+              cell={cell}
+              onCellChange={(next) => {
+                setCell(next);
+                setBand("");
+              }}
+              onOpenTask={(task) => setSheet({ kind: "task-detail", uuid: task.uuid })}
+            />
+            <ImmSearchBar
+              value={taskList.query}
+              onChange={taskList.setQuery}
+              placeholder="Search tasks"
+              matched={taskList.controls.matched}
+              total={tasks.length}
+              onClear={hasTaskFilters ? clearTaskFilters : undefined}
+              filters={
+                <>
+                  <ImmFilterSelect label="Pathway" value={pathwayFilter} onChange={setPathwayFilter}>
+                    <option value="">All pathways</option>
+                    {pathways.map((p) => (
+                      <option key={p.uuid} value={p.code}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </ImmFilterSelect>
+                  <ImmFilterSelect label="Risk band" value={band} onChange={(value) => { setBand(value); setCell(null); }}>
+                    <option value="">Any risk</option>
+                    <option value="urgent">Urgent</option>
+                    <option value="high">High</option>
+                    <option value="low">Low</option>
+                  </ImmFilterSelect>
+                  {cell ? (
+                    <button
+                      type="button"
+                      onClick={() => setCell(null)}
+                      className="inline-flex h-7 items-center gap-1 rounded-full bg-brand-navy px-2.5 text-[12px] font-medium text-white"
+                    >
+                      Likelihood {cell.likelihood} × Severity {cell.severity}
+                      <X className="size-3" aria-hidden />
+                    </button>
+                  ) : null}
+                </>
+              }
+            />
+            {selected.length > 0 ? (
+              <ImmNotice>
+                <span className="font-medium text-brand-navy">{selected.length} selected</span>
+                <span className="mx-2 text-dash-muted">·</span>
+                <button type="button" className="font-medium text-brand-primary hover:underline" onClick={() => setSheet({ kind: "assign", taskUuids: selected })}>
+                  Assign to department or site
+                </button>
+                <span className="mx-2 text-dash-muted">·</span>
+                <button type="button" className="text-brand-slate hover:underline" onClick={() => setSelected([])}>
+                  Clear selection
+                </button>
+              </ImmNotice>
+            ) : null}
+            {taskList.pageRows.length === 0 ? (
+              <EmptyAction icon="search" title="No matching tasks" description="Change the filters or pick another cell on the matrix." />
+            ) : (
+              <ImmRecordTable
+                list={taskList.controls}
+                columns={[
+                  {
+                    label: "",
+                    className: "w-10",
+                    header: (
+                      <ImmSelectBox
+                        label="Select tasks on this page"
+                        checked={pageAllSelected}
+                        indeterminate={!pageAllSelected && pageSomeSelected}
+                        onChange={() =>
+                          setSelected((prev) =>
+                            pageAllSelected
+                              ? prev.filter((id) => !pageTaskIds.includes(id))
+                              : Array.from(new Set([...prev, ...pageTaskIds])),
+                          )
+                        }
+                      />
+                    ),
+                  },
+                  { label: "Task", sortKey: "name" },
+                  { label: "Pathway", sortKey: "pathway" },
+                  { label: "Likelihood", sortKey: "likelihood", align: "right" },
+                  { label: "Severity", sortKey: "severity", align: "right" },
+                  { label: "Score", sortKey: "score", align: "right" },
+                  "Risk",
+                  "Actions",
+                ]}
+              >
+                {taskList.pageRows.map((task) => {
+                  const checked = selected.includes(task.uuid);
+                  return (
+                    <ListPageDataTableRow
+                      key={task.uuid}
+                      className={checked ? "cursor-pointer bg-brand-tint/40" : "cursor-pointer"}
+                      onClick={() => setSheet({ kind: "task-detail", uuid: task.uuid })}
+                    >
+                      <ListPageDataTableCell className="w-10 pl-4 md:pl-6">
+                        <ImmSelectBox
+                          label={`Select ${task.name}`}
+                          checked={checked}
+                          onChange={() =>
+                            setSelected((prev) => (checked ? prev.filter((id) => id !== task.uuid) : [...prev, task.uuid]))
+                          }
+                        />
+                      </ListPageDataTableCell>
+                      <ListPageDataTableCell>
+                        <ImmPrimaryCell
+                          title={task.name}
+                          detail={
+                            <>
+                              <span className="font-mono">{task.code}</span>
+                              {task.is_example ? " · Example" : ""}
+                            </>
+                          }
+                        />
+                      </ListPageDataTableCell>
+                      <ListPageDataTableCell>{task.pathway_name ?? task.pathway_code ?? "—"}</ListPageDataTableCell>
+                      <ListPageDataTableCell className="text-right tabular-nums">{task.likelihood}</ListPageDataTableCell>
+                      <ListPageDataTableCell className="text-right tabular-nums">{task.severity}</ListPageDataTableCell>
+                      <ListPageDataTableCell className="text-right">
+                        <ImmScoreChip score={task.score} />
+                      </ListPageDataTableCell>
+                      <ListPageDataTableCell>
+                        <ImmStatusBadge status={riskBand(task.score)} />
+                      </ListPageDataTableCell>
+                      <ListPageDataTableCell className="pr-4 text-right md:pr-6">
+                        <ImmRowAction onClick={() => setSheet({ kind: "assign", taskUuids: [task.uuid] })}>Assign</ImmRowAction>
+                      </ListPageDataTableCell>
+                    </ListPageDataTableRow>
+                  );
+                })}
+              </ImmRecordTable>
+            )}
+          </>
+        )
+      ) : null}
+
+      {view === "protocols" ? (
+        protocols.length === 0 ? (
+          <EmptyAction
+            icon="activity"
+            title="No protocols yet"
+            description="A protocol says what happens after a failed titre: another series first, then a true non-responder."
+          />
+        ) : (
+          <ImmRecordTable
+            list={protocolList.controls}
+            columns={[{ label: "Vaccine", sortKey: "vaccine" }, "Titre threshold", { label: "Max series", sortKey: "series", align: "right" }, "Pathway to non-responder", "Then"]}
           >
-            <option value="">Pathway…</option>
-            {pathways.map((p: OhImmPathway) => (
-              <option key={p.uuid} value={p.uuid}>
-                {p.code}
-              </option>
+            {protocolList.pageRows.map((protocol: OhImmNrProtocol) => (
+              <ListPageDataTableRow key={protocol.uuid}>
+                <ListPageDataTableCell className="pl-4 md:pl-6">
+                  <ImmCodeChips codes={[protocol.vaccine_code]} />
+                </ListPageDataTableCell>
+                <ListPageDataTableCell className="tabular-nums">
+                  {protocol.titre_threshold != null ? `≥ ${protocol.titre_threshold} ${protocol.titre_unit}` : "—"}
+                </ListPageDataTableCell>
+                <ListPageDataTableCell className="text-right tabular-nums">{protocol.max_series}</ListPageDataTableCell>
+                <ListPageDataTableCell>
+                  <span className="flex flex-wrap items-center gap-1 text-[12px]">
+                    {Array.from({ length: protocol.max_series }, (_, index) => (
+                      <span key={index} className="inline-flex items-center gap-1">
+                        <span className="rounded-full border border-dash-border px-2 py-0.5 text-brand-slate">Series {index + 1}</span>
+                        <span className="text-dash-muted">→</span>
+                        <span className="rounded-full border border-dash-border px-2 py-0.5 text-brand-slate">
+                          Titre +{protocol.titre_interval_days}d
+                        </span>
+                        <span className="text-dash-muted">→</span>
+                      </span>
+                    ))}
+                    <ImmStatusBadge status="non_responder" />
+                  </span>
+                </ListPageDataTableCell>
+                <ListPageDataTableCell className="text-[12px]">
+                  {[
+                    protocol.recommend_role_change ? "Role review" : null,
+                    protocol.recommend_ppe_plan ? "PPE plan" : null,
+                    protocol.enable_hbig_fast_track ? "HBIG fast-track" : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || "—"}
+                </ListPageDataTableCell>
+              </ListPageDataTableRow>
             ))}
-          </select>
-          <input
-            className="h-8 w-28 rounded border px-2 text-sm"
-            placeholder="Task code"
-            value={taskForm.code}
-            onChange={(e) => setTaskForm((f) => ({ ...f, code: e.target.value }))}
-          />
-          <input
-            className="h-8 w-40 rounded border px-2 text-sm"
-            placeholder="Name"
-            value={taskForm.name}
-            onChange={(e) => setTaskForm((f) => ({ ...f, name: e.target.value }))}
-          />
-          <input
-            type="number"
-            min={1}
-            max={5}
-            className="h-8 w-16 rounded border px-2 text-sm"
-            value={taskForm.likelihood}
-            onChange={(e) => setTaskForm((f) => ({ ...f, likelihood: Number(e.target.value) }))}
-          />
-          <input
-            type="number"
-            min={1}
-            max={5}
-            className="h-8 w-16 rounded border px-2 text-sm"
-            value={taskForm.severity}
-            onChange={(e) => setTaskForm((f) => ({ ...f, severity: Number(e.target.value) }))}
-          />
-          <PrimaryButton type="button" className="h-8" onClick={() => createTask.mutate()} disabled={createTask.isPending}>
-            Add task
-          </PrimaryButton>
-        </div>
-        <div className="flex flex-wrap gap-2 pt-2">
-          <select
-            className="h-8 rounded border px-2 text-sm"
-            value={assignForm.task_uuid}
-            onChange={(e) => setAssignForm((f) => ({ ...f, task_uuid: e.target.value }))}
-          >
-            <option value="">Assign task…</option>
-            {tasks.map((task: OhImmTask) => (
-              <option key={task.uuid} value={task.uuid}>
-                {task.code}
-              </option>
-            ))}
-          </select>
-          <input
-            className="h-8 w-36 rounded border px-2 text-sm"
-            placeholder="Department"
-            value={assignForm.department_name}
-            onChange={(e) => setAssignForm((f) => ({ ...f, department_name: e.target.value }))}
-          />
-          <input
-            className="h-8 w-28 rounded border px-2 text-sm"
-            placeholder="Site"
-            value={assignForm.site}
-            onChange={(e) => setAssignForm((f) => ({ ...f, site: e.target.value }))}
-          />
-          <input
-            className="h-8 w-52 rounded border px-2 text-sm"
-            placeholder="Employee UUID (override)"
-            value={assignForm.customer_uuid}
-            onChange={(e) => setAssignForm((f) => ({ ...f, customer_uuid: e.target.value }))}
-          />
-          <SecondaryButton type="button" className="h-8" onClick={() => assignTask.mutate()} disabled={assignTask.isPending}>
-            Assign
-          </SecondaryButton>
-        </div>
-      </section>
+          </ImmRecordTable>
+        )
+      ) : null}
 
-      <section className="space-y-2">
-        <h3 className="text-sm font-semibold text-primary">Non-responder protocols</h3>
-        <p className="text-sm text-muted-foreground">
-          After series + quantitative titre: 1st fail → second series; 2nd fail → true non-responder with HBIG fast-track.
-        </p>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left text-muted-foreground">
-                <th className="py-1 pr-3 font-medium">Vaccine</th>
-                <th className="py-1 pr-3 font-medium">Threshold</th>
-                <th className="py-1 pr-3 font-medium">Max series</th>
-                <th className="py-1 font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {protocols.map((p: OhImmNrProtocol) => (
-                <tr key={p.uuid} className="border-b border-border/60">
-                  <td className="py-1.5 pr-3 font-mono text-xs">{p.vaccine_code}</td>
-                  <td className="py-1.5 pr-3">
-                    {p.titre_threshold} {p.titre_unit}
-                  </td>
-                  <td className="py-1.5 pr-3">{p.max_series}</td>
-                  <td className="py-1.5 text-xs text-muted-foreground">
-                    {[
-                      p.flag_on_true_non_responder ? "flag" : null,
-                      p.recommend_role_change ? "role change" : null,
-                      p.recommend_ppe_plan ? "PPE plan" : null,
-                      p.enable_hbig_fast_track ? "HBIG fast-track" : null,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ") || "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="flex flex-wrap gap-2 pt-1">
-          <input
-            className="h-8 w-28 rounded border px-2 text-sm"
-            placeholder="Vaccine"
-            value={protocolForm.vaccine_code}
-            onChange={(e) => setProtocolForm((f) => ({ ...f, vaccine_code: e.target.value }))}
-          />
-          <input
-            type="number"
-            className="h-8 w-24 rounded border px-2 text-sm"
-            placeholder="Threshold"
-            value={protocolForm.titre_threshold}
-            onChange={(e) => setProtocolForm((f) => ({ ...f, titre_threshold: Number(e.target.value) }))}
-          />
-          <input
-            type="number"
-            className="h-8 w-20 rounded border px-2 text-sm"
-            placeholder="Max series"
-            value={protocolForm.max_series}
-            onChange={(e) => setProtocolForm((f) => ({ ...f, max_series: Number(e.target.value) }))}
-          />
-          <PrimaryButton type="button" className="h-8" onClick={() => createProtocol.mutate()} disabled={createProtocol.isPending}>
-            Save protocol
-          </PrimaryButton>
-        </div>
-      </section>
-    </div>
+      {sheet?.kind === "pathway" ? <PathwaySheet onClose={() => setSheet(null)} onDone={done} /> : null}
+      {sheet?.kind === "task" ? (
+        <TaskSheet pathways={pathways} pathwayUuid={sheet.pathwayUuid} onClose={() => setSheet(null)} onDone={done} />
+      ) : null}
+      {sheet?.kind === "assign" ? (
+        <AssignSheet
+          tasks={tasks}
+          taskUuids={sheet.taskUuids}
+          onClose={() => setSheet(null)}
+          onDone={(message) => {
+            setSelected([]);
+            done(message);
+          }}
+        />
+      ) : null}
+      {sheet?.kind === "protocol" ? <ProtocolSheet onClose={() => setSheet(null)} onDone={done} /> : null}
+      {detailPathway ? (
+        <PathwayDetailSheet
+          pathway={detailPathway}
+          tasks={tasksByPathway.get(detailPathway.code) ?? []}
+          onClose={() => setSheet(null)}
+          onAddTask={() => setSheet({ kind: "task", pathwayUuid: detailPathway.uuid })}
+          onOpenTask={(task) => setSheet({ kind: "task-detail", uuid: task.uuid })}
+        />
+      ) : null}
+      {detailTask ? (
+        <TaskDetailSheet
+          task={detailTask}
+          onClose={() => setSheet(null)}
+          onAssign={() => setSheet({ kind: "assign", taskUuids: [detailTask.uuid] })}
+        />
+      ) : null}
+    </>
   );
 }
-
-

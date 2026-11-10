@@ -193,4 +193,6 @@ ohImmZones: "/oh-imm/zones",
   ohImmVendors: "/oh-imm/vendors",
   ohImmColdChain: "/oh-imm/cold-chain",
   ohImmClearQuarantine: (lotUuid: string) => `/oh-imm/lots/${lotUuid}/clear-quarantine`,
+  /** Drug & alcohol testing (OHS owns the module). */
+  ohDa: "/oh-da",
 } as const;

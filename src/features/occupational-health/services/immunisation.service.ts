@@ -509,6 +509,10 @@ export type OhImmExposure = {
   triage_band: string;
   clocks: OhImmExposureClock[];
   employee_context?: Record<string, unknown>;
+  encounter_uuid?: string | null;
+  visit_uuid?: string | null;
+  visit_linked?: boolean;
+  billing_ready?: boolean;
   rca_uuid?: string;
   rca?: { uuid: string; status: string; summary: string } | null;
   actions?: Array<Record<string, unknown>>;

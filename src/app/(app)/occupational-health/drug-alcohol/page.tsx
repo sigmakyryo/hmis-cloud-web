@@ -1,5 +1,7 @@
-import { OhWorkforceEmptyPage } from "@/features/occupational-health/pages/OhWorkforceEmptyPage";
+import { redirect } from "next/navigation";
+import { ROUTES } from "@/constants/routes";
 
-export default function Page() {
-  return <OhWorkforceEmptyPage title="Drug & alcohol" testId="oh-drug-alcohol-page" />;
+/** Legacy OH path — Drug & Alcohol is now a top-level sidebar module. */
+export default function LegacyOhDrugAlcoholRedirect() {
+  redirect(ROUTES.drugAlcoholDue);
 }

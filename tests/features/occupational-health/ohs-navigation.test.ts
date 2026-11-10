@@ -17,14 +17,12 @@ describe("OHS navigation", () => {
     expect(ohItems.map((item) => item.name)).toEqual([
       "OHS Queue",
       "Employees",
-      "Drug & alcohol",
       "OHS Compliance",
       "OHS Surveillance",
     ]);
     expect(ohItems.map((item) => item.href)).toEqual([
       ROUTES.occupationalHealth,
       ROUTES.occupationalHealthEmployees,
-      ROUTES.occupationalHealthDrugAlcohol,
       ROUTES.occupationalHealthCompliance,
       ROUTES.occupationalHealthSurveillance,
     ]);
@@ -57,6 +55,26 @@ describe("OHS navigation", () => {
       ROUTES.immunizationsPdca,
       ROUTES.immunizationsExports,
     ]);
+  });
+});
+
+describe("Drug & Alcohol navigation", () => {
+  it("lists Drug & Alcohol as its own sidebar module gated by the OccupationalHealth group", () => {
+    expect(moduleDisplayNames.DrugAlcohol).toBe("Drug & Alcohol");
+    const da = navigation.filter((item) => item.moduleName === "DrugAlcohol");
+    expect(da.map((item) => item.name)).toEqual([
+      "Due",
+      "Cases",
+      "MRO review",
+      "Random pools",
+      "Return to duty",
+      "Policies",
+      "Reports",
+      "Audit",
+    ]);
+    expect(da.every((item) => item.requiredGroup === "OccupationalHealth")).toBe(true);
+    expect(da.every((item) => item.href.startsWith("/drug-alcohol/"))).toBe(true);
+    expect(ROUTES.drugAlcoholDue).toBe("/drug-alcohol/due");
   });
 });
 

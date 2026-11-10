@@ -643,6 +643,7 @@ export const moduleDisplayNames: Record<string, string> = {
   Therapy: "Therapy",
   OccupationalHealth: "OHS",
   Immunizations: "Immunizations",
+  DrugAlcohol: "Drug & Alcohol",
   Forms: "Forms",
 };
 
@@ -660,6 +661,7 @@ export const moduleIcons: Record<string, AppIconName> = {
   Therapy: "dumbbell",
   OccupationalHealth: "clipboard",
   Immunizations: "shield",
+  DrugAlcohol: "flask",
   Forms: "file",
 };
 
@@ -677,6 +679,7 @@ export const moduleOrder = [
   "Therapy",
   "OccupationalHealth",
   "Immunizations",
+  "DrugAlcohol",
   "Forms",
 ] as const;
 
@@ -912,14 +915,6 @@ export const navigation: NavigationItem[] = [
     enabledInWebNew: true,
   },
   {
-    name: "Drug & alcohol",
-    href: ROUTES.occupationalHealthDrugAlcohol,
-    icon: "clipboard",
-    requiredGroup: "OccupationalHealth",
-    moduleName: "OccupationalHealth",
-    enabledInWebNew: true,
-  },
-  {
     name: "Forms",
     href: ROUTES.occupationalHealthForms,
     icon: "file",
@@ -1014,6 +1009,70 @@ export const navigation: NavigationItem[] = [
     icon: "shield",
     requiredGroup: "OccupationalHealth",
     moduleName: "Immunizations",
+    enabledInWebNew: true,
+  },
+  {
+    name: "Due",
+    href: ROUTES.drugAlcoholDue,
+    icon: "flask",
+    requiredGroup: "OccupationalHealth",
+    moduleName: "DrugAlcohol",
+    enabledInWebNew: true,
+  },
+  {
+    name: "Cases",
+    href: ROUTES.drugAlcoholTests,
+    icon: "flask",
+    requiredGroup: "OccupationalHealth",
+    moduleName: "DrugAlcohol",
+    enabledInWebNew: true,
+  },
+  {
+    name: "MRO review",
+    href: ROUTES.drugAlcoholMro,
+    icon: "flask",
+    requiredGroup: "OccupationalHealth",
+    moduleName: "DrugAlcohol",
+    enabledInWebNew: true,
+  },
+  {
+    name: "Random pools",
+    href: ROUTES.drugAlcoholRandom,
+    icon: "flask",
+    requiredGroup: "OccupationalHealth",
+    moduleName: "DrugAlcohol",
+    enabledInWebNew: true,
+  },
+  {
+    name: "Return to duty",
+    href: ROUTES.drugAlcoholRtd,
+    icon: "flask",
+    requiredGroup: "OccupationalHealth",
+    moduleName: "DrugAlcohol",
+    enabledInWebNew: true,
+  },
+  {
+    name: "Policies",
+    href: ROUTES.drugAlcoholPolicies,
+    icon: "flask",
+    requiredGroup: "OccupationalHealth",
+    moduleName: "DrugAlcohol",
+    enabledInWebNew: true,
+  },
+  {
+    name: "Reports",
+    href: ROUTES.drugAlcoholReports,
+    icon: "flask",
+    requiredGroup: "OccupationalHealth",
+    moduleName: "DrugAlcohol",
+    enabledInWebNew: true,
+  },
+  {
+    name: "Audit",
+    href: ROUTES.drugAlcoholAudit,
+    icon: "flask",
+    requiredGroup: "OccupationalHealth",
+    moduleName: "DrugAlcohol",
     enabledInWebNew: true,
   },
   {

@@ -137,6 +137,13 @@ export function resolvePortalModuleForPath(
   }
 
   if (
+    pathname === ROUTES.drugAlcohol ||
+    pathname.startsWith(`${ROUTES.drugAlcohol}/`)
+  ) {
+    return "OccupationalHealth";
+  }
+
+  if (
     pathname === ROUTES.immunizations ||
     pathname.startsWith(`${ROUTES.immunizations}/`)
   ) {

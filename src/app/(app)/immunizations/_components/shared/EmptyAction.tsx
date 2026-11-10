@@ -1,18 +1,20 @@
 "use client";
 
+import type { ReactNode } from "react";
+
+import type { AppIconName } from "@/components/icons/app-icon";
+import { ListPageBlankState } from "@/features/app-shell/components/page-layout";
+
 export function EmptyAction({
   title,
   description,
+  icon = "clipboard",
+  action,
 }: {
   title: string;
   description: string;
+  icon?: AppIconName;
+  action?: ReactNode;
 }) {
-  return (
-    <div className="rounded-md border border-dashed border-dash-border px-4 py-8 text-center">
-      <p className="text-[13px] font-medium text-brand-navy">{title}</p>
-      <p className="mt-1 text-[13px] text-dash-muted">{description}</p>
-    </div>
-  );
+  return <ListPageBlankState compact icon={icon} title={title} description={description} action={action} />;
 }
-
-

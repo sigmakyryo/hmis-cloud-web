@@ -100,8 +100,9 @@ describe("employee form visit flow", () => {
     const forms = navigation.find((item) => item.name === "Forms");
     expect(forms?.moduleName).toBe("Forms");
     expect(navigation.filter((item) => item.moduleName === "OccupationalHealth").map((item) => item.name)).toEqual(
-      expect.arrayContaining(["Employees", "Drug & alcohol"]),
+      expect.arrayContaining(["Employees"]),
     );
+    expect(navigation.some((item) => item.moduleName === "DrugAlcohol")).toBe(true);
     expect(
       navigation.filter((item) => item.moduleName === "OccupationalHealth").map((item) => item.name),
     ).not.toContain("Immunizations");

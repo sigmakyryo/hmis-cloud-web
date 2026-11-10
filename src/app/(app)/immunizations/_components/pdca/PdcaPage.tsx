@@ -5,11 +5,7 @@ import { PdcaBoard } from "./PdcaBoard";
 
 export function PdcaPage() {
   return (
-    <ImmPageShell
-      testId="oh-immunizations-pdca-page"
-      title="PDCA"
-      description="Root-cause actions, seroprevalence audits, and cold-chain checks."
-    >
+    <ImmPageShell testId="oh-immunizations-pdca-page" title="PDCA">
       <PdcaBoard />
     </ImmPageShell>
   );
