@@ -5,7 +5,7 @@ import { afterEach, expect, it, vi } from "vitest";
 
 import { OhCertificateForm } from "@/features/occupational-health/components/OhCertificateTabPanel";
 import { OhCopilotResult } from "@/features/occupational-health/components/OhCopilotResult";
-import { OhVisitCopilot } from "@/features/occupational-health/components/OhVisitCopilot";
+import { OhCertificateReadiness } from "@/features/occupational-health/components/OhCertificateReadiness";
 import { createFitnessCertificate } from "@/features/occupational-health/services/oh.service";
 import { fetchVisitBrief } from "@/features/occupational-health/services/visit-copilot.service";
 import type { CopilotResponse } from "@/features/occupational-health/services/visit-copilot.service";
@@ -25,6 +25,10 @@ vi.mock("@/features/occupational-health/services/oh.service", () => ({
 vi.mock("@/features/occupational-health/services/visit-copilot.service", () => ({
   fetchVisitBrief: vi.fn(),
   askVisitCopilot: vi.fn(),
+}));
+
+vi.mock("next/link", () => ({
+  default: ({ children, href }: { children: ReactNode; href: string }) => <a href={href}>{children}</a>,
 }));
 
 afterEach(cleanup);
@@ -63,7 +67,7 @@ const RESULT: CopilotResponse = {
   },
 };
 
-it("shows the visit check and write-up without a question first", async () => {
+it("checks the visit on open and marks each record area in the readiness rail", async () => {
   vi.mocked(fetchVisitBrief).mockResolvedValue({
     refused: false,
     message: "Two items are still open.",
@@ -79,12 +83,44 @@ it("shows the visit check and write-up without a question first", async () => {
     draft: { wording: "Not ready to certify.", restrictions: ["No night shift"] },
   });
 
-  renderWithQuery(<OhVisitCopilot visitUuid="visit-1" />);
+  const onOpenPanel = vi.fn();
+  const onUseDraft = vi.fn();
+  renderWithQuery(
+    <OhCertificateReadiness
+      visitUuid="visit-1"
+      gateWarnings={["HepB booster due"]}
+      onOpenPanel={onOpenPanel}
+      onUseDraft={onUseDraft}
+    />,
+  );
 
   expect(await screen.findByText("Two items are still open.")).toBeTruthy();
+  expect(screen.getByTestId("oh-cof-check-fitness").getAttribute("data-state")).toBe("review");
+  expect(screen.getByTestId("oh-cof-check-vaccine").getAttribute("data-state")).toBe("review");
+  expect(screen.getByTestId("oh-cof-check-hearing").getAttribute("data-state")).toBe("clear");
   expect(screen.getByText("No medical on file.")).toBeTruthy();
-  expect(screen.getByText(/Not ready to certify/)).toBeTruthy();
-  expect(screen.getByText(/No night shift/)).toBeTruthy();
+  expect(screen.getByTestId("oh-cof-readiness-summary").textContent).toBe("2 to review");
+  expect(screen.getByText("Not ready to certify.")).toBeTruthy();
+  expect(screen.getByText("No night shift")).toBeTruthy();
+
+  expect(screen.getAllByTestId(/^oh-cof-check-/).at(-1)?.getAttribute("data-testid")).toBe("oh-cof-check-exam");
+  fireEvent.click(screen.getByRole("button", { name: "Open Fitness" }));
+  expect(onOpenPanel).toHaveBeenCalledWith("fitness");
+
+  fireEvent.click(screen.getByRole("button", { name: "Use in form" }));
+  expect(onUseDraft).toHaveBeenCalledWith({ wording: "Not ready to certify.", restrictions: ["No night shift"] });
+});
+
+it("marks vaccines blocked when the immunisation gate blocks the certificate", async () => {
+  vi.mocked(fetchVisitBrief).mockResolvedValue({ refused: false, message: "", points: [], draft: {} });
+
+  renderWithQuery(<OhCertificateReadiness visitUuid="visit-2" gateBlocked="Missing HepB series" />);
+
+  await waitFor(() => expect(screen.getByTestId("oh-cof-check-fitness").getAttribute("data-state")).toBe("clear"));
+  expect(screen.getByTestId("oh-cof-check-vaccine").getAttribute("data-state")).toBe("blocked");
+  expect(screen.getByTestId("oh-imm-fitness-blocked").textContent).toContain("Missing HepB series");
+  expect(screen.getByTestId("oh-cof-readiness-summary").textContent).toBe("Not ready");
+  expect(screen.queryByTestId("oh-cof-draft")).toBeNull();
 });
 
 it("renders only points that cite a known source and shows the service due date", () => {

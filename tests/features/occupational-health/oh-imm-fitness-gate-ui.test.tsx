@@ -39,6 +39,11 @@ vi.mock("@/features/occupational-health/services/oh.service", () => ({
   recoverOhEmployeeFormResponseVersion: vi.fn(),
 }));
 
+vi.mock("@/features/occupational-health/services/visit-copilot.service", () => ({
+  fetchVisitBrief: vi.fn(async () => ({ refused: false, message: "", points: [], draft: {} })),
+  askVisitCopilot: vi.fn(),
+}));
+
 vi.mock("@/features/occupational-health/components/OhExamTemplateCaptureForm", () => ({
   OhExamTemplateCaptureForm: () => <div data-testid="exam-form" />,
 }));

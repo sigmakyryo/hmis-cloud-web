@@ -3,6 +3,7 @@
 import { Check, Lock } from "lucide-react";
 
 import { OhCertificateForm } from "@/features/occupational-health/components/OhCertificateTabPanel";
+import { OhCertificateReadiness } from "@/features/occupational-health/components/OhCertificateReadiness";
 import { OhCertificateRecords } from "@/features/occupational-health/components/OhCertificateRecords";
 import { OhMedicalExaminationsPanel } from "@/features/occupational-health/components/OhMedicalExaminationsPanel";
 import { OhSessionEmployeeForm } from "@/features/occupational-health/components/OhSessionEmployeeForm";
@@ -12,7 +13,7 @@ import {
   OhEncounterColumns,
 } from "@/features/occupational-health/components/OhEncounterColumns";
 import type { useOhEncounterWorkspaceData } from "@/features/occupational-health/hooks/use-occupational-health";
-import { COF_TEMPLATE_RESPONSE_KEY } from "@/features/occupational-health/lib/oh-encounter-modules";
+import { COF_TEMPLATE_RESPONSE_KEY, type OhEncounterPanelId } from "@/features/occupational-health/lib/oh-encounter-modules";
 import {
   isExaminationStepReady,
   sessionFormStepKey,
@@ -37,6 +38,8 @@ type OhSessionFormsProps = {
   focusedExamUuid?: string | null;
   examFocusRequest?: number;
   onActiveExamChange?: (examUuid: string | null) => void;
+  onOpenPanel?: (panel: OhEncounterPanelId) => void;
+  navSlot?: HTMLElement | null;
 };
 
 export function OhSessionFormNav({
@@ -44,15 +47,18 @@ export function OhSessionFormNav({
   activeStep,
   statuses,
   onSelect,
+  trailingRef,
 }: {
   steps: SessionFormStep[];
   activeStep: string;
   statuses: Record<string, SessionStepStatus>;
   onSelect: (step: string) => void;
+  /** Receives the right-hand slot of this row so the open step can place its own header there. */
+  trailingRef?: (element: HTMLDivElement | null) => void;
 }) {
   return (
     <div
-      className="shrink-0 border-b border-dash-border bg-white px-5 py-2"
+      className="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-dash-border bg-white px-5 py-2"
       data-testid="oh-session-form-nav"
     >
       <nav aria-label="Visit forms" className="flex flex-wrap gap-2">
@@ -97,6 +103,7 @@ export function OhSessionFormNav({
           );
         })}
       </nav>
+      {trailingRef ? <div ref={trailingRef} className="flex flex-wrap items-center gap-3 empty:hidden" /> : null}
     </div>
   );
 }
@@ -127,6 +134,8 @@ export function OhSessionForms({
   focusedExamUuid = null,
   examFocusRequest = 0,
   onActiveExamChange,
+  onOpenPanel,
+  navSlot = null,
 }: OhSessionFormsProps) {
   const native = encounter.origin === "laravel";
   const steps = sessionFormSteps(encounter.visit_type ?? null);
@@ -186,10 +195,18 @@ export function OhSessionForms({
             lockReason="Finish and save the examination before opening the certificate."
             completionRef={cofCompletionRef}
             onSaved={workspace.refetchAll}
+            onOpenPanel={onOpenPanel}
+            headerSlot={showCof ? navSlot : null}
           />
         </section>
       ) : showCof ? (
         <section aria-label="Certificate of fitness" className="min-h-0 flex-1 overflow-y-auto">
+          <OhCertificateReadiness
+            visitUuid={encounter.uuid}
+            onOpenPanel={onOpenPanel}
+            showDraft={false}
+            className="border-b border-dash-border"
+          />
           <OhEncounterColumns
             sectionKey="certificate"
             form={
