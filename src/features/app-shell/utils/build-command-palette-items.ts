@@ -40,6 +40,14 @@ export function buildCommandPaletteItems(
   }
 
   for (const nav of navItems) {
+    if (nav.flat) {
+      add({
+        href: nav.url,
+        title: "All modules",
+        group: nav.title,
+        icon: nav.icon,
+      });
+    }
     if (nav.items?.length) {
       for (const sub of nav.items) {
         add({

@@ -29,7 +29,7 @@ function NavMenuItems({ items }: { items: SidebarNavItem[] }) {
   return (
     <SidebarMenu>
       {items.map((item) =>
-        item.items?.length ? (
+        item.items?.length && !item.flat ? (
           <Collapsible
             key={item.title}
             asChild

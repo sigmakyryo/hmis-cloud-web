@@ -138,13 +138,15 @@ it("visit panel shows the fit-for-duty summary", async () => {
   expect(await screen.findByText("Training missing: Working at height")).toBeTruthy();
   expect(mocks.worker).toHaveBeenCalledWith(CU);
   expect(screen.getByText("Not cleared until the items below are resolved.")).toBeTruthy();
-  expect(screen.getByTestId("oh-fit-source-training").textContent).toContain("Working at height");
   expect(screen.getByTestId("oh-fit-source-medical").textContent).toContain("OK");
+  expect(screen.getByTestId("oh-fit-source-training").textContent).toContain("Not fit");
   expect(screen.getByTestId("oh-fit-source-fit_test").textContent).toContain("Not on file");
   expect(screen.getByText("Tom Miner")).toBeTruthy();
   expect(screen.getByRole("img", { name: /1 of 6 checks clear/ })).toBeTruthy();
   expect(screen.getByTestId("oh-fit-timeline").textContent).toContain("Medical");
+  expect(screen.getByText(/Training · Blocks clearance/)).toBeTruthy();
 
-  fireEvent.click(screen.getByTestId("oh-fit-source-medical").querySelector("button") as HTMLButtonElement);
-  expect(screen.getByText("Medical: fit")).toBeTruthy();
+  expect(screen.getByTestId("oh-fit-source-details").textContent).toContain("Medical: fit");
+  fireEvent.click(screen.getByTestId("oh-fit-source-training").querySelector("button") as HTMLButtonElement);
+  expect(screen.getByTestId("oh-fit-source-details").textContent).toContain("Working at height");
 });

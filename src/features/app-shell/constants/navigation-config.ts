@@ -73,6 +73,23 @@ export const moduleOrder = [
   "Forms",
 ] as const;
 
+/** Modules reached through the Occupational Health home page instead of their own sidebar groups. */
+export const OH_FAMILY_MODULES = [
+  "OccupationalHealth",
+  "Immunizations",
+  "DrugAlcohol",
+  "Fitness",
+  "HealthPrograms",
+] as const;
+
+export type OhFamilyModule = (typeof OH_FAMILY_MODULES)[number];
+
+export const OH_NAV_TITLE = "Occupational Health";
+
+export function isOhFamilyModule(moduleName: string): moduleName is OhFamilyModule {
+  return (OH_FAMILY_MODULES as readonly string[]).includes(moduleName);
+}
+
 /** Mirrors web-old navigation; only enabled routes appear in web-new for now. */
 export const navigation: NavigationItem[] = [
   {

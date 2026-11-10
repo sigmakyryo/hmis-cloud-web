@@ -32,7 +32,7 @@ export const TONE_DOT: Record<FitTone, string> = {
   warn: "bg-amber-500",
   bad: "bg-red-500",
   missing: "bg-slate-400",
-  none: "bg-slate-200",
+  none: "bg-brand-tint",
 };
 
 export const TONE_TEXT: Record<FitTone, string> = {
@@ -43,12 +43,30 @@ export const TONE_TEXT: Record<FitTone, string> = {
   none: "text-dash-muted",
 };
 
+export const TONE_SOFT: Record<FitTone, string> = {
+  good: "bg-emerald-50 text-emerald-600",
+  warn: "bg-amber-50 text-amber-600",
+  bad: "bg-red-50 text-red-600",
+  missing: "bg-brand-tint/70 text-brand-primary",
+  none: "bg-brand-tint/40 text-brand-primary/40",
+};
+
+/** What the clinician does next for each status. */
+export const STATUS_HINT: Record<FitItemStatus, string> = {
+  missing: "Nothing recorded yet",
+  overdue: "Expired, renew to clear",
+  blocked: "Blocks clearance until resolved",
+  expiring: "Renew before it lapses",
+  restricted: "Restriction applies at work",
+  ok: "In date",
+};
+
 export const TONE_STROKE: Record<FitTone, string> = {
   good: "stroke-emerald-500",
   warn: "stroke-amber-500",
   bad: "stroke-red-500",
   missing: "stroke-slate-400",
-  none: "stroke-slate-200",
+  none: "stroke-brand-tint",
 };
 
 export function worstStatus(items: FitItem[]): FitItemStatus | null {

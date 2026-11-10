@@ -7,8 +7,12 @@ import {
   groupNavigationByModule,
   isMostSpecificNavItemActive,
   isNavItemActive,
+  isOhFamilyModule,
   isReportsNavActive,
+  OH_FAMILY_MODULES,
+  OH_NAV_TITLE,
   sortModules,
+  type NavigationItem,
 } from "@/features/app-shell/constants/navigation-config";
 import { ROUTES } from "@/constants/routes";
 
@@ -21,12 +25,60 @@ export type SidebarNavItem = {
   isActive?: boolean;
   section?: SidebarNavSection;
   showUnreadDot?: boolean;
+  /** Render as a single link; `items` still feed the command palette. */
+  flat?: boolean;
   items?: Array<{
     title: string;
     url: string;
     isActive?: boolean;
   }>;
 };
+
+function mostSpecificNavMatch(pathname: string, items: NavigationItem[]) {
+  return items
+    .filter((item) => isNavItemActive(pathname, item.href))
+    .reduce<NavigationItem | undefined>(
+      (best, item) => (!best || item.href.length > best.href.length ? item : best),
+      undefined,
+    );
+}
+
+/** One flat entry that opens the OH home page, standing in for every OH-family module. */
+function buildOhNavItem(
+  modules: Record<string, NavigationItem[]>,
+  allItems: NavigationItem[],
+  pathname: string,
+): SidebarNavItem | null {
+  const entries = OH_FAMILY_MODULES.flatMap((moduleName) =>
+    (modules[moduleName] ?? []).map((item) => ({ moduleName, item })),
+  );
+  if (entries.length === 0) {
+    return null;
+  }
+
+  const hrefs = entries.map(({ item }) => item.href);
+  const match = mostSpecificNavMatch(pathname, allItems);
+  const isActive =
+    isNavItemActive(pathname, ROUTES.occupationalHealthHome) ||
+    (match !== undefined && hrefs.includes(match.href));
+
+  return {
+    title: OH_NAV_TITLE,
+    url: ROUTES.occupationalHealthHome,
+    icon: getModuleIcon("OccupationalHealth"),
+    section: "workspace",
+    flat: true,
+    isActive,
+    items: entries.map(({ moduleName, item }) => ({
+      title:
+        moduleName === "OccupationalHealth"
+          ? item.name
+          : `${getModuleLabel(moduleName)} · ${item.name}`,
+      url: item.href,
+      isActive: isMostSpecificNavItemActive(pathname, item.href, hrefs),
+    })),
+  };
+}
 
 export function buildSidebarNavItems(
   userGroups: string[],
@@ -51,7 +103,19 @@ export function buildSidebarNavItems(
     });
   }
 
+  let ohNavAdded = false;
   for (const moduleName of sortModules(Object.keys(modules))) {
+    if (isOhFamilyModule(moduleName)) {
+      if (!ohNavAdded) {
+        ohNavAdded = true;
+        const ohItem = buildOhNavItem(modules, filtered, pathname);
+        if (ohItem) {
+          items.push(ohItem);
+        }
+      }
+      continue;
+    }
+
     const moduleItems = modules[moduleName] ?? [];
     if (moduleItems.length === 0) {
       continue;
