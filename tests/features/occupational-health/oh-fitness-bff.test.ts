@@ -65,3 +65,20 @@ describe("fitness BFF allowlist", () => {
     expect(mocks.ohServiceRequest).not.toHaveBeenCalled();
   });
 });
+
+describe("OH audit BFF", () => {
+  it("only proxies GET /oh-audit with the module and entity filters", async () => {
+    const { fitnessAuditProxy } = await import("@/lib/server/fitness-bff");
+    expect(fitnessAuditProxy.resolve("GET", ["oh-audit"])?.path).toBe("/oh-audit");
+    expect(fitnessAuditProxy.resolve("POST", ["oh-audit"])).toBeNull();
+    expect(fitnessAuditProxy.resolve("GET", ["oh-fit", "feed"])).toBeNull();
+    mocks.ohServiceRequest.mockResolvedValue({ results: [] });
+    const { GET } = await import("@/app/api/occupational-health/audit/route");
+    const res = await GET(new Request("http://x/api/occupational-health/audit?module=fitness&token=abc"));
+    expect(res.status).toBe(200);
+    expect(mocks.ohServiceRequest).toHaveBeenCalledWith("/oh-audit?module=fitness", {
+      method: "GET",
+      token: "session-token",
+    });
+  });
+});

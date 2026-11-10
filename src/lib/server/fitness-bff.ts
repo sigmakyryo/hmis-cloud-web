@@ -14,3 +14,10 @@ export const fitnessProxy = createOhModuleProxy({
   queryKeys: ["employer_uuid", "site", "status", "q", "customer_uuid", "course_uuid", "state", "module", "entity_type"],
   created: ["courses", "training", "clients", "clients/{id}/test"],
 });
+
+/** Read-only OH audit trail (`GET /oh-audit`, OHS allows tenant administrators only). */
+export const fitnessAuditProxy = createOhModuleProxy({
+  base: "",
+  rules: { GET: ["oh-audit"] },
+  queryKeys: ["module", "entity_type"],
+});
