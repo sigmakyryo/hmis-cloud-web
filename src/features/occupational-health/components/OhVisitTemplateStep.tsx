@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 
 import { PrimaryButton, SecondaryButton } from "@/components/ui/app-buttons";
@@ -35,9 +36,11 @@ import {
 } from "@/features/occupational-health/services/oh.service";
 import type { OhTemplateCapture, OhVisitEncounter } from "@/features/occupational-health/types";
 import { fetchOhImmFitnessGate } from "@/features/occupational-health/services/immunisation.service";
-import Link from "next/link";
+import { OhCertificateReadiness } from "@/features/occupational-health/components/OhCertificateReadiness";
+import { applyCofDraft, findCofDraftTargets } from "@/features/occupational-health/lib/cof-draft-targets";
+import type { OhEncounterPanelId } from "@/features/occupational-health/lib/oh-encounter-modules";
 import { appFont } from "@/lib/fonts";
-import { ROUTES } from "@/constants/routes";
+import { cn } from "@/lib/utils";
 import { useToast } from "@/providers/toast-provider";
 import { useUser } from "@/providers/user-provider";
 
@@ -51,6 +54,9 @@ type OhVisitTemplateStepProps = {
   lockReason?: string;
   completionRef?: { current: (() => Promise<boolean>) | null };
   onSaved: () => void;
+  onOpenPanel?: (panel: OhEncounterPanelId) => void;
+  /** When set, the title, progress and Save render in this element (the step nav row) instead of a header bar. */
+  headerSlot?: HTMLElement | null;
 };
 
 export function OhVisitTemplateStep({
@@ -63,6 +69,8 @@ export function OhVisitTemplateStep({
   lockReason = "Save the previous step before opening this form.",
   completionRef,
   onSaved,
+  onOpenPanel,
+  headerSlot = null,
 }: OhVisitTemplateStepProps) {
   const { toast } = useToast();
   const { userData } = useUser();
@@ -103,7 +111,7 @@ export function OhVisitTemplateStep({
   const templateUuid = current?.template_uuid ?? null;
   const fitnessGateQuery = useQuery({
     queryKey: ["oh-imm-fitness-gate", encounter.customer_uuid],
-    queryFn: () => fetchOhImmFitnessGate(encounter.customer_uuid),
+    queryFn: () => fetchOhImmFitnessGate(encounter.customer_uuid ?? ""),
     enabled: family === "cof" && Boolean(encounter.customer_uuid),
   });
   const gateWarnings = useMemo(() => {
@@ -304,85 +312,121 @@ export function OhVisitTemplateStep({
     );
   }
 
-  return (
-    <div className="flex min-h-0 flex-1 flex-col" data-testid={`oh-${family}-step`}>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-dash-border px-5 py-3">
-        <h2 className="text-sm font-semibold text-brand-navy">{title}</h2>
-        <div className="flex flex-wrap items-center gap-2">
-          {definitionsMissing && encounter.is_active !== false && !hasEnteredResponses && (canConfigure || readyReplacement) ? (
-            <SecondaryButton
-              type="button"
-              disabled={recovering || saving}
-              onClick={() => {
-                setRecoveryError(null);
-                setRecoveryOpen(true);
-              }}
-            >
-              Load configured fields
-            </SecondaryButton>
-          ) : null}
-          <PrimaryButton
-            type="button"
-            disabled={saving || encounter.is_active === false || !snapshot || Boolean(displayBlocked)}
-            onClick={() => void persist(answers, false)}
-          >
-            {saving ? "Saving…" : "Save"}
-          </PrimaryButton>
-        </div>
-      </div>
+  const isCof = family === "cof";
+  const sectionCount = snapshot?.sections.length ?? 0;
+  const answeredCount = snapshot
+    ? snapshot.sections.filter((section) =>
+        section.content_mode === "direct"
+          ? Object.values(answers.fields[section.code] ?? {}).some((value) => String(value ?? "").trim() !== "")
+          : (answers.picks[section.code] ?? []).length > 0,
+      ).length
+    : 0;
+  const draftTargets = isCof && snapshot ? findCofDraftTargets(snapshot, answers) : null;
+  const canUseDraft =
+    Boolean(draftTargets?.wording || draftTargets?.restrictions) && encounter.is_active !== false && !saving;
+
+  const formBody = (
+    <>
       {definitionsMissing && encounter.is_active !== false && !hasEnteredResponses && !(canConfigure || readyReplacement) ? (
-        <p className="px-5 py-3 text-sm text-dash-muted" role="status">
+        <p className="py-3 text-sm text-dash-muted" role="status">
           This form needs updated fields from Occupational Health settings before it can be completed.
         </p>
       ) : null}
-      {displayBlocked ? (
-        <div
-          role="alert"
-          data-testid="oh-imm-fitness-blocked"
-          className="mx-5 mt-3 space-y-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"
-        >
-          <p className="font-medium">Certificate blocked until immunizations are complete</p>
-          <p>{displayBlocked}</p>
-          <Link
-            href={ROUTES.immunizationsDue}
-            className="inline-flex text-sm font-medium text-brand-navy underline-offset-2 hover:underline"
-          >
-            Record a dose
-          </Link>
-        </div>
-      ) : null}
-      {!displayBlocked && displayWarnings.length > 0 ? (
-        <div
-          role="status"
-          data-testid="oh-imm-fitness-warnings"
-          className="mx-5 mt-3 space-y-1 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"
-        >
-          <p className="font-medium">Immunization warning</p>
-          <ul className="list-disc space-y-0.5 pl-5">
-            {displayWarnings.map((w) => (
-              <li key={w}>{w}</li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-      {message ? <p role="alert" className="px-5 py-3 text-sm text-red-700">{message}</p> : null}
-      <div ref={formRef} className="min-h-0 flex-1 overflow-y-auto px-5">
-        {snapshot ? (
-          <OhExamTemplateCaptureForm
-            snapshot={snapshot}
-            value={answers}
-            onChange={(next) => {
-              setAnswers(next);
-              if (showErrors) setShowErrors(false);
-            }}
-            disabled={encounter.is_active === false || saving}
-            errors={errors}
-            billingCharges={current?.billing_charges ?? []}
-          />
-        ) : (
-          <p className="py-6 text-sm text-dash-muted">Opening the published form.</p>
-        )}
+      {message ? <p role="alert" className="py-3 text-sm text-red-700">{message}</p> : null}
+      {snapshot ? (
+        <OhExamTemplateCaptureForm
+          snapshot={snapshot}
+          value={answers}
+          onChange={(next) => {
+            setAnswers(next);
+            if (showErrors) setShowErrors(false);
+          }}
+          disabled={encounter.is_active === false || saving || (isCof && Boolean(displayBlocked))}
+          errors={errors}
+          billingCharges={current?.billing_charges ?? []}
+        />
+      ) : (
+        <p className="py-6 text-sm text-dash-muted">Opening the published form.</p>
+      )}
+    </>
+  );
+
+  const inNavRow = Boolean(headerSlot);
+  const header = (
+    <>
+      <div className={cn("min-w-0", inNavRow && "flex items-center gap-3")}>
+        <h2 className="text-sm font-semibold text-brand-navy">{title}</h2>
+        {isCof && sectionCount > 0 ? (
+          <div className={cn("flex items-center gap-2", !inNavRow && "mt-1")} data-testid="oh-cof-progress">
+            <div className="h-1 w-28 overflow-hidden rounded-full bg-dash-border" aria-hidden>
+              <div
+                className="h-full rounded-full bg-brand-primary transition-[width]"
+                style={{ width: `${Math.round((answeredCount / sectionCount) * 100)}%` }}
+              />
+            </div>
+            <span className="text-[12px] tabular-nums text-dash-muted">
+              {answeredCount} of {sectionCount} sections
+            </span>
+          </div>
+        ) : null}
       </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {definitionsMissing && encounter.is_active !== false && !hasEnteredResponses && (canConfigure || readyReplacement) ? (
+          <SecondaryButton
+            type="button"
+            disabled={recovering || saving}
+            onClick={() => {
+              setRecoveryError(null);
+              setRecoveryOpen(true);
+            }}
+          >
+            Load configured fields
+          </SecondaryButton>
+        ) : null}
+        <PrimaryButton
+          type="button"
+          disabled={saving || encounter.is_active === false || !snapshot || Boolean(displayBlocked)}
+          onClick={() => void persist(answers, false)}
+        >
+          {saving ? "Saving…" : "Save"}
+        </PrimaryButton>
+      </div>
+    </>
+  );
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col" data-testid={`oh-${family}-step`}>
+      {headerSlot ? (
+        createPortal(<div className="flex flex-wrap items-center gap-4">{header}</div>, headerSlot)
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-dash-border px-5 py-3">{header}</div>
+      )}
+      {isCof ? (
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:overflow-hidden">
+          <div ref={formRef} className={cn("px-5 lg:min-h-0 lg:overflow-y-auto", displayBlocked && "opacity-60")}>
+            {formBody}
+          </div>
+          <OhCertificateReadiness
+            visitUuid={encounter.uuid}
+            gateBlocked={displayBlocked}
+            gateWarnings={displayWarnings}
+            onOpenPanel={onOpenPanel}
+            onUseDraft={
+              canUseDraft && draftTargets
+                ? (draft) => {
+                    setAnswers((previous) => applyCofDraft(previous, draftTargets, draft));
+                    if (showErrors) setShowErrors(false);
+                  }
+                : undefined
+            }
+            className="order-first border-b border-dash-border lg:order-none lg:border-b-0 lg:border-l"
+          />
+        </div>
+      ) : (
+        <div ref={formRef} className="min-h-0 flex-1 overflow-y-auto px-5">
+          {formBody}
+        </div>
+      )}
       <Dialog
         open={recoveryOpen}
         onOpenChange={(open) => {

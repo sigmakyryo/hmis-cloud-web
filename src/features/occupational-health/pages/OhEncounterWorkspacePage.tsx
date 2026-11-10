@@ -19,7 +19,6 @@ import { useAppBreadcrumb } from "@/features/app-shell/hooks/use-app-breadcrumb"
 import { OhEncounterContextPanel } from "@/features/occupational-health/components/OhEncounterContextPanel";
 import { OhEncounterEdgeRail } from "@/features/occupational-health/components/OhEncounterEdgeRail";
 import { OhEncounterHeader } from "@/features/occupational-health/components/OhEncounterHeader";
-import { OhVisitCopilot } from "@/features/occupational-health/components/OhVisitCopilot";
 import { buildSessionStepStatuses, OhSessionFormNav } from "@/features/occupational-health/components/OhSessionForms";
 import { OhRiskProfileRequiredEmptyState } from "@/features/occupational-health/components/OhRiskProfileRequiredEmptyState";
 import { useOhEncounterModuleParam } from "@/features/occupational-health/hooks/use-oh-encounter-module-param";
@@ -100,6 +99,7 @@ export function OhEncounterWorkspacePage({
   const completionBusy = useRef(false);
   const [activeExamUuid, setActiveExamUuid] = useState<string | null>(null);
   const [chosenStep, setChosenStep] = useState<string | null>(null);
+  const [stepNavSlot, setStepNavSlot] = useState<HTMLDivElement | null>(null);
 
   const encounterQuery = useQuery({
     queryKey: ["oh-encounter", encounterUuid],
@@ -256,16 +256,8 @@ export function OhEncounterWorkspacePage({
             }}>{completing ? (isLastSessionStep(formSteps, activeStep) ? "Completing…" : "Saving…") : (isLastSessionStep(formSteps, activeStep) ? "Complete visit" : "Continue")}</PrimaryButton> : null}
           </div>}
         />
-        <OhVisitCopilot
-          visitUuid={encounter.uuid}
-          onOpenPanel={(panel) => {
-            setActivePanel(panel);
-            if (panel === "certificate") setChosenStep("certificate");
-            if (panel === "medical-examinations") setChosenStep("examination");
-            if (panel === "employment") setChosenStep("employee");
-          }}
-        />
         <OhSessionFormNav
+          trailingRef={setStepNavSlot}
           steps={formSteps}
           activeStep={activeStep}
           statuses={buildSessionStepStatuses(formSteps, workspace)}
@@ -309,6 +301,11 @@ export function OhEncounterWorkspacePage({
                   focusedExamUuid={focusedExamUuid}
                   examFocusRequest={examFocusRequest}
                   onActiveExamChange={setActiveExamUuid}
+                  navSlot={stepNavSlot}
+                  onOpenPanel={(panel) => {
+                    setActivePanel(panel);
+                    if (panel === "medical-examinations") setChosenStep("examination");
+                  }}
                 />
               )}
             </section>
