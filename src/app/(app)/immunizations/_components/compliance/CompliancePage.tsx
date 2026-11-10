@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { ImmPageShell } from "../shared/ImmPageShell";
+import { LoadError } from "../shared/QuietLoading";
 import { ComplianceOverview } from "./ComplianceOverview";
 import { fetchOhImmCompliance } from "@/features/occupational-health/services/immunisation.service";
 
@@ -13,15 +14,9 @@ export function CompliancePage() {
   });
 
   return (
-    <ImmPageShell
-      testId="oh-immunizations-compliance-page"
-      title="Compliance"
-      description="Coverage by group for published schedules with a fitness gate."
-    >
+    <ImmPageShell testId="oh-immunizations-compliance-page" title="Compliance">
       {compliance.isError ? (
-        <p className="text-sm text-destructive" role="alert">
-          Could not load compliance. Check your connection and try again.
-        </p>
+        <LoadError>Could not load compliance. Check your connection and try again.</LoadError>
       ) : (
         <ComplianceOverview data={compliance.data} loading={compliance.isLoading} />
       )}

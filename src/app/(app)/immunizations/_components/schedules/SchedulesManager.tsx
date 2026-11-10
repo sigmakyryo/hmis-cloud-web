@@ -1,21 +1,44 @@
 "use client";
 import { useState, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
-import { PrimaryButton, SecondaryButton } from "@/components/ui/app-buttons";
+import { AppIcon } from "@/components/icons/app-icon";
+import { PageActionButton, PrimaryButton, SecondaryButton } from "@/components/ui/app-buttons";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/providers/toast-provider";
 import { QuietLoading } from "../shared/QuietLoading";
 import { EmptyAction } from "../shared/EmptyAction";
 import { Field } from "../shared/Field";
-import { Drawer } from "../shared/Drawer";
+import { Drawer, DrawerActions } from "../shared/Drawer";
+import { ListPageDataTableCell, ListPageDataTableRow } from "@/features/app-shell/components/page-layout";
+import {
+  ImmPrimaryCell,
+  ImmRecordTable,
+  ImmRowAction,
+  ImmStatusBadge,
+  humanize,
+} from "../shared/ImmRecordTable";
+import { ImmInsightStrip } from "../shared/ImmInsightStrip";
+import { ImmFilterSelect, ImmSearchBar } from "../shared/ImmSearchBar";
+import { ImmTabsBar } from "../shared/ImmTabsBar";
+import { ImmCodeChips } from "../shared/ImmVisuals";
+import { useImmList } from "../shared/use-imm-list";
 import {
   type OhImmSchedule,
   createOhImmSchedule,
   previewOhImmAssignment,
   publishOhImmSchedule,
 } from "@/features/occupational-health/services/immunisation.service";
+
+type ScheduleStatus = "" | "published" | "draft";
+
+function gateOf(schedule: OhImmSchedule): string {
+  return String(schedule.published_version?.snapshot?.assignment?.fitness_gate ?? "off");
+}
+
+function seriesCodes(schedule: OhImmSchedule): string[] {
+  return (schedule.published_version?.snapshot?.series ?? []).map((item) => String(item.vaccine_code ?? "")).filter(Boolean);
+}
 
 export function SchedulesManager({
   schedules,
@@ -28,6 +51,28 @@ export function SchedulesManager({
   const { toast } = useToast();
   const [showCreate, setShowCreate] = useState(false);
   const [editing, setEditing] = useState<OhImmSchedule | null>(null);
+  const [category, setCategory] = useState("all");
+  const [status, setStatus] = useState<ScheduleStatus>("");
+  const [gate, setGate] = useState("");
+
+  const scheduleList = useImmList<OhImmSchedule>({
+    rows: schedules.filter(
+      (schedule) =>
+        (category === "all" || schedule.category === category) &&
+        (!status || (status === "published") === Boolean(schedule.published_version)) &&
+        (!gate || gateOf(schedule) === gate),
+    ),
+    searchText: (schedule) => [schedule.name, schedule.code, schedule.description, ...seriesCodes(schedule)].join(" "),
+    sortValue: (schedule, key) =>
+      key === "version"
+        ? (schedule.published_version?.number ?? null)
+        : key === "vaccines"
+          ? seriesCodes(schedule).length
+          : key === "category"
+            ? schedule.category
+            : schedule.name,
+    defaultSort: { key: "name", direction: "asc" },
+  });
 
   const create = useMutation({
     mutationFn: createOhImmSchedule,
@@ -60,61 +105,155 @@ export function SchedulesManager({
 
   if (loading) return <QuietLoading />;
 
+  const categories = Array.from(new Set(schedules.map((schedule) => schedule.category))).sort();
+  const published = schedules.filter((schedule) => schedule.published_version).length;
+  const blocking = schedules.filter((schedule) => gateOf(schedule) === "block").length;
+  const examples = schedules.filter((schedule) => schedule.is_example).length;
+  const toggleStatus = (next: Exclude<ScheduleStatus, "">) => setStatus((current) => (current === next ? "" : next));
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-[13px] text-dash-muted">
-          Flat schedule rules — doses, intervals, boosters, and who they apply to.
-        </p>
-        <SecondaryButton type="button" onClick={() => setShowCreate(true)}>
-          <Plus className="size-3.5" aria-hidden />
-          New schedule
-        </SecondaryButton>
-      </div>
+    <>
+      <ImmTabsBar
+        label="Schedule categories"
+        active={category}
+        onChange={setCategory}
+        tabs={[
+          { key: "all", label: "All", count: schedules.length },
+          ...categories.map((key) => ({
+            key,
+            label: humanize(key),
+            count: schedules.filter((schedule) => schedule.category === key).length,
+          })),
+        ]}
+        actions={
+          <PageActionButton type="button" onClick={() => setShowCreate(true)}>
+            <AppIcon name="add" className="size-3.5" />
+            New schedule
+          </PageActionButton>
+        }
+      />
       {schedules.length === 0 ? (
         <EmptyAction
+          icon="calendar"
           title="No schedules yet"
-          description="Load example packs or create a schedule for your facility."
+          description="Load example packs from Due & overdue, or create a schedule for your facility."
         />
       ) : (
-        <ul className="divide-y divide-dash-border rounded-md border border-dash-border bg-white">
-          {schedules.map((schedule) => (
-            <li key={schedule.uuid} className="px-4 py-3">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[13px] font-medium text-brand-navy">
-                    {schedule.name}
-                    {schedule.is_example ? (
-                      <span className="ml-2 text-[12px] font-normal text-dash-muted">
-                        Example
-                      </span>
-                    ) : null}
-                  </p>
-                  <p className="text-[13px] text-dash-muted">
-                    {schedule.category} · v
-                    {schedule.published_version?.number ?? "draft"}
-                    {schedule.published_version?.snapshot?.disclaimer
-                      ? " · editable example"
-                      : ""}
-                  </p>
-                  <p className="mt-1 text-[13px] text-dash-muted">
-                    {(schedule.published_version?.snapshot?.series ?? [])
-                      .map((s) => String(s.vaccine_code ?? ""))
-                      .filter(Boolean)
-                      .join(", ") || "No series yet"}
-                  </p>
-                </div>
-                <SecondaryButton
-                  type="button"
-                 
-                  onClick={() => setEditing(schedule)}
-                >
-                  Edit rules
-                </SecondaryButton>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <>
+          <ImmInsightStrip
+            testId="oh-imm-schedule-insights"
+            items={[
+              { label: "schedules", value: schedules.length, hint: `${examples} example packs` },
+              {
+                label: "published",
+                value: published,
+                tone: "success",
+                onSelect: () => toggleStatus("published"),
+                active: status === "published",
+              },
+              {
+                label: "drafts",
+                value: schedules.length - published,
+                tone: schedules.length - published > 0 ? "warning" : "default",
+                onSelect: () => toggleStatus("draft"),
+                active: status === "draft",
+              },
+              {
+                label: "block certificates",
+                value: blocking,
+                onSelect: () => setGate((current) => (current === "block" ? "" : "block")),
+                active: gate === "block",
+              },
+            ]}
+          />
+          <ImmSearchBar
+            value={scheduleList.query}
+            onChange={scheduleList.setQuery}
+            placeholder="Search schedule, code, or vaccine"
+            matched={scheduleList.controls.matched}
+            total={schedules.length}
+            onClear={
+              status || gate || scheduleList.query || category !== "all"
+                ? () => {
+                    setStatus("");
+                    setGate("");
+                    setCategory("all");
+                    scheduleList.setQuery("");
+                  }
+                : undefined
+            }
+            filters={
+              <>
+                <ImmFilterSelect label="Status" value={status} onChange={(value) => setStatus(value as ScheduleStatus)}>
+                  <option value="">Any status</option>
+                  <option value="published">Published</option>
+                  <option value="draft">Draft</option>
+                </ImmFilterSelect>
+                <ImmFilterSelect label="Fitness gate" value={gate} onChange={setGate}>
+                  <option value="">Any gate</option>
+                  <option value="off">Off</option>
+                  <option value="warn">Warn</option>
+                  <option value="block">Block</option>
+                </ImmFilterSelect>
+              </>
+            }
+          />
+          {scheduleList.pageRows.length === 0 ? (
+            <EmptyAction icon="search" title="No matching schedules" description="Change the search or filters." />
+          ) : (
+            <ImmRecordTable
+              list={scheduleList.controls}
+              columns={[
+                { label: "Schedule", sortKey: "name" },
+                { label: "Category", sortKey: "category" },
+                { label: "Version", sortKey: "version" },
+                { label: "Vaccines", sortKey: "vaccines" },
+                "Fitness gate",
+                "Status",
+                "Actions",
+              ]}
+            >
+              {scheduleList.pageRows.map((schedule) => {
+                const version = schedule.published_version;
+                const codes = seriesCodes(schedule);
+                const scheduleGate = gateOf(schedule);
+                return (
+                  <ListPageDataTableRow key={schedule.uuid} className="cursor-pointer" onClick={() => setEditing(schedule)}>
+                    <ListPageDataTableCell className="pl-4 md:pl-6">
+                      <ImmPrimaryCell
+                        title={schedule.name}
+                        detail={
+                          <>
+                            <span className="font-mono">{schedule.code}</span>
+                            {schedule.is_example ? " · Example" : ""}
+                          </>
+                        }
+                      />
+                    </ListPageDataTableCell>
+                    <ListPageDataTableCell>{humanize(schedule.category)}</ListPageDataTableCell>
+                    <ListPageDataTableCell className="tabular-nums">{version ? `v${version.number}` : "—"}</ListPageDataTableCell>
+                    <ListPageDataTableCell>
+                      <ImmCodeChips codes={codes} />
+                    </ListPageDataTableCell>
+                    <ListPageDataTableCell>
+                      {scheduleGate === "off" ? (
+                        <span className="text-dash-muted">Off</span>
+                      ) : (
+                        <ImmStatusBadge status={scheduleGate === "block" ? "overdue" : "due"} label={humanize(scheduleGate)} />
+                      )}
+                    </ListPageDataTableCell>
+                    <ListPageDataTableCell>
+                      <ImmStatusBadge status={version ? "published" : "draft"} />
+                    </ListPageDataTableCell>
+                    <ListPageDataTableCell className="pr-4 text-right md:pr-6">
+                      <ImmRowAction onClick={() => setEditing(schedule)}>Edit rules</ImmRowAction>
+                    </ListPageDataTableCell>
+                  </ListPageDataTableRow>
+                );
+              })}
+            </ImmRecordTable>
+          )}
+        </>
       )}
       {showCreate ? (
         <ScheduleCreateForm
@@ -133,7 +272,7 @@ export function SchedulesManager({
           }
         />
       ) : null}
-    </div>
+    </>
   );
 }
 
@@ -150,7 +289,7 @@ function ScheduleCreateForm({
   const [name, setName] = useState("");
   const [category, setCategory] = useState("occupational");
   return (
-    <Drawer title="New schedule" onClose={onClose}>
+    <Drawer title="New schedule" description="Creates a draft. Add the vaccine series and publish when ready." onClose={onClose}>
       <Field label="Code" value={code} onChange={setCode} required />
       <Field label="Name" value={name} onChange={setName} required />
       <div className="space-y-1.5">
@@ -166,7 +305,7 @@ function ScheduleCreateForm({
           <option value="travel">Travel</option>
         </select>
       </div>
-      <div className="flex justify-end gap-2 pt-2">
+      <DrawerActions>
         <SecondaryButton type="button" onClick={onClose}>
           Cancel
         </SecondaryButton>
@@ -188,7 +327,7 @@ function ScheduleCreateForm({
         >
           Create draft
         </PrimaryButton>
-      </div>
+      </DrawerActions>
     </Drawer>
   );
 }
@@ -279,12 +418,13 @@ function ScheduleBuilderSheet({
   });
 
   return (
-    <Drawer title={`Edit · ${schedule.name}`} onClose={onClose} wide>
-      <p className="text-[13px] text-dash-muted">
-        Assignment rules decide who this schedule applies to. Publishing pins the version.
-      </p>
-
-      <div className="space-y-2 rounded-md border border-dash-border p-3">
+    <Drawer
+      title={`Edit · ${schedule.name}`}
+      description="Assignment rules decide who this schedule applies to. Publishing pins the version."
+      onClose={onClose}
+      wide
+    >
+      <div className="space-y-3 border-b border-dash-border pb-4">
         <p className="text-[13px] font-medium text-brand-navy">Who it covers</p>
         <div className="grid grid-cols-2 gap-2">
           <Field label="Age from" value={ageMin} onChange={setAgeMin} />
@@ -353,7 +493,7 @@ function ScheduleBuilderSheet({
         {rows.map((row, index) => (
           <div
             key={index}
-            className="space-y-2 rounded-md border border-dash-border p-2"
+            className="space-y-2 border-b border-dash-border/70 pb-3"
           >
             <div className="grid grid-cols-4 gap-2">
               <Input
@@ -450,7 +590,7 @@ function ScheduleBuilderSheet({
       >
         Add vaccine row
       </SecondaryButton>
-      <div className="flex justify-end gap-2 pt-2">
+      <DrawerActions>
         <SecondaryButton type="button" onClick={onClose}>
           Cancel
         </SecondaryButton>
@@ -490,7 +630,7 @@ function ScheduleBuilderSheet({
         >
           Publish version
         </PrimaryButton>
-      </div>
+      </DrawerActions>
     </Drawer>
   );
 }
