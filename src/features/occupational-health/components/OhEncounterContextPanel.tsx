@@ -32,7 +32,6 @@ type OhEncounterContextPanelProps = {
   focusedExamUuid?: string | null;
   examFocusRequest?: number;
   onActiveExamChange?: (examUuid: string | null) => void;
-  onOpenPanel?: (panel: OhEncounterPanelId) => void;
 };
 
 export function OhEncounterContextPanel({
@@ -51,7 +50,6 @@ export function OhEncounterContextPanel({
   focusedExamUuid = null,
   examFocusRequest = 0,
   onActiveExamChange,
-  onOpenPanel,
 }: OhEncounterContextPanelProps) {
   const forms = (
     <OhSessionForms
@@ -67,7 +65,6 @@ export function OhEncounterContextPanel({
       focusedExamUuid={focusedExamUuid}
       examFocusRequest={examFocusRequest}
       onActiveExamChange={onActiveExamChange}
-      onOpenPanel={onOpenPanel}
     />
   );
 

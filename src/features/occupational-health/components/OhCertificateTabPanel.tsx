@@ -20,10 +20,8 @@ import {
   OhPanelSection,
   submitOnModEnter,
 } from "@/features/occupational-health/components/OhEncounterColumns";
-import { OhVisitCopilot } from "@/features/occupational-health/components/OhVisitCopilot";
-import type { OhEncounterPanelId } from "@/features/occupational-health/lib/oh-encounter-modules";
+import { useVisitBrief } from "@/features/occupational-health/hooks/use-visit-brief";
 import { createFitnessCertificate } from "@/features/occupational-health/services/oh.service";
-import type { CopilotDraft } from "@/features/occupational-health/services/visit-copilot.service";
 import type { FitnessAssessment } from "@/features/occupational-health/types";
 import {
   formatOhDate,
@@ -40,23 +38,25 @@ type OhCertificateFormProps = {
   assessments: FitnessAssessment[];
   onCreated: () => void;
   visitUuid?: string;
-  onOpenPanel?: (panel: OhEncounterPanelId) => void;
 };
 
 export function OhCertificateForm({
   assessments,
   onCreated,
   visitUuid,
-  onOpenPanel,
 }: OhCertificateFormProps) {
   const { userData } = useUser();
   const { toast } = useToast();
+  const brief = useVisitBrief(visitUuid);
   const [pickedAssessmentId, setPickedAssessmentId] = useState("");
   const [validFrom, setValidFrom] = useState(todayIsoDate);
   const [validTo, setValidTo] = useState("");
-  const [wording, setWording] = useState("");
-  const [restrictionsText, setRestrictionsText] = useState("");
+  const [wordingOverride, setWordingOverride] = useState<string | null>(null);
+  const [restrictionsOverride, setRestrictionsOverride] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const wording = wordingOverride ?? brief.data?.draft.wording ?? "";
+  const restrictionsText =
+    restrictionsOverride ?? (brief.data?.draft.restrictions ?? []).join("\n");
 
   const latest = latestFitnessAssessment(assessments);
   const assessmentId = pickedAssessmentId || (latest ? String(latest.id) : "");
@@ -108,8 +108,8 @@ export function OhCertificateForm({
         },
       });
       setValidTo("");
-      setWording("");
-      setRestrictionsText("");
+      setWordingOverride("");
+      setRestrictionsOverride("");
       toast({ variant: "success", title: "Fitness certificate issued" });
       onCreated();
     } catch (error) {
@@ -129,18 +129,6 @@ export function OhCertificateForm({
       description="Issued certificates are visible to HR without clinical detail."
       data-testid="oh-fitness-certificate-form"
     >
-      {visitUuid ? (
-        <OhVisitCopilot
-          visitUuid={visitUuid}
-          onOpenPanel={onOpenPanel}
-          onCertificateDraft={(draft: CopilotDraft) => {
-            if (draft.wording) setWording(draft.wording);
-            if (draft.restrictions && draft.restrictions.length > 0) {
-              setRestrictionsText(draft.restrictions.join("\n"));
-            }
-          }}
-        />
-      ) : null}
       <form
         onSubmit={(event) => void handleSubmit(event)}
         onKeyDown={submitOnModEnter}
@@ -190,7 +178,7 @@ export function OhCertificateForm({
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="oh-cert-wording">Certificate wording</Label>
-          <Textarea id="oh-cert-wording" rows={3} value={wording} onChange={(event) => setWording(event.target.value)} />
+          <Textarea id="oh-cert-wording" rows={3} value={wording} onChange={(event) => setWordingOverride(event.target.value)} />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="oh-cert-restrictions">Restrictions, one per line</Label>
@@ -198,7 +186,7 @@ export function OhCertificateForm({
             id="oh-cert-restrictions"
             rows={3}
             value={restrictionsText}
-            onChange={(event) => setRestrictionsText(event.target.value)}
+            onChange={(event) => setRestrictionsOverride(event.target.value)}
             placeholder="No night shift"
           />
         </div>

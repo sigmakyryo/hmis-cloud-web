@@ -36,6 +36,14 @@ export type CopilotResponse = {
 
 const COPILOT_TIMEOUT_MS = 130_000;
 
+export function fetchVisitBrief(visitUuid: string) {
+  return bffRequest<CopilotResponse>(BFF_OCCUPATIONAL_HEALTH_ROUTES.ohVisitCopilotBrief(visitUuid), {
+    method: "POST",
+    body: {},
+    timeoutMs: COPILOT_TIMEOUT_MS,
+  });
+}
+
 export function askVisitCopilot(visitUuid: string, prompt: string) {
   return bffRequest<CopilotResponse>(BFF_OCCUPATIONAL_HEALTH_ROUTES.ohVisitCopilotChat(visitUuid), {
     method: "POST",

@@ -1,9 +1,13 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 
 import { OhCertificateForm } from "@/features/occupational-health/components/OhCertificateTabPanel";
 import { OhCopilotResult } from "@/features/occupational-health/components/OhCopilotResult";
+import { OhVisitCopilot } from "@/features/occupational-health/components/OhVisitCopilot";
 import { createFitnessCertificate } from "@/features/occupational-health/services/oh.service";
+import { fetchVisitBrief } from "@/features/occupational-health/services/visit-copilot.service";
 import type { CopilotResponse } from "@/features/occupational-health/services/visit-copilot.service";
 
 vi.mock("@/providers/toast-provider", () => ({
@@ -18,7 +22,17 @@ vi.mock("@/features/occupational-health/services/oh.service", () => ({
   createFitnessCertificate: vi.fn().mockResolvedValue({}),
 }));
 
+vi.mock("@/features/occupational-health/services/visit-copilot.service", () => ({
+  fetchVisitBrief: vi.fn(),
+  askVisitCopilot: vi.fn(),
+}));
+
 afterEach(cleanup);
+
+function renderWithQuery(ui: ReactNode) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+}
 
 const RESULT: CopilotResponse = {
   refused: false,
@@ -49,6 +63,30 @@ const RESULT: CopilotResponse = {
   },
 };
 
+it("shows the visit check and write-up without a question first", async () => {
+  vi.mocked(fetchVisitBrief).mockResolvedValue({
+    refused: false,
+    message: "Two items are still open.",
+    points: [
+      {
+        fact_id: "fitness-overall",
+        source: "fitness",
+        label: "Fitness unknown",
+        panel: "fitness",
+        text: "No medical on file.",
+      },
+    ],
+    draft: { wording: "Not ready to certify.", restrictions: ["No night shift"] },
+  });
+
+  renderWithQuery(<OhVisitCopilot visitUuid="visit-1" />);
+
+  expect(await screen.findByText("Two items are still open.")).toBeTruthy();
+  expect(screen.getByText("No medical on file.")).toBeTruthy();
+  expect(screen.getByText(/Not ready to certify/)).toBeTruthy();
+  expect(screen.getByText(/No night shift/)).toBeTruthy();
+});
+
 it("renders only points that cite a known source and shows the service due date", () => {
   render(<OhCopilotResult result={RESULT} />);
 
@@ -58,7 +96,7 @@ it("renders only points that cite a known source and shows the service due date"
 });
 
 it("issues a certificate with the accepted wording and restrictions", async () => {
-  render(
+  renderWithQuery(
     <OhCertificateForm
       onCreated={() => undefined}
       assessments={[

@@ -400,6 +400,8 @@ export const BFF_OCCUPATIONAL_HEALTH_ROUTES = {
     `/api/occupational-health/immunisation/exposures/${uuid}/note-draft`,
   ohImmExposureNote: (uuid: string) =>
     `/api/occupational-health/immunisation/exposures/${uuid}/note`,
+  ohVisitCopilotBrief: (uuid: string) =>
+    `/api/occupational-health/visits/${uuid}/ai/brief`,
   ohVisitCopilotChat: (uuid: string) =>
     `/api/occupational-health/visits/${uuid}/ai/chat`,
   ohVisitCertificateDraft: (uuid: string) =>

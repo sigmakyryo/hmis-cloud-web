@@ -171,6 +171,7 @@ export const OCCUPATIONAL_HEALTH_API_PATHS = {
   ohImmCatchUp: (customerUuid: string) => `/oh-imm/patients/${customerUuid}/catch-up`,
   ohImmRecallDraft: "/oh-imm/drafts/recall",
   ohImmBoardBrief: (uuid: string) => `/oh-imm/accommodations/${uuid}/board-brief`,
+  ohVisitCopilotBrief: (uuid: string) => `/oh/visits/${uuid}/ai/brief`,
   ohVisitCopilotChat: (uuid: string) => `/oh/visits/${uuid}/ai/chat`,
   ohVisitCertificateDraft: (uuid: string) => `/oh/visits/${uuid}/ai/certificate-draft`,
   ohImmExposureDueFollowups: "/oh-imm/exposures/due-followups",
