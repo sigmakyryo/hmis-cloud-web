@@ -1,11 +1,9 @@
 "use client";
 
-import { FileWarning } from "lucide-react";
-
-import { EmptyState } from "@/components/ui/empty-state";
 import { OhEmployeeEmploymentPanel } from "@/features/occupational-health/components/OhEmployeeDetailSections";
 import { OhEmployeeFormsTab } from "@/features/occupational-health/components/OhEmployeeFormsTab";
 import { OhEmployeeImmunizationsPanel } from "@/features/occupational-health/components/OhEmployeeImmunizationsPanel";
+import { OhEmployeeDrugAlcoholPanel } from "@/features/occupational-health/components/OhEmployeeDrugAlcoholPanel";
 import { useOhEmployeeDetail } from "@/features/occupational-health/components/oh-employee-detail-context";
 
 export function OhEmployeeEmploymentRoute() {
@@ -32,12 +30,6 @@ export function OhEmployeeImmunizationsRoute() {
 }
 
 export function OhEmployeeDrugAlcoholRoute() {
-  return (
-    <EmptyState
-      icon={FileWarning}
-      title="Drug and alcohol testing is not recorded here yet"
-      description="Test results for this employee will appear in this section."
-      data-testid="oh-employee-drug-alcohol"
-    />
-  );
+  const { customer } = useOhEmployeeDetail();
+  return <OhEmployeeDrugAlcoholPanel customerUuid={customer.uuid} />;
 }

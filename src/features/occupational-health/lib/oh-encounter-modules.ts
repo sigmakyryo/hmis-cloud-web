@@ -1,5 +1,6 @@
 import {
   FileBadge2,
+  FlaskConical,
   Syringe,
   Stethoscope,
   type LucideIcon,
@@ -23,6 +24,12 @@ export const OH_ENCOUNTER_MODULES = [
     label: "Immunizations",
     description: "Record doses, exemptions, and status for this visit",
     icon: Syringe,
+  },
+  {
+    id: "drug-alcohol",
+    label: "Drug & Alcohol",
+    description: "Consent, collection, breath alcohol and rapid screen for this visit",
+    icon: FlaskConical,
   },
 ] as const;
 

@@ -3,6 +3,7 @@
 import { OhEmploymentForm } from "@/features/occupational-health/components/OhEmploymentTabPanel";
 import { OhEmploymentRecords } from "@/features/occupational-health/components/OhEmploymentRecords";
 import { OhEmployeeImmunizationsPanel } from "@/features/occupational-health/components/OhEmployeeImmunizationsPanel";
+import { OhDrugAlcoholVisitPanel } from "@/features/occupational-health/components/OhDrugAlcoholVisitPanel";
 import { OhSessionForms } from "@/features/occupational-health/components/OhSessionForms";
 import {
   OhColumnPanel,
@@ -77,6 +78,18 @@ export function OhEncounterContextPanel({
           />
         ) : (
           <p className="text-[13px] text-dash-muted">Customer is required to record immunizations.</p>
+        )}
+      </div>
+    );
+  }
+
+  if (activePanel === "drug-alcohol") {
+    return (
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+        {customer?.uuid ? (
+          <OhDrugAlcoholVisitPanel customerUuid={customer.uuid} encounterUuid={encounter.uuid} />
+        ) : (
+          <p className="text-[13px] text-dash-muted">Customer is required to record drug and alcohol tests.</p>
         )}
       </div>
     );

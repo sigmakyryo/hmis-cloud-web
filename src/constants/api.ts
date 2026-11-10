@@ -375,6 +375,7 @@ export const BFF_OCCUPATIONAL_HEALTH_ROUTES = {
   ohImmunisations: "/api/occupational-health/oh-immunisations",
 
   ohImmVaccines: "/api/occupational-health/immunisation/vaccines",
+  ohDrugAlcohol: "/api/occupational-health/drug-alcohol",
   ohImmLots: "/api/occupational-health/immunisation/lots",
   ohImmSchedules: "/api/occupational-health/immunisation/schedules",
   ohImmSeedExamples: "/api/occupational-health/immunisation/schedules/seed-examples",
