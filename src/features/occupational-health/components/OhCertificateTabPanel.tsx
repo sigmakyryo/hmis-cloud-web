@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { PrimaryButton } from "@/components/ui/app-buttons";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { RequiredFieldMarker } from "@/components/ui/required-field-marker";
 import {
@@ -19,7 +20,10 @@ import {
   OhPanelSection,
   submitOnModEnter,
 } from "@/features/occupational-health/components/OhEncounterColumns";
+import { OhVisitCopilot } from "@/features/occupational-health/components/OhVisitCopilot";
+import type { OhEncounterPanelId } from "@/features/occupational-health/lib/oh-encounter-modules";
 import { createFitnessCertificate } from "@/features/occupational-health/services/oh.service";
+import type { CopilotDraft } from "@/features/occupational-health/services/visit-copilot.service";
 import type { FitnessAssessment } from "@/features/occupational-health/types";
 import {
   formatOhDate,
@@ -35,17 +39,23 @@ import { useUser } from "@/providers/user-provider";
 type OhCertificateFormProps = {
   assessments: FitnessAssessment[];
   onCreated: () => void;
+  visitUuid?: string;
+  onOpenPanel?: (panel: OhEncounterPanelId) => void;
 };
 
 export function OhCertificateForm({
   assessments,
   onCreated,
+  visitUuid,
+  onOpenPanel,
 }: OhCertificateFormProps) {
   const { userData } = useUser();
   const { toast } = useToast();
   const [pickedAssessmentId, setPickedAssessmentId] = useState("");
   const [validFrom, setValidFrom] = useState(todayIsoDate);
   const [validTo, setValidTo] = useState("");
+  const [wording, setWording] = useState("");
+  const [restrictionsText, setRestrictionsText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const latest = latestFitnessAssessment(assessments);
@@ -88,9 +98,18 @@ export function OhCertificateForm({
         valid_to: validTo || null,
         signed_at: new Date().toISOString(),
         signed_by: userData.id,
-        payload: { outcome: selectedAssessment.outcome },
+        payload: {
+          outcome: selectedAssessment.outcome,
+          restrictions: restrictionsText
+            .split("\n")
+            .map((line) => line.trim())
+            .filter(Boolean),
+          wording: wording.trim() || undefined,
+        },
       });
       setValidTo("");
+      setWording("");
+      setRestrictionsText("");
       toast({ variant: "success", title: "Fitness certificate issued" });
       onCreated();
     } catch (error) {
@@ -110,6 +129,18 @@ export function OhCertificateForm({
       description="Issued certificates are visible to HR without clinical detail."
       data-testid="oh-fitness-certificate-form"
     >
+      {visitUuid ? (
+        <OhVisitCopilot
+          visitUuid={visitUuid}
+          onOpenPanel={onOpenPanel}
+          onCertificateDraft={(draft: CopilotDraft) => {
+            if (draft.wording) setWording(draft.wording);
+            if (draft.restrictions && draft.restrictions.length > 0) {
+              setRestrictionsText(draft.restrictions.join("\n"));
+            }
+          }}
+        />
+      ) : null}
       <form
         onSubmit={(event) => void handleSubmit(event)}
         onKeyDown={submitOnModEnter}
@@ -156,6 +187,20 @@ export function OhCertificateForm({
               onChange={(event) => setValidTo(event.target.value)}
             />
           </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="oh-cert-wording">Certificate wording</Label>
+          <Textarea id="oh-cert-wording" rows={3} value={wording} onChange={(event) => setWording(event.target.value)} />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="oh-cert-restrictions">Restrictions, one per line</Label>
+          <Textarea
+            id="oh-cert-restrictions"
+            rows={3}
+            value={restrictionsText}
+            onChange={(event) => setRestrictionsText(event.target.value)}
+            placeholder="No night shift"
+          />
         </div>
         <OhFormFooter>
           <PrimaryButton type="submit" className="w-full" disabled={isSubmitting}>

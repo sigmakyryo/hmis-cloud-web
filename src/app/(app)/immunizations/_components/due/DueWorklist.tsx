@@ -9,7 +9,10 @@ import { ListPageDataTableCell, ListPageDataTableRow } from "@/features/app-shel
 import { cn } from "@/lib/utils";
 import { useToast } from "@/providers/toast-provider";
 import { EmptyAction } from "../shared/EmptyAction";
+import { Drawer } from "../shared/Drawer";
 import { ImmEmployeeLink } from "../shared/ImmEmployeeLink";
+import { OhCopilotResult } from "@/features/occupational-health/components/OhCopilotResult";
+import { draftRecall, explainCatchUp, type CopilotResponse } from "@/features/occupational-health/services/visit-copilot.service";
 import { ImmInsightStrip } from "../shared/ImmInsightStrip";
 import { ImmPrimaryCell, ImmRecordTable, ImmRowAction, ImmSelectBox, ImmStatusBadge } from "../shared/ImmRecordTable";
 import { ImmFilterSelect, ImmSearchBar } from "../shared/ImmSearchBar";
@@ -59,6 +62,7 @@ export function DueWorklist({
   const queryClient = useQueryClient();
   const [view, setView] = useState<DueView>("doses");
   const [layout, setLayout] = useState<DoseLayout>("dose");
+  const [copilot, setCopilot] = useState<{ title: string; pending: boolean; error: string; result: CopilotResponse | null } | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [employer, setEmployer] = useState("");
   const [department, setDepartment] = useState("");
@@ -146,6 +150,20 @@ export function DueWorklist({
   }).length;
 
   const hasFilters = Boolean(employer || department || status || doseList.query);
+
+  async function openCopilot(title: string, work: () => Promise<CopilotResponse>) {
+    setCopilot({ title, pending: true, error: "", result: null });
+    try {
+      setCopilot({ title, pending: false, error: "", result: await work() });
+    } catch (caught) {
+      setCopilot({
+        title,
+        pending: false,
+        error: caught instanceof Error ? caught.message : "Could not draft that.",
+        result: null,
+      });
+    }
+  }
   const matchingIds = doseList.matchedRows.map((row) => row.uuid);
   const pageIds = doseList.pageRows.map((row) => row.uuid);
   const pageAllSelected = pageIds.length > 0 && pageIds.every((id) => selected.includes(id));
@@ -302,6 +320,7 @@ export function DueWorklist({
                 { label: "Last dose", sortKey: "last" },
                 { label: "Next due", sortKey: "next" },
                 { label: "Status", sortKey: "status" },
+                "Actions",
               ]}
             >
               {doseList.pageRows.map((row) => {
@@ -330,6 +349,32 @@ export function DueWorklist({
                     </ListPageDataTableCell>
                     <ListPageDataTableCell>
                       <ImmStatusBadge status={row.status} label={STATUS_LABEL[row.status]} />
+                    </ListPageDataTableCell>
+                    <ListPageDataTableCell className="pr-4 text-right md:pr-6">
+                      <span className="inline-flex gap-3">
+                        <ImmRowAction
+                          onClick={() =>
+                            void openCopilot(`${row.vaccine_code} catch-up`, () => explainCatchUp(row.customer_uuid, row.vaccine_code))
+                          }
+                        >
+                          Explain
+                        </ImmRowAction>
+                        {row.status === "overdue" || row.status === "non_responder" ? (
+                          <ImmRowAction
+                            onClick={() =>
+                              void openCopilot(`${row.vaccine_code} recall`, () =>
+                                draftRecall({
+                                  customer_uuid: row.customer_uuid,
+                                  kind: row.status === "non_responder" ? "non_responder" : "overdue",
+                                  vaccine_code: row.vaccine_code,
+                                }),
+                              )
+                            }
+                          >
+                            Draft recall
+                          </ImmRowAction>
+                        ) : null}
+                      </span>
                     </ListPageDataTableCell>
                   </ListPageDataTableRow>
                 );
@@ -422,7 +467,7 @@ export function DueWorklist({
         followupRows.length === 0 ? (
           <EmptyAction icon="activity" title="No follow-ups due" description="Exposure follow-up labs due in the next 14 days appear here." />
         ) : (
-          <ImmRecordTable list={followupList.controls} columns={["Employee", "Follow-up", { label: "Due", sortKey: "due" }, "Status"]}>
+          <ImmRecordTable list={followupList.controls} columns={["Employee", "Follow-up", { label: "Due", sortKey: "due" }, "Status", "Actions"]}>
             {followupList.pageRows.map((row) => (
               <ListPageDataTableRow key={String(row.uuid)}>
                 <ListPageDataTableCell className="pl-4 md:pl-6">
@@ -438,10 +483,32 @@ export function DueWorklist({
                 <ListPageDataTableCell>
                   <ImmStatusBadge status={String(row.status ?? "")} />
                 </ListPageDataTableCell>
+                <ListPageDataTableCell className="pr-4 text-right md:pr-6">
+                  {row.customer_uuid ? (
+                    <ImmRowAction
+                      onClick={() =>
+                        void openCopilot(String(row.label ?? "Follow-up"), () =>
+                          draftRecall({ customer_uuid: String(row.customer_uuid), kind: "exposure_followup" }),
+                        )
+                      }
+                    >
+                      Draft recall
+                    </ImmRowAction>
+                  ) : (
+                    "—"
+                  )}
+                </ListPageDataTableCell>
               </ListPageDataTableRow>
             ))}
           </ImmRecordTable>
         )
+      ) : null}
+      {copilot ? (
+        <Drawer title={copilot.title} onClose={() => setCopilot(null)}>
+          {copilot.pending ? <p className="text-[13px] text-dash-muted">Drafting…</p> : null}
+          {copilot.error ? <p className="text-[13px] text-red-700">{copilot.error}</p> : null}
+          {copilot.result ? <OhCopilotResult result={copilot.result} /> : null}
+        </Drawer>
       ) : null}
     </>
   );

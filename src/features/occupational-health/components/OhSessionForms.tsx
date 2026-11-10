@@ -3,6 +3,7 @@
 import { Check, Lock } from "lucide-react";
 
 import { OhCertificateForm } from "@/features/occupational-health/components/OhCertificateTabPanel";
+import { OhVisitCopilot } from "@/features/occupational-health/components/OhVisitCopilot";
 import { OhCertificateRecords } from "@/features/occupational-health/components/OhCertificateRecords";
 import { OhMedicalExaminationsPanel } from "@/features/occupational-health/components/OhMedicalExaminationsPanel";
 import { OhSessionEmployeeForm } from "@/features/occupational-health/components/OhSessionEmployeeForm";
@@ -12,7 +13,7 @@ import {
   OhEncounterColumns,
 } from "@/features/occupational-health/components/OhEncounterColumns";
 import type { useOhEncounterWorkspaceData } from "@/features/occupational-health/hooks/use-occupational-health";
-import { COF_TEMPLATE_RESPONSE_KEY } from "@/features/occupational-health/lib/oh-encounter-modules";
+import { COF_TEMPLATE_RESPONSE_KEY, type OhEncounterPanelId } from "@/features/occupational-health/lib/oh-encounter-modules";
 import {
   isExaminationStepReady,
   sessionFormStepKey,
@@ -37,6 +38,7 @@ type OhSessionFormsProps = {
   focusedExamUuid?: string | null;
   examFocusRequest?: number;
   onActiveExamChange?: (examUuid: string | null) => void;
+  onOpenPanel?: (panel: OhEncounterPanelId) => void;
 };
 
 export function OhSessionFormNav({
@@ -127,6 +129,7 @@ export function OhSessionForms({
   focusedExamUuid = null,
   examFocusRequest = 0,
   onActiveExamChange,
+  onOpenPanel,
 }: OhSessionFormsProps) {
   const native = encounter.origin === "laravel";
   const steps = sessionFormSteps(encounter.visit_type ?? null);
@@ -176,6 +179,9 @@ export function OhSessionForms({
           className={cn("min-h-0 flex-1 flex-col", showCof ? "flex" : "hidden")}
           data-testid="oh-session-certificate-step"
         >
+          <div className="border-b border-dash-border px-5 py-3">
+            <OhVisitCopilot visitUuid={encounter.uuid} onOpenPanel={onOpenPanel} />
+          </div>
           <OhVisitTemplateStep
             family="cof"
             title="Certificate of fitness"
@@ -194,7 +200,12 @@ export function OhSessionForms({
             sectionKey="certificate"
             form={
               <OhColumnPanel eyebrow="Record" title="Certificate of fitness" className="bg-white">
-                <OhCertificateForm assessments={workspace.fitness} onCreated={workspace.refetchAll} />
+                <OhCertificateForm
+                  assessments={workspace.fitness}
+                  visitUuid={encounter.uuid}
+                  onOpenPanel={onOpenPanel}
+                  onCreated={workspace.refetchAll}
+                />
               </OhColumnPanel>
             }
             records={

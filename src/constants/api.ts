@@ -391,6 +391,19 @@ export const BFF_OCCUPATIONAL_HEALTH_ROUTES = {
   ohImmStatusRefresh: "/api/occupational-health/immunisation/status/refresh",
   ohImmPatient: (customerUuid: string) =>
     `/api/occupational-health/immunisation/patients/${customerUuid}`,
+  ohImmCatchUp: (customerUuid: string) =>
+    `/api/occupational-health/immunisation/patients/${customerUuid}/catch-up`,
+  ohImmRecallDraft: "/api/occupational-health/immunisation/drafts/recall",
+  ohImmBoardBrief: (uuid: string) =>
+    `/api/occupational-health/immunisation/accommodations/${uuid}/board-brief`,
+  ohImmExposureNoteDraft: (uuid: string) =>
+    `/api/occupational-health/immunisation/exposures/${uuid}/note-draft`,
+  ohImmExposureNote: (uuid: string) =>
+    `/api/occupational-health/immunisation/exposures/${uuid}/note`,
+  ohVisitCopilotChat: (uuid: string) =>
+    `/api/occupational-health/visits/${uuid}/ai/chat`,
+  ohVisitCertificateDraft: (uuid: string) =>
+    `/api/occupational-health/visits/${uuid}/ai/certificate-draft`,
   ohImmPublishSchedule: (uuid: string) =>
     `/api/occupational-health/immunisation/schedules/${uuid}/publish`,
   ohImmRecallLot: (uuid: string) =>

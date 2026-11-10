@@ -229,7 +229,7 @@ function OhTabForm({
       );
     case "certificate":
       return (
-        <OhCertificateForm assessments={workspace.fitness} onCreated={onChanged} />
+        <OhCertificateForm assessments={workspace.fitness} visitUuid={encounter.uuid} onCreated={onChanged} />
       );
     case "iod":
       return customer && tenantId ? (

@@ -19,6 +19,8 @@ import { ImmNotice, ImmTabsBar } from "../shared/ImmTabsBar";
 import { ImmAvatar, ImmCodeChips, ImmDateCell, ImmMeter } from "../shared/ImmVisuals";
 import { LoadError, QuietLoading } from "../shared/QuietLoading";
 import { useImmList } from "../shared/use-imm-list";
+import { OhCopilotResult } from "@/features/occupational-health/components/OhCopilotResult";
+import { draftBoardBrief, type CopilotResponse } from "@/features/occupational-health/services/visit-copilot.service";
 import {
   createOhImmAccessClient,
   createOhImmBoardMember,
@@ -87,6 +89,7 @@ export function GovernanceControls() {
   const [client, setClient] = useState(EMPTY_CLIENT);
   const [controlLevel, setControlLevel] = useState<ControlLevel | "">("");
   const [boardStatus, setBoardStatus] = useState("");
+  const [brief, setBrief] = useState<{ title: string; pending: boolean; error: string; result: CopilotResponse | null } | null>(null);
 
   const zones = zonesQ.data ?? [];
   const controls = controlsQ.data ?? [];
@@ -541,6 +544,18 @@ export function GovernanceControls() {
                     </ListPageDataTableCell>
                     <ListPageDataTableCell>{item.decision ? humanize(String(item.decision)) : "—"}</ListPageDataTableCell>
                     <ListPageDataTableCell className="pr-4 text-right md:pr-6">
+                      <span className="inline-flex gap-3">
+                        <ImmRowAction
+                          onClick={() => {
+                            const title = `Board brief · ${String(item.vaccine_code ?? "")}`;
+                            setBrief({ title, pending: true, error: "", result: null });
+                            void draftBoardBrief(String(item.uuid))
+                              .then((result) => setBrief({ title, pending: false, error: "", result }))
+                              .catch((caught: Error) => setBrief({ title, pending: false, error: caught.message, result: null }));
+                          }}
+                        >
+                          Board brief
+                        </ImmRowAction>
                       {item.board_status === "pending" ? (
                         <ImmRowAction
                           disabled={busy}
@@ -560,9 +575,8 @@ export function GovernanceControls() {
                         >
                           Approve PPE
                         </ImmRowAction>
-                      ) : (
-                        "—"
-                      )}
+                      ) : null}
+                      </span>
                     </ListPageDataTableCell>
                   </ListPageDataTableRow>
                 ))}
@@ -812,6 +826,13 @@ export function GovernanceControls() {
           </PrimaryButton>
         </DrawerActions>
       </Drawer>
+      {brief ? (
+        <Drawer title={brief.title} onClose={() => setBrief(null)}>
+          {brief.pending ? <p className="text-[13px] text-dash-muted">Drafting…</p> : null}
+          {brief.error ? <p className="text-[13px] text-red-700">{brief.error}</p> : null}
+          {brief.result ? <OhCopilotResult result={brief.result} /> : null}
+        </Drawer>
+      ) : null}
     </>
   );
 }

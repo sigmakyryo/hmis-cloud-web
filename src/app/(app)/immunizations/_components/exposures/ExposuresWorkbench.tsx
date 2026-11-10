@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { AppIcon } from "@/components/icons/app-icon";
 import { PageActionButton, PrimaryButton, SecondaryButton } from "@/components/ui/app-buttons";
+import { Textarea } from "@/components/ui/textarea";
 import { ROUTES } from "@/constants/routes";
 import { ListPageDataTableCell, ListPageDataTableRow } from "@/features/app-shell/components/page-layout";
 import { Drawer, DrawerActions } from "../shared/Drawer";
@@ -18,6 +19,9 @@ import { ImmNotice, ImmTabsBar } from "../shared/ImmTabsBar";
 import { ImmAvatar, ImmClockMeter, ImmDateCell, daysFromToday } from "../shared/ImmVisuals";
 import { LoadError, QuietLoading } from "../shared/QuietLoading";
 import { useImmList } from "../shared/use-imm-list";
+import { acceptExposureNote, draftExposureNote, draftRecall } from "@/features/occupational-health/services/visit-copilot.service";
+import { OhCopilotResult } from "@/features/occupational-health/components/OhCopilotResult";
+import type { CopilotResponse } from "@/features/occupational-health/services/visit-copilot.service";
 import {
   type OhImmExposure,
   completeOhImmExposureFollowup,
@@ -598,6 +602,16 @@ export function ExposuresWorkbench() {
             </div>
           ) : null}
 
+          <ExposureNoteEditor
+            key={active.uuid}
+            exposureUuid={active.uuid}
+            customerUuid={active.customer_uuid}
+            onSaved={(message) => {
+              setMsg(message);
+              refreshIncidents();
+            }}
+          />
+
           <div className="space-y-2">
             <p className="text-[13px] font-medium text-brand-navy">Prophylaxis windows</p>
             {(active.clocks ?? []).length === 0 ? (
@@ -650,5 +664,83 @@ export function ExposuresWorkbench() {
         </Drawer>
       ) : null}
     </>
+  );
+}
+
+function ExposureNoteEditor({
+  exposureUuid,
+  customerUuid,
+  onSaved,
+}: {
+  exposureUuid: string;
+  customerUuid: string;
+  onSaved: (message: string) => void;
+}) {
+  const [note, setNote] = useState("");
+  const [whys, setWhys] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+  const [recall, setRecall] = useState<CopilotResponse | null>(null);
+
+  async function draft() {
+    setPending(true);
+    setError("");
+    try {
+      const result = await draftExposureNote(exposureUuid);
+      setNote(result.draft.clinical_note ?? "");
+      setWhys((result.draft.five_whys ?? []).join("\n"));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not draft the note.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function save() {
+    setPending(true);
+    setError("");
+    try {
+      await acceptExposureNote(exposureUuid, {
+        clinical_note: note.trim(),
+        five_whys: whys.split("\n").map((line) => line.trim()).filter(Boolean),
+      });
+      onSaved("Exposure note saved.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not save the note.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[13px] font-medium text-brand-navy">Clinical note</p>
+        <span className="flex gap-2">
+          <SecondaryButton type="button" className="h-8" disabled={pending} onClick={() => void draft()}>
+            Draft note
+          </SecondaryButton>
+          <SecondaryButton
+            type="button"
+            className="h-8"
+            disabled={pending}
+            onClick={() =>
+              void draftRecall({ customer_uuid: customerUuid, kind: "exposure_followup" })
+                .then(setRecall)
+                .catch((caught: Error) => setError(caught.message))
+            }
+          >
+            Draft follow-up
+          </SecondaryButton>
+        </span>
+      </div>
+      <Textarea rows={4} aria-label="Clinical note" value={note} onChange={(event) => setNote(event.target.value)} />
+      <Textarea rows={4} aria-label="Five whys" placeholder="One why per line" value={whys} onChange={(event) => setWhys(event.target.value)} />
+      {error ? <p className="text-[13px] text-red-700">{error}</p> : null}
+      <PrimaryButton type="button" className="h-8" disabled={pending || note.trim() === ""} onClick={() => void save()}>
+        Save note
+      </PrimaryButton>
+      {recall ? <OhCopilotResult result={recall} /> : null}
+    </div>
   );
 }

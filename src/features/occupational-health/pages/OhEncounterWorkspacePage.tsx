@@ -299,6 +299,7 @@ export function OhEncounterWorkspacePage({
                   focusedExamUuid={focusedExamUuid}
                   examFocusRequest={examFocusRequest}
                   onActiveExamChange={setActiveExamUuid}
+                  onOpenPanel={setActivePanel}
                 />
               )}
             </section>
