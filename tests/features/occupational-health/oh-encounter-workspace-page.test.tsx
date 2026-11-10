@@ -33,6 +33,7 @@ const ohService = vi.hoisted(() => ({
   createFitnessAssessment: vi.fn(),
   createFitnessCertificate: vi.fn(),
   withdrawFitnessCertificate: vi.fn(),
+  amendFitnessCertificate: vi.fn(),
   createOhExamFinding: vi.fn(),
   createIodCase: vi.fn(),
   downloadIodStatutoryPack: vi.fn(),
@@ -362,6 +363,62 @@ describe("OhEncounterWorkspacePage", () => {
         "cert-1",
         "Issued against the wrong assessment",
       ),
+    );
+  });
+  it("amends a certificate in force with a reason and new restrictions", async () => {
+    ohService.fetchFitnessAssessments.mockResolvedValue([ASSESSMENT]);
+    ohService.fetchOhExaminations.mockResolvedValue([
+      {
+        id: 11,
+        uuid: "exam-1",
+        responses_json: { __exam_template__: { template_uuid: "tmpl-1", version_number: 1, answers: { picks: {}, fields: {} } } },
+        encounter: 7,
+        exam_type: "periodic",
+        occupational_attendance: true,
+        template_code: "",
+        notes: "",
+        examined_at: "2026-10-26T08:10:00Z",
+        created_at: "2026-10-26T08:10:00Z",
+        updated_at: "2026-10-26T08:10:00Z",
+      },
+    ]);
+    ohService.fetchFitnessCertificates.mockResolvedValue([
+      {
+        id: 51,
+        uuid: "cert-1",
+        assessment: 31,
+        version: 1,
+        status: "issued",
+        valid_from: "2026-10-26",
+        valid_to: "2027-10-26",
+        signed_at: "2026-10-26T09:05:00Z",
+        signed_by: 3,
+        payload: { restrictions: ["No heights"] },
+        previous_certificate: null,
+        created_at: "2026-10-26T09:05:00Z",
+        updated_at: "2026-10-26T09:05:00Z",
+      },
+    ]);
+    ohService.amendFitnessCertificate.mockResolvedValue({});
+    window.history.replaceState(null, "", "/?panel=certificate");
+    renderPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Amend" }));
+    const save = await screen.findByRole("button", { name: "Save amendment" });
+    expect(save).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Restrictions, one per line", { selector: "#oh-amend-restrictions-cert-1" }), {
+      target: { value: "No heights\nNo night shift" },
+    });
+    fireEvent.change(screen.getByLabelText("Reason for amending"), {
+      target: { value: "Added night-shift restriction" },
+    });
+    fireEvent.click(save);
+    await waitFor(() =>
+      expect(ohService.amendFitnessCertificate).toHaveBeenCalledWith("cert-1", {
+        reason: "Added night-shift restriction",
+        valid_to: "2027-10-26",
+        payload: { restrictions: ["No heights", "No night shift"] },
+      }),
     );
   });
   it("fills the pre-employment employee form for this session", async () => {

@@ -798,7 +798,11 @@ export async function createFitnessCertificate(payload: Record<string, unknown>)
 
 export async function amendFitnessCertificate(
   uuid: string,
-  payload: Record<string, unknown>,
+  payload: {
+    reason: string;
+    valid_to?: string | null;
+    payload?: { restrictions?: string[]; wording?: string };
+  },
 ) {
   return bffRequest<FitnessCertificate>(
     BFF_OCCUPATIONAL_HEALTH_ROUTES.fitnessCertificateAmend(uuid),
