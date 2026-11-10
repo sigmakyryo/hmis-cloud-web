@@ -1,5 +1,6 @@
 import {
   FileBadge2,
+  Syringe,
   Stethoscope,
   type LucideIcon,
 } from "lucide-react";
@@ -16,6 +17,12 @@ export const OH_ENCOUNTER_MODULES = [
     label: "Occupational Health Certificate",
     description: "Issue fitness certificates for HR",
     icon: FileBadge2,
+  },
+  {
+    id: "immunizations",
+    label: "Immunizations",
+    description: "Record doses, exemptions, and status for this visit",
+    icon: Syringe,
   },
 ] as const;
 

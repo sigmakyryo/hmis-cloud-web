@@ -22,6 +22,54 @@ function buildQuery(request: Request, extraKeys: readonly string[] = []): string
   return query ? `?${query}` : "";
 }
 
+
+/** GET that returns a single JSON object/array as-is (not wrapped in { results }). */
+export function createOccupationalHealthQueryHandlers(
+  resourcePath: string,
+  extraQueryKeys: readonly string[] = [],
+) {
+  return {
+    async GET(request: Request) {
+      try {
+        const auth = await requireAccessToken();
+        if ("error" in auth) {
+          return auth.error;
+        }
+
+        const query = buildQuery(request, extraQueryKeys);
+        const data = await ohServiceRequest<unknown>(
+          `${resourcePath}${query}`,
+          { token: auth.accessToken },
+        );
+
+        return bffSuccess(data);
+      } catch (error) {
+        return bffError(error);
+      }
+    },
+
+    async POST(request: Request) {
+      try {
+        const auth = await requireAccessToken();
+        if ("error" in auth) {
+          return auth.error;
+        }
+
+        const body = await request.json().catch(() => ({}));
+        const data = await ohServiceRequest<unknown>(resourcePath, {
+          method: "POST",
+          token: auth.accessToken,
+          body,
+        });
+
+        return bffSuccess(data, 201);
+      } catch (error) {
+        return bffError(error);
+      }
+    },
+  };
+}
+
 export function createOccupationalHealthListHandlers(
   collectionPath: string,
   extraQueryKeys: readonly string[] = [],

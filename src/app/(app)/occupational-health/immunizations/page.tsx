@@ -1,5 +1,7 @@
-import { OhWorkforceEmptyPage } from "@/features/occupational-health/pages/OhWorkforceEmptyPage";
+import { redirect } from "next/navigation";
+import { ROUTES } from "@/constants/routes";
 
-export default function Page() {
-  return <OhWorkforceEmptyPage title="Immunizations" testId="oh-immunizations-page" />;
+/** Legacy OH path — Immunizations is now a top-level sidebar module. */
+export default function LegacyOhImmunizationsRedirect() {
+  redirect(ROUTES.immunizationsDue);
 }

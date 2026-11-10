@@ -7,6 +7,7 @@ describe("OH_ENCOUNTER_MODULES", () => {
     const ids = OH_ENCOUNTER_MODULES.map((module) => module.id);
     expect(ids.indexOf("medical-examinations")).toBeLessThan(ids.indexOf("certificate"));
     expect(ids).not.toContain("iod");
+    expect(ids).toContain("immunizations");
     expect(
       OH_ENCOUNTER_MODULES.find((module) => module.id === "certificate")?.label,
     ).toBe("Occupational Health Certificate");

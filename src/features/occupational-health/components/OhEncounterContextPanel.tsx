@@ -2,6 +2,7 @@
 
 import { OhEmploymentForm } from "@/features/occupational-health/components/OhEmploymentTabPanel";
 import { OhEmploymentRecords } from "@/features/occupational-health/components/OhEmploymentRecords";
+import { OhEmployeeImmunizationsPanel } from "@/features/occupational-health/components/OhEmployeeImmunizationsPanel";
 import { OhSessionForms } from "@/features/occupational-health/components/OhSessionForms";
 import {
   OhColumnPanel,
@@ -63,6 +64,23 @@ export function OhEncounterContextPanel({
       onActiveExamChange={onActiveExamChange}
     />
   );
+
+  if (activePanel === "immunizations") {
+    return (
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+        {customer?.uuid ? (
+          <OhEmployeeImmunizationsPanel
+            customerUuid={customer.uuid}
+            encounterUuid={encounter.uuid}
+            visitUuid={typeof encounter.visit === "string" ? encounter.visit : null}
+            compact
+          />
+        ) : (
+          <p className="text-[13px] text-dash-muted">Customer is required to record immunizations.</p>
+        )}
+      </div>
+    );
+  }
 
   if (activePanel !== "employment") {
     return forms;

@@ -5,6 +5,7 @@ import { FileWarning } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { OhEmployeeEmploymentPanel } from "@/features/occupational-health/components/OhEmployeeDetailSections";
 import { OhEmployeeFormsTab } from "@/features/occupational-health/components/OhEmployeeFormsTab";
+import { OhEmployeeImmunizationsPanel } from "@/features/occupational-health/components/OhEmployeeImmunizationsPanel";
 import { useOhEmployeeDetail } from "@/features/occupational-health/components/oh-employee-detail-context";
 
 export function OhEmployeeEmploymentRoute() {
@@ -26,14 +27,8 @@ export function OhEmployeeFormsRoute() {
 }
 
 export function OhEmployeeImmunizationsRoute() {
-  return (
-    <EmptyState
-      icon={FileWarning}
-      title="Immunizations are not recorded here yet"
-      description="Infectious-disease records for this employee will appear in this section."
-      data-testid="oh-employee-immunizations"
-    />
-  );
+  const { customer } = useOhEmployeeDetail();
+  return <OhEmployeeImmunizationsPanel customerUuid={customer.uuid} />;
 }
 
 export function OhEmployeeDrugAlcoholRoute() {

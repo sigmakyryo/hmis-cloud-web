@@ -520,6 +520,7 @@ export type OhTemplateCapture = {
   is_active?: boolean;
   created_at?: string;
   updated_at?: string;
+  immunisation_warnings?: string[];
 };
 
 export type OhExamination = {
@@ -804,3 +805,16 @@ export type OhFeatureFlag = {
   key: string;
   enabled: boolean;
 };
+export type OhDispensingSettings = {
+  uuid: string;
+  enabled: boolean;
+  dispenser_user: number | null;
+  dispenser_user_name: string | null;
+  location: number | null;
+  location_uuid: string | null;
+  location_name: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+

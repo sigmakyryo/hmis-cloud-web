@@ -5,6 +5,7 @@ import {
   ClipboardListIcon,
   HistoryIcon,
   InformationCircleIcon,
+  VaccineIcon,
 } from "@hugeicons/core-free-icons";
 import type { IconSvgElement } from "@hugeicons/react";
 import { useState } from "react";
@@ -25,7 +26,7 @@ import type { EmploymentEpisode, OhExamination } from "@/features/occupational-h
 import { appFont } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
 
-type EdgePanel = "info" | "history" | "examinations";
+type EdgePanel = "info" | "history" | "examinations" | "immunizations";
 
 type OhEncounterEdgeRailProps = {
   visitUuid: string;
@@ -35,6 +36,7 @@ type OhEncounterEdgeRailProps = {
   findingCount: number;
   episodes: EmploymentEpisode[];
   onManageEmployment: () => void;
+  onOpenImmunizations?: () => void;
   onOpenExamination: (exam: OhExamination) => void;
   onStartExamination: () => void;
 };
@@ -43,6 +45,7 @@ const ACTIONS: Array<{ id: EdgePanel; label: string; icon: IconSvgElement }> = [
   { id: "info", label: "Info", icon: InformationCircleIcon },
   { id: "history", label: "History", icon: HistoryIcon },
   { id: "examinations", label: "Examinations", icon: ClipboardListIcon },
+  { id: "immunizations", label: "Immunizations", icon: VaccineIcon },
 ];
 
 export function OhEncounterEdgeRail({
@@ -53,6 +56,7 @@ export function OhEncounterEdgeRail({
   findingCount,
   episodes,
   onManageEmployment,
+  onOpenImmunizations,
   onOpenExamination,
   onStartExamination,
 }: OhEncounterEdgeRailProps) {
@@ -77,7 +81,14 @@ export function OhEncounterEdgeRail({
               type="button"
               aria-label={action.label}
               aria-pressed={selected}
-              onClick={() => toggle(action.id)}
+              onClick={() => {
+                if (action.id === "immunizations") {
+                  onOpenImmunizations?.();
+                  setPanel(null);
+                  return;
+                }
+                toggle(action.id);
+              }}
               className={cn(
                 "relative flex size-9 items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30",
                 selected

@@ -34,7 +34,10 @@ import {
   recoverOhEmployeeFormResponseVersion,
 } from "@/features/occupational-health/services/oh.service";
 import type { OhTemplateCapture, OhVisitEncounter } from "@/features/occupational-health/types";
+import { fetchOhImmFitnessGate } from "@/features/occupational-health/services/immunisation.service";
+import Link from "next/link";
 import { appFont } from "@/lib/fonts";
+import { ROUTES } from "@/constants/routes";
 import { useToast } from "@/providers/toast-provider";
 import { useUser } from "@/providers/user-provider";
 
@@ -73,6 +76,8 @@ export function OhVisitTemplateStep({
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [recovering, setRecovering] = useState(false);
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
+  const [immWarnings, setImmWarnings] = useState<string[]>([]);
+  const [immBlocked, setImmBlocked] = useState<string | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
   const answersRef = useRef(answers);
   const currentRef = useRef(current);
@@ -96,6 +101,29 @@ export function OhVisitTemplateStep({
     Object.values(values).some((value) => String(value ?? "").trim() !== ""),
   );
   const templateUuid = current?.template_uuid ?? null;
+  const fitnessGateQuery = useQuery({
+    queryKey: ["oh-imm-fitness-gate", encounter.customer_uuid],
+    queryFn: () => fetchOhImmFitnessGate(encounter.customer_uuid),
+    enabled: family === "cof" && Boolean(encounter.customer_uuid),
+  });
+  const gateWarnings = useMemo(() => {
+    if (family !== "cof" || !fitnessGateQuery.data) return [] as string[];
+    const data = fitnessGateQuery.data;
+    if (data.mode === "warn" && (data.issues?.length ?? 0) > 0) {
+      return data.issues.map((i) => i.message);
+    }
+    return [] as string[];
+  }, [family, fitnessGateQuery.data]);
+  const gateBlocked = useMemo(() => {
+    if (family !== "cof" || !fitnessGateQuery.data?.blocking) return null as string | null;
+    const data = fitnessGateQuery.data;
+    return (
+      data.issues.map((i) => i.message).join(" ") ||
+      "Required vaccines are incomplete before this certificate can continue."
+    );
+  }, [family, fitnessGateQuery.data]);
+  const displayWarnings = immWarnings.length > 0 ? immWarnings : gateWarnings;
+  const displayBlocked = immBlocked ?? gateBlocked;
   const versionsQuery = useQuery({
     queryKey: ["oh-template-versions", family, templateUuid],
     queryFn: () =>
@@ -137,10 +165,17 @@ export function OhVisitTemplateStep({
         setCurrent(created);
         const envelope = created.responses_json?.[responseKey] as ExamTemplateResponseEnvelope | undefined;
         setAnswers(envelope?.answers ?? emptyExamTemplateAnswers());
+        if (family === "cof" && Array.isArray(created.immunisation_warnings)) {
+          setImmWarnings(created.immunisation_warnings);
+        }
         onSavedRef.current();
       } catch (error) {
         if (!cancelled) {
-          setMessage(error instanceof Error ? error.message : "This form could not be opened.");
+          const msg = error instanceof Error ? error.message : "This form could not be opened.";
+          setMessage(msg);
+          if (family === "cof" && /immunisation|immunization|vaccine/i.test(msg)) {
+            setImmBlocked(msg);
+          }
         }
       }
     }
@@ -152,7 +187,7 @@ export function OhVisitTemplateStep({
 
   async function persist(next: ExamTemplateAnswers, requireComplete: boolean) {
     const active = currentRef.current;
-    if (!active || !snapshot || encounter.is_active === false) return false;
+    if (!active || !snapshot || encounter.is_active === false || Boolean(displayBlocked)) return false;
     if (requireComplete) {
       const nextErrors = validateExamAnswers(snapshot, next);
       if (Object.keys(nextErrors).length) {
@@ -181,10 +216,17 @@ export function OhVisitTemplateStep({
       setCurrent(updated);
       currentRef.current = updated;
       setMessage(null);
+      if (family === "cof" && Array.isArray(updated.immunisation_warnings)) {
+        setImmWarnings(updated.immunisation_warnings);
+      }
       onSavedRef.current();
       return true;
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "This form could not be saved.");
+      const msg = error instanceof Error ? error.message : "This form could not be saved.";
+      setMessage(msg);
+      if (family === "cof" && /immunisation|immunization|vaccine/i.test(msg)) {
+        setImmBlocked(msg);
+      }
       toast({
         variant: "error",
         title: "Could not save this form",
@@ -281,7 +323,7 @@ export function OhVisitTemplateStep({
           ) : null}
           <PrimaryButton
             type="button"
-            disabled={saving || encounter.is_active === false || !snapshot}
+            disabled={saving || encounter.is_active === false || !snapshot || Boolean(displayBlocked)}
             onClick={() => void persist(answers, false)}
           >
             {saving ? "Saving…" : "Save"}
@@ -292,6 +334,36 @@ export function OhVisitTemplateStep({
         <p className="px-5 py-3 text-sm text-dash-muted" role="status">
           This form needs updated fields from Occupational Health settings before it can be completed.
         </p>
+      ) : null}
+      {displayBlocked ? (
+        <div
+          role="alert"
+          data-testid="oh-imm-fitness-blocked"
+          className="mx-5 mt-3 space-y-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"
+        >
+          <p className="font-medium">Certificate blocked until immunizations are complete</p>
+          <p>{displayBlocked}</p>
+          <Link
+            href={ROUTES.immunizationsDue}
+            className="inline-flex text-sm font-medium text-brand-navy underline-offset-2 hover:underline"
+          >
+            Record a dose
+          </Link>
+        </div>
+      ) : null}
+      {!displayBlocked && displayWarnings.length > 0 ? (
+        <div
+          role="status"
+          data-testid="oh-imm-fitness-warnings"
+          className="mx-5 mt-3 space-y-1 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"
+        >
+          <p className="font-medium">Immunization warning</p>
+          <ul className="list-disc space-y-0.5 pl-5">
+            {displayWarnings.map((w) => (
+              <li key={w}>{w}</li>
+            ))}
+          </ul>
+        </div>
       ) : null}
       {message ? <p role="alert" className="px-5 py-3 text-sm text-red-700">{message}</p> : null}
       <div ref={formRef} className="min-h-0 flex-1 overflow-y-auto px-5">

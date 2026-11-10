@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { FileQuestion, ShieldAlert } from "lucide-react";
+import { useEffect,  FileQuestion, ShieldAlert } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { completeNativeOhVisit } from "@/features/occupational-health/services/native-visit.service";
-import { useRef, useState } from "react";
+import { useRef, useState , useEffect} from "react";
 
 import { PrimaryButton, SecondaryButton } from "@/components/ui/app-buttons";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -84,6 +84,11 @@ export function OhEncounterWorkspacePage({
   const { userData, isLoading: isUserLoading } = useUser();
   const hasAccess = canAccessOccupationalHealth(userData);
   const [activePanel, setActivePanel] = useOhEncounterModuleParam();
+  useEffect(() => {
+    const openImm = () => setActivePanel("immunizations");
+    window.addEventListener("oh-open-immunizations", openImm);
+    return () => window.removeEventListener("oh-open-immunizations", openImm);
+  }, [setActivePanel]);
   const [focusedExamUuid, setFocusedExamUuid] = useState<string | null>(null);
   const [examFocusRequest, setExamFocusRequest] = useState(0);
   const [completeError, setCompleteError] = useState<string | null>(null);
@@ -306,6 +311,7 @@ export function OhEncounterWorkspacePage({
             findingCount={workspace.findings.length}
             episodes={episodes}
             onManageEmployment={() => setActivePanel("employment")}
+            onOpenImmunizations={() => setActivePanel("immunizations")}
             onOpenExamination={(exam: OhExamination) => {
               setFocusedExamUuid(exam.uuid);
               setExamFocusRequest((current) => current + 1);

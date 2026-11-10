@@ -7,8 +7,9 @@ import {
 } from "@/features/app-shell/constants/navigation-config";
 
 describe("OHS navigation", () => {
-  it("renames the OH module group and items to OHS", () => {
+  it("renames the OH module group and items to OHS without nested Immunizations", () => {
     expect(moduleDisplayNames.OccupationalHealth).toBe("OHS");
+    expect(moduleDisplayNames.Immunizations).toBe("Immunizations");
 
     const ohItems = navigation.filter(
       (item) => item.moduleName === "OccupationalHealth",
@@ -16,14 +17,55 @@ describe("OHS navigation", () => {
     expect(ohItems.map((item) => item.name)).toEqual([
       "OHS Queue",
       "Employees",
+      "Drug & alcohol",
       "OHS Compliance",
       "OHS Surveillance",
     ]);
     expect(ohItems.map((item) => item.href)).toEqual([
       ROUTES.occupationalHealth,
       ROUTES.occupationalHealthEmployees,
+      ROUTES.occupationalHealthDrugAlcohol,
       ROUTES.occupationalHealthCompliance,
       ROUTES.occupationalHealthSurveillance,
     ]);
+  });
+
+  it("lists Immunizations as its own sidebar module with sub-pages", () => {
+    const imm = navigation.filter((item) => item.moduleName === "Immunizations");
+    expect(imm.map((item) => item.name)).toEqual([
+      "Due",
+      "Vaccines & lots",
+      "Schedules",
+      "Compliance",
+      "Risk & tasks",
+      "Exposures",
+      "Governance",
+      "PDCA",
+      "Exports & audit",
+    ]);
+    expect(imm.every((item) => item.requiredGroup === "OccupationalHealth")).toBe(
+      true,
+    );
+    expect(imm.map((item) => item.href)).toEqual([
+      ROUTES.immunizationsDue,
+      ROUTES.immunizationsVaccines,
+      ROUTES.immunizationsSchedules,
+      ROUTES.immunizationsCompliance,
+      ROUTES.immunizationsRisk,
+      ROUTES.immunizationsExposures,
+      ROUTES.immunizationsGovernance,
+      ROUTES.immunizationsPdca,
+      ROUTES.immunizationsExports,
+    ]);
+  });
+});
+
+describe("Immunizations routes", () => {
+  it("exposes top-level immunizations routes and keeps legacy OH path", () => {
+    expect(ROUTES.immunizationsDue).toBe("/immunizations/due");
+    expect(ROUTES.immunizationsRisk).toBe("/immunizations/risk");
+    expect(ROUTES.occupationalHealthImmunizations).toBe(
+      "/occupational-health/immunizations",
+    );
   });
 });

@@ -373,6 +373,107 @@ export const BFF_OCCUPATIONAL_HEALTH_ROUTES = {
   fitnessCertificateWithdraw: (uuid: string) =>
     `/api/occupational-health/fitness-certificates/${uuid}/withdraw`,
   ohImmunisations: "/api/occupational-health/oh-immunisations",
+
+  ohImmVaccines: "/api/occupational-health/immunisation/vaccines",
+  ohImmLots: "/api/occupational-health/immunisation/lots",
+  ohImmSchedules: "/api/occupational-health/immunisation/schedules",
+  ohImmSeedExamples: "/api/occupational-health/immunisation/schedules/seed-examples",
+  ohImmAdminister: "/api/occupational-health/immunisation/administer",
+  ohImmExemptions: "/api/occupational-health/immunisation/exemptions",
+  ohImmAefi: "/api/occupational-health/immunisation/aefi",
+  ohImmDue: "/api/occupational-health/immunisation/due",
+  ohImmStatusRefresh: "/api/occupational-health/immunisation/status/refresh",
+  ohImmPatient: (customerUuid: string) =>
+    `/api/occupational-health/immunisation/patients/${customerUuid}`,
+  ohImmPublishSchedule: (uuid: string) =>
+    `/api/occupational-health/immunisation/schedules/${uuid}/publish`,
+  ohImmRecallLot: (uuid: string) =>
+    `/api/occupational-health/immunisation/lots/${uuid}/recall`,
+  ohImmUpdateVaccine: (uuid: string) =>
+    `/api/occupational-health/immunisation/vaccines/${uuid}`,
+  ohImmPreviewAssignment: "/api/occupational-health/immunisation/schedules/preview-assignment",
+  ohImmRemind: "/api/occupational-health/immunisation/remind",
+  ohImmTitreOrder: "/api/occupational-health/immunisation/titre/order",
+  ohImmTitreResults: "/api/occupational-health/immunisation/titre/results",
+  ohImmCompliance: "/api/occupational-health/immunisation/compliance",
+  ohImmComplianceCsv: "/api/occupational-health/immunisation/compliance.csv",
+  ohImmFitnessGate: "/api/occupational-health/immunisation/fitness-gate",
+  ohImmCertificates: "/api/occupational-health/immunisation/certificates",
+  ohImmCertificatePrint: (uuid: string) =>
+    `/api/occupational-health/immunisation/certificates/${uuid}/print`,
+  ohImmCertificatePdf: (uuid: string) =>
+    `/api/occupational-health/immunisation/certificates/${uuid}/pdf`,
+  ohImmPatientTitres: (customerUuid: string) =>
+    `/api/occupational-health/immunisation/patients/${customerUuid}/titres`,
+  ohImmAudits: "/api/occupational-health/immunisation/audits",
+  ohImmExportPack: (uuid: string) =>
+    `/api/occupational-health/immunisation/schedules/${uuid}/export-pack`,
+  ohImmImportPack: "/api/occupational-health/immunisation/packs/import",
+  ohImmDhisMappings: "/api/occupational-health/immunisation/dhis-mappings",
+  ohImmFhirNdjson: "/api/occupational-health/immunisation/export/fhir.ndjson",
+  ohImmDhisCsv: "/api/occupational-health/immunisation/export/dhis2.csv",
+  ohImmPathways: "/api/occupational-health/immunisation/pathways",
+  ohImmPathway: (uuid: string) => `/api/occupational-health/immunisation/pathways/${uuid}`,
+  ohImmTasks: "/api/occupational-health/immunisation/tasks",
+  ohImmTask: (uuid: string) => `/api/occupational-health/immunisation/tasks/${uuid}`,
+  ohImmTaskAssignments: "/api/occupational-health/immunisation/task-assignments",
+  ohImmRiskSeed: "/api/occupational-health/immunisation/risk/seed-examples",
+  ohImmPatientRisk: (customerUuid: string) =>
+    `/api/occupational-health/immunisation/patients/${customerUuid}/risk`,
+  ohImmPatientControls: (customerUuid: string) =>
+    `/api/occupational-health/immunisation/patients/${customerUuid}/controls`,
+  ohImmNrProtocols: "/api/occupational-health/immunisation/nr-protocols",
+  ohImmNrProtocol: (uuid: string) =>
+    `/api/occupational-health/immunisation/nr-protocols/${uuid}`,
+  ohImmNrSeedHepb: "/api/occupational-health/immunisation/nr-protocols/seed-hepb",
+  ohImmPatientNrFlags: (customerUuid: string) =>
+    `/api/occupational-health/immunisation/patients/${customerUuid}/nr-flags`,
+  ohImmNrDecision: (uuid: string) =>
+    `/api/occupational-health/immunisation/nr-cases/${uuid}/decision`,
+  ohImmExposures: "/api/occupational-health/immunisation/exposures",
+  ohImmExposure: (uuid: string) =>
+    `/api/occupational-health/immunisation/exposures/${uuid}`,
+  ohImmExposureActions: (uuid: string) =>
+    `/api/occupational-health/immunisation/exposures/${uuid}/actions`,
+  ohImmExposureSource: (uuid: string) =>
+    `/api/occupational-health/immunisation/exposures/${uuid}/source`,
+  ohImmExposureDueFollowups:
+    "/api/occupational-health/immunisation/exposures/due-followups",
+  ohImmExposureOncall: "/api/occupational-health/immunisation/exposures/oncall",
+  ohImmExposureSeedTypes:
+    "/api/occupational-health/immunisation/exposures/seed-types",
+  ohImmExposureFollowupComplete: (uuid: string) =>
+    `/api/occupational-health/immunisation/exposure-followups/${uuid}/complete`,
+  ohImmPatientExposures: (customerUuid: string) =>
+    `/api/occupational-health/immunisation/patients/${customerUuid}/exposures`,
+  ohImmZones: "/api/occupational-health/immunisation/zones",
+  ohImmZoneSeed: "/api/occupational-health/immunisation/zones/seed",
+  ohImmZoneClearance: (uuid: string) =>
+    `/api/occupational-health/immunisation/zones/${uuid}/clearance`,
+  ohImmClearance: "/api/occupational-health/immunisation/clearance",
+  ohImmAccessClients: "/api/occupational-health/immunisation/access-clients",
+  ohImmControls: "/api/occupational-health/immunisation/controls",
+  ohImmControlsSeed: "/api/occupational-health/immunisation/controls/seed",
+  ohImmTaskHierarchy: (taskUuid: string) =>
+    `/api/occupational-health/immunisation/tasks/${taskUuid}/hierarchy`,
+  ohImmFitTests: "/api/occupational-health/immunisation/fit-tests",
+  ohImmFitTestsDue: "/api/occupational-health/immunisation/fit-tests/due",
+  ohImmBoardMembers: "/api/occupational-health/immunisation/board-members",
+  ohImmAccommodations: "/api/occupational-health/immunisation/accommodations",
+  ohImmDeclination: "/api/occupational-health/immunisation/accommodations/declination",
+  ohImmAccommodationDecide: (uuid: string) =>
+    `/api/occupational-health/immunisation/accommodations/${uuid}/decide`,
+  ohImmPdca: "/api/occupational-health/immunisation/pdca",
+  ohImmRca: (uuid: string) => `/api/occupational-health/immunisation/rca/${uuid}`,
+  ohImmRcaActions: (uuid: string) =>
+    `/api/occupational-health/immunisation/rca/${uuid}/actions`,
+  ohImmSeroAudits: "/api/occupational-health/immunisation/sero-audits",
+  ohImmSeroAggregates: (uuid: string) =>
+    `/api/occupational-health/immunisation/sero-audits/${uuid}/aggregates`,
+  ohImmVendors: "/api/occupational-health/immunisation/vendors",
+  ohImmColdChain: "/api/occupational-health/immunisation/cold-chain",
+  ohImmClearQuarantine: (lotUuid: string) =>
+    `/api/occupational-health/immunisation/lots/${lotUuid}/clear-quarantine`,
   ppeFitTests: "/api/occupational-health/ppe-fit-tests",
   foodHandlerClearances: "/api/occupational-health/food-handler-clearances",
   sickLeaveCertificates: "/api/occupational-health/sick-leave-certificates",
@@ -479,6 +580,7 @@ export const BFF_OCCUPATIONAL_HEALTH_ROUTES = {
   employeeFormResponseReopen: (uuid: string) =>
     `/api/occupational-health/employee-form-responses/${uuid}/reopen`,
   featureFlags: "/api/occupational-health/feature-flags",
+  dispensingSettings: "/api/occupational-health/dispensing-settings",
 } as const;
 
 /** Browser-facing BFF insurance catalog routes (same origin). */
