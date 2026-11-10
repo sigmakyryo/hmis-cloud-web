@@ -352,9 +352,16 @@ describe("OhEncounterWorkspacePage", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Withdraw" }));
     expect(ohService.withdrawFitnessCertificate).not.toHaveBeenCalled();
 
+    expect(screen.getByRole("button", { name: "Confirm withdraw" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Reason for withdrawing"), {
+      target: { value: "Issued against the wrong assessment" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Confirm withdraw" }));
     await waitFor(() =>
-      expect(ohService.withdrawFitnessCertificate).toHaveBeenCalledWith("cert-1"),
+      expect(ohService.withdrawFitnessCertificate).toHaveBeenCalledWith(
+        "cert-1",
+        "Issued against the wrong assessment",
+      ),
     );
   });
   it("fills the pre-employment employee form for this session", async () => {

@@ -767,10 +767,10 @@ export async function amendFitnessCertificate(
   );
 }
 
-export async function withdrawFitnessCertificate(uuid: string) {
+export async function withdrawFitnessCertificate(uuid: string, reason: string) {
   return bffRequest<FitnessCertificate>(
     BFF_OCCUPATIONAL_HEALTH_ROUTES.fitnessCertificateWithdraw(uuid),
-    { method: "POST", body: {} },
+    { method: "POST", body: { reason } },
   );
 }
 

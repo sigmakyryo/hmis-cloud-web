@@ -666,13 +666,16 @@ export type FitnessCertificate = {
   uuid: string;
   assessment: number;
   version: number;
-  status: "issued" | "amended" | "withdrawn" | string;
+  status: "issued" | "amended" | "withdrawn" | "superseded" | string;
   valid_from: string;
   valid_to: string | null;
   signed_at: string | null;
   signed_by: number | null;
   payload: Record<string, unknown>;
   previous_certificate: number | null;
+  withdrawn_at?: string | null;
+  withdrawn_by?: number | null;
+  withdrawal_reason?: string | null;
   created_at: string;
   updated_at: string;
 };

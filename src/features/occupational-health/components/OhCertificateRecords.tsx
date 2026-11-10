@@ -4,6 +4,7 @@ import { useState } from "react";
 import { BadgeCheck } from "lucide-react";
 
 import { DestructiveButton, SecondaryButton } from "@/components/ui/app-buttons";
+import { Input } from "@/components/ui/input";
 import {
   OhPanelSection,
   OhRecordItem,
@@ -92,7 +93,7 @@ type WithdrawCertificateActionProps = {
   onWithdrawn: () => void;
 };
 
-/** Two-step inline confirm: withdrawing removes the certificate from the HR view. */
+/** Two-step inline confirm with a required reason: withdrawing removes the certificate from the HR view. */
 function WithdrawCertificateAction({
   certificateUuid,
   onWithdrawn,
@@ -100,11 +101,17 @@ function WithdrawCertificateAction({
   const { toast } = useToast();
   const [isConfirming, setIsConfirming] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [reason, setReason] = useState("");
+  const trimmedReason = reason.trim();
 
   async function handleWithdraw() {
+    if (trimmedReason.length < 3) {
+      toast({ title: "Add a reason for withdrawing", variant: "error" });
+      return;
+    }
     setIsWithdrawing(true);
     try {
-      await withdrawFitnessCertificate(certificateUuid);
+      await withdrawFitnessCertificate(certificateUuid, trimmedReason);
       toast({ variant: "success", title: "Certificate withdrawn" });
       onWithdrawn();
     } catch (error) {
@@ -116,6 +123,7 @@ function WithdrawCertificateAction({
     } finally {
       setIsWithdrawing(false);
       setIsConfirming(false);
+      setReason("");
     }
   }
 
@@ -134,6 +142,15 @@ function WithdrawCertificateAction({
 
   return (
     <div className="flex items-center gap-1.5">
+      <Input
+        aria-label="Reason for withdrawing"
+        placeholder="Reason"
+        className="h-7 w-40 text-xs"
+        value={reason}
+        disabled={isWithdrawing}
+        onChange={(event) => setReason(event.target.value)}
+        data-testid="oh-certificate-withdraw-reason"
+      />
       <SecondaryButton
         type="button"
         size="sm"
@@ -147,7 +164,7 @@ function WithdrawCertificateAction({
         type="button"
         size="sm"
         className="h-7 px-2.5 text-xs"
-        disabled={isWithdrawing}
+        disabled={isWithdrawing || trimmedReason.length < 3}
         onClick={() => void handleWithdraw()}
       >
         {isWithdrawing ? "Withdrawing…" : "Confirm withdraw"}
