@@ -6,6 +6,7 @@ export const OH_EMPLOYEE_DETAIL_TABS = [
   { id: "forms", label: "Forms", segment: "forms", icon: "file" },
   { id: "immunizations", label: "Immunizations", segment: "immunizations", icon: "shield" },
   { id: "drug-alcohol", label: "Drug & alcohol", segment: "drug-alcohol", icon: "flask" },
+  { id: "fitness", label: "Fitness", segment: "fitness", icon: "activity" },
 ] as const satisfies ReadonlyArray<{
   id: string;
   label: string;

@@ -1,6 +1,8 @@
 import {
   FileBadge2,
   FlaskConical,
+  ShieldCheck,
+  HeartPulse,
   Syringe,
   Stethoscope,
   type LucideIcon,
@@ -30,6 +32,18 @@ export const OH_ENCOUNTER_MODULES = [
     label: "Drug & Alcohol",
     description: "Consent, collection, breath alcohol and rapid screen for this visit",
     icon: FlaskConical,
+  },
+  {
+    id: "health-checks",
+    label: "Health checks",
+    description: "Hearing, lung function, vision, ergonomics and fatigue results for this visit",
+    icon: HeartPulse,
+  },
+  {
+    id: "fitness",
+    label: "Fitness for duty",
+    description: "One answer from medicals, vaccinations, D&A, fit tests, training and health checks",
+    icon: ShieldCheck,
   },
 ] as const;
 
