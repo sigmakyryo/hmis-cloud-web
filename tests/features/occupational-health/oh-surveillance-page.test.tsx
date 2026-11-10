@@ -7,7 +7,10 @@ import { OhSurveillancePage } from "@/features/occupational-health/pages/OhSurve
 vi.mock("@/providers/user-provider", () => ({
   useUser: () => ({
     isLoading: false,
-    userData: { groups: ["OccupationalHealth"] },
+    userData: {
+      groups: ["OccupationalHealth"],
+      enabled_modules: ["OccupationalHealth"],
+    },
   }),
 }));
 
