@@ -27,6 +27,8 @@ import {
   type OhImmStatus,
 } from "@/features/occupational-health/services/immunisation.service";
 import { BFF_OCCUPATIONAL_HEALTH_ROUTES } from "@/constants/api";
+import { OhCopilotResult } from "@/features/occupational-health/components/OhCopilotResult";
+import { draftRecall, explainCatchUp, type CopilotResponse } from "@/features/occupational-health/services/visit-copilot.service";
 import { useToast } from "@/providers/toast-provider";
 import { cn } from "@/lib/utils";
 
@@ -51,13 +53,22 @@ export function OhEmployeeImmunizationsPanel({
   customerUuid,
   encounterUuid,
   visitUuid,
-  compact,
 }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [recordOpen, setRecordOpen] = useState(false);
   const [exemptionOpen, setExemptionOpen] = useState(false);
   const [titreOpen, setTitreOpen] = useState(false);
+  const [copilot, setCopilot] = useState<{ title: string; pending: boolean; error: string; result: CopilotResponse | null } | null>(null);
+
+  async function openCopilot(title: string, work: () => Promise<CopilotResponse>) {
+    setCopilot({ title, pending: true, error: "", result: null });
+    try {
+      setCopilot({ title, pending: false, error: "", result: await work() });
+    } catch (caught) {
+      setCopilot({ title, pending: false, error: caught instanceof Error ? caught.message : "Could not draft that.", result: null });
+    }
+  }
 
   const record = useQuery({
     queryKey: ["oh-imm-patient", customerUuid],
@@ -370,10 +381,26 @@ export function OhEmployeeImmunizationsPanel({
         </div>
       ) : (
         <>
-          {!compact && statuses.length > 0 ? (
+          {statuses.length > 0 ? (
             <ul className="divide-y divide-dash-border rounded-md border border-dash-border bg-white">
               {statuses.map((status) => (
-                <StatusRow key={status.uuid} status={status} />
+                <StatusRow
+                  key={status.uuid}
+                  status={status}
+                  onExplain={() => void openCopilot(`${status.vaccine_code} catch-up`, () => explainCatchUp(customerUuid, status.vaccine_code))}
+                  onRecall={
+                    status.status === "overdue" || status.status === "non_responder"
+                      ? () =>
+                          void openCopilot(`${status.vaccine_code} recall`, () =>
+                            draftRecall({
+                              customer_uuid: customerUuid,
+                              kind: status.status === "non_responder" ? "non_responder" : "overdue",
+                              vaccine_code: status.vaccine_code,
+                            }),
+                          )
+                      : undefined
+                  }
+                />
               ))}
             </ul>
           ) : null}
@@ -432,6 +459,19 @@ export function OhEmployeeImmunizationsPanel({
           }}
         />
       ) : null}
+      {copilot ? (
+        <div className="rounded-md border border-dash-border bg-white p-4" data-testid="oh-imm-copilot">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-[13px] font-medium text-brand-navy">{copilot.title}</p>
+            <SecondaryButton type="button" className="h-8" onClick={() => setCopilot(null)}>
+              Close
+            </SecondaryButton>
+          </div>
+          {copilot.pending ? <p className="text-[13px] text-dash-muted">Drafting…</p> : null}
+          {copilot.error ? <p className="text-[13px] text-red-700">{copilot.error}</p> : null}
+          {copilot.result ? <OhCopilotResult result={copilot.result} /> : null}
+        </div>
+      ) : null}
       {exemptionOpen ? (
         <ExemptionForm
           customerUuid={customerUuid}
@@ -445,7 +485,15 @@ export function OhEmployeeImmunizationsPanel({
   );
 }
 
-function StatusRow({ status }: { status: OhImmStatus }) {
+function StatusRow({
+  status,
+  onExplain,
+  onRecall,
+}: {
+  status: OhImmStatus;
+  onExplain: () => void;
+  onRecall?: () => void;
+}) {
   return (
     <li className="flex items-center justify-between gap-3 px-4 py-2.5">
       <div>
@@ -475,6 +523,16 @@ function StatusRow({ status }: { status: OhImmStatus }) {
         {status.series_attempt && status.series_attempt > 1
           ? ` · series ${status.series_attempt}`
           : ""}
+      </span>
+      <span className="flex gap-2">
+        <SecondaryButton type="button" className="h-8" onClick={onExplain}>
+          Explain
+        </SecondaryButton>
+        {onRecall ? (
+          <SecondaryButton type="button" className="h-8" onClick={onRecall}>
+            Draft recall
+          </SecondaryButton>
+        ) : null}
       </span>
     </li>
   );

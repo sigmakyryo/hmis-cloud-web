@@ -194,7 +194,11 @@ export function OhSessionForms({
             sectionKey="certificate"
             form={
               <OhColumnPanel eyebrow="Record" title="Certificate of fitness" className="bg-white">
-                <OhCertificateForm assessments={workspace.fitness} onCreated={workspace.refetchAll} />
+                <OhCertificateForm
+                  assessments={workspace.fitness}
+                  visitUuid={encounter.uuid}
+                  onCreated={workspace.refetchAll}
+                />
               </OhColumnPanel>
             }
             records={

@@ -41,6 +41,7 @@ import {
   getWebAuthnAssertion,
   webAuthnErrorMessage,
 } from "@/features/auth/utils/webauthn";
+import { isPortalOnlyUser } from "@/features/employer-portal/services/employer-portal.service";
 import { useSessionStore } from "@/state/session.store";
 
 type LoginStep =
@@ -58,9 +59,9 @@ function loginStepForMethod(method: MfaSigninMethod): LoginStep {
 }
 
 function destinationForUser(user: User): string {
-  return user.is_superuser && user.tenant === null
-    ? ROUTES.platformAdmin
-    : ROUTES.postAuth;
+  if (user.is_superuser && user.tenant === null) return ROUTES.platformAdmin;
+  // Employer contacts only ever see their own portal.
+  return isPortalOnlyUser(user) ? ROUTES.employerPortal : ROUTES.postAuth;
 }
 
 function LoginSplitFrame({ children }: { children: ReactNode }) {
@@ -114,11 +115,7 @@ export function LoginForm() {
           return;
         }
 
-        router.replace(
-          user?.is_superuser && user.tenant === null
-            ? ROUTES.platformAdmin
-            : ROUTES.postAuth,
-        );
+        router.replace(user ? destinationForUser(user) : ROUTES.postAuth);
       } catch {
         // Stay on the login form if session lookup fails.
       }

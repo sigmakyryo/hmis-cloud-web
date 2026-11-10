@@ -9,6 +9,8 @@ describe("OH_ENCOUNTER_MODULES", () => {
     expect(ids).not.toContain("iod");
     expect(ids).toContain("immunizations");
     expect(ids).toContain("drug-alcohol");
+    expect(ids).toContain("fitness");
+    expect(ids).toContain("health-checks");
     expect(
       OH_ENCOUNTER_MODULES.find((module) => module.id === "certificate")?.label,
     ).toBe("Occupational Health Certificate");

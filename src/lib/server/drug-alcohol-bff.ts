@@ -38,6 +38,10 @@ const RULES: Record<DrugAlcoholMethod, RegExp[]> = {
     "reports\\.csv",
     "audits",
     "notifications",
+    "risk/pools",
+    "risk/proposals",
+    "draws/{id}/verify",
+    "anomalies",
   ].map(rx),
   POST: [
     "policies",
@@ -51,8 +55,12 @@ const RULES: Record<DrugAlcoholMethod, RegExp[]> = {
     "tests/{id}/(consent|custody|shy|alcohol|screen|refusal|cancel|lab-results)",
     "mro/{id}/(interview|verify|split-request|split-result)",
     "retention",
+    "risk/pools/{id}/propose",
+    "risk/proposals/{id}/(approve|reject)",
+    "anomalies/scan",
+    "anomalies/{id}/(review|dismiss)",
   ].map(rx),
-  PATCH: ["pools/{id}"].map(rx),
+  PATCH: ["pools/{id}", "risk/pools/{id}"].map(rx),
 };
 
 const BINARY: Array<{ pattern: RegExp; type: string; filename: string }> = [

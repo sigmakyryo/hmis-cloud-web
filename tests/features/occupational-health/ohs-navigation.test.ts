@@ -17,12 +17,14 @@ describe("OHS navigation", () => {
     expect(ohItems.map((item) => item.name)).toEqual([
       "OHS Queue",
       "Employees",
+      "Employer portal",
       "OHS Compliance",
       "OHS Surveillance",
     ]);
     expect(ohItems.map((item) => item.href)).toEqual([
       ROUTES.occupationalHealth,
       ROUTES.occupationalHealthEmployees,
+      ROUTES.occupationalHealthEmployerPortal,
       ROUTES.occupationalHealthCompliance,
       ROUTES.occupationalHealthSurveillance,
     ]);
@@ -67,6 +69,9 @@ describe("Drug & Alcohol navigation", () => {
       "Cases",
       "MRO review",
       "Random pools",
+      "Risk & rates",
+      "Anomalies",
+      "Wellbeing",
       "Return to duty",
       "Policies",
       "Reports",

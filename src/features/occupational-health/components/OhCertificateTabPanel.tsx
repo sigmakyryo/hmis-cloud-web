@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { PrimaryButton } from "@/components/ui/app-buttons";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { RequiredFieldMarker } from "@/components/ui/required-field-marker";
 import {
@@ -19,6 +20,7 @@ import {
   OhPanelSection,
   submitOnModEnter,
 } from "@/features/occupational-health/components/OhEncounterColumns";
+import { useVisitBrief } from "@/features/occupational-health/hooks/use-visit-brief";
 import { createFitnessCertificate } from "@/features/occupational-health/services/oh.service";
 import type { FitnessAssessment } from "@/features/occupational-health/types";
 import {
@@ -35,18 +37,26 @@ import { useUser } from "@/providers/user-provider";
 type OhCertificateFormProps = {
   assessments: FitnessAssessment[];
   onCreated: () => void;
+  visitUuid?: string;
 };
 
 export function OhCertificateForm({
   assessments,
   onCreated,
+  visitUuid,
 }: OhCertificateFormProps) {
   const { userData } = useUser();
   const { toast } = useToast();
+  const brief = useVisitBrief(visitUuid);
   const [pickedAssessmentId, setPickedAssessmentId] = useState("");
   const [validFrom, setValidFrom] = useState(todayIsoDate);
   const [validTo, setValidTo] = useState("");
+  const [wordingOverride, setWordingOverride] = useState<string | null>(null);
+  const [restrictionsOverride, setRestrictionsOverride] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const wording = wordingOverride ?? brief.data?.draft.wording ?? "";
+  const restrictionsText =
+    restrictionsOverride ?? (brief.data?.draft.restrictions ?? []).join("\n");
 
   const latest = latestFitnessAssessment(assessments);
   const assessmentId = pickedAssessmentId || (latest ? String(latest.id) : "");
@@ -88,9 +98,18 @@ export function OhCertificateForm({
         valid_to: validTo || null,
         signed_at: new Date().toISOString(),
         signed_by: userData.id,
-        payload: { outcome: selectedAssessment.outcome },
+        payload: {
+          outcome: selectedAssessment.outcome,
+          restrictions: restrictionsText
+            .split("\n")
+            .map((line) => line.trim())
+            .filter(Boolean),
+          wording: wording.trim() || undefined,
+        },
       });
       setValidTo("");
+      setWordingOverride("");
+      setRestrictionsOverride("");
       toast({ variant: "success", title: "Fitness certificate issued" });
       onCreated();
     } catch (error) {
@@ -156,6 +175,20 @@ export function OhCertificateForm({
               onChange={(event) => setValidTo(event.target.value)}
             />
           </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="oh-cert-wording">Certificate wording</Label>
+          <Textarea id="oh-cert-wording" rows={3} value={wording} onChange={(event) => setWordingOverride(event.target.value)} />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="oh-cert-restrictions">Restrictions, one per line</Label>
+          <Textarea
+            id="oh-cert-restrictions"
+            rows={3}
+            value={restrictionsText}
+            onChange={(event) => setRestrictionsOverride(event.target.value)}
+            placeholder="No night shift"
+          />
         </div>
         <OhFormFooter>
           <PrimaryButton type="submit" className="w-full" disabled={isSubmitting}>

@@ -324,6 +324,7 @@ export async function ohProxyPostHandler(
   apiPath: string,
   request: Request,
   successStatus = 200,
+  timeoutMs?: number,
 ) {
   try {
     const auth = await requireAccessToken();
@@ -342,6 +343,7 @@ export async function ohProxyPostHandler(
       method: "POST",
       token: auth.accessToken,
       body,
+      timeoutMs,
     });
     return bffSuccess(data, successStatus);
   } catch (error) {

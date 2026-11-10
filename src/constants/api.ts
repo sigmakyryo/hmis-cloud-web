@@ -376,6 +376,11 @@ export const BFF_OCCUPATIONAL_HEALTH_ROUTES = {
 
   ohImmVaccines: "/api/occupational-health/immunisation/vaccines",
   ohDrugAlcohol: "/api/occupational-health/drug-alcohol",
+  ohFitness: "/api/occupational-health/fitness",
+  ohHealthPrograms: "/api/occupational-health/health-programs",
+  ohWellbeing: "/api/occupational-health/wellbeing",
+  ohEmployerPortalAdmin: "/api/occupational-health/employer-portal-admin",
+  employerPortal: "/api/employer-portal",
   ohImmLots: "/api/occupational-health/immunisation/lots",
   ohImmSchedules: "/api/occupational-health/immunisation/schedules",
   ohImmSeedExamples: "/api/occupational-health/immunisation/schedules/seed-examples",
@@ -386,6 +391,21 @@ export const BFF_OCCUPATIONAL_HEALTH_ROUTES = {
   ohImmStatusRefresh: "/api/occupational-health/immunisation/status/refresh",
   ohImmPatient: (customerUuid: string) =>
     `/api/occupational-health/immunisation/patients/${customerUuid}`,
+  ohImmCatchUp: (customerUuid: string) =>
+    `/api/occupational-health/immunisation/patients/${customerUuid}/catch-up`,
+  ohImmRecallDraft: "/api/occupational-health/immunisation/drafts/recall",
+  ohImmBoardBrief: (uuid: string) =>
+    `/api/occupational-health/immunisation/accommodations/${uuid}/board-brief`,
+  ohImmExposureNoteDraft: (uuid: string) =>
+    `/api/occupational-health/immunisation/exposures/${uuid}/note-draft`,
+  ohImmExposureNote: (uuid: string) =>
+    `/api/occupational-health/immunisation/exposures/${uuid}/note`,
+  ohVisitCopilotBrief: (uuid: string) =>
+    `/api/occupational-health/visits/${uuid}/ai/brief`,
+  ohVisitCopilotChat: (uuid: string) =>
+    `/api/occupational-health/visits/${uuid}/ai/chat`,
+  ohVisitCertificateDraft: (uuid: string) =>
+    `/api/occupational-health/visits/${uuid}/ai/certificate-draft`,
   ohImmPublishSchedule: (uuid: string) =>
     `/api/occupational-health/immunisation/schedules/${uuid}/publish`,
   ohImmRecallLot: (uuid: string) =>

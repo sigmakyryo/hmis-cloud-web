@@ -4,6 +4,8 @@ import { OhEmploymentForm } from "@/features/occupational-health/components/OhEm
 import { OhEmploymentRecords } from "@/features/occupational-health/components/OhEmploymentRecords";
 import { OhEmployeeImmunizationsPanel } from "@/features/occupational-health/components/OhEmployeeImmunizationsPanel";
 import { OhDrugAlcoholVisitPanel } from "@/features/occupational-health/components/OhDrugAlcoholVisitPanel";
+import { OhFitnessVisitPanel } from "@/features/occupational-health/components/OhFitnessVisitPanel";
+import { OhHealthChecksVisitPanel } from "@/features/occupational-health/components/OhHealthChecksVisitPanel";
 import { OhSessionForms } from "@/features/occupational-health/components/OhSessionForms";
 import {
   OhColumnPanel,
@@ -78,6 +80,30 @@ export function OhEncounterContextPanel({
           />
         ) : (
           <p className="text-[13px] text-dash-muted">Customer is required to record immunizations.</p>
+        )}
+      </div>
+    );
+  }
+
+  if (activePanel === "health-checks") {
+    return (
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+        {customer?.uuid ? (
+          <OhHealthChecksVisitPanel customerUuid={customer.uuid} encounterUuid={encounter.uuid} />
+        ) : (
+          <p className="text-[13px] text-dash-muted">Customer is required to record health checks.</p>
+        )}
+      </div>
+    );
+  }
+
+  if (activePanel === "fitness") {
+    return (
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+        {customer?.uuid ? (
+          <OhFitnessVisitPanel customerUuid={customer.uuid} />
+        ) : (
+          <p className="text-[13px] text-dash-muted">Customer is required to show fitness for duty.</p>
         )}
       </div>
     );
