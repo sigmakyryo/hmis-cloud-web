@@ -45,6 +45,13 @@ export const SCOPE_LABEL: Record<string, string> = {
   access_cards: "Access cards",
   rosters: "Rosters",
   payroll: "Payroll holds",
+  hr_events: "HR events (sick leave, return to work)",
+  certificate_events: "Certificate events",
+  surveillance_events: "Surveillance due / overdue",
+  iod_events: "Injury on duty (SHE)",
+  exports: "Data exports (pull)",
+  roster_import: "Roster import (push)",
+  device_import: "Device results import (push)",
 };
 
 export function label(map: Record<string, string>, value: string | null | undefined): string {

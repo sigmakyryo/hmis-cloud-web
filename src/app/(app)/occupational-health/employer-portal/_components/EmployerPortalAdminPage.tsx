@@ -25,14 +25,28 @@ import {
 import { useToast } from "@/providers/toast-provider";
 
 import { ContactDrawer } from "./ContactDrawer";
+import { PortalBrandingPanel, PortalInvitationsPanel } from "./PortalInvitesAndBranding";
 
-type View = "pending" | "accepted" | "done" | "declined" | "contacts";
+type View = "pending" | "accepted" | "done" | "declined" | "contacts" | "invitations" | "branding";
 
 export function EmployerPortalAdminPage() {
   const [view, setView] = useState<View>("pending");
   return (
     <ImmPageShell title="Employer portal" testId="oh-employer-portal-admin">
-      {view === "contacts" ? <ContactsView view={view} setView={setView} /> : <RequestsView view={view} setView={setView} />}
+      {view === "contacts" ? <ContactsView view={view} setView={setView} /> : null}
+      {view === "invitations" ? (
+        <>
+          <Tabs view={view} setView={setView} />
+          <PortalInvitationsPanel />
+        </>
+      ) : null}
+      {view === "branding" ? (
+        <>
+          <Tabs view={view} setView={setView} />
+          <PortalBrandingPanel />
+        </>
+      ) : null}
+      {view !== "contacts" && view !== "invitations" && view !== "branding" ? <RequestsView view={view} setView={setView} /> : null}
     </ImmPageShell>
   );
 }
@@ -47,6 +61,8 @@ function Tabs({ view, setView, actions }: { view: View; setView: (v: View) => vo
         { key: "done", label: "Done" },
         { key: "declined", label: "Declined" },
         { key: "contacts", label: "Employer logins" },
+        { key: "invitations", label: "Invitations" },
+        { key: "branding", label: "Branding" },
       ]}
       active={view}
       onChange={setView}

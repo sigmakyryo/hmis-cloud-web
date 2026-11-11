@@ -4,6 +4,7 @@ import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  seedReference: vi.fn(),
   due: vi.fn(),
   results: vi.fn(),
   record: vi.fn(),
@@ -42,11 +43,13 @@ vi.mock("@/features/occupational-health/services/health-programs.service", async
     fetchHpPolicies: (...a: unknown[]) => mocks.policies(...a),
     publishHpPolicy: vi.fn(),
     seedHpPolicies: vi.fn(),
+    seedHpReferencePolicies: (...a: unknown[]) => mocks.seedReference(...a),
     fetchHpReports: (...a: unknown[]) => mocks.reports(...a),
   };
 });
 
 import { HpDuePage } from "@/app/(app)/health-programs/_components/due/HpDuePage";
+import { HpPoliciesPage } from "@/app/(app)/health-programs/_components/policies/HpPoliciesPage";
 import { HpProgramPage } from "@/app/(app)/health-programs/_components/program/HpProgramPage";
 import { HpReportsPage } from "@/app/(app)/health-programs/_components/reports/HpReportsPage";
 import { healthProgramsProxy } from "@/lib/server/health-programs-bff";
@@ -153,4 +156,14 @@ describe("health programmes", () => {
     expect(await screen.findByText("Hearing")).toBeTruthy();
     expect(screen.getByText("Hearing shift 1")).toBeTruthy();
   });
+});
+
+it("policies page loads the cited reference standards", async () => {
+  mocks.policies.mockResolvedValue([]);
+  mocks.seedReference.mockResolvedValue({ created: 6, results: [] });
+  renderWith(<HpPoliciesPage />);
+  fireEvent.click(await screen.findByRole("button", { name: "Load reference standards" }));
+  await waitFor(() => expect(mocks.seedReference).toHaveBeenCalled());
+  expect(healthProgramsProxy.resolve("POST", ["policies", "seed-reference"])).not.toBeNull();
+  expect(healthProgramsProxy.resolve("GET", ["reference-standards"])).not.toBeNull();
 });

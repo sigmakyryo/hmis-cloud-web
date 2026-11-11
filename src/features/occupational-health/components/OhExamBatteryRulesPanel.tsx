@@ -1,18 +1,26 @@
 "use client";
 
-import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Pencil, Plus, Wand2 } from "lucide-react";
+import { useState } from "react";
 
-import { PrimaryButton, SecondaryButton } from "@/components/ui/app-buttons";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  ListPageDataTable,
+  ListPageDataTableBody,
+  ListPageDataTableCell,
+  ListPageDataTableHeader,
+  ListPageDataTableHeaderCell,
+  ListPageDataTableHeaderRow,
+  ListPageDataTableRow,
+} from "@/features/app-shell/components/page-layout";
+import { OhExamBatteryRuleDialog, type OhRuleDraft } from "@/features/occupational-health/components/compliance/OhExamBatteryRuleDialog";
+import { OhConfirmDialog } from "@/features/occupational-health/components/dashboard/OhConfirmDialog";
+import { OhPanel, OhPanelState } from "@/features/occupational-health/components/dashboard/OhPanel";
+import { OH_STICKY_TABLE } from "@/features/occupational-health/components/dashboard/oh-flat";
+import { OhSegmented } from "@/features/occupational-health/components/dashboard/OhSegmented";
 import {
   createOhExamBatteryRule,
   fetchOhExamBatteryRules,
@@ -20,90 +28,87 @@ import {
   runOhSurveillanceSchedule,
   updateOhExamBatteryRule,
 } from "@/features/occupational-health/services/oh.service";
+import type { OhExamBatteryRule } from "@/features/occupational-health/types";
 import { EXAM_TYPES } from "@/features/occupational-health/utils/oh-labels";
-import { appFont } from "@/lib/fonts";
+import { cn } from "@/lib/utils";
 import { useToast } from "@/providers/toast-provider";
+
+type View = "all" | "active" | "inactive";
 
 /**
  * Exam battery rules drive surveillance: each active rule creates a due requirement for every
  * worker on the hazard profile, repeating every N months. Requirements are generated nightly;
- * "Generate now" runs the same job immediately.
+ * "Generate now" runs the same job immediately (after confirming).
  */
 export function OhExamBatteryRulesPanel() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const rulesQuery = useQuery({
-    queryKey: ["oh-exam-battery-rules"],
-    queryFn: fetchOhExamBatteryRules,
-  });
-  const profilesQuery = useQuery({
-    queryKey: ["oh-hazard-profiles", "all"],
-    queryFn: () => fetchOhHazardProfiles(),
-  });
+  const rulesQuery = useQuery({ queryKey: ["oh-exam-battery-rules"], queryFn: fetchOhExamBatteryRules });
+  const profilesQuery = useQuery({ queryKey: ["oh-hazard-profiles", "all"], queryFn: () => fetchOhHazardProfiles() });
   const profiles = profilesQuery.data ?? [];
-  const [componentCode, setComponentCode] = useState("");
-  const [examType, setExamType] = useState("periodic");
-  const [months, setMonths] = useState("12");
-  const [pickedProfileId, setPickedProfileId] = useState<string>("");
-  const [isSaving, setIsSaving] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const profileId = pickedProfileId || (profiles[0] ? String(profiles[0].id) : "");
-  const profileName = (id: number | null) =>
-    profiles.find((profile) => profile.id === id)?.name ?? "Hazard rule";
-  const periodicity = months.trim() === "" ? null : Number(months);
-  const canSave =
-    componentCode.trim() !== "" &&
-    profileId !== "" &&
-    (periodicity === null || (Number.isInteger(periodicity) && periodicity > 0));
+  const rules = rulesQuery.data ?? [];
+  const [view, setView] = useState<View>("all");
+  const [editing, setEditing] = useState<OhExamBatteryRule | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [deactivate, setDeactivate] = useState<OhExamBatteryRule | null>(null);
+  const [generateOpen, setGenerateOpen] = useState(false);
+  const [busy, setBusy] = useState<"save" | "toggle" | "generate" | null>(null);
+
+  const profileName = (id: number | null) => profiles.find((p) => p.id === id)?.name ?? "Hazard rule";
+  const examLabel = (v: string) => EXAM_TYPES.find((t) => t.value === v)?.label ?? v;
+  const visible = rules.filter((r) => (view === "all" ? true : view === "active" ? r.is_active : !r.is_active));
 
   async function refresh() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["oh-exam-battery-rules"] }),
       queryClient.invalidateQueries({ queryKey: ["oh-compliance-dashboard"] }),
+      queryClient.invalidateQueries({ queryKey: ["oh-compliance-insights"] }),
     ]);
   }
 
-  async function handleAdd() {
-    if (!canSave) {
-      return;
-    }
-    setIsSaving(true);
+  const fail = (title: string, error: unknown) =>
+    toast({ title, description: error instanceof Error ? error.message : undefined, variant: "error" });
+
+  async function handleSave(draft: OhRuleDraft) {
+    setBusy("save");
     try {
-      await createOhExamBatteryRule({
-        component_code: componentCode.trim().toUpperCase(),
-        exam_type: examType,
-        periodicity_months: periodicity,
-        hazard_profile: Number(profileId),
-      });
-      setComponentCode("");
-      toast({ variant: "success", title: "Rule added" });
+      if (editing) {
+        await updateOhExamBatteryRule(editing.uuid, { periodicity_months: draft.periodicity_months, is_active: draft.is_active });
+        toast({ variant: "success", title: "Rule updated" });
+      } else {
+        await createOhExamBatteryRule({
+          component_code: draft.component_code,
+          exam_type: draft.exam_type,
+          periodicity_months: draft.periodicity_months,
+          hazard_profile: draft.hazard_profile,
+        });
+        toast({ variant: "success", title: "Rule added" });
+      }
+      setDialogOpen(false);
+      setEditing(null);
       await refresh();
     } catch (error) {
-      toast({
-        title: "Could not add rule",
-        description: error instanceof Error ? error.message : undefined,
-        variant: "error",
-      });
+      fail(editing ? "Could not update rule" : "Could not add rule", error);
     } finally {
-      setIsSaving(false);
+      setBusy(null);
     }
   }
 
-  async function handleToggle(uuid: string, isActive: boolean) {
+  async function setActive(rule: OhExamBatteryRule, isActive: boolean) {
+    setBusy("toggle");
     try {
-      await updateOhExamBatteryRule(uuid, { is_active: !isActive });
+      await updateOhExamBatteryRule(rule.uuid, { is_active: isActive });
+      setDeactivate(null);
       await refresh();
     } catch (error) {
-      toast({
-        title: "Could not update rule",
-        description: error instanceof Error ? error.message : undefined,
-        variant: "error",
-      });
+      fail("Could not update rule", error);
+    } finally {
+      setBusy(null);
     }
   }
 
   async function handleGenerate() {
-    setIsGenerating(true);
+    setBusy("generate");
     try {
       const result = await runOhSurveillanceSchedule();
       toast({
@@ -111,126 +116,151 @@ export function OhExamBatteryRulesPanel() {
         title: "Surveillance updated",
         description: `${result.created} created, ${result.completed} completed, ${result.overdue} now overdue.`,
       });
+      setGenerateOpen(false);
       await refresh();
     } catch (error) {
-      toast({
-        title: "Could not generate requirements",
-        description: error instanceof Error ? error.message : undefined,
-        variant: "error",
-      });
+      fail("Could not generate requirements", error);
     } finally {
-      setIsGenerating(false);
+      setBusy(null);
     }
   }
 
-  const rules = rulesQuery.data ?? [];
-
   return (
-    <section className="space-y-4 px-4 py-4 md:px-6" data-testid="oh-exam-battery-rules">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 className="text-[15px] font-semibold text-brand-navy">Exam battery rules</h2>
-          <p className="text-[13px] text-dash-muted">
-            Each active rule creates a due requirement for every worker on the hazard profile.
-          </p>
-        </div>
-        <SecondaryButton
-          type="button"
-          size="sm"
-          disabled={isGenerating}
-          onClick={() => void handleGenerate()}
+    <OhPanel
+      id="oh-exam-battery-rules"
+      title="Exam battery rules"
+      description="Each active rule creates a due requirement for every worker on the hazard profile."
+      actions={
+        <>
+          <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5" onClick={() => setGenerateOpen(true)}>
+            <Wand2 className="size-3.5" aria-hidden /> Generate now
+          </Button>
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            className="h-8 gap-1.5"
+            onClick={() => {
+              setEditing(null);
+              setDialogOpen(true);
+            }}
+          >
+            <Plus className="size-3.5" aria-hidden /> New rule
+          </Button>
+        </>
+      }
+      data-testid="oh-exam-battery-rules"
+    >
+      <div className="pb-3">
+        <OhSegmented
+          label="Rule status"
+          value={view}
+          onChange={setView}
+          options={[
+            { value: "all", label: "All", count: rules.length },
+            { value: "active", label: "Active", count: rules.filter((r) => r.is_active).length },
+            { value: "inactive", label: "Inactive", count: rules.filter((r) => !r.is_active).length },
+          ]}
+        />
+      </div>
+      <div>
+        <OhPanelState
+          isLoading={rulesQuery.isLoading}
+          error={rulesQuery.error}
+          onRetry={() => void rulesQuery.refetch()}
+          isEmpty={visible.length === 0}
+          emptyText={rules.length === 0 ? "No rules yet. Add one to start generating surveillance." : "No rules in this view."}
+          height={140}
         >
-          {isGenerating ? "Generating…" : "Generate now"}
-        </SecondaryButton>
+          <ListPageDataTable className={OH_STICKY_TABLE}>
+            <ListPageDataTableHeader>
+              <ListPageDataTableHeaderRow>
+                <ListPageDataTableHeaderCell>Component</ListPageDataTableHeaderCell>
+                <ListPageDataTableHeaderCell>Exam type</ListPageDataTableHeaderCell>
+                <ListPageDataTableHeaderCell>Frequency</ListPageDataTableHeaderCell>
+                <ListPageDataTableHeaderCell className="hidden sm:table-cell">Hazard profile</ListPageDataTableHeaderCell>
+                <ListPageDataTableHeaderCell>Active</ListPageDataTableHeaderCell>
+                <ListPageDataTableHeaderCell className="text-right">
+                  <span className="sr-only">Edit</span>
+                </ListPageDataTableHeaderCell>
+              </ListPageDataTableHeaderRow>
+            </ListPageDataTableHeader>
+            <ListPageDataTableBody>
+              {visible.map((rule) => (
+                <ListPageDataTableRow key={rule.uuid} className={cn(!rule.is_active && "text-dash-muted")}>
+                  <ListPageDataTableCell>
+                    <span className={cn("font-medium", rule.is_active ? "text-brand-navy" : "text-dash-muted line-through")}>
+                      {rule.component_code}
+                    </span>
+                  </ListPageDataTableCell>
+                  <ListPageDataTableCell>{examLabel(rule.exam_type)}</ListPageDataTableCell>
+                  <ListPageDataTableCell>
+                    <Badge variant="outline">{rule.periodicity_months ? `every ${rule.periodicity_months} months` : "once"}</Badge>
+                  </ListPageDataTableCell>
+                  <ListPageDataTableCell className="hidden sm:table-cell">{profileName(rule.hazard_profile_id)}</ListPageDataTableCell>
+                  <ListPageDataTableCell>
+                    <Switch
+                      checked={rule.is_active}
+                      disabled={busy === "toggle"}
+                      aria-label={`${rule.is_active ? "Deactivate" : "Activate"} ${rule.component_code}`}
+                      onCheckedChange={(next) => (next ? void setActive(rule, true) : setDeactivate(rule))}
+                    />
+                  </ListPageDataTableCell>
+                  <ListPageDataTableCell className="text-right">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 gap-1 px-2 text-xs"
+                      aria-label={`Edit ${rule.component_code}`}
+                      onClick={() => {
+                        setEditing(rule);
+                        setDialogOpen(true);
+                      }}
+                    >
+                      <Pencil className="size-3" aria-hidden /> <span className="hidden sm:inline">Edit</span>
+                    </Button>
+                  </ListPageDataTableCell>
+                </ListPageDataTableRow>
+              ))}
+            </ListPageDataTableBody>
+          </ListPageDataTable>
+        </OhPanelState>
       </div>
 
-      {rulesQuery.isLoading ? (
-        <p className="text-sm text-brand-muted">Loading rules…</p>
-      ) : rules.length === 0 ? (
-        <p className="text-sm text-brand-muted">No rules yet. Add one below.</p>
-      ) : (
-        <ul className="divide-y divide-dash-border rounded-lg border border-dash-border">
-          {rules.map((rule) => (
-            <li
-              key={rule.uuid}
-              className="flex items-center justify-between gap-3 px-3 py-2 text-[13px]"
-            >
-              <span className={rule.is_active ? "text-brand-navy" : "text-dash-muted line-through"}>
-                <span className="font-medium">{rule.component_code}</span> ·{" "}
-                {EXAM_TYPES.find((type) => type.value === rule.exam_type)?.label ?? rule.exam_type} ·{" "}
-                {rule.periodicity_months ? `every ${rule.periodicity_months} months` : "once"} ·{" "}
-                {profileName(rule.hazard_profile_id)}
-              </span>
-              <SecondaryButton
-                type="button"
-                size="sm"
-                onClick={() => void handleToggle(rule.uuid, rule.is_active)}
-              >
-                {rule.is_active ? "Deactivate" : "Activate"}
-              </SecondaryButton>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <div className="grid gap-3 md:grid-cols-5 md:items-end">
-        <div className="space-y-1.5">
-          <Label htmlFor="oh-rule-component">Component code</Label>
-          <Input
-            id="oh-rule-component"
-            value={componentCode}
-            placeholder="AUDIO"
-            onChange={(event) => setComponentCode(event.target.value)}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="oh-rule-exam-type">Exam type</Label>
-          <Select value={examType} onValueChange={setExamType}>
-            <SelectTrigger id="oh-rule-exam-type" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className={appFont.className}>
-              {EXAM_TYPES.map((type) => (
-                <SelectItem key={type.value} value={type.value}>
-                  {type.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="oh-rule-months">Every (months)</Label>
-          <Input
-            id="oh-rule-months"
-            inputMode="numeric"
-            value={months}
-            placeholder="Once"
-            onChange={(event) => setMonths(event.target.value)}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="oh-rule-profile">Hazard profile</Label>
-          <Select value={profileId} onValueChange={setPickedProfileId}>
-            <SelectTrigger id="oh-rule-profile" className="w-full">
-              <SelectValue placeholder="Hazard profile" />
-            </SelectTrigger>
-            <SelectContent className={appFont.className}>
-              {profiles.map((profile) => (
-                <SelectItem key={profile.uuid} value={String(profile.id)}>
-                  {profile.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <PrimaryButton
-          type="button"
-          disabled={!canSave || isSaving}
-          onClick={() => void handleAdd()}
-        >
-          {isSaving ? "Adding…" : "Add rule"}
-        </PrimaryButton>
-      </div>
-    </section>
+      <OhExamBatteryRuleDialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) setEditing(null);
+        }}
+        rule={editing}
+        profiles={profiles}
+        isSaving={busy === "save"}
+        onSave={(draft) => void handleSave(draft)}
+      />
+      <OhConfirmDialog
+        open={deactivate !== null}
+        onOpenChange={(open) => (!open ? setDeactivate(null) : undefined)}
+        title={`Deactivate ${deactivate?.component_code ?? "rule"}?`}
+        description="No new requirements will be created from this rule. Requirements that are already open stay on the worklist."
+        confirmLabel="Deactivate"
+        tone="destructive"
+        isPending={busy === "toggle"}
+        onConfirm={() => deactivate && void setActive(deactivate, false)}
+        data-testid="oh-rule-deactivate-dialog"
+      />
+      <OhConfirmDialog
+        open={generateOpen}
+        onOpenChange={setGenerateOpen}
+        title="Generate requirements now?"
+        description="Runs the nightly job immediately: creates requirements from active rules, closes ones a completed exam covers and marks late ones overdue."
+        confirmLabel="Generate"
+        pendingLabel="Generating…"
+        isPending={busy === "generate"}
+        onConfirm={() => void handleGenerate()}
+        data-testid="oh-generate-dialog"
+      />
+    </OhPanel>
   );
 }

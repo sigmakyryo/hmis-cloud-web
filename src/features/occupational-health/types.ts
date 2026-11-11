@@ -653,6 +653,8 @@ export type SurveillanceRequirement = {
 };
 
 export type OhCampaignQueueRow = {
+  /** Requirement uuid (OHS with dashboard aggregates). */
+  uuid?: string;
   customer_uuid: string;
   customer_identifier: string;
   customer_name: string;
@@ -660,6 +662,7 @@ export type OhCampaignQueueRow = {
   job_title: string;
   site: string;
   department_name?: string;
+  hazard_profile?: string;
   component_code: string;
   exam_type: string;
   due_date: string;
@@ -746,6 +749,12 @@ export type SickLeaveCertificate = {
   expected_return: string | null;
   issued_at: string;
   clinician: number;
+  start_date?: string | null;
+  work_capacity?: "unfit_all_work" | "modified_duties" | string;
+  employer_note?: string | null;
+  status?: "issued" | "returned" | "cancelled" | string;
+  returned_on?: string | null;
+  return_outcome?: string | null;
   created_at: string;
   updated_at: string;
 };

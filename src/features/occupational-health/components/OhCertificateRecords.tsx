@@ -25,6 +25,7 @@ import {
   OhRecordList,
   OhRecordsEmpty,
 } from "@/features/occupational-health/components/OhEncounterColumns";
+import { OhRecordLink } from "@/features/occupational-health/components/OhRecordLink";
 import { OhStatusChip } from "@/features/occupational-health/components/OhStatusChip";
 import {
   amendFitnessCertificate,
@@ -89,15 +90,20 @@ export function OhCertificateRecords({
                 badges={<OhStatusChip value={item.status} />}
                 meta={formatOhDateRange(item.valid_from, item.valid_to)}
                 action={
-                  isCertificateInForce(item) ? (
-                    <div className="flex items-center gap-1.5">
-                      <AmendCertificateAction certificate={item} onAmended={onChanged} />
-                      <WithdrawCertificateAction
-                        certificateUuid={item.uuid}
-                        onWithdrawn={onChanged}
-                      />
-                    </div>
-                  ) : null
+                  <div className="flex items-center gap-1.5">
+                    <OhRecordLink kind="certificate" uuid={item.uuid}>
+                      PDF &amp; history
+                    </OhRecordLink>
+                    {isCertificateInForce(item) ? (
+                      <>
+                        <AmendCertificateAction certificate={item} onAmended={onChanged} />
+                        <WithdrawCertificateAction
+                          certificateUuid={item.uuid}
+                          onWithdrawn={onChanged}
+                        />
+                      </>
+                    ) : null}
+                  </div>
                 }
               />
             );

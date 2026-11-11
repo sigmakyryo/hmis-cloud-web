@@ -10,8 +10,9 @@ import { ROUTES } from "@/constants/routes";
 import { fetchPortalMe, PORTAL_SCOPE_LABEL, type PortalMe, type PortalScope } from "@/features/employer-portal/services/employer-portal.service";
 import { cn } from "@/lib/utils";
 
-const PAGES: Array<{ scope: PortalScope; href: string }> = [
+const PAGES: Array<{ scope: PortalScope; href: string; label?: string }> = [
   { scope: "fitness", href: ROUTES.employerPortalFitness },
+  { scope: "fitness", href: ROUTES.employerPortalAnnual, label: "Annual summary" },
   { scope: "random_compliance", href: ROUTES.employerPortalCompliance },
   { scope: "invoices", href: ROUTES.employerPortalInvoices },
   { scope: "requests", href: ROUTES.employerPortalRequests },
@@ -51,9 +52,22 @@ export function PortalShell({ children }: { children: ReactNode }) {
 
   return (
     <PortalContext.Provider value={me.data}>
-      <header className="border-b border-dash-border/80" data-testid="employer-portal-shell">
+      <header
+        className="border-b border-dash-border/80"
+        data-testid="employer-portal-shell"
+        style={me.data.branding?.accent_color ? { borderTop: `4px solid ${me.data.branding.accent_color}` } : undefined}
+      >
         <div className="flex min-h-12 items-center justify-between gap-3 px-5">
-          <p className="text-[14px] font-semibold text-brand-navy">{me.data.employer.name}</p>
+          <div className="flex items-center gap-2">
+            {me.data.branding?.logo_data_uri ? (
+              // eslint-disable-next-line @next/next/no-img-element -- inline data URI logo set by the clinic
+              <img src={me.data.branding.logo_data_uri} alt="" className="h-7 w-auto" data-testid="employer-portal-logo" />
+            ) : null}
+            <p className="text-[14px] font-semibold text-brand-navy">
+              {me.data.branding?.display_name ? `${me.data.branding.display_name} · ` : ""}
+              {me.data.employer.name}
+            </p>
+          </div>
           <div className="flex items-center gap-3 text-[13px] text-dash-muted">
             <span>{me.data.name}</span>
             <button type="button" className="text-primary hover:underline" onClick={() => void signOut()}>
@@ -73,7 +87,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
                   active ? "border-primary text-primary" : "border-transparent text-dash-muted hover:text-brand-navy",
                 )}
               >
-                {PORTAL_SCOPE_LABEL[p.scope]}
+                {p.label ?? PORTAL_SCOPE_LABEL[p.scope]}
               </Link>
             );
           })}

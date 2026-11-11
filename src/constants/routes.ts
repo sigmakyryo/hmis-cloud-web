@@ -177,12 +177,18 @@ export const ROUTES = {
   drugAlcoholAnomalies: "/drug-alcohol/anomalies",
   drugAlcoholWellbeing: "/drug-alcohol/wellbeing",
   occupationalHealthEmployerPortal: "/occupational-health/employer-portal",
+  occupationalHealthAudit: "/occupational-health/audit",
+  occupationalHealthPrivacy: "/occupational-health/privacy",
+  occupationalHealthAnnualReport: "/occupational-health/annual-report",
   employerPortal: "/employer-portal",
   employerPortalFitness: "/employer-portal/fitness",
   employerPortalCompliance: "/employer-portal/random-compliance",
   employerPortalInvoices: "/employer-portal/invoices",
   employerPortalRequests: "/employer-portal/requests",
   employerPortalUsers: "/employer-portal/users",
+  employerPortalAnnual: "/employer-portal/annual-summary",
+  employerPortalJoin: "/employer-portal-join",
+  employerPortalSignIn: "/employer-portal-sign-in",
   workforceForm: (token: string) => `/workforce-forms/${token}`,
   occupationalHealthCompliance: "/occupational-health/compliance",
   occupationalHealthSurveillance: "/occupational-health/surveillance",
@@ -196,6 +202,10 @@ export const ROUTES = {
       : "/occupational-health/employment",
   occupationalHealthEncounter: (visitUuid: string, encounterUuid: string) =>
     `/occupational-health/${visitUuid}/${encounterUuid}`,
+  occupationalHealthRecord: (
+    kind: "certificate" | "assessment" | "finding" | "iod" | "sick-leave",
+    uuid: string,
+  ) => `/occupational-health/records/${kind}/${uuid}`,
   clinicalOpdEncounter: (visitUuid: string, encounterUuid: string) =>
     `/clinical/opd/${visitUuid}/${encounterUuid}`,
   clinicalOpdEncounterTab: (
@@ -393,6 +403,8 @@ export const APP_ROUTE_PREFIXES = [
   ROUTES.clinicalOpd,
   ROUTES.occupationalHealth,
   "/employer-portal",
+  ROUTES.employerPortalJoin,
+  ROUTES.employerPortalSignIn,
   "/workforce-forms",
   "/clinical",
   "/reports",

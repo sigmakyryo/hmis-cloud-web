@@ -17,6 +17,10 @@ import {
   cancelNativeOhVisit,
   type CancelNativeOhVisitPayload,
 } from "@/features/occupational-health/services/native-visit.service";
+import {
+  OH_CANCEL_REASON_CODES,
+  type OhCancelReasonCode,
+} from "@/features/occupational-health/utils/oh-cancel-reasons";
 import { useToast } from "@/providers/toast-provider";
 
 type OhCancelVisitDialogProps = {
@@ -40,6 +44,7 @@ export function OhCancelVisitDialog({
   const [open, setOpen] = useState(false);
   const [outcome, setOutcome] = useState<CancelNativeOhVisitPayload["outcome"]>("cancelled");
   const [reason, setReason] = useState("");
+  const [reasonCode, setReasonCode] = useState<OhCancelReasonCode | "">("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const trimmedReason = reason.trim();
 
@@ -52,6 +57,7 @@ export function OhCancelVisitDialog({
       const result = await cancelNativeOhVisit(encounterUuid, {
         outcome,
         reason: trimmedReason,
+        ...(reasonCode ? { reason_code: reasonCode } : {}),
       });
       const openLines = result.open_billing_lines ?? 0;
       toast({
@@ -64,6 +70,7 @@ export function OhCancelVisitDialog({
       });
       setOpen(false);
       setReason("");
+      setReasonCode("");
       onCancelled();
     } catch (error) {
       toast({
@@ -108,6 +115,23 @@ export function OhCancelVisitDialog({
                   {item.label}
                 </SecondaryButton>
               ))}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="oh-cancel-visit-reason-code">Reason category</Label>
+              <select
+                id="oh-cancel-visit-reason-code"
+                className="h-9 w-full rounded-md border border-dash-border bg-white px-2 text-sm"
+                value={reasonCode}
+                disabled={isSubmitting}
+                onChange={(event) => setReasonCode(event.target.value as OhCancelReasonCode | "")}
+              >
+                <option value="">{outcome === "no_show" ? "Did not attend (default)" : "Other (default)"}</option>
+                {OH_CANCEL_REASON_CODES.map((item) => (
+                  <option key={item.code} value={item.code}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="oh-cancel-visit-reason">Reason</Label>
