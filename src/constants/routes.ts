@@ -171,6 +171,7 @@ export const ROUTES = {
   drugAlcoholWellbeing: "/drug-alcohol/wellbeing",
   occupationalHealthEmployerPortal: "/occupational-health/employer-portal",
   occupationalHealthAudit: "/occupational-health/audit",
+  occupationalHealthPrivacy: "/occupational-health/privacy",
   employerPortal: "/employer-portal",
   employerPortalFitness: "/employer-portal/fitness",
   employerPortalCompliance: "/employer-portal/random-compliance",

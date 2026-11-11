@@ -104,6 +104,10 @@ const PAGE_META: Record<string, { description: string; group: OhPageGroup }> = {
     description: "Who changed what, across every OH module (administrators).",
     group: "oversight",
   },
+  [ROUTES.occupationalHealthPrivacy]: {
+    description: "Consent records and data-subject requests (DPA 2024).",
+    group: "oversight",
+  },
   [ROUTES.immunizationsDue]: { description: "Workers due or overdue for a dose.", group: "daily" },
   [ROUTES.immunizationsRisk]: { description: "Risk-based follow-up and assigned tasks.", group: "daily" },
   [ROUTES.immunizationsExposures]: { description: "Exposure incidents and post-exposure care.", group: "daily" },
