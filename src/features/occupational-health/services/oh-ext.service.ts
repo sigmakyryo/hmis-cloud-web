@@ -107,3 +107,31 @@ export const cancellationReportCsvUrl = (params: { from?: string; to?: string })
 
 /** Printable IOD / occupational disease notification pack (generic layout, marked to be verified). */
 export const iodPackPdfUrl = (uuid: string) => ohExtFileUrl(`iod-cases/${uuid}/statutory-pack/pdf`);
+
+// ---- Sick leave ----------------------------------------------------------
+
+export type OhSickLeave = {
+  uuid: string;
+  customer_uuid: string | null;
+  status: "issued" | "returned" | "cancelled" | string;
+  start_date: string | null;
+  days: number;
+  expected_return: string | null;
+  work_capacity: "unfit_all_work" | "modified_duties" | string;
+  employer_note: string | null;
+  signed_at: string | null;
+  returned_on: string | null;
+  return_outcome: string | null;
+  return_restrictions: string[];
+  cancel_reason: string | null;
+  hr_notified_at: string | null;
+  rtw_notified_at: string | null;
+};
+
+export const sickLeavePath = (uuid: string) => `oh/sick-leave/${uuid}`;
+export const fetchSickLeave = (uuid: string) => ohExtGet<OhSickLeave>(sickLeavePath(uuid));
+export const sickLeavePdfUrl = (uuid: string) => ohExtFileUrl(`oh/sick-leave/${uuid}/pdf`);
+export const recordSickLeaveReturn = (uuid: string, body: { returned_on: string; outcome: string; restrictions?: string[] }) =>
+  ohExtPost<OhSickLeave>(`oh/sick-leave/${uuid}/return`, body);
+export const cancelSickLeave = (uuid: string, reason: string) => ohExtPost<OhSickLeave>(`oh/sick-leave/${uuid}/cancel`, { reason });
+export const fetchSickLeaveReturnDue = (within = 7) => ohExtGet<OhSickLeave[]>(`oh/sick-leave/return-due${ohExtQs({ within })}`);

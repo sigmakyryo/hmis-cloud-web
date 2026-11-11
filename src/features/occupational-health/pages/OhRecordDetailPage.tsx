@@ -17,6 +17,9 @@ import {
   fetchCertificateHistory,
   fetchCertificateVerifyLink,
   iodPackPdfUrl,
+  cancelSickLeave,
+  recordSickLeaveReturn,
+  sickLeavePdfUrl,
 } from "@/features/occupational-health/services/oh-ext.service";
 import { canAccessOccupationalHealth } from "@/features/occupational-health/utils/oh-access";
 import { bffRequest } from "@/lib/bff-client";
@@ -70,6 +73,24 @@ export const OH_RECORD_KINDS: Record<string, KindConfig> = {
     readOnly: [
       { key: "code", label: "Code" },
       { key: "recorded_at", label: "Recorded at" },
+    ],
+  },
+  "sick-leave": {
+    title: "Sick leave certificate",
+    detailPath: (uuid: string) => `${BFF_OCCUPATIONAL_HEALTH_ROUTES.ohExt}/oh/sick-leave/${uuid}`,
+    fields: [],
+    readOnly: [
+      { key: "status", label: "Status" },
+      { key: "start_date", label: "Off work from" },
+      { key: "days", label: "Days" },
+      { key: "expected_return", label: "Expected return" },
+      { key: "work_capacity", label: "Work capacity" },
+      { key: "employer_note", label: "Note for employer" },
+      { key: "signed_at", label: "Signed" },
+      { key: "hr_notified_at", label: "HR notified" },
+      { key: "returned_on", label: "Returned to work" },
+      { key: "return_outcome", label: "Return outcome" },
+      { key: "cancel_reason", label: "Cancel reason" },
     ],
   },
   iod: {
@@ -218,6 +239,13 @@ function OhRecordDetailBody({ kind, uuid, config, extra }: { kind: string; uuid:
               </form>
             ) : null}
             {kind === "certificate" ? <CertificateDocuments uuid={uuid} /> : null}
+            {kind === "sick-leave" ? (
+              <SickLeaveActions
+                uuid={uuid}
+                status={String(record.data.status ?? "")}
+                onChanged={() => void queryClient.invalidateQueries({ queryKey: ["oh-record", kind, uuid] })}
+              />
+            ) : null}
             {kind === "iod" ? (
               <div className="space-y-1">
                 <Button asChild size="sm" variant="outline" className="gap-1">
@@ -325,6 +353,95 @@ export function CertificateDocuments({ uuid }: { uuid: string }) {
           ))}
         </ol>
       </div>
+    </section>
+  );
+}
+
+/** Print, record the return to work (tells HR) or cancel a sick-leave certificate. */
+function SickLeaveActions({ uuid, status, onChanged }: { uuid: string; status: string; onChanged: () => void }) {
+  const { toast } = useToast();
+  const [returnedOn, setReturnedOn] = useState(() => new Date().toISOString().slice(0, 10));
+  const [outcome, setOutcome] = useState("fit");
+  const [restrictions, setRestrictions] = useState("");
+  const [cancelReason, setCancelReason] = useState("");
+  const done = (title: string) => {
+    toast({ variant: "success", title });
+    onChanged();
+  };
+  const fail = (error: unknown) =>
+    toast({ variant: "error", title: "Could not save", description: error instanceof Error ? error.message : undefined });
+  const ret = useMutation({
+    mutationFn: () =>
+      recordSickLeaveReturn(uuid, {
+        returned_on: returnedOn,
+        outcome,
+        restrictions: restrictions
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean),
+      }),
+    onSuccess: () => done("Return to work recorded; HR notified"),
+    onError: fail,
+  });
+  const cancel = useMutation({
+    mutationFn: () => cancelSickLeave(uuid, cancelReason.trim()),
+    onSuccess: () => done("Sick leave cancelled"),
+    onError: fail,
+  });
+
+  return (
+    <section className="space-y-4" data-testid="oh-sick-leave-actions">
+      <Button asChild size="sm" variant="outline" className="gap-1">
+        <a href={sickLeavePdfUrl(uuid)} target="_blank" rel="noreferrer">
+          <FileDown className="size-3.5" /> Print / download PDF
+        </a>
+      </Button>
+      {status === "issued" ? (
+        <div className="grid max-w-3xl gap-3 rounded-md border border-dash-border p-3 sm:grid-cols-3">
+          <h2 className="text-sm font-semibold text-brand-navy sm:col-span-3">Return to work</h2>
+          <div className="space-y-1.5">
+            <Label htmlFor="oh-rtw-date">Returned on</Label>
+            <Input id="oh-rtw-date" type="date" value={returnedOn} onChange={(e) => setReturnedOn(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="oh-rtw-outcome">Outcome</Label>
+            <select
+              id="oh-rtw-outcome"
+              className="h-9 w-full rounded-md border border-dash-border bg-white px-2 text-sm"
+              value={outcome}
+              onChange={(e) => setOutcome(e.target.value)}
+            >
+              <option value="fit">Fit</option>
+              <option value="fit_with_restrictions">Fit with restrictions</option>
+              <option value="not_fit">Not fit</option>
+            </select>
+          </div>
+          <div className="space-y-1.5 sm:col-span-3">
+            <Label htmlFor="oh-rtw-restrictions">Work restrictions (one per line)</Label>
+            <Textarea id="oh-rtw-restrictions" value={restrictions} onChange={(e) => setRestrictions(e.target.value)} />
+          </div>
+          <div className="sm:col-span-3">
+            <Button type="button" size="sm" disabled={ret.isPending} onClick={() => ret.mutate()}>
+              Record return to work
+            </Button>
+          </div>
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label htmlFor="oh-sick-cancel">Cancel reason</Label>
+            <Input id="oh-sick-cancel" value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} />
+          </div>
+          <div className="flex items-end">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={cancel.isPending || cancelReason.trim().length < 3}
+              onClick={() => cancel.mutate()}
+            >
+              Cancel certificate
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

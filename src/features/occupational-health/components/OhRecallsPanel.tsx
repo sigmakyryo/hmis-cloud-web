@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ import {
   createSickLeaveCertificate,
 } from "@/features/occupational-health/services/oh.service";
 import type { Customer } from "@/features/customers/types/customer.types";
+import { OhRecordLink } from "@/features/occupational-health/components/OhRecordLink";
 import { canAccessOccupationalHealth } from "@/features/occupational-health/utils/oh-access";
 import { useUser } from "@/providers/user-provider";
 import { useToast } from "@/providers/toast-provider";
@@ -46,6 +47,9 @@ export function OhRecallsPanel({ customer, encounterId }: OhRecallsPanelProps) {
   const [vaccineCode, setVaccineCode] = useState("");
   const [ppeType, setPpeType] = useState("");
   const [sickDays, setSickDays] = useState("1");
+  const [sickStart, setSickStart] = useState(() => new Date().toISOString().slice(0, 10));
+  const [sickCapacity, setSickCapacity] = useState<"unfit_all_work" | "modified_duties">("unfit_all_work");
+  const [sickNote, setSickNote] = useState("");
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -143,7 +147,11 @@ export function OhRecallsPanel({ customer, encounterId }: OhRecallsPanelProps) {
         days: Number(sickDays),
         issued_at: new Date().toISOString(),
         clinician: userData.id,
+        start_date: sickStart,
+        work_capacity: sickCapacity,
+        employer_note: sickNote.trim() || null,
       });
+      setSickNote("");
       toast({ variant: "success", title: "Sick leave certificate recorded" });
       recalls.refetchAll();
     } catch (error) {
@@ -314,6 +322,26 @@ export function OhRecallsPanel({ customer, encounterId }: OhRecallsPanelProps) {
                     required
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="oh-sick-start">Off work from</Label>
+                  <Input id="oh-sick-start" type="date" value={sickStart} onChange={(event) => setSickStart(event.target.value)} required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="oh-sick-capacity">Work capacity</Label>
+                  <select
+                    id="oh-sick-capacity"
+                    className="h-9 w-full rounded-md border border-brand-border bg-white px-2 text-sm"
+                    value={sickCapacity}
+                    onChange={(event) => setSickCapacity(event.target.value as "unfit_all_work" | "modified_duties")}
+                  >
+                    <option value="unfit_all_work">Unfit for all work</option>
+                    <option value="modified_duties">Fit for modified duties only</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="oh-sick-note">Note for the employer (no diagnosis)</Label>
+                  <Input id="oh-sick-note" value={sickNote} onChange={(event) => setSickNote(event.target.value)} />
+                </div>
                 <div className="md:col-span-2">
                   <Button type="submit" disabled={isSubmitting}>
                     Issue sick leave certificate
@@ -321,11 +349,15 @@ export function OhRecallsPanel({ customer, encounterId }: OhRecallsPanelProps) {
                 </div>
               </form>
               <RecallTable
-                headers={["Days", "Issued", "Expected return"]}
+                headers={["Days", "Issued", "Expected return", "Status", ""]}
                 rows={recalls.sickLeaveCertificates.map((row) => [
                   String(row.days),
                   row.issued_at.slice(0, 10),
                   row.expected_return ?? "—",
+                  (row.status ?? "issued").replaceAll("_", " "),
+                  <OhRecordLink key={row.uuid} kind="sick-leave" uuid={row.uuid}>
+                    Open / print
+                  </OhRecordLink>,
                 ])}
               />
             </div>
@@ -341,7 +373,7 @@ function RecallTable({
   rows,
 }: {
   headers: string[];
-  rows: string[][];
+  rows: ReactNode[][];
 }) {
   return (
     <div className="overflow-x-auto rounded-xl border border-brand-border bg-white">

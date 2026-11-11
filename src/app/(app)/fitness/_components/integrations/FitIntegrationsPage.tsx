@@ -32,7 +32,7 @@ import { useToast } from "@/providers/toast-provider";
 import { SCOPE_LABEL, errorText, fmtDateTime } from "../shared/fit-format";
 
 type Tab = "systems" | "deliveries" | "audit";
-const SCOPES: FitFeedScope[] = ["access_cards", "rosters", "payroll"];
+const SCOPES: FitFeedScope[] = ["access_cards", "rosters", "payroll", "hr_events"];
 
 function ClientDrawer({ client: existing, onClose }: { client: FitClient | null; onClose: () => void }) {
   const { toast } = useToast();

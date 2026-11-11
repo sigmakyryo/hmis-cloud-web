@@ -151,3 +151,26 @@ describe("visit cancellations report", () => {
     expect(ohExtProxy.resolve("GET", ["oh", "reports", "visit-cancellations", "csv"])?.binary?.type).toBe("text/csv");
   });
 });
+
+describe("sick leave detail", () => {
+  it("prints and records a return to work", async () => {
+    mocks.bffRequest.mockImplementation(async (_path: string, opts?: { method?: string }) => {
+      if (opts?.method === "POST") return {};
+      return { uuid: UUID, status: "issued", start_date: "2026-06-01", days: 5, expected_return: "2026-06-06", work_capacity: "unfit_all_work" };
+    });
+    renderWithClient(<OhRecordDetailPage kind="sick-leave" uuid={UUID} />);
+    expect((await screen.findByText("Print / download PDF")).closest("a")?.getAttribute("href")).toBe(
+      `/api/occupational-health/oh-ext/oh/sick-leave/${UUID}/pdf`,
+    );
+    fireEvent.change(screen.getByLabelText("Outcome"), { target: { value: "fit_with_restrictions" } });
+    fireEvent.change(screen.getByLabelText("Work restrictions (one per line)"), { target: { value: "No lifting\n" } });
+    fireEvent.change(screen.getByLabelText("Returned on"), { target: { value: "2026-06-06" } });
+    fireEvent.click(screen.getByText("Record return to work"));
+    await waitFor(() =>
+      expect(mocks.bffRequest).toHaveBeenCalledWith(`/api/occupational-health/oh-ext/oh/sick-leave/${UUID}/return`, {
+        method: "POST",
+        body: { returned_on: "2026-06-06", outcome: "fit_with_restrictions", restrictions: ["No lifting"] },
+      }),
+    );
+  });
+});

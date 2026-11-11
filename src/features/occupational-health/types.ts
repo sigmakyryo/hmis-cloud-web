@@ -745,6 +745,12 @@ export type SickLeaveCertificate = {
   expected_return: string | null;
   issued_at: string;
   clinician: number;
+  start_date?: string | null;
+  work_capacity?: "unfit_all_work" | "modified_duties" | string;
+  employer_note?: string | null;
+  status?: "issued" | "returned" | "cancelled" | string;
+  returned_on?: string | null;
+  return_outcome?: string | null;
   created_at: string;
   updated_at: string;
 };
