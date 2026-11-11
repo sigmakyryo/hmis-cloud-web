@@ -39,3 +39,19 @@ it("requires a reason and sends the chosen outcome", async () => {
   );
   await waitFor(() => expect(onCancelled).toHaveBeenCalled());
 });
+
+it("sends a reason category when one is chosen", async () => {
+  cancelNativeOhVisit.mockResolvedValue({ uuid: "enc-2", open_billing_lines: 0 });
+  render(<OhCancelVisitDialog encounterUuid="enc-2" onCancelled={vi.fn()} />);
+  fireEvent.click(screen.getByTestId("oh-cancel-visit"));
+  fireEvent.change(await screen.findByLabelText("Reason category"), { target: { value: "employer_request" } });
+  fireEvent.change(screen.getByLabelText("Reason"), { target: { value: "Shift moved" } });
+  fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+  await waitFor(() =>
+    expect(cancelNativeOhVisit).toHaveBeenCalledWith("enc-2", {
+      outcome: "cancelled",
+      reason: "Shift moved",
+      reason_code: "employer_request",
+    }),
+  );
+});

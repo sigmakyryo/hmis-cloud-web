@@ -34,6 +34,7 @@ vi.mock("@/lib/server/bff-response", () => ({
   bffError: () => Response.json({ message: "error" }, { status: 500 }),
 }));
 
+import { OhVisitCancellationsReport } from "@/features/occupational-health/components/OhVisitCancellationsReport";
 import { OhSurveillanceRecallsCard } from "@/features/occupational-health/components/OhSurveillanceRecallsCard";
 import { OhRecordDetailPage } from "@/features/occupational-health/pages/OhRecordDetailPage";
 import { ohExtProxy } from "@/lib/server/oh-ext-bff";
@@ -128,5 +129,22 @@ describe("record detail pages", () => {
     );
     expect(screen.queryByText("Save changes")).toBeNull();
     expect(ohExtProxy.resolve("GET", ["fitness-certificates", UUID, "pdf"])?.binary?.type).toBe("application/pdf");
+  });
+});
+
+describe("visit cancellations report", () => {
+  it("shows totals by reason and links the CSV through the binary proxy", async () => {
+    mocks.bffRequest.mockResolvedValue({
+      from: "2026-01-01", to: "2026-03-31", total_visits: 40, cancelled: 3, no_show: 2, no_show_rate: 0.05,
+      by_reason: [{ code: "employer_request", label: "Employer asked to cancel", count: 3 }],
+      by_month: [{ month: "2026-02", cancelled: 3, no_show: 2 }], by_visit_type: {}, by_employer: {}, rows: [],
+    });
+    renderWithClient(<OhVisitCancellationsReport />);
+    expect(await screen.findByText("Employer asked to cancel: 3")).toBeTruthy();
+    expect(screen.getByText(/no-show rate 5.0%/)).toBeTruthy();
+    expect(screen.getByText("CSV").closest("a")?.getAttribute("href")).toMatch(
+      /^\/api\/occupational-health\/oh-ext\/oh\/reports\/visit-cancellations\/csv\?from=/,
+    );
+    expect(ohExtProxy.resolve("GET", ["oh", "reports", "visit-cancellations", "csv"])?.binary?.type).toBe("text/csv");
   });
 });

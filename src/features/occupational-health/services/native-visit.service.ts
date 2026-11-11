@@ -1,3 +1,4 @@
+import type { OhCancelReasonCode } from "@/features/occupational-health/utils/oh-cancel-reasons";
 import { bffRequest } from "@/lib/bff-client";
 import type { OhVisitEncounter } from "@/features/occupational-health/types";
 
@@ -32,6 +33,8 @@ export function completeNativeOhVisit(uuid: string) {
 export type CancelNativeOhVisitPayload = {
   outcome: "cancelled" | "no_show";
   reason: string;
+  /** Structured reason for reporting; OHS defaults it when left out. */
+  reason_code?: OhCancelReasonCode;
 };
 
 export type CancelledOhVisitEncounter = OhVisitEncounter & {

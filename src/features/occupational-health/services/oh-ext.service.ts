@@ -81,3 +81,24 @@ export const certificatePdfUrl = (uuid: string) => ohExtFileUrl(`fitness-certifi
 export const fetchCertificateHistory = (uuid: string) => ohExtGet<OhCertificateHistory>(`fitness-certificates/${uuid}/history`);
 export const fetchCertificateVerifyLink = (uuid: string) =>
   ohExtGet<{ verify_url: string }>(`fitness-certificates/${uuid}/verify-link`);
+
+// ---- Visit cancellations / no-shows report -------------------------------
+
+export type OhCancellationReport = {
+  from: string;
+  to: string;
+  total_visits: number;
+  cancelled: number;
+  no_show: number;
+  no_show_rate: number | null;
+  by_reason: Array<{ code: string; label: string; count: number }>;
+  by_month: Array<{ month: string; cancelled: number; no_show: number }>;
+  by_visit_type: Record<string, number>;
+  by_employer: Record<string, number>;
+  rows: Array<{ uuid: string; date: string | null; outcome: string; reason_code: string; reason: string; visit_type: string; employer: string }>;
+};
+
+export const fetchCancellationReport = (params: { from?: string; to?: string }) =>
+  ohExtGet<OhCancellationReport>(`oh/reports/visit-cancellations${ohExtQs(params)}`);
+export const cancellationReportCsvUrl = (params: { from?: string; to?: string }) =>
+  ohExtFileUrl(`oh/reports/visit-cancellations/csv${ohExtQs(params)}`);
