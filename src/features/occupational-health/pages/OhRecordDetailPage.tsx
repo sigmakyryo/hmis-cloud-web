@@ -16,6 +16,7 @@ import {
   certificatePdfUrl,
   fetchCertificateHistory,
   fetchCertificateVerifyLink,
+  iodPackPdfUrl,
 } from "@/features/occupational-health/services/oh-ext.service";
 import { canAccessOccupationalHealth } from "@/features/occupational-health/utils/oh-access";
 import { bffRequest } from "@/lib/bff-client";
@@ -217,6 +218,18 @@ function OhRecordDetailBody({ kind, uuid, config, extra }: { kind: string; uuid:
               </form>
             ) : null}
             {kind === "certificate" ? <CertificateDocuments uuid={uuid} /> : null}
+            {kind === "iod" ? (
+              <div className="space-y-1">
+                <Button asChild size="sm" variant="outline" className="gap-1">
+                  <a href={iodPackPdfUrl(uuid)} target="_blank" rel="noreferrer">
+                    <FileDown className="size-3.5" /> Notification pack PDF
+                  </a>
+                </Button>
+                <p className="text-xs text-brand-muted">
+                  Generic layout, not an official form. Verify the official form and deadlines for your jurisdiction.
+                </p>
+              </div>
+            ) : null}
             {extra}
           </>
         ) : null}

@@ -102,3 +102,8 @@ export const fetchCancellationReport = (params: { from?: string; to?: string }) 
   ohExtGet<OhCancellationReport>(`oh/reports/visit-cancellations${ohExtQs(params)}`);
 export const cancellationReportCsvUrl = (params: { from?: string; to?: string }) =>
   ohExtFileUrl(`oh/reports/visit-cancellations/csv${ohExtQs(params)}`);
+
+// ---- IOD notification pack ------------------------------------------------
+
+/** Printable IOD / occupational disease notification pack (generic layout, marked to be verified). */
+export const iodPackPdfUrl = (uuid: string) => ohExtFileUrl(`iod-cases/${uuid}/statutory-pack/pdf`);

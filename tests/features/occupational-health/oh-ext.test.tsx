@@ -106,6 +106,9 @@ describe("record detail pages", () => {
     await waitFor(() =>
       expect(mocks.bffRequest).toHaveBeenCalledWith(`/api/occupational-health/iod-cases/${UUID}`, { method: "PATCH", body: { lost_days: 4 } }),
     );
+    expect(screen.getByText("Notification pack PDF").closest("a")?.getAttribute("href")).toBe(
+      `/api/occupational-health/oh-ext/iod-cases/${UUID}/statutory-pack/pdf`,
+    );
   });
 
   it("shows a certificate read-only with its PDF link and version history", async () => {
