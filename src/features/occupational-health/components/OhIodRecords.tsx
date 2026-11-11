@@ -10,6 +10,7 @@ import {
   OhRecordList,
   OhRecordsEmpty,
 } from "@/features/occupational-health/components/OhEncounterColumns";
+import { OhRecordLink } from "@/features/occupational-health/components/OhRecordLink";
 import { OhStatusChip } from "@/features/occupational-health/components/OhStatusChip";
 import type { IodCase } from "@/features/occupational-health/types";
 import { downloadIodStatutoryPack } from "@/features/occupational-health/services/oh.service";
@@ -92,15 +93,18 @@ export function OhIodRecords({ iodCases }: OhIodRecordsProps) {
               }
               meta={describeIodCase(item)}
               action={
-                <SecondaryButton
-                  type="button"
-                  size="sm"
-                  className="h-7 px-2.5 text-xs"
-                  disabled={isDownloading}
-                  onClick={() => void handleStatutoryPack(item.uuid)}
-                >
-                  {isDownloading ? "Loading…" : "Statutory pack"}
-                </SecondaryButton>
+                <div className="flex items-center gap-2">
+                  <OhRecordLink kind="iod" uuid={item.uuid} />
+                  <SecondaryButton
+                    type="button"
+                    size="sm"
+                    className="h-7 px-2.5 text-xs"
+                    disabled={isDownloading}
+                    onClick={() => void handleStatutoryPack(item.uuid)}
+                  >
+                    {isDownloading ? "Loading…" : "Statutory pack"}
+                  </SecondaryButton>
+                </div>
               }
             >
               {injury ? <p className="text-brand-muted">{injury}</p> : null}

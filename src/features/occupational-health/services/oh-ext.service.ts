@@ -48,3 +48,36 @@ export const fetchSurvRecalls = (params: { status?: string; stage?: string; chan
 export const runSurvRecalls = (body: { within_days?: number; channels?: Array<"email" | "sms"> }) =>
   ohExtPost<OhRecallRunResult>("oh/surveillance/recalls/run", body);
 export const acknowledgeSurvRecall = (uuid: string) => ohExtPost<OhSurvRecall>(`oh/surveillance/recalls/${uuid}/acknowledge`);
+
+// ---- Certificate of fitness documents and lifecycle ----------------------
+
+export type OhCertificateHistory = {
+  versions: Array<{
+    uuid: string;
+    version: number;
+    status: string;
+    in_force: boolean;
+    valid_from: string | null;
+    valid_to: string | null;
+    signed_at: string | null;
+    signed_by: number | null;
+    outcome: string | null;
+    restrictions: string[];
+    withdrawn_at: string | null;
+    withdrawal_reason: string | null;
+    previous_uuid: string | null;
+  }>;
+  events: Array<{
+    certificate_uuid: string;
+    action: string;
+    actor_name: string;
+    summary: string;
+    reason: string | null;
+    occurred_at: string | null;
+  }>;
+};
+
+export const certificatePdfUrl = (uuid: string) => ohExtFileUrl(`fitness-certificates/${uuid}/pdf`);
+export const fetchCertificateHistory = (uuid: string) => ohExtGet<OhCertificateHistory>(`fitness-certificates/${uuid}/history`);
+export const fetchCertificateVerifyLink = (uuid: string) =>
+  ohExtGet<{ verify_url: string }>(`fitness-certificates/${uuid}/verify-link`);

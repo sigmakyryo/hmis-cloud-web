@@ -8,6 +8,7 @@ import {
   OhRecordList,
   OhRecordsEmpty,
 } from "@/features/occupational-health/components/OhEncounterColumns";
+import { OhRecordLink } from "@/features/occupational-health/components/OhRecordLink";
 import { OhStatusChip } from "@/features/occupational-health/components/OhStatusChip";
 import type {
   FitnessAssessment,
@@ -65,6 +66,7 @@ export function OhFitnessRecords({
                 ? `Assessed ${formatOhDate(item.assessed_at)} · review ${formatOhDate(item.review_date)}`
                 : `Assessed ${formatOhDate(item.assessed_at)}`
             }
+            action={<OhRecordLink kind="assessment" uuid={item.uuid} />}
           />
         ))}
       </OhRecordList>

@@ -23,6 +23,7 @@ import {
   OhRecordsEmpty,
   submitOnModEnter,
 } from "@/features/occupational-health/components/OhEncounterColumns";
+import { OhRecordLink } from "@/features/occupational-health/components/OhRecordLink";
 import { OhStatusChip } from "@/features/occupational-health/components/OhStatusChip";
 import type { OhExamFinding, OhExamination } from "@/features/occupational-health/types";
 import { createOhExamFinding } from "@/features/occupational-health/services/oh.service";
@@ -232,7 +233,11 @@ function OhFindingRow({ finding }: { finding: OhExamFinding }) {
 
   return (
     <OhRecordItem
-      title={finding.code}
+      title={
+        <OhRecordLink kind="finding" uuid={finding.uuid}>
+          {finding.code}
+        </OhRecordLink>
+      }
       badges={isFlagged ? <OhStatusChip value={finding.threshold_flag} /> : null}
       meta={formatOhDate(finding.recorded_at)}
       action={

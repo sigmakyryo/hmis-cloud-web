@@ -189,6 +189,10 @@ export const ROUTES = {
       : "/occupational-health/employment",
   occupationalHealthEncounter: (visitUuid: string, encounterUuid: string) =>
     `/occupational-health/${visitUuid}/${encounterUuid}`,
+  occupationalHealthRecord: (
+    kind: "certificate" | "assessment" | "finding" | "iod" | "sick-leave",
+    uuid: string,
+  ) => `/occupational-health/records/${kind}/${uuid}`,
   clinicalOpdEncounter: (visitUuid: string, encounterUuid: string) =>
     `/clinical/opd/${visitUuid}/${encounterUuid}`,
   clinicalOpdEncounterTab: (

@@ -16,6 +16,9 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
   useParams: () => ({}),
 }));
+vi.mock("@/providers/user-provider", () => ({
+  useUser: () => ({ isLoading: false, userData: { groups: ["OccupationalHealth"], enabled_modules: ["OccupationalHealth"] } }),
+}));
 vi.mock("@/providers/toast-provider", () => ({ useToast: () => ({ toast: mocks.toast }) }));
 vi.mock("@/lib/bff-client", () => ({
   bffRequest: (...a: unknown[]) => mocks.bffRequest(...a),
@@ -32,6 +35,7 @@ vi.mock("@/lib/server/bff-response", () => ({
 }));
 
 import { OhSurveillanceRecallsCard } from "@/features/occupational-health/components/OhSurveillanceRecallsCard";
+import { OhRecordDetailPage } from "@/features/occupational-health/pages/OhRecordDetailPage";
 import { ohExtProxy } from "@/lib/server/oh-ext-bff";
 
 const UUID = "0b7c3f9e-1d2a-4c5b-8e6f-7a8b9c0d1e2f";
@@ -84,5 +88,45 @@ describe("surveillance recalls card", () => {
         body: {},
       }),
     );
+  });
+});
+
+describe("record detail pages", () => {
+  it("edits an IOD case and sends only the changed fields", async () => {
+    mocks.bffRequest.mockImplementation(async (_path: string, opts?: { method?: string }) => {
+      if (opts?.method === "PATCH") return {};
+      return { uuid: UUID, status: "open", severity: "minor", lost_days: 0, onset_date: "2026-05-01", work_related: true, description: "Cut", created_at: "2026-05-01T08:00:00Z" };
+    });
+    renderWithClient(<OhRecordDetailPage kind="iod" uuid={UUID} />);
+    const lost = (await screen.findByLabelText("Lost days")) as HTMLInputElement;
+    await waitFor(() => expect(lost.value).toBe("0"));
+    fireEvent.change(lost, { target: { value: "4" } });
+    fireEvent.click(screen.getByText("Save changes"));
+    await waitFor(() =>
+      expect(mocks.bffRequest).toHaveBeenCalledWith(`/api/occupational-health/iod-cases/${UUID}`, { method: "PATCH", body: { lost_days: 4 } }),
+    );
+  });
+
+  it("shows a certificate read-only with its PDF link and version history", async () => {
+    mocks.bffRequest.mockImplementation(async (path: string) => {
+      if (path.endsWith("/history"))
+        return {
+          versions: [
+            { uuid: UUID, version: 2, status: "amended", in_force: true, valid_from: "2026-01-01", valid_to: null, signed_at: null, signed_by: 1,
+              outcome: "fit", restrictions: ["No heights"], withdrawn_at: null, withdrawal_reason: null, previous_uuid: null },
+          ],
+          events: [{ certificate_uuid: UUID, action: "amended", actor_name: "A.B.", summary: "", reason: "Add restriction", occurred_at: null }],
+        };
+      if (path.endsWith("/verify-link")) return { verify_url: "https://ohs.example/api/oh-cof/verify/x?sig=y" };
+      return { uuid: UUID, version: 2, status: "amended", valid_from: "2026-01-01" };
+    });
+    renderWithClient(<OhRecordDetailPage kind="certificate" uuid={UUID} />);
+    expect(await screen.findByText("Restrictions: No heights")).toBeTruthy();
+    expect(screen.getByText(/amended by A.B. — Add restriction/)).toBeTruthy();
+    expect(screen.getByText("Print / download PDF").closest("a")?.getAttribute("href")).toBe(
+      `/api/occupational-health/oh-ext/fitness-certificates/${UUID}/pdf`,
+    );
+    expect(screen.queryByText("Save changes")).toBeNull();
+    expect(ohExtProxy.resolve("GET", ["fitness-certificates", UUID, "pdf"])?.binary?.type).toBe("application/pdf");
   });
 });

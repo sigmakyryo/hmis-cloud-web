@@ -9,8 +9,14 @@ import { createOhModuleProxy } from "@/lib/server/oh-module-bff";
 export const ohExtProxy = createOhModuleProxy({
   base: "",
   rules: {
-    GET: ["oh/surveillance/recalls"],
+    GET: [
+      "oh/surveillance/recalls",
+      "fitness-certificates/{id}/pdf",
+      "fitness-certificates/{id}/verify-link",
+      "fitness-certificates/{id}/history",
+    ],
     POST: ["oh/surveillance/recalls/run", "oh/surveillance/recalls/{id}/acknowledge"],
   },
+  binary: [{ path: "fitness-certificates/{id}/pdf", type: "application/pdf", filename: "certificate-of-fitness.pdf" }],
   queryKeys: ["status", "stage", "channel", "customer_uuid", "open_only", "limit"],
 });
