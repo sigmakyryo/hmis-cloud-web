@@ -225,6 +225,7 @@ export function OhCompliancePage() {
                 centerValue={String(statusTotal)}
                 centerLabel="requirements"
                 size={168}
+                stacked
               />
             </OhPanelState>
           </OhPanel>

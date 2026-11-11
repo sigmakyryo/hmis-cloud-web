@@ -17,7 +17,7 @@ export function OhSegmented<V extends string>({
   className?: string;
 }) {
   return (
-    <div role={role} aria-label={label} className={cn("inline-flex rounded-lg border border-dash-border bg-dash-canvas/60 p-0.5", className)}>
+    <div role={role} aria-label={label} className={cn("inline-flex max-w-full overflow-x-auto rounded-lg border border-dash-border bg-dash-canvas/60 p-0.5", className)}>
       {options.map((option) => {
         const active = option.value === value;
         return (
@@ -28,7 +28,7 @@ export function OhSegmented<V extends string>({
             aria-selected={role === "tablist" ? active : undefined}
             aria-checked={role === "radiogroup" ? active : undefined}
             className={cn(
-              "inline-flex h-7 items-center gap-1.5 rounded-md px-3 text-[13px] font-medium text-brand-slate transition-colors focus-visible:outline-2 focus-visible:outline-brand-primary",
+              "inline-flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-3 text-[13px] font-medium text-brand-slate transition-colors focus-visible:outline-2 focus-visible:outline-brand-primary",
               active ? "bg-white text-brand-navy shadow-sm ring-1 ring-dash-border" : "hover:text-brand-navy",
             )}
             onClick={() => onChange(option.value)}

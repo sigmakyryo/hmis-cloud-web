@@ -188,18 +188,21 @@ export function OhDonutChart({
   centerValue,
   centerLabel,
   size = 180,
+  stacked = false,
 }: {
   data: OhDonutDatum[];
   label: string;
   centerValue?: string;
   centerLabel?: string;
   size?: number;
+  /** Always put the legend under the ring (for narrow panels). */
+  stacked?: boolean;
 }) {
   const total = data.reduce((sum, d) => sum + d.value, 0);
   const config = Object.fromEntries(data.map((d) => [d.key, { label: d.label, color: d.color }])) satisfies ChartConfig;
   const summary = data.map((d) => `${d.label}: ${d.value}`).join("; ");
   return (
-    <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
+    <div className={stacked ? "flex flex-col items-center gap-4" : "flex flex-col items-center gap-4 sm:flex-row sm:items-center"}>
       <ChartFigure label={label} summary={summary} className="relative shrink-0">
         <ChartContainer config={config} style={{ width: size, height: size }}>
           <PieChart accessibilityLayer>
@@ -256,10 +259,10 @@ export function OhLineTrendChart({
   return (
     <ChartFigure label={label} summary={summary}>
       <ChartContainer config={config} className="w-full min-w-0" style={{ height }}>
-        <LineChart accessibilityLayer data={data} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
+        <LineChart accessibilityLayer data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
           <CartesianGrid vertical={false} />
           <XAxis dataKey={xKey} tickLine={false} axisLine={false} tickMargin={8} tick={AXIS_TICK} />
-          <YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={AXIS_TICK} width={40} />
+          <YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={AXIS_TICK} width={44} />
           <ChartTooltip content={<ChartTooltipContent indicator="line" />} />
           <ChartLegend content={<ChartLegendContent />} />
           {series.map((s) => (

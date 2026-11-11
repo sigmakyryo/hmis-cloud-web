@@ -46,7 +46,8 @@ const BREAKDOWN_PREFIX: Record<string, string> = {
   medicals: "Examinations: ",
   fitness: "Outcome: ",
 };
-const NO_CHART = new Set(["workforce", "surveillance"]);
+/** Headline-only sections, or ones whose rows mix units (cases vs days), get a table only. */
+const NO_CHART = new Set(["workforce", "surveillance", "injuries", "sick_leave", "drug_alcohol"]);
 
 export type SectionChartRow = { key: string; label: string; value: number };
 

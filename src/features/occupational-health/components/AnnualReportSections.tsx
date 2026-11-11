@@ -48,6 +48,7 @@ function SurveillanceDonut({ rows }: { rows: Record<string, number | string> }) 
     <OhDonutChart
       label="Surveillance completed vs not completed"
       size={150}
+      stacked
       centerValue={typeof pct === "string" && pct !== "—" ? `${pct}%` : String(done)}
       centerLabel="completed"
       data={[
@@ -64,7 +65,7 @@ function SurveillanceDonut({ rows }: { rows: Record<string, number | string> }) 
  */
 export function AnnualReportSections({ report, charts = true }: { report: AnnualReport; charts?: boolean }) {
   return (
-    <div className="grid gap-4 md:grid-cols-2 print:block print:space-y-4" data-testid="annual-report-sections">
+    <div className="grid gap-4 md:grid-flow-row-dense md:grid-cols-2 print:block print:space-y-4" data-testid="annual-report-sections">
       {Object.entries(report.sections).map(([key, rows]) => {
         const title = ANNUAL_SECTION_LABEL[key] ?? key.replace(/_/g, " ");
         const empty = Object.keys(rows).length === 0;
@@ -88,7 +89,7 @@ export function AnnualReportSections({ report, charts = true }: { report: Annual
             {empty ? (
               <p className="text-dash-muted">Nothing recorded.</p>
             ) : wide || donut ? (
-              <div className={cn("grid items-start gap-5", wide ? "lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]" : "sm:grid-cols-[150px_minmax(0,1fr)]")}>
+              <div className={cn("grid items-start gap-5", wide ? "lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]" : "grid-cols-1")}>
                 <div className="min-w-0">
                   {wide ? (
                     <OhColumnChart
