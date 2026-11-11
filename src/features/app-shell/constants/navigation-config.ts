@@ -355,6 +355,14 @@ export const navigation: NavigationItem[] = [
     enabledInWebNew: true,
   },
   {
+    name: "OHS Audit trail",
+    href: ROUTES.occupationalHealthAudit,
+    icon: "clipboard",
+    requiredGroup: "OccupationalHealth",
+    moduleName: "OccupationalHealth",
+    enabledInWebNew: true,
+  },
+  {
     name: "Due",
     href: ROUTES.immunizationsDue,
     icon: "shield",

@@ -183,6 +183,39 @@ export type OhAuditEvent = {
   occurred_at: string | null;
 };
 
+export type OhAuditFilters = {
+  module?: string;
+  entity_type?: string;
+  entity_uuid?: string;
+  action?: string;
+  actor?: string;
+  from?: string;
+  to?: string;
+  q?: string;
+  limit?: number;
+};
+export type OhAuditSearch = { results: OhAuditEvent[]; modules: string[]; truncated: boolean };
+
+const auditQs = (params: OhAuditFilters) =>
+  new URLSearchParams(
+    Object.entries(params)
+      .filter(([, v]) => v !== undefined && v !== null && String(v).trim() !== "")
+      .map(([k, v]) => [k, String(v).trim()]),
+  ).toString();
+
+/** Audit across the shared, D&A and immunisation trails, with filters (administrators only). */
+export const searchOhAudit = (params: OhAuditFilters = {}) => {
+  const qs = auditQs(params);
+  return bffRequest<OhAuditSearch>(`${BFF_OCCUPATIONAL_HEALTH_ROUTES.ohAudit}${qs ? `?${qs}` : ""}`);
+};
+export const fetchOhAuditHistory = async (entityUuid: string) =>
+  (await bffRequest<{ results: OhAuditEvent[] }>(`${BFF_OCCUPATIONAL_HEALTH_ROUTES.ohAudit}/oh-audit/history/${encodeURIComponent(entityUuid)}`))
+    .results;
+export const ohAuditCsvUrl = (params: OhAuditFilters = {}) => {
+  const qs = auditQs(params);
+  return `${BFF_OCCUPATIONAL_HEALTH_ROUTES.ohAudit}/oh-audit/csv${qs ? `?${qs}` : ""}`;
+};
+
 /** Latest OH audit events (administrators only; OHS answers 403 otherwise). */
 export const fetchOhAudit = async (params: { module?: OhAuditModule; entity_type?: string } = {}) => {
   const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => Boolean(v)) as [string, string][]).toString();

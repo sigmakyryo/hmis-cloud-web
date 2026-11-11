@@ -18,6 +18,7 @@ export const fitnessProxy = createOhModuleProxy({
 /** Read-only OH audit trail (`GET /oh-audit`, OHS allows tenant administrators only). */
 export const fitnessAuditProxy = createOhModuleProxy({
   base: "",
-  rules: { GET: ["oh-audit"] },
-  queryKeys: ["module", "entity_type"],
+  rules: { GET: ["oh-audit", "oh-audit/csv", "oh-audit/history/{id}"] },
+  binary: [{ path: "oh-audit/csv", type: "text/csv; charset=utf-8", filename: "oh-audit.csv" }],
+  queryKeys: ["module", "entity_type", "entity_uuid", "action", "actor", "from", "to", "q", "limit"],
 });
