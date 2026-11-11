@@ -24,7 +24,41 @@ export function isPortalOnlyUser(user: { groups?: string[] | null; is_admin?: bo
   return groups.includes(PORTAL_GROUP) && !groups.some((g) => STAFF_GROUPS.includes(g));
 }
 
-export type PortalMe = { name: string; employer: { uuid: string; name: string }; scopes: PortalScope[] };
+export type PortalBranding = {
+  display_name: string;
+  accent_color: string;
+  logo_data_uri: string | null;
+  welcome_text: string;
+  support_email: string;
+};
+export type PortalMe = {
+  name: string;
+  employer: { uuid: string; name: string };
+  scopes: PortalScope[];
+  branding?: PortalBranding;
+};
+export type PortalInvitation = {
+  uuid: string;
+  email: string;
+  name: string;
+  employer_uuid: string;
+  employer_name: string;
+  scopes: PortalScope[];
+  status: "pending" | "accepted" | "revoked" | "expired";
+  expires_at: string;
+  accepted_at: string | null;
+  email_sent: boolean;
+  created_at: string | null;
+};
+export type PortalInviteResult = { linked: boolean; invite?: PortalInvitation; accept_url?: string };
+export type PortalInviteInfo = {
+  email: string;
+  name: string;
+  employer_name: string;
+  organisation: string;
+  expires_at: string;
+  branding: PortalBranding | null;
+};
 
 export type PortalFitStatus = "fit" | "fit_with_restrictions" | "not_fit" | "awaiting";
 export type PortalWorker = {
@@ -103,6 +137,20 @@ export const fetchPortalMe = () => bffRequest<PortalMe>(`${PORTAL}/me`);
 export const fetchPortalFitness = (status?: string, q?: string) => bffRequest<PortalFitness>(`${PORTAL}/fitness${qs({ status, q })}`);
 export const fetchPortalCompliance = (year?: number) =>
   bffRequest<Results<PortalCompliance>>(`${PORTAL}/random-compliance${qs({ year: year ? String(year) : undefined })}`).then((r) => r.results);
+export const portalInvoicePdfUrl = (uuid: string) => `${PORTAL}/invoices/${uuid}/pdf`;
+export const fetchPortalInvitations = () => bffRequest<Results<PortalInvitation>>(`${ADMIN}/invitations`).then((r) => r.results);
+export const invitePortalContact = (body: {
+  email: string;
+  name?: string;
+  employer_uuid: string;
+  scopes: PortalScope[];
+  billing_customer_uuids?: string[];
+}) => bffRequest<PortalInviteResult>(`${ADMIN}/invitations`, { method: "POST", body });
+export const revokePortalInvitation = (uuid: string) =>
+  bffRequest<PortalInvitation>(`${ADMIN}/invitations/${uuid}/revoke`, { method: "POST", body: {} });
+export const fetchPortalBranding = () => bffRequest<PortalBranding>(`${ADMIN}/branding`);
+export const savePortalBranding = (body: Partial<PortalBranding>) =>
+  bffRequest<PortalBranding>(`${ADMIN}/branding`, { method: "PATCH", body });
 export const fetchPortalInvoices = () => bffRequest<Results<PortalInvoice>>(`${PORTAL}/invoices`).then((r) => r.results);
 export const fetchPortalUsers = () => bffRequest<Results<PortalColleague>>(`${PORTAL}/users`).then((r) => r.results);
 export const fetchPortalRequests = () => bffRequest<Results<PortalRequest>>(`${PORTAL}/requests`).then((r) => r.results);

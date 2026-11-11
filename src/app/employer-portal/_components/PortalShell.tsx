@@ -51,9 +51,22 @@ export function PortalShell({ children }: { children: ReactNode }) {
 
   return (
     <PortalContext.Provider value={me.data}>
-      <header className="border-b border-dash-border/80" data-testid="employer-portal-shell">
+      <header
+        className="border-b border-dash-border/80"
+        data-testid="employer-portal-shell"
+        style={me.data.branding?.accent_color ? { borderTop: `4px solid ${me.data.branding.accent_color}` } : undefined}
+      >
         <div className="flex min-h-12 items-center justify-between gap-3 px-5">
-          <p className="text-[14px] font-semibold text-brand-navy">{me.data.employer.name}</p>
+          <div className="flex items-center gap-2">
+            {me.data.branding?.logo_data_uri ? (
+              // eslint-disable-next-line @next/next/no-img-element -- inline data URI logo set by the clinic
+              <img src={me.data.branding.logo_data_uri} alt="" className="h-7 w-auto" data-testid="employer-portal-logo" />
+            ) : null}
+            <p className="text-[14px] font-semibold text-brand-navy">
+              {me.data.branding?.display_name ? `${me.data.branding.display_name} · ` : ""}
+              {me.data.employer.name}
+            </p>
+          </div>
           <div className="flex items-center gap-3 text-[13px] text-dash-muted">
             <span>{me.data.name}</span>
             <button type="button" className="text-primary hover:underline" onClick={() => void signOut()}>

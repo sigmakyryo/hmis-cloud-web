@@ -4,9 +4,10 @@ import { createOhModuleProxy } from "@/lib/server/oh-module-bff";
 export const employerPortalProxy = createOhModuleProxy({
   base: "/oh-portal",
   rules: {
-    GET: ["me", "fitness", "random-compliance", "invoices", "users", "requests"],
+    GET: ["me", "fitness", "random-compliance", "invoices", "invoices/{id}/pdf", "users", "requests"],
     POST: ["requests"],
   },
+  binary: [{ path: "invoices/{id}/pdf", type: "application/pdf", filename: "invoice-statement.pdf" }],
   queryKeys: ["status", "q", "year"],
   created: ["requests"],
 });
@@ -15,10 +16,10 @@ export const employerPortalProxy = createOhModuleProxy({
 export const employerPortalAdminProxy = createOhModuleProxy({
   base: "/oh-portal-admin",
   rules: {
-    GET: ["requests", "contacts"],
-    POST: ["requests/{id}", "contacts"],
-    PATCH: ["contacts/{id}"],
+    GET: ["requests", "contacts", "invitations", "branding"],
+    POST: ["requests/{id}", "contacts", "invitations", "invitations/{id}/revoke"],
+    PATCH: ["contacts/{id}", "branding"],
   },
   queryKeys: ["status"],
-  created: ["contacts"],
+  created: ["contacts", "invitations"],
 });
