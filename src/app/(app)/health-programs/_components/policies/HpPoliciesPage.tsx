@@ -18,6 +18,7 @@ import {
   fetchHpPolicies,
   publishHpPolicy,
   seedHpPolicies,
+  seedHpReferencePolicies,
   type HpPolicy,
   type HpProgram,
 } from "@/features/occupational-health/services/health-programs.service";
@@ -63,6 +64,13 @@ function PolicyDrawer({ policy, onClose }: { policy: HpPolicy; onClose: () => vo
 
   return (
     <Drawer title={policy.name} description={`${PROGRAM_LABEL[policy.program]} · version ${policy.version ?? "—"}`} onClose={onClose} wide>
+      {s?.standard ? (
+        <div className="space-y-0.5 text-[12px] text-dash-muted" data-testid="oh-hp-policy-standard">
+          <p className="font-medium text-brand-navy">{s.standard.name}</p>
+          <p>{s.standard.citation}</p>
+          {s.standard.notes ? <p>{s.standard.notes}</p> : null}
+        </div>
+      ) : null}
       {s?.disclaimer ? <p className="text-[12px] text-amber-700">{s.disclaimer}</p> : null}
       <Field label="Check every (months)" type="number" value={freq} onChange={setFreq} required />
       <CheckField label="Applies to everyone" checked={all} onChange={setAll} />
@@ -102,6 +110,18 @@ export function HpPoliciesPage() {
     },
     onError: (error) => toast({ variant: "error", title: "Not loaded", description: errorText(error) }),
   });
+  const seedReference = useMutation({
+    mutationFn: seedHpReferencePolicies,
+    onSuccess: (d) => {
+      toast({
+        variant: "success",
+        title: "Reference standards loaded",
+        description: `${d.created} added. They are configurable defaults, not legal or clinical advice.`,
+      });
+      void client.invalidateQueries({ queryKey: ["oh-hp"] });
+    },
+    onError: (error) => toast({ variant: "error", title: "Not loaded", description: errorText(error) }),
+  });
   const rows = (query.data ?? []).filter((p) => tab === "all" || p.program === tab);
 
   return (
@@ -112,9 +132,14 @@ export function HpPoliciesPage() {
         active={tab}
         onChange={setTab}
         actions={
-          <SecondaryButton size="sm" className="h-8" disabled={seed.isPending} onClick={() => seed.mutate()}>
-            Load examples
-          </SecondaryButton>
+          <>
+            <SecondaryButton size="sm" className="h-8" disabled={seedReference.isPending} onClick={() => seedReference.mutate()}>
+              Load reference standards
+            </SecondaryButton>
+            <SecondaryButton size="sm" className="h-8" disabled={seed.isPending} onClick={() => seed.mutate()}>
+              Load examples
+            </SecondaryButton>
+          </>
         }
       />
       <ImmNotice>Each change publishes a new version. Results keep the version they were checked against.</ImmNotice>
@@ -137,7 +162,7 @@ export function HpPoliciesPage() {
           {rows.map((p) => (
             <DaRow key={p.uuid} testId="oh-hp-policy-row" onClick={() => setOpen(p)}>
               <DaCell first>
-                <ImmPrimaryCell title={p.name} detail={p.is_example ? `${p.code} · example` : p.code} />
+                <ImmPrimaryCell title={p.name} detail={p.is_example ? `${p.code} · example` : p.code.startsWith("ref_") ? `${p.code} · reference standard` : p.code} />
               </DaCell>
               <DaCell>{PROGRAM_LABEL[p.program]}</DaCell>
               <DaCell>

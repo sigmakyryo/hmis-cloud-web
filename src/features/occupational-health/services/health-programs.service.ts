@@ -13,6 +13,7 @@ export type HpSnapshot = {
   thresholds: Record<string, number | boolean>;
   billing?: { product_uuid: string | null };
   disclaimer?: string;
+  standard?: { name: string; citation: string; notes?: string };
   [key: string]: unknown;
 };
 
@@ -105,6 +106,8 @@ export const createHpPolicy = (body: { program: HpProgram; code: string; name: s
   post<HpPolicy>("policies", body);
 export const publishHpPolicy = (uuid: string, snapshot: Partial<HpSnapshot>) => post<HpPolicy>(`policies/${uuid}/publish`, { snapshot });
 export const seedHpPolicies = () => post<{ created: number; results: HpPolicy[] }>("policies/seed-examples");
+/** Cited reference standards (OSHA STS, NHANES III LLN, EU driver vision, RULA/REBA, Epworth), loaded as editable policies. */
+export const seedHpReferencePolicies = () => post<{ created: number; results: HpPolicy[] }>("policies/seed-reference");
 
 export const fetchHpDue = (params: { program?: string; within?: number; employer_uuid?: string } = {}) => get<HpDue>(`due${qs(params)}`);
 export const fetchHpResults = async (params: { program?: string; customer_uuid?: string; visit_uuid?: string; outcome?: string; flag?: string } = {}) =>
