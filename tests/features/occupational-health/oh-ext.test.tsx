@@ -59,6 +59,8 @@ describe("oh-ext BFF allowlist", () => {
     expect(ohExtProxy.resolve("POST", ["oh", "surveillance", "recalls", UUID, "acknowledge"])).not.toBeNull();
     expect(ohExtProxy.resolve("POST", ["oh", "surveillance", "schedule"])).toBeNull();
     expect(ohExtProxy.resolve("GET", ["oh", "surveillance", ".."])).toBeNull();
+    expect(ohExtProxy.resolve("GET", ["oh", "compliance", "insights"])?.path).toBe("/oh/compliance/insights");
+    expect(ohExtProxy.resolve("POST", ["oh", "compliance", "insights"])).toBeNull();
   });
 });
 
@@ -75,15 +77,17 @@ describe("surveillance recalls card", () => {
       ];
     });
     renderWithClient(<OhSurveillanceRecallsCard />);
-    expect(await screen.findByText(/AUDIO · periodic · due 2026-05-01/)).toBeTruthy();
-    fireEvent.click(screen.getByText("Send recalls now"));
+    expect(await screen.findByText("AUDIO")).toBeTruthy();
+    fireEvent.click(screen.getByText("Send recalls…"));
+    fireEvent.click(await screen.findByRole("button", { name: "Send recalls" }));
     await waitFor(() =>
       expect(mocks.bffRequest).toHaveBeenCalledWith("/api/occupational-health/oh-ext/oh/surveillance/recalls/run", {
         method: "POST",
         body: { within_days: 14, channels: ["email"] },
       }),
     );
-    fireEvent.click(screen.getByText("Done"));
+    fireEvent.click(screen.getByRole("button", { name: "Mark AUDIO recall done" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Mark done" }));
     await waitFor(() =>
       expect(mocks.bffRequest).toHaveBeenCalledWith(`/api/occupational-health/oh-ext/oh/surveillance/recalls/${UUID}/acknowledge`, {
         method: "POST",

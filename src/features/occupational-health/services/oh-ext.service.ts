@@ -45,9 +45,31 @@ export type OhRecallRunResult = { in_app: number; queued: number; sent: number; 
 
 export const fetchSurvRecalls = (params: { status?: string; stage?: string; channel?: string; customer_uuid?: string; open_only?: boolean } = {}) =>
   ohExtGet<OhSurvRecall[]>(`oh/surveillance/recalls${ohExtQs(params)}`);
-export const runSurvRecalls = (body: { within_days?: number; channels?: Array<"email" | "sms"> }) =>
+export const runSurvRecalls = (body: { within_days?: number; channels?: Array<"email" | "sms">; requirement_uuids?: string[] }) =>
   ohExtPost<OhRecallRunResult>("oh/surveillance/recalls/run", body);
 export const acknowledgeSurvRecall = (uuid: string) => ohExtPost<OhSurvRecall>(`oh/surveillance/recalls/${uuid}/acknowledge`);
+
+// ---- Compliance insights (trend, breakdowns, due windows) -----------------
+
+export type OhBreakdownRow = { key: string; due: number; overdue: number; total: number };
+export type OhDueWindow = "overdue_30_plus" | "overdue" | "next_7" | "next_30" | "next_90" | "later";
+export type OhComplianceInsights = {
+  generated_at: string;
+  months: number;
+  totals: { open: number; due: number; overdue: number; completed: number; waived: number };
+  compliance: { rate_3m: number | null; rate_prev_3m: number | null; rate_period: number | null };
+  completed: { last_30_days: number; previous_30_days: number };
+  due_windows: Record<OhDueWindow, number>;
+  trend: Array<{ month: string; label: string; due: number; completed: number; open: number; waived: number; rate: number | null }>;
+  by_exam: OhBreakdownRow[];
+  by_site: OhBreakdownRow[];
+  by_department: OhBreakdownRow[];
+  by_hazard_profile: OhBreakdownRow[];
+  by_employer: OhBreakdownRow[];
+};
+
+export const fetchComplianceInsights = (months = 12) =>
+  ohExtGet<OhComplianceInsights>(`oh/compliance/insights${ohExtQs({ months })}`);
 
 // ---- Certificate of fitness documents and lifecycle ----------------------
 

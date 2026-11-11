@@ -1,121 +1,182 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BellRing, Check } from "lucide-react";
+import { BellRing, Check, ExternalLink } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { ROUTES } from "@/constants/routes";
+import {
+  ListPageDataTable,
+  ListPageDataTableBody,
+  ListPageDataTableCell,
+  ListPageDataTableHeader,
+  ListPageDataTableHeaderCell,
+  ListPageDataTableHeaderRow,
+  ListPageDataTableRow,
+} from "@/features/app-shell/components/page-layout";
+import { OhConfirmDialog } from "@/features/occupational-health/components/dashboard/OhConfirmDialog";
+import { OhPanel, OhPanelState } from "@/features/occupational-health/components/dashboard/OhPanel";
+import { OhSegmented } from "@/features/occupational-health/components/dashboard/OhSegmented";
+import { OhSendRecallDialog } from "@/features/occupational-health/components/surveillance/OhSendRecallDialog";
+import { examTypeLabel, formatDate } from "@/features/occupational-health/components/surveillance/oh-surveillance-utils";
 import {
   acknowledgeSurvRecall,
   fetchSurvRecalls,
-  runSurvRecalls,
   type OhSurvRecall,
 } from "@/features/occupational-health/services/oh-ext.service";
 import { useToast } from "@/providers/toast-provider";
 
-const STAGE_LABEL: Record<OhSurvRecall["stage"], string> = {
-  due_soon: "Due soon",
-  overdue: "Overdue",
-  overdue_30: "Overdue 30+ days",
+const STAGE: Record<OhSurvRecall["stage"], { label: string; variant: "warning" | "destructive" }> = {
+  due_soon: { label: "Due soon", variant: "warning" },
+  overdue: { label: "Overdue", variant: "destructive" },
+  overdue_30: { label: "Overdue 30+ days", variant: "destructive" },
 };
 
-/** Medical surveillance recall worklist: in-app recalls plus "send recalls now" (email / SMS). */
+type StageFilter = "all" | OhSurvRecall["stage"];
+
+/** Medical surveillance recall worklist: open in-app recalls, mark done, and send recalls (with confirmation). */
 export function OhSurveillanceRecallsCard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [within, setWithin] = useState("14");
-  const [email, setEmail] = useState(true);
-  const [sms, setSms] = useState(false);
+  const [stage, setStage] = useState<StageFilter>("all");
+  const [sendOpen, setSendOpen] = useState(false);
+  const [confirmRow, setConfirmRow] = useState<OhSurvRecall | null>(null);
 
   const recalls = useQuery({
     queryKey: ["oh-surv-recalls", "open"],
     queryFn: () => fetchSurvRecalls({ channel: "in_app", open_only: true }),
   });
 
-  const run = useMutation({
-    mutationFn: () =>
-      runSurvRecalls({
-        within_days: Number(within) || 14,
-        channels: [...(email ? (["email"] as const) : []), ...(sms ? (["sms"] as const) : [])],
-      }),
-    onSuccess: (r) => {
-      toast({
-        variant: "success",
-        title: "Recalls processed",
-        description: `${r.in_app} new in-app · ${r.sent} sent · ${r.skipped} not configured · ${r.failed} failed`,
-      });
+  const ack = useMutation({
+    mutationFn: (uuid: string) => acknowledgeSurvRecall(uuid),
+    onSuccess: () => {
+      toast({ variant: "success", title: "Recall marked done" });
+      setConfirmRow(null);
       void queryClient.invalidateQueries({ queryKey: ["oh-surv-recalls"] });
     },
     onError: (error) =>
-      toast({ variant: "error", title: "Could not run recalls", description: error instanceof Error ? error.message : undefined }),
+      toast({ variant: "error", title: "Could not update the recall", description: error instanceof Error ? error.message : undefined }),
   });
 
-  const ack = useMutation({
-    mutationFn: (uuid: string) => acknowledgeSurvRecall(uuid),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["oh-surv-recalls"] }),
-  });
-
-  const rows = recalls.data ?? [];
+  const rows = useMemo(() => recalls.data ?? [], [recalls.data]);
+  const counts = useMemo(
+    () => ({
+      due_soon: rows.filter((r) => r.stage === "due_soon").length,
+      overdue: rows.filter((r) => r.stage === "overdue").length,
+      overdue_30: rows.filter((r) => r.stage === "overdue_30").length,
+    }),
+    [rows],
+  );
+  const visible = stage === "all" ? rows : rows.filter((r) => r.stage === stage);
 
   return (
-    <section className="border-b border-dash-border px-4 py-3 md:px-6" data-testid="oh-surv-recalls">
-      <div className="mb-3 flex flex-wrap items-end gap-3">
-        <h2 className="mr-auto flex items-center gap-2 text-sm font-semibold text-brand-navy">
-          <BellRing className="size-4" /> Surveillance recalls ({rows.length} open)
-        </h2>
-        <div className="space-y-1">
-          <Label htmlFor="oh-recall-within" className="text-xs">
-            Due within (days)
-          </Label>
-          <Input id="oh-recall-within" className="h-8 w-24" value={within} onChange={(e) => setWithin(e.target.value)} />
-        </div>
-        <label className="flex items-center gap-1 text-xs">
-          <input type="checkbox" checked={email} onChange={(e) => setEmail(e.target.checked)} /> Email
-        </label>
-        <label className="flex items-center gap-1 text-xs">
-          <input type="checkbox" checked={sms} onChange={(e) => setSms(e.target.checked)} /> SMS
-        </label>
-        <Button type="button" size="sm" disabled={run.isPending} onClick={() => run.mutate()}>
-          Send recalls now
+    <OhPanel
+      title={
+        <span className="inline-flex items-center gap-2">
+          <BellRing className="size-4 text-brand-primary" aria-hidden /> Recalls
+        </span>
+      }
+      description={`${rows.length} open in-app recall${rows.length === 1 ? "" : "s"}. Mark one done once the worker is booked or seen.`}
+      actions={
+        <Button type="button" size="sm" variant="primary" className="h-8 gap-1.5" onClick={() => setSendOpen(true)}>
+          <BellRing className="size-3.5" aria-hidden /> Send recalls…
         </Button>
+      }
+      bodyClassName="p-0"
+      data-testid="oh-surv-recalls"
+    >
+      <div className="border-b border-dash-border/70 px-4 py-2.5">
+        <OhSegmented
+          label="Recall stage"
+          value={stage}
+          onChange={setStage}
+          options={[
+            { value: "all", label: "All", count: rows.length },
+            { value: "due_soon", label: "Due soon", count: counts.due_soon },
+            { value: "overdue", label: "Overdue", count: counts.overdue },
+            { value: "overdue_30", label: "30+ days", count: counts.overdue_30 },
+          ]}
+        />
       </div>
-      {recalls.isLoading ? (
-        <p className="text-sm text-brand-muted">Loading recalls…</p>
-      ) : rows.length === 0 ? (
-        <p className="text-sm text-brand-muted">No open recalls.</p>
-      ) : (
-        <ul className="divide-y divide-dash-border text-sm">
-          {rows.slice(0, 50).map((row) => (
-            <li key={row.uuid} className="flex flex-wrap items-center gap-3 py-2">
-              <span className={row.stage === "due_soon" ? "text-amber-700" : "font-medium text-red-700"}>
-                {STAGE_LABEL[row.stage] ?? row.stage}
-              </span>
-              <span className="text-brand-slate">
-                {row.component_code ?? "Surveillance"} · {row.exam_type ?? "periodic"} · due {row.due_date ?? "—"}
-              </span>
-              {row.customer_uuid ? (
-                <Link className="text-xs underline-offset-2 hover:underline" href={ROUTES.occupationalHealthEmployment(row.customer_uuid)}>
-                  Open worker
-                </Link>
-              ) : null}
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="ml-auto h-7 gap-1 text-xs"
-                disabled={ack.isPending}
-                onClick={() => ack.mutate(row.uuid)}
-              >
-                <Check className="size-3" /> Done
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+      <div className="p-4 pt-2">
+        <OhPanelState
+          isLoading={recalls.isLoading}
+          error={recalls.error}
+          onRetry={() => void recalls.refetch()}
+          isEmpty={visible.length === 0}
+          emptyText={rows.length === 0 ? "No open recalls. Send recalls to remind workers who are due." : "No recalls at this stage."}
+          height={160}
+        >
+          <ListPageDataTable>
+            <ListPageDataTableHeader>
+              <ListPageDataTableHeaderRow>
+                <ListPageDataTableHeaderCell>Stage</ListPageDataTableHeaderCell>
+                <ListPageDataTableHeaderCell>Exam</ListPageDataTableHeaderCell>
+                <ListPageDataTableHeaderCell>Due</ListPageDataTableHeaderCell>
+                <ListPageDataTableHeaderCell>Worker</ListPageDataTableHeaderCell>
+                <ListPageDataTableHeaderCell className="text-right">Action</ListPageDataTableHeaderCell>
+              </ListPageDataTableHeaderRow>
+            </ListPageDataTableHeader>
+            <ListPageDataTableBody>
+              {visible.slice(0, 100).map((row) => (
+                <ListPageDataTableRow key={row.uuid}>
+                  <ListPageDataTableCell>
+                    <Badge variant={STAGE[row.stage]?.variant ?? "outline"}>{STAGE[row.stage]?.label ?? row.stage}</Badge>
+                  </ListPageDataTableCell>
+                  <ListPageDataTableCell>
+                    <span className="font-medium text-brand-navy">{row.component_code ?? "Surveillance"}</span>
+                    <span className="text-dash-muted"> · {examTypeLabel(row.exam_type)}</span>
+                  </ListPageDataTableCell>
+                  <ListPageDataTableCell className="whitespace-nowrap tabular-nums">{formatDate(row.due_date)}</ListPageDataTableCell>
+                  <ListPageDataTableCell>
+                    {row.customer_uuid ? (
+                      <Link
+                        className="inline-flex items-center gap-1 text-brand-primary underline-offset-2 hover:underline"
+                        href={ROUTES.occupationalHealthEmployment(row.customer_uuid)}
+                      >
+                        Open worker <ExternalLink className="size-3" aria-hidden />
+                      </Link>
+                    ) : (
+                      "—"
+                    )}
+                  </ListPageDataTableCell>
+                  <ListPageDataTableCell className="text-right">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 gap-1 text-xs"
+                      aria-label={`Mark ${row.component_code ?? "recall"} recall done`}
+                      onClick={() => setConfirmRow(row)}
+                    >
+                      <Check className="size-3" aria-hidden /> Mark done
+                    </Button>
+                  </ListPageDataTableCell>
+                </ListPageDataTableRow>
+              ))}
+            </ListPageDataTableBody>
+          </ListPageDataTable>
+        </OhPanelState>
+      </div>
+
+      <OhSendRecallDialog open={sendOpen} onOpenChange={setSendOpen} />
+      <OhConfirmDialog
+        open={confirmRow !== null}
+        onOpenChange={(open) => (!open ? setConfirmRow(null) : undefined)}
+        title="Mark recall done?"
+        description={
+          confirmRow
+            ? `${confirmRow.component_code ?? "Surveillance"} recall, due ${formatDate(confirmRow.due_date)}. It leaves the open list; the requirement itself stays until an exam completes it.`
+            : undefined
+        }
+        confirmLabel="Mark done"
+        isPending={ack.isPending}
+        onConfirm={() => confirmRow && ack.mutate(confirmRow.uuid)}
+        data-testid="oh-recall-done-dialog"
+      />
+    </OhPanel>
   );
 }

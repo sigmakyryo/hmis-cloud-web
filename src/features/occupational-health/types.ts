@@ -652,6 +652,8 @@ export type SurveillanceRequirement = {
 };
 
 export type OhCampaignQueueRow = {
+  /** Requirement uuid (OHS with dashboard aggregates). */
+  uuid?: string;
   customer_uuid: string;
   customer_identifier: string;
   customer_name: string;
@@ -659,6 +661,7 @@ export type OhCampaignQueueRow = {
   job_title: string;
   site: string;
   department_name?: string;
+  hazard_profile?: string;
   component_code: string;
   exam_type: string;
   due_date: string;
