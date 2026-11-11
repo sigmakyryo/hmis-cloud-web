@@ -22,6 +22,7 @@ describe("OHS navigation", () => {
       "OHS Surveillance",
       "OHS Audit trail",
       "OHS Privacy",
+      "OHS Annual report",
     ]);
     expect(ohItems.map((item) => item.href)).toEqual([
       ROUTES.occupationalHealth,
@@ -31,6 +32,7 @@ describe("OHS navigation", () => {
       ROUTES.occupationalHealthSurveillance,
       ROUTES.occupationalHealthAudit,
       ROUTES.occupationalHealthPrivacy,
+      ROUTES.occupationalHealthAnnualReport,
     ]);
   });
 

@@ -371,6 +371,14 @@ export const navigation: NavigationItem[] = [
     enabledInWebNew: true,
   },
   {
+    name: "OHS Annual report",
+    href: ROUTES.occupationalHealthAnnualReport,
+    icon: "clipboard",
+    requiredGroup: "OccupationalHealth",
+    moduleName: "OccupationalHealth",
+    enabledInWebNew: true,
+  },
+  {
     name: "Due",
     href: ROUTES.immunizationsDue,
     icon: "shield",

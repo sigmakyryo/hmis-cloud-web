@@ -10,8 +10,9 @@ import { ROUTES } from "@/constants/routes";
 import { fetchPortalMe, PORTAL_SCOPE_LABEL, type PortalMe, type PortalScope } from "@/features/employer-portal/services/employer-portal.service";
 import { cn } from "@/lib/utils";
 
-const PAGES: Array<{ scope: PortalScope; href: string }> = [
+const PAGES: Array<{ scope: PortalScope; href: string; label?: string }> = [
   { scope: "fitness", href: ROUTES.employerPortalFitness },
+  { scope: "fitness", href: ROUTES.employerPortalAnnual, label: "Annual summary" },
   { scope: "random_compliance", href: ROUTES.employerPortalCompliance },
   { scope: "invoices", href: ROUTES.employerPortalInvoices },
   { scope: "requests", href: ROUTES.employerPortalRequests },
@@ -86,7 +87,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
                   active ? "border-primary text-primary" : "border-transparent text-dash-muted hover:text-brand-navy",
                 )}
               >
-                {PORTAL_SCOPE_LABEL[p.scope]}
+                {p.label ?? PORTAL_SCOPE_LABEL[p.scope]}
               </Link>
             );
           })}
