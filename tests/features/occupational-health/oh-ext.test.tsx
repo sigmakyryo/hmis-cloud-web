@@ -149,7 +149,8 @@ describe("visit cancellations report", () => {
     });
     renderWithClient(<OhVisitCancellationsReport />);
     expect(await screen.findByText("Employer asked to cancel: 3")).toBeTruthy();
-    expect(screen.getByText(/no-show rate 5.0%/)).toBeTruthy();
+    expect(screen.getByText("5.0%")).toBeTruthy();
+    expect(screen.getByText("5 of 40 visits lost")).toBeTruthy();
     expect(screen.getByText("CSV").closest("a")?.getAttribute("href")).toMatch(
       /^\/api\/occupational-health\/oh-ext\/oh\/reports\/visit-cancellations\/csv\?from=/,
     );

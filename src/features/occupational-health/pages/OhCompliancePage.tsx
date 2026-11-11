@@ -1,48 +1,68 @@
 "use client";
 
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { AlertTriangle, BadgeCheck, Briefcase, CalendarClock, CheckCircle2, Download, Gauge, RefreshCw } from "lucide-react";
 import { useState } from "react";
-import { RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
-  ListPageBlankState,
   ListPageHeaderActions,
   ListPageHeaderSection,
   ListPageHeaderTitleBlock,
   ListPageHeaderTopRow,
   ListPageLayout,
-  ListPageTableSection,
 } from "@/features/app-shell/components/page-layout";
 import { OhAccessDenied } from "@/features/occupational-health/components/OhAccessDenied";
 import { OhExamBatteryRulesPanel } from "@/features/occupational-health/components/OhExamBatteryRulesPanel";
 import { OhVisitCancellationsReport } from "@/features/occupational-health/components/OhVisitCancellationsReport";
+import { OhBreakdownBars, OhComplianceTrendChart, OhDonutChart } from "@/features/occupational-health/components/dashboard/OhCharts";
+import { OhExportDialog } from "@/features/occupational-health/components/dashboard/OhExportDialog";
+import { OhKpiCard, OhKpiGrid } from "@/features/occupational-health/components/dashboard/OhKpiCard";
+import { OhPanel, OhPanelState } from "@/features/occupational-health/components/dashboard/OhPanel";
+import { OhSegmented } from "@/features/occupational-health/components/dashboard/OhSegmented";
+import { OH_COLORS } from "@/features/occupational-health/components/dashboard/oh-dashboard-colors";
+import { openFile } from "@/features/occupational-health/components/dashboard/oh-table";
 import { useOhComplianceDashboard } from "@/features/occupational-health/hooks/use-occupational-health";
+import { cancellationReportCsvUrl, fetchComplianceInsights } from "@/features/occupational-health/services/oh-ext.service";
 import { downloadOhComplianceExtract } from "@/features/occupational-health/services/oh.service";
 import { canAccessOccupationalHealth } from "@/features/occupational-health/utils/oh-access";
 import { useUser } from "@/providers/user-provider";
 import { useToast } from "@/providers/toast-provider";
 
-const METRIC_LABELS: Record<string, string> = {
-  due: "Due",
-  overdue: "Overdue",
-  completed: "Completed",
-  waived: "Waived",
-  open_episodes: "Open employment episodes",
-  due_within_30_days: "Due within 30 days",
-  fitness_validity_alerts: "Fitness validity alerts",
+type Breakdown = "by_hazard_profile" | "by_department" | "by_employer" | "by_site";
+const BREAKDOWN_LABEL: Record<Breakdown, string> = {
+  by_hazard_profile: "Hazard profile",
+  by_department: "Department",
+  by_employer: "Employer",
+  by_site: "Site",
 };
+
+function isoDaysAgo(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d.toISOString().slice(0, 10);
+}
 
 export function OhCompliancePage() {
   const { userData, isLoading: isUserLoading } = useUser();
   const { toast } = useToast();
-  const { data, isLoading, error, refetch, isFetching } =
-    useOhComplianceDashboard();
-  const [isExtracting, setIsExtracting] = useState(false);
-
+  const dashboard = useOhComplianceDashboard();
+  const [months, setMonths] = useState<"6" | "12" | "24">("12");
+  const insights = useQuery({
+    queryKey: ["oh-compliance-insights", Number(months)],
+    queryFn: () => fetchComplianceInsights(Number(months)),
+    placeholderData: keepPreviousData,
+    retry: false,
+  });
+  const [breakdown, setBreakdown] = useState<Breakdown>("by_hazard_profile");
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportFrom, setExportFrom] = useState(() => isoDaysAgo(90));
+  const [exportTo, setExportTo] = useState(() => isoDaysAgo(0));
   const hasAccess = canAccessOccupationalHealth(userData);
 
   async function handleExtract() {
-    setIsExtracting(true);
     try {
       const { blob, filename } = await downloadOhComplianceExtract();
       const url = URL.createObjectURL(blob);
@@ -55,12 +75,9 @@ export function OhCompliancePage() {
     } catch (extractError) {
       toast({
         title: "Extract failed",
-        description:
-          extractError instanceof Error ? extractError.message : undefined,
+        description: extractError instanceof Error ? extractError.message : undefined,
         variant: "error",
       });
-    } finally {
-      setIsExtracting(false);
     }
   }
 
@@ -81,84 +98,194 @@ export function OhCompliancePage() {
     );
   }
 
+  const d = dashboard.data;
+  const i = insights.data;
+  const rate = i?.compliance.rate_3m ?? null;
+  const rateDelta = i && rate !== null && i.compliance.rate_prev_3m !== null ? rate - i.compliance.rate_prev_3m : null;
+  const statusData = i
+    ? [
+        { key: "completed", label: "Completed", value: i.totals.completed, color: OH_COLORS.completed },
+        { key: "due", label: "Due", value: i.totals.due, color: OH_COLORS.due },
+        { key: "overdue", label: "Overdue", value: i.totals.overdue, color: OH_COLORS.overdue },
+        { key: "waived", label: "Waived", value: i.totals.waived, color: OH_COLORS.waived },
+      ]
+    : [];
+  const statusTotal = statusData.reduce((s, x) => s + x.value, 0);
+  const refreshing = dashboard.isFetching || insights.isFetching;
+
   return (
     <ListPageLayout data-testid="oh-compliance-page">
-      <ListPageHeaderSection className="bg-white">
+      <ListPageHeaderSection className="bg-white px-4 pt-4 md:px-6">
         <ListPageHeaderTopRow>
           <ListPageHeaderTitleBlock
-            title="OHS Compliance"
-            description="Surveillance requirement counts for your organization."
+            title="Compliance"
+            description="How well medical surveillance keeps up, where it slips, and the rules that drive it."
           />
-          <ListPageHeaderActions>
+          <ListPageHeaderActions className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
               variant="outline"
               size="sm"
-              className="gap-1.5 rounded-lg border-dash-border text-xs text-brand-slate"
-              disabled={isFetching}
-              onClick={() => void refetch()}
+              className="gap-1.5"
+              aria-label="Refresh"
+              disabled={refreshing}
+              onClick={() => {
+                void dashboard.refetch();
+                void insights.refetch();
+              }}
             >
-              <RefreshCw className="size-3.5" />
-              Refresh
+              <RefreshCw className={refreshing ? "size-3.5 animate-spin" : "size-3.5"} aria-hidden />
+              <span className="hidden sm:inline">Refresh</span>
             </Button>
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => void handleExtract()}
-              disabled={isExtracting}
-            >
-              {isExtracting ? "Exporting…" : "Download extract"}
+            <Button type="button" variant="primary" size="sm" className="gap-1.5" onClick={() => setExportOpen(true)}>
+              <Download className="size-3.5" aria-hidden /> Export
             </Button>
           </ListPageHeaderActions>
         </ListPageHeaderTopRow>
       </ListPageHeaderSection>
 
-      <ListPageTableSection>
-        {isLoading ? (
-          <p className="text-sm text-brand-muted">Loading compliance…</p>
-        ) : error ? (
-          <ListPageBlankState
-            compact
-            tone="error"
-            icon="file"
-            title="Could not load compliance dashboard"
-            description="The compliance figures could not be loaded."
-            action={
-              <Button
-                type="button"
-                variant="outline"
-                className="h-8 rounded-lg text-[13px]"
-                onClick={() => void refetch()}
-              >
-                Try again
-              </Button>
-            }
-          />
-        ) : (
-          <div
-            className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-dash-border px-4 py-2.5 md:px-6"
-            role="group"
-            aria-label="Compliance summary"
-          >
-            {Object.entries(data ?? {}).map(([key, value]) => (
-              <p
-                key={key}
-                className="flex items-baseline gap-1.5"
-                data-testid={`oh-compliance-metric-${key}`}
-              >
-                <span className="text-[15px] font-semibold tabular-nums leading-none text-brand-navy">
-                  {value}
-                </span>
-                <span className="text-[13px] text-dash-muted">
-                  {METRIC_LABELS[key] ?? key.replace(/_/g, " ")}
-                </span>
-              </p>
-            ))}
+      <div data-list-band className="space-y-4 px-4 pb-8 md:px-6">
+        {dashboard.error ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-800" role="alert">
+            <span>Could not load compliance dashboard. The compliance figures could not be loaded.</span>
+            <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => void dashboard.refetch()}>
+              Try again
+            </Button>
           </div>
-        )}
+        ) : null}
+
+        <OhKpiGrid className="xl:grid-cols-6">
+          <OhKpiCard
+            label="Compliance, 3 months"
+            value={rate !== null ? `${Math.round(rate)}%` : "—"}
+            delta={{ value: rateDelta, suffix: " pts", goodWhen: "up", label: "vs prior 3" }}
+            tone={rate === null ? "default" : rate >= 90 ? "success" : rate >= 75 ? "warning" : "danger"}
+            icon={Gauge}
+            isLoading={insights.isLoading}
+            data-testid="oh-compliance-metric-rate"
+          />
+          <OhKpiCard label="Overdue" value={d?.overdue ?? "—"} tone={(d?.overdue ?? 0) > 0 ? "danger" : "success"} icon={AlertTriangle} isLoading={dashboard.isLoading} data-testid="oh-compliance-metric-overdue" />
+          <OhKpiCard label="Due in 30 days" value={d?.due_within_30_days ?? "—"} hint={d ? `${d.due} due in total` : undefined} tone="warning" icon={CalendarClock} isLoading={dashboard.isLoading} data-testid="oh-compliance-metric-due_within_30_days" />
+          <OhKpiCard
+            label="Completed, 30 days"
+            value={i?.completed.last_30_days ?? "—"}
+            delta={{ value: i ? i.completed.last_30_days - i.completed.previous_30_days : null, goodWhen: "up", label: "vs previous 30" }}
+            tone="success"
+            icon={CheckCircle2}
+            isLoading={insights.isLoading}
+            data-testid="oh-compliance-metric-completed30"
+          />
+          <OhKpiCard label="Certificates expiring" value={d?.fitness_validity_alerts ?? "—"} hint="within 30 days" icon={BadgeCheck} isLoading={dashboard.isLoading} data-testid="oh-compliance-metric-fitness_validity_alerts" />
+          <OhKpiCard label="Open employment" value={d?.open_episodes ?? "—"} hint="workers on file" icon={Briefcase} isLoading={dashboard.isLoading} data-testid="oh-compliance-metric-open_episodes" />
+        </OhKpiGrid>
+
+        <div className="grid gap-4 lg:grid-cols-3">
+          <OhPanel
+            className="lg:col-span-2"
+            title="Compliance over time"
+            description="Requirements by the month they fell due: completed vs still open, and the share completed."
+            actions={
+              <OhSegmented
+                label="Period"
+                role="radiogroup"
+                value={months}
+                onChange={setMonths}
+                options={[
+                  { value: "6", label: "6 mo" },
+                  { value: "12", label: "12 mo" },
+                  { value: "24", label: "24 mo" },
+                ]}
+              />
+            }
+            data-testid="oh-compliance-trend"
+          >
+            <OhPanelState
+              isLoading={insights.isLoading}
+              error={insights.error}
+              onRetry={() => void insights.refetch()}
+              isEmpty={!i || i.trend.every((p) => p.due === 0)}
+              emptyText="Nothing fell due in this period."
+              height={260}
+            >
+              {i ? <OhComplianceTrendChart data={i.trend} /> : null}
+            </OhPanelState>
+          </OhPanel>
+          <OhPanel title="Status breakdown" description="All surveillance requirements" data-testid="oh-compliance-status">
+            <OhPanelState
+              isLoading={insights.isLoading}
+              error={insights.error}
+              onRetry={() => void insights.refetch()}
+              isEmpty={statusTotal === 0}
+              emptyText="No requirements yet."
+              height={220}
+            >
+              <OhDonutChart
+                label="Requirements by status"
+                data={statusData}
+                centerValue={String(statusTotal)}
+                centerLabel="requirements"
+                size={168}
+              />
+            </OhPanelState>
+          </OhPanel>
+        </div>
+
+        <OhPanel
+          title="Where open work sits"
+          description="Due and overdue requirements grouped by the selected dimension (top 8)."
+          actions={
+            <OhSegmented
+              label="Group by"
+              role="radiogroup"
+              value={breakdown}
+              onChange={setBreakdown}
+              options={(Object.keys(BREAKDOWN_LABEL) as Breakdown[]).map((k) => ({ value: k, label: BREAKDOWN_LABEL[k] }))}
+            />
+          }
+          data-testid="oh-compliance-breakdown"
+        >
+          <OhPanelState
+            isLoading={insights.isLoading}
+            error={insights.error}
+            onRetry={() => void insights.refetch()}
+            isEmpty={!i || i[breakdown].length === 0}
+            emptyText="No open requirements."
+            height={200}
+          >
+            {i ? <OhBreakdownBars data={i[breakdown]} label={`Open requirements by ${BREAKDOWN_LABEL[breakdown].toLowerCase()}`} /> : null}
+          </OhPanelState>
+        </OhPanel>
+
         <OhExamBatteryRulesPanel />
         <OhVisitCancellationsReport />
-      </ListPageTableSection>
+      </div>
+
+      <OhExportDialog
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        title="Export compliance"
+        description="The period applies to the cancellations report; the extract always covers every requirement."
+        options={[
+          { id: "extract", label: "Compliance extract (CSV)", description: "Every surveillance requirement with status, exam and due date.", format: "csv", run: handleExtract },
+          {
+            id: "cancellations",
+            label: "Cancellations and no-shows (CSV)",
+            description: "Visit-level rows for the chosen period.",
+            format: "csv",
+            run: () => openFile(cancellationReportCsvUrl({ from: exportFrom, to: exportTo }), true),
+          },
+          { id: "print", label: "Print this dashboard", description: "Opens the browser print dialog (save as PDF from there).", format: "print", run: () => window.print() },
+        ]}
+      >
+        <div className="space-y-1.5">
+          <Label htmlFor="oh-export-from">From</Label>
+          <Input id="oh-export-from" type="date" value={exportFrom} max={exportTo} onChange={(e) => setExportFrom(e.target.value)} />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="oh-export-to">To</Label>
+          <Input id="oh-export-to" type="date" value={exportTo} min={exportFrom} onChange={(e) => setExportTo(e.target.value)} />
+        </div>
+      </OhExportDialog>
     </ListPageLayout>
   );
 }

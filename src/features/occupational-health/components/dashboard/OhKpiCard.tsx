@@ -38,7 +38,7 @@ function DeltaChip({ delta }: { delta: OhKpiDelta }) {
     <span className="inline-flex items-center gap-1 text-[11px] text-dash-muted">
       <span
         className={cn(
-          "inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 font-medium tabular-nums",
+          "inline-flex shrink-0 items-center gap-0.5 whitespace-nowrap rounded-md px-1.5 py-0.5 font-medium tabular-nums",
           good === null && "bg-dash-canvas text-brand-slate",
           good === true && "bg-emerald-50 text-emerald-700",
           good === false && "bg-red-50 text-red-700",
@@ -82,7 +82,7 @@ export function OhKpiCard({
   const body = (
     <>
       <div className="flex items-start justify-between gap-2">
-        <span className={PAGE_STAT_LABEL_CLASS}>{label}</span>
+        <span className={cn(PAGE_STAT_LABEL_CLASS, "leading-snug")}>{label}</span>
         {Icon ? (
           <span className={cn("flex size-7 shrink-0 items-center justify-center rounded-lg", TONE_ICON[tone])}>
             <Icon className="size-3.5" aria-hidden />

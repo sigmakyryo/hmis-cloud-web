@@ -83,6 +83,17 @@ function truncate(text: string, max = 18) {
   return text.length > max ? `${text.slice(0, max - 1)}…` : text;
 }
 
+/** Single-line category tick (recharts wraps long labels by default). */
+function CategoryTick({ x, y, payload, max = 18 }: { x?: number | string; y?: number | string; payload?: { value?: unknown }; max?: number }) {
+  const text = String(payload?.value ?? "");
+  return (
+    <text x={Number(x)} y={Number(y)} dy={4} textAnchor="end" fontSize={11} className="fill-muted-foreground">
+      <title>{text}</title>
+      {truncate(text, max)}
+    </text>
+  );
+}
+
 export function OhBreakdownBars({ data, label, max = 8 }: { data: OhBreakdownDatum[]; label: string; max?: number }) {
   const rows = data.slice(0, max);
   const height = Math.max(120, rows.length * 34 + 40);
@@ -98,9 +109,9 @@ export function OhBreakdownBars({ data, label, max = 8 }: { data: OhBreakdownDat
             dataKey="key"
             tickLine={false}
             axisLine={false}
-            width={120}
-            tick={AXIS_TICK}
-            tickFormatter={(v: string) => truncate(String(v))}
+            width={118}
+            tick={<CategoryTick max={18} />}
+            interval={0}
           />
           <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
           <ChartLegend content={<ChartLegendContent />} />
@@ -141,7 +152,7 @@ export function OhColumnChart({
           <BarChart accessibilityLayer data={data} layout="vertical" margin={{ top: 0, right: 12, left: 4, bottom: 0 }} barCategoryGap={8}>
             <CartesianGrid horizontal={false} />
             <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} tick={AXIS_TICK} />
-            <YAxis type="category" dataKey="label" tickLine={false} axisLine={false} width={130} tick={AXIS_TICK} tickFormatter={(v: string) => truncate(String(v), 20)} />
+            <YAxis type="category" dataKey="label" tickLine={false} axisLine={false} width={130} tick={<CategoryTick max={20} />} interval={0} />
             <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel={false} indicator="dot" />} />
             <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={18}>
               {data.map((d) => (
@@ -255,6 +266,41 @@ export function OhLineTrendChart({
             <Line key={s.key} dataKey={s.key} type="monotone" stroke={`var(--color-${s.key})`} strokeWidth={2} dot={{ r: 3 }} connectNulls={false} />
           ))}
         </LineChart>
+      </ChartContainer>
+    </ChartFigure>
+  );
+}
+
+// ---- Stacked columns over a category axis (e.g. months) -------------------------------------
+
+export function OhStackedColumns({
+  data,
+  series,
+  xKey,
+  label,
+  height = 220,
+}: {
+  data: Array<Record<string, string | number>>;
+  series: OhLineSeries[];
+  xKey: string;
+  label: string;
+  height?: number;
+}) {
+  const config = Object.fromEntries(series.map((s) => [s.key, { label: s.label, color: s.color }])) satisfies ChartConfig;
+  const summary = data.map((row) => `${row[xKey]}: ${series.map((s) => `${s.label} ${row[s.key] ?? 0}`).join(", ")}`).join("; ");
+  return (
+    <ChartFigure label={label} summary={summary}>
+      <ChartContainer config={config} className="w-full min-w-0" style={{ height }}>
+        <BarChart accessibilityLayer data={data} margin={{ top: 8, right: 4, left: -16, bottom: 0 }}>
+          <CartesianGrid vertical={false} />
+          <XAxis dataKey={xKey} tickLine={false} axisLine={false} tickMargin={8} tick={AXIS_TICK} minTickGap={6} />
+          <YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={AXIS_TICK} width={40} />
+          <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
+          <ChartLegend content={<ChartLegendContent />} />
+          {series.map((s, i) => (
+            <Bar key={s.key} dataKey={s.key} stackId="stack" fill={`var(--color-${s.key})`} radius={i === series.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]} maxBarSize={32} />
+          ))}
+        </BarChart>
       </ChartContainer>
     </ChartFigure>
   );

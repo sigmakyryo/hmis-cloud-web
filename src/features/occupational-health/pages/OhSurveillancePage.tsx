@@ -73,11 +73,11 @@ function customerStub(row: OhWorkRow): Customer {
 }
 
 const WINDOW_BARS = [
-  { key: "overdue_30_plus", label: "30+ days late", color: OH_COLORS.overdue },
-  { key: "overdue", label: "Overdue", color: "#d9534f" },
-  { key: "next_7", label: "Next 7 days", color: OH_COLORS.due },
-  { key: "next_30", label: "8–30 days", color: "#d9a066" },
-  { key: "next_90", label: "31–90 days", color: OH_COLORS.info },
+  { key: "overdue_30_plus", label: "30d+ late", color: OH_COLORS.overdue },
+  { key: "overdue", label: "Late", color: "#d9534f" },
+  { key: "next_7", label: "≤7d", color: OH_COLORS.due },
+  { key: "next_30", label: "8–30d", color: "#d9a066" },
+  { key: "next_90", label: "31–90d", color: OH_COLORS.info },
   { key: "later", label: "Later", color: OH_COLORS.waived },
 ] as const;
 
@@ -149,7 +149,7 @@ export function OhSurveillancePage() {
             title="Surveillance"
             description="Who is due or overdue for medical surveillance, where, and what to do next."
           />
-          <ListPageHeaderActions>
+          <ListPageHeaderActions className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
               variant="outline"
@@ -264,7 +264,7 @@ export function OhSurveillancePage() {
         ) : null}
 
         <div className="grid gap-4 lg:grid-cols-3">
-          <OhPanel title="When work falls due" description="Open requirements by due window">
+          <OhPanel title="When work falls due" description="Open requirements by due window (late, days ahead)">
             <OhPanelState
               isLoading={insights.isLoading}
               error={insights.error}
