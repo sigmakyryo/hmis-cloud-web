@@ -38,6 +38,8 @@ import {
   ListPageSearchToolbar,
   ListPageStatsSection,
 } from "@/features/app-shell/components/page-layout";
+import { fetchPricelistValidationConfig } from "@/features/claims/services/claims.service";
+import type { TariffCategory } from "@/features/claims/types/claims.types";
 import { fetchInsuranceSchemes } from "@/features/customers/services/insurance-schemes.service";
 import type { InsuranceScheme } from "@/features/customers/types/customer-insurance.types";
 import { AddPricelistProductDialog } from "@/features/inventory/components/detail/AddPricelistProductDialog";
@@ -52,6 +54,7 @@ import { PricelistProductSummaryStatsCards } from "@/features/inventory/componen
 import { PricelistProductsTable } from "@/features/inventory/components/detail/PricelistProductsTable";
 import { PricelistProductsTableSkeleton } from "@/features/inventory/components/detail/PricelistProductsTableSkeleton";
 import { ProductTariffCodeDialog } from "@/features/inventory/components/detail/ProductTariffCodeDialog";
+import { TariffCategoryPicker } from "@/features/inventory/components/detail/TariffCategoryPicker";
 import { fetchProductTariffCodes } from "@/features/inventory/services/inventory.service";
 import type { ProductTariffCode } from "@/features/inventory/types/inventory.types";
 import { BffError } from "@/lib/bff-client";
@@ -111,6 +114,11 @@ export function PricelistDetailProductsTab({
     null,
   );
   const [priceEdit, setPriceEdit] = useState<PendingPriceEdit | null>(null);
+  const [benefitEditItem, setBenefitEditItem] =
+    useState<CatalogPricelistMembership | null>(null);
+  const [benefitCategory, setBenefitCategory] = useState<TariffCategory | null>(null);
+  const [benefitCategoryCleared, setBenefitCategoryCleared] = useState(false);
+  const [advisorPackCode, setAdvisorPackCode] = useState<string | null>(null);
   const [nameEditItem, setNameEditItem] =
     useState<CatalogPricelistMembership | null>(null);
   const [pendingRemove, setPendingRemove] = useState<CatalogPricelistMembership | null>(
@@ -259,6 +267,63 @@ export function PricelistDetailProductsTab({
       toast({
         variant: "error",
         title: "Could not update price",
+        description:
+          err instanceof BffError
+            ? formatBffErrorMessage(err.message, err.errors)
+            : err instanceof Error
+              ? err.message
+              : "Something went wrong.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleOpenBenefitCategory(item: CatalogPricelistMembership) {
+    setBenefitEditItem(item);
+    setBenefitCategory(null);
+    setBenefitCategoryCleared(false);
+    try {
+      const config = await fetchPricelistValidationConfig(pricelist.uuid);
+      setAdvisorPackCode(config.selected_packs[0]?.code ?? null);
+    } catch {
+      setAdvisorPackCode(null);
+    }
+  }
+
+  async function handleSaveBenefitCategory() {
+    if (!benefitEditItem?.product_uuid) {
+      return;
+    }
+    const nextCode = benefitCategoryCleared
+      ? ""
+      : (benefitCategory?.code ?? benefitEditItem.benefit_category ?? "");
+    setIsSaving(true);
+    try {
+      const result = await updateCatalogPricelistProduct(
+        pricelist.uuid,
+        benefitEditItem.product_uuid,
+        { benefit_category: nextCode },
+      );
+      toast({
+        variant: "success",
+        title: result.approval_required
+          ? "Benefit category submitted for approval"
+          : "Benefit category updated",
+        description: result.approval_required
+          ? "A second approver must confirm this change before it takes effect."
+          : nextCode
+            ? `${benefitCategory?.name ?? nextCode} will be used for advisor matching on this pricelist product.`
+            : "The benefit category override was cleared.",
+      });
+      setBenefitEditItem(null);
+      setBenefitCategory(null);
+      setBenefitCategoryCleared(false);
+      await Promise.all([loadItems({ silent: true, page }), loadStats()]);
+    } catch (err) {
+      toast({
+        variant: "error",
+        title: "Could not update benefit category",
         description:
           err instanceof BffError
             ? formatBffErrorMessage(err.message, err.errors)
@@ -558,6 +623,9 @@ export function PricelistDetailProductsTab({
             onEditTariffCode={(item) => {
               void handleEditTariffCode(item);
             }}
+            onEditBenefitCategory={(item) => {
+              void handleOpenBenefitCategory(item);
+            }}
             onRemove={setPendingRemove}
           />
           <ListPagePagination
@@ -638,6 +706,71 @@ export function PricelistDetailProductsTab({
           void loadStats();
         }}
       />
+
+      <Dialog
+        open={Boolean(benefitEditItem)}
+        onOpenChange={(open) => {
+          if (!open && !isSaving) {
+            setBenefitEditItem(null);
+            setBenefitCategory(null);
+          }
+        }}
+      >
+        <DialogContent className={cn("sm:max-w-md", appFont.className)}>
+          <DialogHeader>
+            <DialogTitle>Set benefit category</DialogTitle>
+            <DialogDescription>
+              Optional detailed advisor category for{" "}
+              {benefitEditItem?.product_name ?? "this product"} on this pricelist.
+              Product type is still used when this is blank.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <TariffCategoryPicker
+              category={benefitCategory}
+              categoryCode={
+                benefitCategoryCleared ? null : benefitEditItem?.benefit_category
+              }
+              packCode={advisorPackCode}
+              allowClear
+              label="Benefit category"
+              description="Filtered to the pricelist's assigned advisor pack when one is set."
+              onCategoryChange={(category) => {
+                setBenefitCategory(category);
+                setBenefitCategoryCleared(category === null);
+              }}
+              disabled={isSaving}
+            />
+          </div>
+          <DialogFooter>
+            <SecondaryButton
+              type="button"
+              disabled={isSaving}
+              onClick={() => {
+                setBenefitEditItem(null);
+                setBenefitCategory(null);
+                setBenefitCategoryCleared(false);
+              }}
+            >
+              Cancel
+            </SecondaryButton>
+            <PrimaryButton
+              type="button"
+              disabled={isSaving}
+              onClick={() => void handleSaveBenefitCategory()}
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                  Saving...
+                </>
+              ) : (
+                "Save category"
+              )}
+            </PrimaryButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={Boolean(priceEdit)}

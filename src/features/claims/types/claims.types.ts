@@ -410,6 +410,27 @@ export type TariffCategoryListFilters = {
   search?: string;
   page?: number;
   pageSize?: number;
+  pack?: string;
+};
+
+export type ValidationDefinitionCategoryRef = {
+  code: string;
+  name: string;
+};
+
+export type ValidationDefinitionSummary = {
+  code: string;
+  name: string;
+  category: string;
+  severity: string;
+  message: string;
+  recommended_action: string;
+  requires_ai_review: boolean;
+  applies_to_categories: ValidationDefinitionCategoryRef[];
+};
+
+export type ValidationDefinitionListResponse = {
+  results: ValidationDefinitionSummary[];
 };
 
 export type TariffCategoryListResponse =

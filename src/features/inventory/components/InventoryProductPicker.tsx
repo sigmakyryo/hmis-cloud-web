@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Label } from "@/components/ui/label";
 import { RequiredFieldMarker } from "@/components/ui/required-field-marker";
 import { SearchableSelect, SelectItem } from "@/components/ui/searchable-select";
+import { formatPayerAdvisoriesLine } from "@/features/catalog/utils/payer-advisories";
 import { searchInventoryProducts } from "@/features/inventory/services/inventory.service";
 import type { InventoryProduct } from "@/features/inventory/types/inventory.types";
 import { formatProductLabel } from "@/features/inventory/utils/format-inventory";
@@ -25,6 +26,8 @@ type InventoryProductPickerProps = {
   /** When true, only products marked as drugs (`metadata.is_drug`) are returned. */
   drugsOnly?: boolean;
   compact?: boolean;
+  /** When set, product search includes visit-scoped payer advisories. */
+  visitUuid?: string;
 };
 
 function isBatchEligibleProduct(product: InventoryProduct): boolean {
@@ -46,6 +49,7 @@ export function InventoryProductPicker({
   filterBatchEligible = false,
   drugsOnly = false,
   compact = false,
+  visitUuid,
 }: InventoryProductPickerProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -67,6 +71,7 @@ export function InventoryProductPicker({
             q: trimmedSearch,
             active: true,
             is_drug: drugsOnly ? true : undefined,
+            visit_uuid: visitUuid,
           });
           const filtered = filterBatchEligible
             ? products.filter(isBatchEligibleProduct)
@@ -88,7 +93,7 @@ export function InventoryProductPicker({
       cancelled = true;
       window.clearTimeout(handle);
     };
-  }, [drugsOnly, filterBatchEligible, open, product, trimmedSearch]);
+  }, [drugsOnly, filterBatchEligible, open, product, trimmedSearch, visitUuid]);
 
   function handleOpenChange(nextOpen: boolean) {
     setOpen(nextOpen);
@@ -147,18 +152,31 @@ export function InventoryProductPicker({
           invalid && "border-destructive",
         )}
       >
-        {options.map((option) => (
-          <SelectItem key={option.uuid} value={option.uuid}>
-            <div className="flex flex-col items-start">
-              <span>{formatProductLabel(option)}</span>
-              {option.product_type_label ? (
-                <span className="text-xs text-brand-muted capitalize">
-                  {option.product_type_label}
-                </span>
-              ) : null}
-            </div>
-          </SelectItem>
-        ))}
+        {options.map((option) => {
+          const advisoryLine = formatPayerAdvisoriesLine(
+            option.payer_advisories,
+          );
+          return (
+            <SelectItem key={option.uuid} value={option.uuid}>
+              <div className="flex flex-col items-start">
+                <span>{formatProductLabel(option)}</span>
+                {option.product_type_label ? (
+                  <span className="text-xs text-brand-muted capitalize">
+                    {option.product_type_label}
+                  </span>
+                ) : null}
+                {advisoryLine ? (
+                  <span
+                    className="text-[11px] text-red-600"
+                    title={advisoryLine}
+                  >
+                    {advisoryLine}
+                  </span>
+                ) : null}
+              </div>
+            </SelectItem>
+          );
+        })}
       </SearchableSelect>
     </div>
   );

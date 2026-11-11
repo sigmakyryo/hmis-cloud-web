@@ -36,9 +36,9 @@ type DetailTabId =
 
 const tabs: Array<{ id: DetailTabId; label: string }> = [
   { id: "products", label: "Products" },
-  { id: "rules", label: "Rules" },
+  { id: "rules", label: "Payment rules" },
   { id: "approvals", label: "Price approvals" },
-  { id: "advisor", label: "Claims advisor pack" },
+  { id: "advisor", label: "Advisor pack" },
   { id: "settings", label: "Settings" },
   { id: "activity", label: "Activity" },
 ];

@@ -752,6 +752,8 @@ export const BFF_CLAIMS_ROUTES = {
     "/api/integrations/eclaims/practitioner-mappings/upsert",
   tariffCategories: "/api/claims/tariff-categories",
   validationPacks: "/api/claims/packs",
+  validationPackDefinitions: (packCode: string) =>
+    `/api/claims/packs/${encodeURIComponent(packCode)}/definitions`,
   pricelistConfig: (pricelistUuid: string) =>
     `/api/claims/pricelist-configs/${pricelistUuid}`,
   remittances: "/api/claims/remittances",

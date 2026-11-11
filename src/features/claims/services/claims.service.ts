@@ -22,6 +22,8 @@ import type {
   VerifyMemberResponse,
   TariffCategoryListFilters,
   TariffCategoryListResponse,
+  ValidationDefinitionListResponse,
+  ValidationDefinitionSummary,
   ValidationPack,
   ValidationPackListFilters,
   ValidationPackListResponse,
@@ -68,6 +70,9 @@ function buildTariffCategoryQuery(filters: TariffCategoryListFilters = {}): stri
   }
   if (filters.search?.trim()) {
     params.set("search", filters.search.trim());
+  }
+  if (filters.pack?.trim()) {
+    params.set("pack", filters.pack.trim());
   }
 
   const query = params.toString();
@@ -254,6 +259,18 @@ export async function fetchValidationPacks(
   const response = await bffRequest<ValidationPackListResponse | ValidationPack[]>(
     `${BFF_CLAIMS_ROUTES.validationPacks}${query ? `?${query}` : ""}`,
   );
+  if (Array.isArray(response)) {
+    return response;
+  }
+  return response.results ?? [];
+}
+
+export async function fetchValidationPackDefinitions(
+  packCode: string,
+): Promise<ValidationDefinitionSummary[]> {
+  const response = await bffRequest<
+    ValidationDefinitionListResponse | ValidationDefinitionSummary[]
+  >(BFF_CLAIMS_ROUTES.validationPackDefinitions(packCode));
   if (Array.isArray(response)) {
     return response;
   }

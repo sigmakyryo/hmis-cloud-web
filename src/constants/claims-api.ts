@@ -45,6 +45,8 @@ export const CLAIMS_API_PATHS = {
     `/eclaims/integrations/payers/${encodeURIComponent(payer)}/clinics/${clinicId}/member-visit-automation/`,
   tariffCategories: "/claims-rules/tariff-categories/",
   validationPacks: "/claims-rules/packs/",
+  validationPackDefinitions: (packCode: string) =>
+    `/claims-rules/packs/${encodeURIComponent(packCode)}/definitions/`,
   pricelistConfig: (pricelistUuid: string) =>
     `/claims-rules/pricelist-configs/${pricelistUuid}/`,
   remittances: "/eclaims/remittances/",

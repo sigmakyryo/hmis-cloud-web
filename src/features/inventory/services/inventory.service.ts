@@ -58,12 +58,14 @@ export async function searchInventoryProducts(options: {
   tenant?: number;
   is_drug?: boolean;
   is_lab_test?: boolean;
+  visit_uuid?: string;
 } = {}): Promise<InventoryProduct[]> {
   const response = await fetchCatalogProducts({
     search: options.q,
     active: options.active,
     is_drug: options.is_drug,
     is_lab_test: options.is_lab_test,
+    visit_uuid: options.visit_uuid,
     pageSize: 200,
   });
   return response.results;

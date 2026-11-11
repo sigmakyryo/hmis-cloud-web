@@ -67,6 +67,9 @@ function buildCatalogQuery(filters: CatalogListFilters = {}): string {
   if (filters.procedure_context) {
     params.set("procedure_context", filters.procedure_context);
   }
+  if (filters.visit_uuid?.trim()) {
+    params.set("visit_uuid", filters.visit_uuid.trim());
+  }
   const query = params.toString();
   return query ? `?${query}` : "";
 }

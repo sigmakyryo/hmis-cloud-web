@@ -121,6 +121,9 @@ export type InventoryProduct = {
   /** Present when the product is a lab-billable SKU (`metadata.is_lab_test`). */
   lab_configuration?: LabConfigurationStatus | null;
   lab_charge_type?: "individual" | "panel" | null;
+  /** Order-time payer tariff advisories when listed with visit_uuid. */
+  payer_advisories?: Array<{ code: string; message: string }>;
+  payer_tariff?: Record<string, unknown> | null;
   created_at?: string;
   updated_at?: string;
   quantity_available?: string | number;

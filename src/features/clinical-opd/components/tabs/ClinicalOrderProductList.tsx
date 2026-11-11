@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { fetchCatalogProducts } from "@/features/catalog/services/catalog.service";
 import { useWorkspaceRouting } from "@/features/clinical-opd/hooks/use-workspace-routing";
 import type { ClinicalOrderItemType } from "@/features/clinical-opd/schemas/clinical-opd.schema";
+import { formatPayerAdvisoriesLine } from "@/features/clinical-opd/utils/payer-advisories";
 import type { InventoryProduct } from "@/features/inventory/types/inventory.types";
 import { formatProductLabel } from "@/features/inventory/utils/format-inventory";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,7 @@ const PRODUCTS_STALE_MS = 30_000;
 type ClinicalOrderProductListProps = {
   itemType: ClinicalOrderItemType;
   enabled: boolean;
+  visitUuid?: string;
   busyProductUuid: string | null;
   /** productUuid → visit order uuid for active orders on this encounter */
   orderedProductOrderUuids: ReadonlyMap<string, string>;
@@ -71,6 +73,7 @@ function catalogFiltersForItemType(
 export function ClinicalOrderProductList({
   itemType,
   enabled,
+  visitUuid,
   busyProductUuid,
   orderedProductOrderUuids,
   onAddProduct,
@@ -103,6 +106,7 @@ export function ClinicalOrderProductList({
       itemType,
       debouncedSearch,
       filters,
+      visitUuid,
     ],
     queryFn: ({ pageParam }) =>
       fetchCatalogProducts({
@@ -110,6 +114,7 @@ export function ClinicalOrderProductList({
         search: debouncedSearch || undefined,
         page: pageParam,
         pageSize: PAGE_SIZE,
+        visit_uuid: visitUuid,
       }),
     initialPageParam: 1,
     getNextPageParam: (lastPage, pages) =>
@@ -174,6 +179,9 @@ export function ClinicalOrderProductList({
             const meta = [product.default_code, product.uom_name]
               .filter(Boolean)
               .join(" · ");
+            const advisoryLine = formatPayerAdvisoriesLine(
+              product.payer_advisories,
+            );
 
             return (
               <li key={product.uuid}>
@@ -203,6 +211,15 @@ export function ClinicalOrderProductList({
                     {meta ? (
                       <p className="truncate text-[11px] text-dash-muted">
                         {meta}
+                      </p>
+                    ) : null}
+                    {advisoryLine ? (
+                      <p
+                        className="truncate text-[11px] text-red-600"
+                        title={advisoryLine}
+                        data-testid={`clinical-order-product-advisories-${product.uuid}`}
+                      >
+                        {advisoryLine}
                       </p>
                     ) : null}
                   </button>

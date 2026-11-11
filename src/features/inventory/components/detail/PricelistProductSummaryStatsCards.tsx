@@ -10,9 +10,12 @@ import type { PricelistProductSummaryStats } from "@/features/catalog/services/c
 import { cn } from "@/lib/utils";
 import { formatCompactNumber } from "@/utils/format-compact-number";
 
-/** Detail-tab strip: bottom hairline only; tabs nav supplies the top rule. */
+/**
+ * Full-bleed under the detail-tab nav: cancel main padding so the bottom
+ * hairline runs edge-to-edge, then restore content padding and breathing room.
+ */
 const PRICELIST_PRODUCT_INSIGHT_STRIP_CLASS =
-  "grid grid-cols-2 divide-y divide-dash-border/60 border-b border-dash-border/80 sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4 lg:divide-x";
+  "-mx-4 flex flex-wrap items-center gap-x-8 gap-y-3 border-b border-dash-border px-4 py-4 sm:-mx-6 sm:px-6";
 
 type PricelistProductSummaryStatsCardsProps = {
   stats: PricelistProductSummaryStats | null;
@@ -34,9 +37,9 @@ export function PricelistProductSummaryStatsCards({
       >
         {Array.from({ length: 4 }, (_, index) => (
           <div key={index} className={LIST_PAGE_INSIGHT_CELL_CLASS}>
-            <Skeleton className="h-3.5 w-20" />
-            <Skeleton className="mt-2 h-6 w-14" />
-            <Skeleton className="mt-1.5 h-3 w-28" />
+            <Skeleton className="h-3.5 w-10" />
+            <Skeleton className="h-3.5 w-24" />
+            <Skeleton className="h-3 w-28" />
           </div>
         ))}
       </div>
@@ -58,7 +61,7 @@ export function PricelistProductSummaryStatsCards({
         <dd className={LIST_PAGE_INSIGHT_VALUE_CLASS}>
           {formatCompactNumber(totalProducts)}
         </dd>
-        <p className="mt-0.5 text-xs text-brand-muted">Active on this pricelist</p>
+        <p>Active on this pricelist</p>
       </div>
 
       <div className={LIST_PAGE_INSIGHT_CELL_CLASS}>
@@ -66,7 +69,7 @@ export function PricelistProductSummaryStatsCards({
         <dd className={LIST_PAGE_INSIGHT_VALUE_CLASS}>
           {formatCompactNumber(medicines)}
         </dd>
-        <p className="mt-0.5 text-xs text-brand-muted">Stockable / drug products</p>
+        <p>Stockable / drug products</p>
       </div>
 
       <div className={LIST_PAGE_INSIGHT_CELL_CLASS}>
@@ -74,7 +77,7 @@ export function PricelistProductSummaryStatsCards({
         <dd className={LIST_PAGE_INSIGHT_VALUE_CLASS}>
           {formatCompactNumber(services)}
         </dd>
-        <p className="mt-0.5 text-xs text-brand-muted">Non-procedure services</p>
+        <p>Non-procedure services</p>
       </div>
 
       <div className={LIST_PAGE_INSIGHT_CELL_CLASS}>
@@ -82,7 +85,7 @@ export function PricelistProductSummaryStatsCards({
         <dd className={LIST_PAGE_INSIGHT_VALUE_CLASS}>
           {formatCompactNumber(procedures)}
         </dd>
-        <p className="mt-0.5 text-xs text-brand-muted">Procedure products</p>
+        <p>Procedure products</p>
       </div>
     </dl>
   );

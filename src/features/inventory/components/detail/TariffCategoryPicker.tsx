@@ -14,6 +14,10 @@ type TariffCategoryPickerProps = {
   categoryCode?: string | null;
   onCategoryChange: (category: TariffCategory | null) => void;
   disabled?: boolean;
+  packCode?: string | null;
+  label?: string;
+  description?: string;
+  allowClear?: boolean;
 };
 
 function formatCategoryLabel(category: TariffCategory): string {
@@ -25,6 +29,10 @@ export function TariffCategoryPicker({
   categoryCode = null,
   onCategoryChange,
   disabled = false,
+  packCode = null,
+  label = "Category",
+  description = "Search by category name or code.",
+  allowClear = false,
 }: TariffCategoryPickerProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -52,6 +60,7 @@ export function TariffCategoryPicker({
         const response = await fetchTariffCategories({
           search: categoryCode.trim(),
           pageSize: LIST_PAGE_SIZE,
+          pack: packCode?.trim() || undefined,
         });
         const match =
           response.results.find((row) => row.code === categoryCode.trim()) ?? null;
@@ -66,7 +75,7 @@ export function TariffCategoryPicker({
     return () => {
       cancelled = true;
     };
-  }, [category, categoryCode]);
+  }, [category, categoryCode, packCode]);
 
   useEffect(() => {
     if (!open) {
@@ -80,6 +89,7 @@ export function TariffCategoryPicker({
           const response = await fetchTariffCategories({
             search: search.trim() || undefined,
             pageSize: LIST_PAGE_SIZE,
+            pack: packCode?.trim() || undefined,
           });
           setOptions(response.results);
         } catch {
@@ -91,7 +101,7 @@ export function TariffCategoryPicker({
     }, search.trim() ? 250 : 0);
 
     return () => window.clearTimeout(handle);
-  }, [open, search, selected]);
+  }, [open, search, selected, packCode]);
 
   function handleOpenChange(nextOpen: boolean) {
     setOpen(nextOpen);
@@ -101,6 +111,12 @@ export function TariffCategoryPicker({
   }
 
   function handleValueChange(code: string) {
+    if (allowClear && code === "__clear__") {
+      setResolvedCategory(null);
+      onCategoryChange(null);
+      setOpen(false);
+      return;
+    }
     const match =
       options.find((option) => option.code === code) ??
       (selected?.code === code ? selected : null);
@@ -115,10 +131,8 @@ export function TariffCategoryPicker({
   return (
     <div className="space-y-2">
       <div>
-        <Label htmlFor="product-tariff-category-select">Category</Label>
-        <p className="mt-1 text-xs text-brand-muted">
-          Search by category name or code.
-        </p>
+        <Label htmlFor="product-tariff-category-select">{label}</Label>
+        <p className="mt-1 text-xs text-brand-muted">{description}</p>
       </div>
 
       <SearchableSelect
@@ -128,7 +142,7 @@ export function TariffCategoryPicker({
         open={open}
         onOpenChange={handleOpenChange}
         disabled={disabled}
-        placeholder="Select a tariff category"
+        placeholder="Select a benefit category"
         displayValue={
           selected
             ? formatCategoryLabel(selected)
@@ -143,6 +157,11 @@ export function TariffCategoryPicker({
         minSearchLength={0}
         noResultsMessage="No categories found."
       >
+        {allowClear ? (
+          <SelectItem value="__clear__">
+            <span className="text-brand-muted">Clear benefit category</span>
+          </SelectItem>
+        ) : null}
         {options.map((option) => (
           <SelectItem key={option.public_id} value={option.code}>
             <div className="flex flex-col items-start">

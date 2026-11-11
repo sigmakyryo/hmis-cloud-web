@@ -6,12 +6,14 @@ import { PricelistDetailAdvisorPackTab } from "@/features/inventory/components/d
 const fetchPricelistValidationConfigMock = vi.hoisted(() => vi.fn());
 const updatePricelistValidationConfigMock = vi.hoisted(() => vi.fn());
 const fetchValidationPacksMock = vi.hoisted(() => vi.fn());
+const fetchValidationPackDefinitionsMock = vi.hoisted(() => vi.fn());
 const toastMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/features/claims/services/claims.service", () => ({
   fetchPricelistValidationConfig: fetchPricelistValidationConfigMock,
   updatePricelistValidationConfig: updatePricelistValidationConfigMock,
   fetchValidationPacks: fetchValidationPacksMock,
+  fetchValidationPackDefinitions: fetchValidationPackDefinitionsMock,
 }));
 
 vi.mock("@/providers/toast-provider", () => ({
@@ -46,6 +48,20 @@ describe("PricelistDetailAdvisorPackTab", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     fetchValidationPacksMock.mockResolvedValue([VIP_PACK]);
+    fetchValidationPackDefinitionsMock.mockResolvedValue([
+      {
+        code: "MASM_VIP_2026_PREAUTH_REQUIRED",
+        name: "Missing pre-authorisation for pre-auth category",
+        category: "pre_authorisation",
+        severity: "rejection_risk",
+        message: "This MASM VIP benefit category usually requires written pre-authorisation.",
+        recommended_action: "Add the MASM pre-authorisation reference.",
+        requires_ai_review: false,
+        applies_to_categories: [
+          { code: "specialised_lab", name: "Specialised lab" },
+        ],
+      },
+    ]);
     fetchPricelistValidationConfigMock.mockResolvedValue({
       pricelist_uuid: PRICELIST.uuid,
       selected_pack_codes: [],
@@ -83,6 +99,14 @@ describe("PricelistDetailAdvisorPackTab", () => {
     expect(screen.getByTestId("pricelist-advisor-pack-assigned")).toHaveTextContent(
       "MASM VIP 2026",
     );
+    await waitFor(() => {
+      expect(fetchValidationPackDefinitionsMock).toHaveBeenCalledWith("MASM_VIP_2026");
+    });
+    expect(screen.getByTestId("pricelist-advisor-pack-rules")).toBeInTheDocument();
+    expect(screen.getByTestId("pricelist-advisor-rule")).toHaveTextContent(
+      "Missing pre-authorisation for pre-auth category",
+    );
+    expect(screen.getByText("Specialised lab")).toBeInTheDocument();
 
     updatePricelistValidationConfigMock.mockResolvedValueOnce({
       pricelist_uuid: PRICELIST.uuid,

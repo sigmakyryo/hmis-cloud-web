@@ -117,6 +117,11 @@ export type AllergyAlert = {
   match: string;
 };
 
+export type PayerAdvisory = {
+  code: string;
+  message: string;
+};
+
 export type EncounterPrescription = {
   uuid: string;
   product_uuid: string;
@@ -135,6 +140,7 @@ export type EncounterPrescription = {
   visit_order_uuid: string | null;
   prescribed_by_name: string | null;
   allergy_alerts?: AllergyAlert[];
+  payer_advisories?: PayerAdvisory[];
 };
 
 export type EncounterClinicalOrder = {
@@ -158,6 +164,7 @@ export type EncounterClinicalOrder = {
   is_active: boolean;
   metadata?: Record<string, unknown> | null;
   allergy_alerts?: AllergyAlert[];
+  payer_advisories?: PayerAdvisory[];
   referral_uuid?: string | null;
   referral_receiving_clinic_name?: string | null;
   /** FDI teeth billed on procedure orders. */

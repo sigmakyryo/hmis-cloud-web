@@ -29,6 +29,7 @@ import {
   ORDERS_TAB_ITEM_TYPE_OPTIONS,
   getOrdersTabItemTypesForCapabilities,
 } from "@/features/clinical-opd/utils/clinical-order-item-types";
+import { formatPayerAdvisoriesLine } from "@/features/clinical-opd/utils/payer-advisories";
 import { useWorkspaceRouting } from "@/features/clinical-opd/hooks/use-workspace-routing";
 import {
   specialtyAllowsOrderItemType,
@@ -299,6 +300,9 @@ export function OpdOrdersTabPanel({
             const canCancel =
               order.status !== "CANCELLED" && order.status !== "REFERRED";
             const isCancelling = cancellingUuid === order.uuid;
+            const advisoryLine = formatPayerAdvisoriesLine(
+              order.payer_advisories,
+            );
 
             return (
               <li
@@ -311,6 +315,15 @@ export function OpdOrdersTabPanel({
                     <p className="truncate text-sm font-medium text-brand-navy">
                       {order.description || order.item_type_display}
                     </p>
+                    {advisoryLine ? (
+                      <p
+                        className="truncate text-[11px] text-red-600"
+                        title={advisoryLine}
+                        data-testid={`opd-orders-advisories-${order.uuid}`}
+                      >
+                        {advisoryLine}
+                      </p>
+                    ) : null}
                     <div className="flex flex-wrap items-center gap-1.5">
                       <Badge variant={isReferred ? "warning" : "secondary"}>
                         {isReferred

@@ -272,6 +272,7 @@ export function AddClinicalOrderDialog({
         <ClinicalOrderProductList
           itemType={activeTabConfig.itemType}
           enabled
+          visitUuid={visitUuid}
           busyProductUuid={busyProductUuid}
           orderedProductOrderUuids={orderedProductOrderUuids}
           onAddProduct={(product) => {

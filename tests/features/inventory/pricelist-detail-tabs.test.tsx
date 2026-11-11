@@ -42,7 +42,7 @@ afterEach(() => {
 });
 
 describe("PricelistDetailTabs", () => {
-  it("places Settings and Activity after Claims advisor pack", () => {
+  it("places Settings and Activity after Advisor pack", () => {
     render(<PricelistDetailTabs pricelist={PRICELIST} />);
 
     const nav = screen.getByRole("navigation", { name: "Pricelist sections" });
@@ -52,9 +52,9 @@ describe("PricelistDetailTabs", () => {
 
     expect(labels).toEqual([
       "Products",
-      "Rules",
+      "Payment rules",
       "Price approvals",
-      "Claims advisor pack",
+      "Advisor pack",
       "Settings",
       "Activity",
     ]);

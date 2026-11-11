@@ -5,6 +5,11 @@ import type {
 
 export type CatalogProductType = "product" | "consu" | "service";
 
+export type PayerAdvisory = {
+  code: string;
+  message: string;
+};
+
 export type CatalogProduct = {
   id?: number;
   uuid: string;
@@ -26,6 +31,9 @@ export type CatalogProduct = {
   metadata?: InventoryProductMeta | null;
   lab_configuration?: LabConfigurationStatus | null;
   lab_charge_type?: "individual" | "panel" | null;
+  /** Present when listing with visit_uuid (order-time payer tariff checks). */
+  payer_advisories?: PayerAdvisory[];
+  payer_tariff?: Record<string, unknown> | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -51,6 +59,25 @@ export type CatalogPricelistMembership = {
   product_type_label?: string | null;
   /** Display type for the products table (Medicine, Service, Procedure, …). */
   type_label?: string | null;
+  type_category?: string | null;
+  benefit_category?: string | null;
+  benefit_category_name?: string | null;
+  payer_tariff?: {
+    source?: string;
+    external_benefit_id?: string | null;
+    allowed_genders?: string[];
+    min_age_years?: number | null;
+    max_age_years?: number | null;
+    max_units?: number | null;
+    frequency?: number | null;
+    frequency_window_days?: number | null;
+    requires_preauthorization?: boolean;
+    amount_limit?: string | null;
+    service_type?: string | null;
+    version?: string | number | null;
+    start_date?: string | null;
+    end_date?: string | null;
+  } | null;
   is_drug?: boolean | null;
   is_procedure?: boolean | null;
   is_sundry?: boolean | null;
@@ -298,6 +325,8 @@ export type CatalogListFilters = {
   is_drug?: boolean;
   /** Department context for procedure scope (opd | dental | ipd | physio). */
   procedure_context?: "opd" | "dental" | "ipd" | "physio";
+  /** When set, attach visit-scoped payer_advisories from the effective pricelist. */
+  visit_uuid?: string;
 };
 
 export type CreateCatalogProductPayload = {
@@ -342,6 +371,7 @@ export type UpdateCatalogPricelistProductPayload = {
   min_quantity?: number | string;
   date_start?: string | null;
   date_end?: string | null;
+  benefit_category?: string;
 };
 
 export type OrganizationDefaultPricelistUuid = {

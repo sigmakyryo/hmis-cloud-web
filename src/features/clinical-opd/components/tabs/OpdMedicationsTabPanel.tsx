@@ -25,6 +25,7 @@ import {
   useEncounterWorkspace,
 } from "@/features/clinical-opd/hooks/use-clinical-opd";
 import type { EncounterPrescription } from "@/features/clinical-opd/types/clinical-opd.types";
+import { formatPayerAdvisoriesLine } from "@/features/clinical-opd/utils/payer-advisories";
 import { formatDisplayDateTime } from "@/features/customers/utils/format-customer";
 import { BffError } from "@/lib/bff-client";
 import { formatBffErrorMessage } from "@/lib/bff-field-errors";
@@ -116,6 +117,9 @@ export function OpdMedicationsTabPanel({
           const isBusy = busyUuid === prescription.uuid;
           const canCancel =
             canPrescribe && prescription.status !== "cancelled";
+          const advisoryLine = formatPayerAdvisoriesLine(
+            prescription.payer_advisories,
+          );
 
           return (
             <li
@@ -130,6 +134,15 @@ export function OpdMedicationsTabPanel({
                   </p>
                   {sig ? (
                     <p className="truncate text-xs text-brand-muted">{sig}</p>
+                  ) : null}
+                  {advisoryLine ? (
+                    <p
+                      className="truncate text-[11px] text-red-600"
+                      title={advisoryLine}
+                      data-testid={`opd-medications-advisories-${prescription.uuid}`}
+                    >
+                      {advisoryLine}
+                    </p>
                   ) : null}
                   <div className="flex flex-wrap items-center gap-1.5">
                     <Badge variant="secondary">{prescription.status}</Badge>

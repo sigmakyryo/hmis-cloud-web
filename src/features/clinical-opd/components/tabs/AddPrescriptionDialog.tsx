@@ -320,6 +320,7 @@ export function AddPrescriptionDialog({
           required
           drugsOnly
           compact={compact}
+          visitUuid={visitUuid}
           product={product}
           onProductChange={handleProductChange}
           invalid={Boolean(form.formState.errors.product_uuid)}
