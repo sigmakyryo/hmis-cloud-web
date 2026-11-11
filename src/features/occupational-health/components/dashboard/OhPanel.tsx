@@ -2,6 +2,7 @@ import { AlertTriangle, BarChart3, RefreshCw } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { OH_SECTION_LABEL } from "@/features/occupational-health/components/dashboard/oh-flat";
 import { cn } from "@/lib/utils";
 
 type OhPanelProps = {
@@ -15,25 +16,23 @@ type OhPanelProps = {
   id?: string;
 };
 
-/** Bordered dashboard panel with a title row, matching the app's flat list-page cards. */
+/**
+ * Flat dashboard section: small uppercase label, optional description and actions,
+ * content straight on the page background (no border, fill or shadow).
+ */
 export function OhPanel({ title, description, actions, children, className, bodyClassName, "data-testid": testId, id }: OhPanelProps) {
   return (
-    <section
-      id={id}
-      className={cn("flex min-w-0 flex-col rounded-xl border border-dash-border bg-white", className)}
-      data-testid={testId}
-      aria-labelledby={id ? `${id}-title` : undefined}
-    >
-      <header className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 border-b border-dash-border/70 px-4 py-3">
+    <section id={id} className={cn("flex min-w-0 flex-col", className)} data-testid={testId} aria-labelledby={id ? `${id}-title` : undefined}>
+      <header className="mb-4 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
         <div className="min-w-0">
-          <h2 id={id ? `${id}-title` : undefined} className="text-sm font-semibold text-brand-navy">
+          <h2 id={id ? `${id}-title` : undefined} className={OH_SECTION_LABEL}>
             {title}
           </h2>
-          {description ? <p className="mt-0.5 text-[12px] text-dash-muted">{description}</p> : null}
+          {description ? <p className="mt-1 text-[13px] text-brand-slate">{description}</p> : null}
         </div>
         {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
       </header>
-      <div className={cn("min-w-0 flex-1 p-4", bodyClassName)}>{children}</div>
+      <div className={cn("min-w-0 flex-1", bodyClassName)}>{children}</div>
     </section>
   );
 }
