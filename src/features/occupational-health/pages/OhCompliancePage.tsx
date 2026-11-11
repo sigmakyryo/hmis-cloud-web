@@ -14,6 +14,7 @@ import {
   ListPageTableSection,
 } from "@/features/app-shell/components/page-layout";
 import { OhAccessDenied } from "@/features/occupational-health/components/OhAccessDenied";
+import { OhExamBatteryRulesPanel } from "@/features/occupational-health/components/OhExamBatteryRulesPanel";
 import { useOhComplianceDashboard } from "@/features/occupational-health/hooks/use-occupational-health";
 import { downloadOhComplianceExtract } from "@/features/occupational-health/services/oh.service";
 import { canAccessOccupationalHealth } from "@/features/occupational-health/utils/oh-access";
@@ -154,6 +155,7 @@ export function OhCompliancePage() {
             ))}
           </div>
         )}
+        <OhExamBatteryRulesPanel />
       </ListPageTableSection>
     </ListPageLayout>
   );

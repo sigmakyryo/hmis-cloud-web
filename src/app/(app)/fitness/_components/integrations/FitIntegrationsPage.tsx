@@ -21,6 +21,7 @@ import {
   createFitClient,
   fetchFitClients,
   fetchFitOutbox,
+  fetchOhAudit,
   testFitClient,
   updateFitClient,
   type FitClient,
@@ -30,7 +31,7 @@ import { BffError } from "@/lib/bff-client";
 import { useToast } from "@/providers/toast-provider";
 import { SCOPE_LABEL, errorText, fmtDateTime } from "../shared/fit-format";
 
-type Tab = "systems" | "deliveries";
+type Tab = "systems" | "deliveries" | "audit";
 const SCOPES: FitFeedScope[] = ["access_cards", "rosters", "payroll"];
 
 function ClientDrawer({ client: existing, onClose }: { client: FitClient | null; onClose: () => void }) {
@@ -110,6 +111,7 @@ export function FitIntegrationsPage() {
   const [editing, setEditing] = useState<FitClient | "new" | null>(null);
   const clients = useQuery({ queryKey: ["oh-fit", "clients"], queryFn: fetchFitClients, retry: false });
   const outbox = useQuery({ queryKey: ["oh-fit", "outbox"], queryFn: fetchFitOutbox, enabled: tab === "deliveries", retry: false });
+  const audit = useQuery({ queryKey: ["oh-fit", "audit"], queryFn: () => fetchOhAudit(), enabled: tab === "audit", retry: false });
 
   const action = useMutation({
     mutationFn: async ({ kind, client }: { kind: "test" | "pause" | "resume"; client: FitClient }): Promise<unknown> =>
@@ -130,6 +132,7 @@ export function FitIntegrationsPage() {
         tabs={[
           { key: "systems", label: "Connected systems", count: clients.data?.length },
           { key: "deliveries", label: "Deliveries" },
+          { key: "audit", label: "Audit log" },
         ]}
         active={tab}
         onChange={setTab}
@@ -199,6 +202,29 @@ export function FitIntegrationsPage() {
                   <DaCell>
                     <ImmStatusBadge status={r.status === "sent" ? "cleared" : r.status === "failed" ? "fail" : "pending"} label={r.status.replace(/_/g, " ")} />
                   </DaCell>
+                </DaRow>
+              ))}
+            </ImmRecordTable>
+          ) : null}
+        </>
+      ) : null}
+      {tab === "audit" && !forbidden ? (
+        <>
+          {audit.isLoading ? <QuietLoading /> : null}
+          {audit.isError ? <LoadError>{errorText(audit.error, "Could not load the audit log.")}</LoadError> : null}
+          {audit.isSuccess && audit.data.length === 0 ? (
+            <EmptyAction icon="plug" title="No audit events yet" description="Changes to fitness, programmes and access are recorded here." />
+          ) : null}
+          {audit.isSuccess && audit.data.length > 0 ? (
+            <ImmRecordTable columns={["When", "Area", "What", "Who"]}>
+              {audit.data.map((e) => (
+                <DaRow key={e.uuid} testId="oh-audit-row">
+                  <DaCell first>{fmtDateTime(e.occurred_at)}</DaCell>
+                  <DaCell>{e.module.replace(/_/g, " ")}</DaCell>
+                  <DaCell>
+                    <ImmPrimaryCell title={e.summary || `${e.entity_type} ${e.action}`.replace(/[._]/g, " ")} detail={e.entity_type} />
+                  </DaCell>
+                  <DaCell>{e.actor_name || e.actor_type || "—"}</DaCell>
                 </DaRow>
               ))}
             </ImmRecordTable>

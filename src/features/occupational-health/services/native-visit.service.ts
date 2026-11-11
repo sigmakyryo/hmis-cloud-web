@@ -28,3 +28,19 @@ export function completeNativeOhVisit(uuid: string) {
     { method: "POST", body: {} },
   );
 }
+
+export type CancelNativeOhVisitPayload = {
+  outcome: "cancelled" | "no_show";
+  reason: string;
+};
+
+export type CancelledOhVisitEncounter = OhVisitEncounter & {
+  open_billing_lines?: number;
+};
+
+export function cancelNativeOhVisit(uuid: string, payload: CancelNativeOhVisitPayload) {
+  return bffRequest<CancelledOhVisitEncounter>(
+    `/api/occupational-health/visits/${encodeURIComponent(uuid)}/cancel`,
+    { method: "POST", body: payload },
+  );
+}

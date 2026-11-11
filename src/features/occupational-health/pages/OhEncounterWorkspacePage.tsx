@@ -16,6 +16,7 @@ import {
 import { parseExamTemplateSnapshot, type ExamTemplateResponseEnvelope } from "../lib/exam-template-snapshot";
 import { validateExamAnswers } from "../lib/exam-template-validation";
 import { useAppBreadcrumb } from "@/features/app-shell/hooks/use-app-breadcrumb";
+import { OhCancelVisitDialog } from "@/features/occupational-health/components/OhCancelVisitDialog";
 import { OhEncounterContextPanel } from "@/features/occupational-health/components/OhEncounterContextPanel";
 import { OhEncounterEdgeRail } from "@/features/occupational-health/components/OhEncounterEdgeRail";
 import { OhEncounterHeader } from "@/features/occupational-health/components/OhEncounterHeader";
@@ -176,6 +177,7 @@ export function OhEncounterWorkspacePage({
           visitTypeName={encounter.visit_type?.name}
           actions={<div className="flex flex-wrap items-center justify-end gap-3">
             <Link href={ROUTES.occupationalHealth} className="text-[13px] font-medium text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30">OHS Queue</Link>
+            {encounter.origin === "laravel" && encounter.is_active ? <OhCancelVisitDialog encounterUuid={encounter.uuid} disabled={completing} onCancelled={() => void encounterQuery.refetch()} /> : null}
             {encounter.origin === "laravel" && encounter.is_active ? <PrimaryButton type="button" disabled={completing} onClick={async () => {
               if (completionBusy.current) return;
               completionBusy.current = true;

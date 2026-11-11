@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   board: vi.fn(),
   worker: vi.fn(),
   clients: vi.fn(),
+  audit: vi.fn(),
   courses: vi.fn(),
   seed: vi.fn(),
   toast: vi.fn(),
@@ -40,6 +41,7 @@ vi.mock("@/features/occupational-health/services/fitness.service", () => ({
   updateFitClient: vi.fn(),
   testFitClient: vi.fn(),
   fetchFitOutbox: vi.fn(async () => []),
+  fetchOhAudit: (...args: unknown[]) => mocks.audit(...args),
 }));
 
 const CU = "11111111-2222-4333-8444-555555555555";
@@ -124,6 +126,28 @@ it("integrations explains that only administrators can manage it", async () => {
   expect(screen.queryByText("Connect a system")).toBeNull();
 });
 
+it("integrations shows the OH audit log to administrators", async () => {
+  mocks.clients.mockResolvedValue([]);
+  mocks.audit.mockResolvedValue([
+    {
+      uuid: "a1",
+      module: "fitness",
+      entity_type: "training_record",
+      entity_uuid: null,
+      action: "revoked",
+      actor_type: "user",
+      actor_name: "OH Admin",
+      summary: "Training revoked: Working at height",
+      meta: null,
+      occurred_at: "2026-11-11T08:00:00Z",
+    },
+  ]);
+  renderWith(<FitIntegrationsPage />);
+  fireEvent.click(await screen.findByRole("button", { name: /Audit log/ }));
+  expect(await screen.findByText("Training revoked: Working at height")).toBeTruthy();
+  expect(screen.getByText("OH Admin")).toBeTruthy();
+});
+
 it("training courses tab offers example courses when empty", async () => {
   mocks.seed.mockResolvedValue({ created: 5 });
   renderWith(<FitTrainingPage />);
@@ -138,13 +162,15 @@ it("visit panel shows the fit-for-duty summary", async () => {
   expect(await screen.findByText("Training missing: Working at height")).toBeTruthy();
   expect(mocks.worker).toHaveBeenCalledWith(CU);
   expect(screen.getByText("Not cleared until the items below are resolved.")).toBeTruthy();
-  expect(screen.getByTestId("oh-fit-source-training").textContent).toContain("Working at height");
   expect(screen.getByTestId("oh-fit-source-medical").textContent).toContain("OK");
+  expect(screen.getByTestId("oh-fit-source-training").textContent).toContain("Not fit");
   expect(screen.getByTestId("oh-fit-source-fit_test").textContent).toContain("Not on file");
   expect(screen.getByText("Tom Miner")).toBeTruthy();
   expect(screen.getByRole("img", { name: /1 of 6 checks clear/ })).toBeTruthy();
   expect(screen.getByTestId("oh-fit-timeline").textContent).toContain("Medical");
+  expect(screen.getByText(/Training · Blocks clearance/)).toBeTruthy();
 
-  fireEvent.click(screen.getByTestId("oh-fit-source-medical").querySelector("button") as HTMLButtonElement);
-  expect(screen.getByText("Medical: fit")).toBeTruthy();
+  expect(screen.getByTestId("oh-fit-source-details").textContent).toContain("Medical: fit");
+  fireEvent.click(screen.getByTestId("oh-fit-source-training").querySelector("button") as HTMLButtonElement);
+  expect(screen.getByTestId("oh-fit-source-details").textContent).toContain("Working at height");
 });

@@ -95,6 +95,24 @@ export type OhHazard = {
 
 export type OhAssessmentIntervalUnit = "day" | "week" | "month" | "year";
 
+/** A surveillance rule: which exam component is due, how often, for a hazard or hazard profile. */
+export type OhExamBatteryRule = {
+  id: number;
+  uuid: string;
+  component_code: string;
+  exam_type: string;
+  periodicity_months: number | null;
+  hazard_id: number | null;
+  hazard_profile_id: number | null;
+  is_active: boolean;
+};
+
+export type OhSurveillanceScheduleResult = {
+  created: number;
+  completed: number;
+  overdue: number;
+};
+
 export type OhHazardProfile = {
   id: number;
   uuid: string;
@@ -666,13 +684,16 @@ export type FitnessCertificate = {
   uuid: string;
   assessment: number;
   version: number;
-  status: "issued" | "amended" | "withdrawn" | string;
+  status: "issued" | "amended" | "withdrawn" | "superseded" | string;
   valid_from: string;
   valid_to: string | null;
   signed_at: string | null;
   signed_by: number | null;
   payload: Record<string, unknown>;
   previous_certificate: number | null;
+  withdrawn_at?: string | null;
+  withdrawn_by?: number | null;
+  withdrawal_reason?: string | null;
   created_at: string;
   updated_at: string;
 };

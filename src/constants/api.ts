@@ -364,6 +364,10 @@ export const BFF_OCCUPATIONAL_HEALTH_ROUTES = {
     `/api/occupational-health/iod-cases/${uuid}/statutory-pack`,
   campaignQueue: "/api/occupational-health/campaign-queue",
   surveillanceRequirements: "/api/occupational-health/surveillance-requirements",
+  surveillanceSchedule: "/api/occupational-health/surveillance/schedule",
+  examBatteryRules: "/api/occupational-health/exam-battery-rules",
+  examBatteryRule: (uuid: string) =>
+    `/api/occupational-health/exam-battery-rules/${uuid}`,
   fitnessValidityAlerts: "/api/occupational-health/fitness-validity-alerts",
   fitnessCertificates: "/api/occupational-health/fitness-certificates",
   fitnessCertificate: (uuid: string) =>
@@ -377,6 +381,7 @@ export const BFF_OCCUPATIONAL_HEALTH_ROUTES = {
   ohImmVaccines: "/api/occupational-health/immunisation/vaccines",
   ohDrugAlcohol: "/api/occupational-health/drug-alcohol",
   ohFitness: "/api/occupational-health/fitness",
+  ohAudit: "/api/occupational-health/audit",
   ohHealthPrograms: "/api/occupational-health/health-programs",
   ohWellbeing: "/api/occupational-health/wellbeing",
   ohEmployerPortalAdmin: "/api/occupational-health/employer-portal-admin",

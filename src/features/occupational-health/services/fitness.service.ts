@@ -157,3 +157,25 @@ export const updateFitClient = (
 ) => send<FitClient>("PATCH", `clients/${uuid}`, body);
 export const testFitClient = (uuid: string) => send<{ uuid: string; status: string }>("POST", `clients/${uuid}/test`);
 export const fetchFitOutbox = async () => (await get<{ results: FitOutboxRow[] }>("outbox")).results;
+
+export type OhAuditModule = "fitness" | "programs" | "da_risk" | "wellbeing" | "portal";
+
+export type OhAuditEvent = {
+  uuid: string;
+  module: OhAuditModule | string;
+  entity_type: string;
+  entity_uuid: string | null;
+  action: string;
+  actor_type: string | null;
+  actor_name: string | null;
+  summary: string | null;
+  meta: Record<string, unknown> | null;
+  occurred_at: string | null;
+};
+
+/** Latest OH audit events (administrators only; OHS answers 403 otherwise). */
+export const fetchOhAudit = async (params: { module?: OhAuditModule; entity_type?: string } = {}) => {
+  const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => Boolean(v)) as [string, string][]).toString();
+  const path = `${BFF_OCCUPATIONAL_HEALTH_ROUTES.ohAudit}${qs ? `?${qs}` : ""}`;
+  return (await bffRequest<{ results: OhAuditEvent[] }>(path)).results;
+};

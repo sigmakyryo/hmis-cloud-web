@@ -91,13 +91,10 @@ export function OhCertificateForm({
     setIsSubmitting(true);
     try {
       await createFitnessCertificate({
+        // Signer, signing time, status and version are set by the server from the session.
         assessment: selectedAssessment.id,
-        version: 1,
-        status: "issued",
         valid_from: validFrom,
         valid_to: validTo || null,
-        signed_at: new Date().toISOString(),
-        signed_by: userData.id,
         payload: {
           outcome: selectedAssessment.outcome,
           restrictions: restrictionsText

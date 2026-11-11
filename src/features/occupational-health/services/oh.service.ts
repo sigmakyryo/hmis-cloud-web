@@ -33,6 +33,7 @@ import type {
   OhEmployer,
   OhEmployerDepartment,
   OhEmployerSite,
+  OhExamBatteryRule,
   OhExamFinding,
   OhExamination,
   OhTemplateCapture,
@@ -50,6 +51,7 @@ import type {
   OhProgramme,
   OhProgrammeVersion,
   OhPublishedFormConfig,
+  OhSurveillanceScheduleResult,
   OhRequirementsConfig,
   OhVisitEncounter,
   OhVisitHistory,
@@ -737,6 +739,43 @@ export async function fetchSurveillanceRequirements(params?: {
   return response.results;
 }
 
+export async function fetchOhExamBatteryRules() {
+  const response = await bffRequest<ListResponse<OhExamBatteryRule>>(
+    BFF_OCCUPATIONAL_HEALTH_ROUTES.examBatteryRules,
+  );
+  return response.results;
+}
+
+export async function createOhExamBatteryRule(payload: {
+  component_code: string;
+  exam_type: string;
+  periodicity_months: number | null;
+  hazard_profile: number;
+}) {
+  return bffRequest<OhExamBatteryRule>(
+    BFF_OCCUPATIONAL_HEALTH_ROUTES.examBatteryRules,
+    { method: "POST", body: payload },
+  );
+}
+
+export async function updateOhExamBatteryRule(
+  uuid: string,
+  payload: { is_active?: boolean; periodicity_months?: number | null },
+) {
+  return bffRequest<OhExamBatteryRule>(
+    BFF_OCCUPATIONAL_HEALTH_ROUTES.examBatteryRule(uuid),
+    { method: "PATCH", body: payload },
+  );
+}
+
+/** Generate surveillance requirements from the battery rules now (also runs nightly). */
+export async function runOhSurveillanceSchedule() {
+  return bffRequest<OhSurveillanceScheduleResult>(
+    BFF_OCCUPATIONAL_HEALTH_ROUTES.surveillanceSchedule,
+    { method: "POST", body: {} },
+  );
+}
+
 export async function fetchFitnessValidityAlerts() {
   return bffRequest<OhFitnessValidityAlert[]>(
     BFF_OCCUPATIONAL_HEALTH_ROUTES.fitnessValidityAlerts,
@@ -759,7 +798,11 @@ export async function createFitnessCertificate(payload: Record<string, unknown>)
 
 export async function amendFitnessCertificate(
   uuid: string,
-  payload: Record<string, unknown>,
+  payload: {
+    reason: string;
+    valid_to?: string | null;
+    payload?: { restrictions?: string[]; wording?: string };
+  },
 ) {
   return bffRequest<FitnessCertificate>(
     BFF_OCCUPATIONAL_HEALTH_ROUTES.fitnessCertificateAmend(uuid),
@@ -767,10 +810,10 @@ export async function amendFitnessCertificate(
   );
 }
 
-export async function withdrawFitnessCertificate(uuid: string) {
+export async function withdrawFitnessCertificate(uuid: string, reason: string) {
   return bffRequest<FitnessCertificate>(
     BFF_OCCUPATIONAL_HEALTH_ROUTES.fitnessCertificateWithdraw(uuid),
-    { method: "POST", body: {} },
+    { method: "POST", body: { reason } },
   );
 }
 

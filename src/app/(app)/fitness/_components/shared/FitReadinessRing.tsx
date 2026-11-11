@@ -51,7 +51,7 @@ export function FitReadinessRing({
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <Icon className={cn("size-7", iconClassName)} strokeWidth={1.75} aria-hidden />
-        <span className="mt-1 text-[12px] font-semibold tabular-nums text-brand-navy">
+        <span className="mt-1 text-[12px] font-semibold tabular-nums text-brand-primary">
           {clear}
           <span className="font-normal text-dash-muted">/6 clear</span>
         </span>

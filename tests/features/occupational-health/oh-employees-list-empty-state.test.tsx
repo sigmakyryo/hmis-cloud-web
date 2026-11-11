@@ -3,14 +3,15 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { OhEmployeesListPage } from "@/features/occupational-health/pages/OhEmployeesListPage";
 
-const fetchCustomersMock = vi.hoisted(() =>
+// The OH employees list reads OHS (BFF /api/occupational-health/employees), not Django customers.
+const fetchOhEmployeesMock = vi.hoisted(() =>
   vi.fn().mockResolvedValue({
     results: [],
     pagination: { count: 0, next: null, previous: null },
   }),
 );
 
-const fetchCustomerSummaryStatsMock = vi.hoisted(() =>
+const fetchOhEmployeeSummaryMock = vi.hoisted(() =>
   vi.fn().mockResolvedValue(null),
 );
 
@@ -34,12 +35,9 @@ vi.mock("@/providers/toast-provider", () => ({
   useToast: () => ({ toast: vi.fn() }),
 }));
 
-vi.mock("@/features/customers/services/customers.service", () => ({
-  fetchCustomers: fetchCustomersMock,
-}));
-
-vi.mock("@/features/customers/utils/customer-stats", () => ({
-  fetchCustomerSummaryStats: fetchCustomerSummaryStatsMock,
+vi.mock("@/features/occupational-health/services/oh.service", () => ({
+  fetchOhEmployees: fetchOhEmployeesMock,
+  fetchOhEmployeeSummary: fetchOhEmployeeSummaryMock,
 }));
 
 afterEach(() => {
@@ -57,12 +55,8 @@ describe("OhEmployeesListPage empty state", () => {
     expect(screen.queryByTestId("add-client-fab")).not.toBeInTheDocument();
 
     await waitFor(() => {
-      expect(fetchCustomersMock).toHaveBeenCalledWith(
-        expect.objectContaining({ hasEmploymentEpisode: true }),
-      );
+      expect(fetchOhEmployeesMock).toHaveBeenCalled();
     });
-    expect(fetchCustomerSummaryStatsMock).toHaveBeenCalledWith({
-      hasEmploymentEpisode: true,
-    });
+    expect(fetchOhEmployeeSummaryMock).toHaveBeenCalled();
   });
 });
