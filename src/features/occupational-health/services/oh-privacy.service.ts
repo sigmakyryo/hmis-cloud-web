@@ -85,3 +85,26 @@ export const exportDsr = (uuid: string) => bffRequest<Record<string, unknown>>(`
 export const anonymiseDsr = (uuid: string, apply: boolean) =>
   post<AnonymiseResult>(`requests/${uuid}/anonymise`, apply ? { apply: true, confirm: "ANONYMISE" } : {});
 export const closeDsr = (uuid: string, note: string) => post<DataSubjectRequest>(`requests/${uuid}/close`, { note });
+
+export type RetentionCategory = "oh_visits" | "employment_episodes" | "portal_requests" | "immunisation_reminders" | "surveillance_recalls";
+export type RetentionPolicy = {
+  category: RetentionCategory;
+  label: string;
+  action: string;
+  keep_years: number;
+  default_years: number;
+  min_years: number;
+  is_enabled: boolean;
+  enabled_by_name: string;
+  enabled_at: string | null;
+  cutoff: string;
+  eligible: number;
+  last_run_at: string | null;
+  last_result: { eligible: number; applied: number } | null;
+};
+export const fetchRetention = () => bffRequest<{ policies: RetentionPolicy[]; schedule_enabled: boolean }>(`${BASE}/retention`);
+export const updateRetention = (category: RetentionCategory, body: { keep_years?: number; is_enabled?: boolean }) =>
+  bffRequest<RetentionPolicy>(`${BASE}/retention/${category}`, {
+    method: "PATCH",
+    body: body.is_enabled ? { ...body, confirm: "ENABLE" } : body,
+  });

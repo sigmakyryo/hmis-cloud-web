@@ -17,6 +17,9 @@ import {
   DSR_KIND_LABEL,
   anonymiseDsr,
   closeDsr,
+  fetchRetention,
+  updateRetention,
+  type RetentionPolicy,
   decideDsr,
   exportDsr,
   fetchConsents,
@@ -33,7 +36,7 @@ import {
 } from "@/features/occupational-health/services/oh-privacy.service";
 import { useToast } from "@/providers/toast-provider";
 
-type Tab = "requests" | "consent";
+type Tab = "requests" | "consent" | "retention";
 const field = "h-9 w-full rounded-md border border-dash-border px-2.5 text-[13px]";
 const STATUS_BADGE: Record<DsrStatus, string> = { received: "pending", approved: "planned", rejected: "overdue", completed: "cleared" };
 
@@ -88,11 +91,14 @@ export function OhPrivacyPage() {
         tabs={[
           { key: "requests", label: "Data-subject requests" },
           { key: "consent", label: "Consent" },
+          { key: "retention", label: "Retention" },
         ]}
         active={tab}
         onChange={setTab}
       />
-      {tab === "requests" ? <RequestsView /> : <ConsentView />}
+      {tab === "requests" ? <RequestsView /> : null}
+      {tab === "consent" ? <ConsentView /> : null}
+      {tab === "retention" ? <RetentionView /> : null}
     </ImmPageShell>
   );
 }
@@ -405,6 +411,72 @@ function ConsentView() {
       ) : (
         <p className="text-dash-muted">Find a worker to see and record their consent.</p>
       )}
+    </div>
+  );
+}
+
+function RetentionView() {
+  const { toast } = useToast();
+  const client = useQueryClient();
+  const query = useQuery({ queryKey: ["oh-privacy", "retention"], queryFn: fetchRetention, retry: false });
+  const save = useMutation({
+    mutationFn: ({ p, body }: { p: RetentionPolicy; body: { keep_years?: number; is_enabled?: boolean } }) => updateRetention(p.category, body),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ["oh-privacy", "retention"] }),
+    onError: (error) => toast({ variant: "error", title: "Not saved", description: errorText(error) }),
+  });
+  const toggle = (p: RetentionPolicy) => {
+    if (!p.is_enabled && !window.confirm(`Switch on "${p.label}"? ${p.eligible} record(s) are past ${p.keep_years} years and will be changed at the next run.`)) return;
+    save.mutate({ p, body: { is_enabled: !p.is_enabled } });
+  };
+  const years = (p: RetentionPolicy) => {
+    const raw = window.prompt(`Keep for how many years? (at least ${p.min_years})`, String(p.keep_years));
+    if (raw === null) return;
+    const n = Number(raw);
+    if (!Number.isInteger(n) || n < p.min_years) {
+      toast({ variant: "error", title: `Use a whole number of at least ${p.min_years}.` });
+      return;
+    }
+    save.mutate({ p, body: { keep_years: n } });
+  };
+
+  if (query.isLoading) return <QuietLoading />;
+  if (query.isError)
+    return <LoadError>{isForbidden(query.error) ? "Only an administrator can manage retention." : errorText(query.error, "Could not load retention.")}</LoadError>;
+  if (!query.data) return null;
+  return (
+    <div className="space-y-3 pt-3" data-testid="oh-retention-view">
+      <ImmNotice tone="warning">
+        Nothing is deleted. Past retention, identity details or message text are blanked. Defaults are placeholders: confirm the periods with your DPO
+        before switching a rule on.{" "}
+        {query.data.schedule_enabled ? "The nightly job is on for this server." : "The nightly job is off on this server (OHS_RETENTION_SCHEDULE)."}
+      </ImmNotice>
+      <ImmRecordTable columns={["Data", "Keep", "Past retention now", "Rule", "Actions"]}>
+        {query.data.policies.map((p) => (
+          <DaRow key={p.category} testId="oh-retention-row">
+            <DaCell first>
+              <ImmPrimaryCell title={p.label} detail={p.action} />
+            </DaCell>
+            <DaCell>
+              {p.keep_years} years {p.keep_years !== p.default_years ? <span className="text-dash-muted">(default {p.default_years})</span> : null}
+            </DaCell>
+            <DaCell>
+              {p.eligible} before {fmtDate(p.cutoff)}
+            </DaCell>
+            <DaCell>
+              <ImmStatusBadge status={p.is_enabled ? "cleared" : "planned"} label={p.is_enabled ? `On · ${p.enabled_by_name}` : "Off"} />
+              {p.last_result ? <span className="ml-2 text-[12px] text-dash-muted">last run changed {p.last_result.applied}</span> : null}
+            </DaCell>
+            <DaCell actions>
+              <ImmRowAction disabled={save.isPending} onClick={() => years(p)}>
+                Change years
+              </ImmRowAction>
+              <ImmRowAction disabled={save.isPending} onClick={() => toggle(p)}>
+                {p.is_enabled ? "Switch off" : "Switch on"}
+              </ImmRowAction>
+            </DaCell>
+          </DaRow>
+        ))}
+      </ImmRecordTable>
     </div>
   );
 }

@@ -6,6 +6,8 @@ const mocks = vi.hoisted(() => ({
   fetchDsrs: vi.fn(),
   anonymiseDsr: vi.fn(),
   decideDsr: vi.fn(),
+  fetchRetention: vi.fn(),
+  updateRetention: vi.fn(),
   toast: vi.fn(),
 }));
 
@@ -19,6 +21,8 @@ vi.mock("@/features/occupational-health/services/oh-privacy.service", async (imp
     fetchDsrs: (...a: unknown[]) => mocks.fetchDsrs(...a),
     anonymiseDsr: (...a: unknown[]) => mocks.anonymiseDsr(...a),
     decideDsr: (...a: unknown[]) => mocks.decideDsr(...a),
+    fetchRetention: (...a: unknown[]) => mocks.fetchRetention(...a),
+    updateRetention: (...a: unknown[]) => mocks.updateRetention(...a),
   };
 });
 
@@ -85,7 +89,40 @@ describe("OH privacy page", () => {
     await waitFor(() => expect(mocks.decideDsr).toHaveBeenCalledWith(ID, "approve", ""));
   });
 
+  it("shows the retention dry-run report and switches a rule on only after confirming", async () => {
+    mocks.fetchDsrs.mockResolvedValue([]);
+    const policy = {
+      category: "portal_requests",
+      label: "Employer portal requests, closed",
+      action: "Blank the worker name and notes",
+      keep_years: 3,
+      default_years: 3,
+      min_years: 1,
+      is_enabled: false,
+      enabled_by_name: "",
+      enabled_at: null,
+      cutoff: "2023-11-11",
+      eligible: 4,
+      last_run_at: null,
+      last_result: null,
+    };
+    mocks.fetchRetention.mockResolvedValue({ policies: [policy], schedule_enabled: false });
+    mocks.updateRetention.mockResolvedValue({ ...policy, is_enabled: true });
+    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+    renderPage();
+    fireEvent.click(screen.getByText("Retention"));
+    expect(await screen.findByText(/^4 before/)).toBeTruthy();
+    expect(screen.getByText(/nightly job is off/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Switch on" }));
+    expect(mocks.updateRetention).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Switch on" }));
+    await waitFor(() => expect(mocks.updateRetention).toHaveBeenCalledWith("portal_requests", { is_enabled: true }));
+    confirm.mockRestore();
+  });
+
   it("proxies only the privacy endpoints", () => {
+    expect(ohPrivacyProxy.resolve("PATCH", ["retention", "portal_requests"])).not.toBeNull();
+    expect(ohPrivacyProxy.resolve("PATCH", ["retention", "audit_events"])).toBeNull();
     expect(ohPrivacyProxy.resolve("POST", ["requests", ID, "anonymise"])?.path).toBe(`/oh-privacy/requests/${ID}/anonymise`);
     expect(ohPrivacyProxy.resolve("GET", ["requests", ID, "export"])).not.toBeNull();
     expect(ohPrivacyProxy.resolve("GET", ["requests", ID, "anonymise"])).toBeNull();
