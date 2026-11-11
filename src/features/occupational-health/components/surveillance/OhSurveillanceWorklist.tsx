@@ -18,6 +18,7 @@ import {
 } from "@/features/app-shell/components/page-layout";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { OhPanelState } from "@/features/occupational-health/components/dashboard/OhPanel";
+import { OH_STICKY_TABLE } from "@/features/occupational-health/components/dashboard/oh-flat";
 import { OhSortHeader } from "@/features/occupational-health/components/dashboard/OhSortHeader";
 import { downloadText, toCsv, useOhTable } from "@/features/occupational-health/components/dashboard/oh-table";
 import {
@@ -192,7 +193,7 @@ export function OhSurveillanceWorklist({
 
   return (
     <div data-testid="oh-campaign-queue-section">
-      <div className="flex flex-col gap-2 border-b border-dash-border/70 px-4 py-3 lg:flex-row lg:items-center">
+      <div className="flex flex-col gap-2 pb-3 lg:flex-row lg:items-center">
         <div className="lg:w-64">
           <ListPageSearchField
             id="oh-worklist-search"
@@ -245,7 +246,7 @@ export function OhSurveillanceWorklist({
 
       {selectedRows.length > 0 ? (
         <div
-          className="flex flex-wrap items-center gap-2 border-b border-brand-primary/20 bg-brand-tint/50 px-4 py-2 text-[13px]"
+          className="mb-2 flex flex-wrap items-center gap-2 rounded-md bg-brand-tint/60 px-3 py-1.5 text-[13px]"
           role="region"
           aria-label="Bulk actions"
           data-testid="oh-worklist-bulk"
@@ -278,10 +279,10 @@ export function OhSurveillanceWorklist({
         emptyText={rows.length === 0 ? "No due or overdue requirements. Everyone is up to date." : "No requirements match these filters."}
         height={220}
       >
-        <ListPageDataTable>
+        <ListPageDataTable className={OH_STICKY_TABLE}>
           <ListPageDataTableHeader>
             <ListPageDataTableHeaderRow>
-              <ListPageDataTableHeaderCell className="w-9 pl-4">
+              <ListPageDataTableHeaderCell className="w-9 pl-3">
                 <input
                   type="checkbox"
                   className="size-4 accent-brand-primary"
@@ -295,7 +296,7 @@ export function OhSurveillanceWorklist({
               <ListPageDataTableHeaderCell className="hidden md:table-cell">Hazard profile</ListPageDataTableHeaderCell>
               <OhSortHeader label="Site / department" column="site" sort={table.sort} onSort={table.toggleSort} className="hidden lg:table-cell" />
               <OhSortHeader label="Due" column="due" sort={table.sort} onSort={table.toggleSort} />
-              <ListPageDataTableHeaderCell className="pr-4 text-right">
+              <ListPageDataTableHeaderCell className="pr-3 text-right">
                 <span className="sr-only">Actions</span>
               </ListPageDataTableHeaderCell>
             </ListPageDataTableHeaderRow>
@@ -308,7 +309,7 @@ export function OhSurveillanceWorklist({
                 onClick={() => onOpenRow(row)}
                 data-testid="oh-worklist-row"
               >
-                <ListPageDataTableCell className="pl-4" onClick={(e) => e.stopPropagation()}>
+                <ListPageDataTableCell className="pl-3" onClick={(e) => e.stopPropagation()}>
                   <input
                     type="checkbox"
                     className="size-4 accent-brand-primary"
@@ -348,7 +349,7 @@ export function OhSurveillanceWorklist({
                     </Badge>
                   </span>
                 </ListPageDataTableCell>
-                <ListPageDataTableCell className="pr-4 text-right" onClick={(e) => e.stopPropagation()}>
+                <ListPageDataTableCell className="pr-3 text-right" onClick={(e) => e.stopPropagation()}>
                   <Button
                     type="button"
                     variant="outline"

@@ -150,6 +150,27 @@ describe("OhSurveillancePage", () => {
     expect(screen.getByTestId("appointment-dialog")).toHaveTextContent("Bob Banda");
   });
 
+  it("has no page header, keeps actions in a toolbar, shows KPIs flat and switches to recalls", async () => {
+    renderPage();
+    expect(screen.queryByText(/Who is due or overdue for medical surveillance/)).toBeNull();
+    expect(screen.getByRole("heading", { level: 1, name: "Surveillance" }).className).toContain("sr-only");
+    const toolbar = screen.getByRole("toolbar", { name: "Surveillance actions" });
+    expect(within(toolbar).getByRole("button", { name: "Refresh" })).toBeInTheDocument();
+    expect(within(toolbar).getByRole("button", { name: /Export/ })).toBeInTheDocument();
+    fireEvent.click(within(toolbar).getByRole("button", { name: /Send recalls/ }));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    // KPIs are flat figures, not bordered cards.
+    expect(screen.getByTestId("oh-kpi-overdue").className).not.toMatch(/\bborder\b|rounded-xl|shadow/);
+    expect(screen.getByTestId("oh-kpi-overdue").getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(screen.getByTestId("oh-kpi-overdue"));
+    expect(screen.getByTestId("oh-kpi-overdue").getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(screen.getByRole("tab", { name: /Recalls/ }));
+    expect(await screen.findByTestId("oh-surv-recalls")).toBeInTheDocument();
+    fireEvent.click(within(screen.getByTestId("oh-surv-recalls")).getByRole("tab", { name: /Worklist/ }));
+    expect(await screen.findByTestId("oh-campaign-queue-section")).toBeInTheDocument();
+  });
+
   it("shows empty and error states", async () => {
     queue.data = [];
     ext.fetchComplianceInsights.mockRejectedValue(new Error("Insights offline"));

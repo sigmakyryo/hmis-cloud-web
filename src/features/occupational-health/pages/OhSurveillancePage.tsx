@@ -1,25 +1,20 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, BellRing, CalendarClock, CheckCircle2, ClipboardList, Download, Gauge, RefreshCw } from "lucide-react";
+import { format } from "date-fns";
+import { AlertTriangle, BellRing, Download, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import {
-  ListPageHeaderActions,
-  ListPageHeaderSection,
-  ListPageHeaderTitleBlock,
-  ListPageHeaderTopRow,
-  ListPageLayout,
-} from "@/features/app-shell/components/page-layout";
+import { ListPageLayout } from "@/features/app-shell/components/page-layout";
 import { CreateAppointmentDialog } from "@/features/appointments/components/CreateAppointmentDialog";
 import type { Customer } from "@/features/customers/types/customer.types";
 import { OhAccessDenied } from "@/features/occupational-health/components/OhAccessDenied";
 import { OhSurveillanceRecallsCard } from "@/features/occupational-health/components/OhSurveillanceRecallsCard";
 import { OhBreakdownBars, OhColumnChart } from "@/features/occupational-health/components/dashboard/OhCharts";
 import { OhExportDialog } from "@/features/occupational-health/components/dashboard/OhExportDialog";
-import { OhKpiCard, OhKpiGrid } from "@/features/occupational-health/components/dashboard/OhKpiCard";
+import { OhKpiStat, OhKpiStrip } from "@/features/occupational-health/components/dashboard/OhKpiStrip";
 import { OhPanel, OhPanelState } from "@/features/occupational-health/components/dashboard/OhPanel";
 import { OhSegmented } from "@/features/occupational-health/components/dashboard/OhSegmented";
 import { OH_COLORS } from "@/features/occupational-health/components/dashboard/oh-dashboard-colors";
@@ -83,6 +78,20 @@ const WINDOW_BARS = [
 
 type Tab = "worklist" | "recalls";
 
+function SurveillanceTabs({ tab, onChange, count }: { tab: Tab; onChange: (tab: Tab) => void; count: number }) {
+  return (
+    <OhSegmented
+      label="Surveillance views"
+      value={tab}
+      onChange={onChange}
+      options={[
+        { value: "worklist", label: "Worklist", count },
+        { value: "recalls", label: "Recalls" },
+      ]}
+    />
+  );
+}
+
 export function OhSurveillancePage() {
   const { userData, isLoading: isUserLoading } = useUser();
   const { toast } = useToast();
@@ -141,20 +150,24 @@ export function OhSurveillancePage() {
     }
   }
 
+  const updatedAt = campaignQuery.dataUpdatedAt ? format(new Date(campaignQuery.dataUpdatedAt), "HH:mm") : null;
+  const chartColumn = "lg:px-6 lg:first:pl-0 lg:last:pr-0";
+
   return (
     <ListPageLayout data-testid="oh-surveillance-page">
-      <ListPageHeaderSection className="bg-white px-4 pt-4 md:px-6">
-        <ListPageHeaderTopRow>
-          <ListPageHeaderTitleBlock
-            title="Surveillance"
-            description="Who is due or overdue for medical surveillance, where, and what to do next."
-          />
-          <ListPageHeaderActions className="flex flex-wrap items-center gap-2">
+      <h1 className="sr-only">Surveillance</h1>
+      <div data-list-band className="px-4 pb-10 md:px-6">
+        <div
+          className="flex flex-wrap items-center justify-between gap-2 border-b border-dash-border/70 py-3"
+          role="toolbar"
+          aria-label="Surveillance actions"
+        >
+          <div className="flex items-center gap-1.5 text-[12px] text-dash-muted">
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="sm"
-              className="gap-1.5"
+              className="h-8 gap-1.5 px-2 text-[12px] text-dash-muted hover:text-brand-navy"
               disabled={isRefreshing}
               aria-label="Refresh"
               onClick={() => {
@@ -164,107 +177,99 @@ export function OhSurveillancePage() {
               }}
             >
               <RefreshCw className={isRefreshing ? "size-3.5 animate-spin" : "size-3.5"} aria-hidden />
-              <span className="hidden sm:inline">Refresh</span>
+              <span>{isRefreshing ? "Refreshing…" : updatedAt ? `Updated ${updatedAt}` : "Refresh"}</span>
             </Button>
-            <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => setExportOpen(true)}>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" variant="ghost" size="sm" className="h-8 gap-1.5" onClick={() => setExportOpen(true)}>
               <Download className="size-3.5" aria-hidden /> Export
             </Button>
-            <Button type="button" variant="primary" size="sm" className="gap-1.5" onClick={() => setRecallRows([])}>
+            <Button type="button" variant="primary" size="sm" className="h-8 gap-1.5" onClick={() => setRecallRows([])}>
               <BellRing className="size-3.5" aria-hidden /> Send recalls
             </Button>
-          </ListPageHeaderActions>
-        </ListPageHeaderTopRow>
-      </ListPageHeaderSection>
+          </div>
+        </div>
 
-      <div data-list-band className="space-y-4 px-4 pb-8 md:px-6">
-        <OhKpiGrid>
-          <OhKpiCard
+        <OhKpiStrip>
+          <OhKpiStat
             label="Open requirements"
             value={i?.totals.open ?? rows.length}
             hint="due or overdue"
-            icon={ClipboardList}
             isLoading={campaignQuery.isLoading && insights.isLoading}
             onClick={() => applyQuick({})}
             active={filters.status === "all" && filters.due === "any" && tab === "worklist"}
             data-testid="oh-kpi-open"
           />
-          <OhKpiCard
+          <OhKpiStat
             label="Overdue"
             value={overdueCount}
             hint={i ? `${i.due_windows.overdue_30_plus} over 30 days` : undefined}
             tone={overdueCount > 0 ? "danger" : "success"}
-            icon={AlertTriangle}
             isLoading={campaignQuery.isLoading && insights.isLoading}
             onClick={() => applyQuick({ status: "overdue" })}
             active={filters.status === "overdue"}
             data-testid="oh-kpi-overdue"
           />
-          <OhKpiCard
+          <OhKpiStat
             label="Due in 30 days"
             value={next30}
             hint={i ? `${i.due_windows.next_7} in the next 7` : undefined}
             tone="warning"
-            icon={CalendarClock}
             isLoading={campaignQuery.isLoading && insights.isLoading}
             onClick={() => applyQuick({ due: "next_30" })}
             active={filters.due === "next_30"}
             data-testid="oh-kpi-due30"
           />
-          <OhKpiCard
+          <OhKpiStat
             label="Completed, 30 days"
             value={i?.completed.last_30_days ?? "—"}
             delta={{ value: completedDelta, goodWhen: "up", label: "vs previous 30" }}
-            tone="success"
-            icon={CheckCircle2}
             isLoading={insights.isLoading}
             data-testid="oh-kpi-completed"
           />
-          <OhKpiCard
+          <OhKpiStat
             label="Compliance, 3 months"
             value={i?.compliance.rate_3m !== null && i?.compliance.rate_3m !== undefined ? `${Math.round(i.compliance.rate_3m)}%` : "—"}
             delta={{ value: rateDelta, suffix: " pts", goodWhen: "up", label: "vs prior 3 months" }}
             hint={i && i.compliance.rate_3m === null ? "nothing fell due" : undefined}
-            icon={Gauge}
             isLoading={insights.isLoading}
             data-testid="oh-kpi-compliance"
           />
-        </OhKpiGrid>
+        </OhKpiStrip>
 
         {alerts.length > 0 ? (
           <section
-            className="rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3"
+            className="flex flex-col gap-2 border-b border-dash-border/70 py-3 sm:flex-row sm:items-start sm:gap-4"
             data-testid="oh-fitness-validity-alerts"
             aria-label="Fitness certificate alerts"
           >
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="flex items-center gap-2 text-[13px] font-semibold text-amber-950">
-                <AlertTriangle className="size-4" aria-hidden />
-                {alerts.length} fitness certificate{alerts.length === 1 ? "" : "s"} expiring within 30 days
-              </h2>
-              {alerts.length > 4 ? (
-                <Button type="button" variant="ghost" size="sm" className="h-7 text-xs text-amber-900" onClick={() => setAlertsExpanded((v) => !v)}>
-                  {alertsExpanded ? "Show fewer" : `Show all ${alerts.length}`}
-                </Button>
-              ) : null}
-            </div>
-            <ul className="mt-2 grid gap-x-6 gap-y-1 text-[13px] text-amber-950 sm:grid-cols-2">
+            <h2 className="flex shrink-0 items-center gap-2 text-[13px] font-semibold text-amber-800">
+              <AlertTriangle className="size-4" aria-hidden />
+              {alerts.length} fitness certificate{alerts.length === 1 ? "" : "s"} expiring within 30 days
+            </h2>
+            <ul className="flex min-w-0 flex-1 flex-wrap gap-x-5 gap-y-1 text-[13px] text-brand-slate">
               {(alertsExpanded ? alerts : alerts.slice(0, 4)).map((alert) => (
-                <li key={alert.employment_episode_uuid} className="truncate">
-                  <Link className="font-medium underline-offset-2 hover:underline" href={ROUTES.occupationalHealthEmployment(alert.customer_uuid)}>
+                <li key={alert.employment_episode_uuid} className="whitespace-nowrap">
+                  <Link className="font-medium text-brand-navy underline-offset-2 hover:underline" href={ROUTES.occupationalHealthEmployment(alert.customer_uuid)}>
                     {alert.customer_name}
                   </Link>
-                  <span className="text-amber-800">
+                  <span className="text-dash-muted">
                     {" "}
                     · {alert.certificate_valid_to ? `valid to ${alert.certificate_valid_to}` : alert.alert_codes.map((c) => c.replace(/_/g, " ")).join(", ")}
                   </span>
                 </li>
               ))}
             </ul>
+            {alerts.length > 4 ? (
+              <Button type="button" variant="ghost" size="sm" className="h-7 shrink-0 self-start px-2 text-xs text-amber-800" onClick={() => setAlertsExpanded((v) => !v)}>
+                {alertsExpanded ? "Show fewer" : `Show all ${alerts.length}`}
+              </Button>
+            ) : null}
           </section>
         ) : null}
 
-        <div className="grid gap-4 lg:grid-cols-3">
-          <OhPanel title="When work falls due" description="Open requirements by due window (late, days ahead)">
+        <div className="grid gap-10 border-b border-dash-border/70 py-7 lg:grid-cols-3 lg:gap-0 lg:divide-x lg:divide-dash-border/70">
+          <OhPanel className={chartColumn} title="When work falls due" description="Open requirements by due window">
             <OhPanelState
               isLoading={insights.isLoading}
               error={insights.error}
@@ -282,33 +287,24 @@ export function OhSurveillancePage() {
               ) : null}
             </OhPanelState>
           </OhPanel>
-          <OhPanel title="Open work by exam" description="Due and overdue, top exams">
+          <OhPanel className={chartColumn} title="Open work by exam" description="Due and overdue, top exams">
             <OhPanelState isLoading={insights.isLoading} error={insights.error} onRetry={() => void insights.refetch()} isEmpty={!i?.by_exam.length} emptyText="No open requirements." height={220}>
               {i ? <OhBreakdownBars data={i.by_exam} label="Open requirements by exam" max={6} /> : null}
             </OhPanelState>
           </OhPanel>
-          <OhPanel title="Open work by site" description="Where to plan clinic days">
+          <OhPanel className={chartColumn} title="Open work by site" description="Where to plan clinic days">
             <OhPanelState isLoading={insights.isLoading} error={insights.error} onRetry={() => void insights.refetch()} isEmpty={!i?.by_site.length} emptyText="No open requirements." height={220}>
               {i ? <OhBreakdownBars data={i.by_site} label="Open requirements by site" max={6} /> : null}
             </OhPanelState>
           </OhPanel>
         </div>
 
-        <div className="space-y-3">
-          <OhSegmented
-            label="Surveillance views"
-            value={tab}
-            onChange={setTab}
-            options={[
-              { value: "worklist", label: "Worklist", count: rows.length },
-              { value: "recalls", label: "Recalls" },
-            ]}
-          />
+        <div className="pt-7">
           {tab === "worklist" ? (
             <OhPanel
               title="Due & overdue requirements"
               description="Click a row for details. Select rows to send recalls or export."
-              bodyClassName="p-0"
+              actions={<SurveillanceTabs tab={tab} onChange={setTab} count={rows.length} />}
             >
               <OhSurveillanceWorklist
                 rows={rows}
@@ -323,7 +319,7 @@ export function OhSurveillancePage() {
               />
             </OhPanel>
           ) : (
-            <OhSurveillanceRecallsCard />
+            <OhSurveillanceRecallsCard tabs={<SurveillanceTabs tab={tab} onChange={setTab} count={rows.length} />} />
           )}
         </div>
       </div>

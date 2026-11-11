@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BellRing, Check, ExternalLink } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import {
 } from "@/features/app-shell/components/page-layout";
 import { OhConfirmDialog } from "@/features/occupational-health/components/dashboard/OhConfirmDialog";
 import { OhPanel, OhPanelState } from "@/features/occupational-health/components/dashboard/OhPanel";
+import { OH_STICKY_TABLE } from "@/features/occupational-health/components/dashboard/oh-flat";
 import { OhSegmented } from "@/features/occupational-health/components/dashboard/OhSegmented";
 import { OhSendRecallDialog } from "@/features/occupational-health/components/surveillance/OhSendRecallDialog";
 import { examTypeLabel, formatDate } from "@/features/occupational-health/components/surveillance/oh-surveillance-utils";
@@ -38,7 +39,8 @@ const STAGE: Record<OhSurvRecall["stage"], { label: string; variant: "warning" |
 type StageFilter = "all" | OhSurvRecall["stage"];
 
 /** Medical surveillance recall worklist: open in-app recalls, mark done, and send recalls (with confirmation). */
-export function OhSurveillanceRecallsCard() {
+/** Open in-app recalls by stage. `tabs` lets the page put its view switcher in the section header. */
+export function OhSurveillanceRecallsCard({ tabs }: { tabs?: ReactNode } = {}) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [stage, setStage] = useState<StageFilter>("all");
@@ -74,21 +76,19 @@ export function OhSurveillanceRecallsCard() {
 
   return (
     <OhPanel
-      title={
-        <span className="inline-flex items-center gap-2">
-          <BellRing className="size-4 text-brand-primary" aria-hidden /> Recalls
-        </span>
-      }
+      title="Recalls"
       description={`${rows.length} open in-app recall${rows.length === 1 ? "" : "s"}. Mark one done once the worker is booked or seen.`}
       actions={
-        <Button type="button" size="sm" variant="primary" className="h-8 gap-1.5" onClick={() => setSendOpen(true)}>
-          <BellRing className="size-3.5" aria-hidden /> Send recalls…
-        </Button>
+        <>
+          {tabs}
+          <Button type="button" size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => setSendOpen(true)}>
+            <BellRing className="size-3.5" aria-hidden /> Send recalls…
+          </Button>
+        </>
       }
-      bodyClassName="p-0"
       data-testid="oh-surv-recalls"
     >
-      <div className="border-b border-dash-border/70 px-4 py-2.5">
+      <div className="pb-3">
         <OhSegmented
           label="Recall stage"
           value={stage}
@@ -101,7 +101,7 @@ export function OhSurveillanceRecallsCard() {
           ]}
         />
       </div>
-      <div className="p-4 pt-2">
+      <div>
         <OhPanelState
           isLoading={recalls.isLoading}
           error={recalls.error}
@@ -110,7 +110,7 @@ export function OhSurveillanceRecallsCard() {
           emptyText={rows.length === 0 ? "No open recalls. Send recalls to remind workers who are due." : "No recalls at this stage."}
           height={160}
         >
-          <ListPageDataTable>
+          <ListPageDataTable className={OH_STICKY_TABLE}>
             <ListPageDataTableHeader>
               <ListPageDataTableHeaderRow>
                 <ListPageDataTableHeaderCell>Stage</ListPageDataTableHeaderCell>
