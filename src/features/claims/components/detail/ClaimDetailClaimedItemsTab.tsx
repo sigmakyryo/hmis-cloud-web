@@ -19,6 +19,7 @@ import {
   shouldShowRemittanceSettlementBadge,
 } from "@/features/claims/components/LineRemittanceSettlementBadge";
 import type { ClaimDetail, ClaimLineItem } from "@/features/claims/types/claims.types";
+import { formatPayerAdvisoriesLine } from "@/features/catalog/utils/payer-advisories";
 import { formatAmountNumber } from "@/features/sales-orders/utils/format-sales-order";
 import { ROUTES } from "@/constants/routes";
 import { cn } from "@/lib/utils";
@@ -130,13 +131,28 @@ export function ClaimDetailClaimedItemsTab({
                     </ListPageDataTableHeaderRow>
                   </ListPageDataTableHeader>
                   <ListPageDataTableBody>
-                    {claimInvoice.line_items.map((line) => (
+                    {claimInvoice.line_items.map((line) => {
+                      const advisoryLine = formatPayerAdvisoriesLine(
+                        line.payer_advisories,
+                      );
+                      return (
                       <ListPageDataTableRow key={line.id}>
                         <ListPageDataTableCell>
                           {formatLineDate(line.date_created)}
                         </ListPageDataTableCell>
                         <ListPageDataTableCell className="font-medium text-brand-navy">
-                          {formatLineName(line)}
+                          <div className="space-y-0.5">
+                            <p>{formatLineName(line)}</p>
+                            {advisoryLine ? (
+                              <p
+                                className="truncate text-[11px] font-normal text-red-600"
+                                title={advisoryLine}
+                                data-testid={`claim-line-advisories-${line.id}`}
+                              >
+                                {advisoryLine}
+                              </p>
+                            ) : null}
+                          </div>
                         </ListPageDataTableCell>
                         <ListPageDataTableCell className="font-mono">
                           {formatTariffCode(line.tariff_code)}
@@ -160,7 +176,8 @@ export function ClaimDetailClaimedItemsTab({
                           ) : null}
                         </ListPageDataTableCell>
                       </ListPageDataTableRow>
-                    ))}
+                      );
+                    })}
                   </ListPageDataTableBody>
                 </ListPageDataTable>
               )}

@@ -216,9 +216,6 @@ export function CustomersListPage() {
   }, [listFilters]);
 
   useEffect(() => {
-    if (!membershipSearchOpen || membershipPayers.length > 0) {
-      return;
-    }
     let active = true;
     void fetchOrganizationPayers()
       .then((response) => {
@@ -234,7 +231,7 @@ export function CustomersListPage() {
     return () => {
       active = false;
     };
-  }, [membershipPayers.length, membershipSearchOpen]);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -362,6 +359,10 @@ export function CustomersListPage() {
     !isLoading && !error && totalCount === 0 && !hasActiveQuery;
   const isFilteredEmpty =
     !isLoading && !error && customers.length === 0 && hasActiveQuery;
+  const openMembershipSearch =
+    membershipPayers.length > 0
+      ? () => setMembershipSearchOpen(true)
+      : undefined;
 
   const directoryHeader = (
     <CustomersPageHeader
@@ -373,11 +374,7 @@ export function CustomersListPage() {
       onClearSearch={handleClearSearch}
       onFiltersApply={handleFiltersApply}
       onAddClient={handleAddClient}
-      onSearchMembership={
-        membershipPayers.length > 0
-          ? () => setMembershipSearchOpen(true)
-          : undefined
-      }
+      onSearchMembership={openMembershipSearch}
     />
   );
 
@@ -459,7 +456,10 @@ export function CustomersListPage() {
       />
 
       {hasNoCustomerRecords ? (
-        <CustomersEmptyState onAddClient={handleAddClient} />
+        <CustomersEmptyState
+          onAddClient={handleAddClient}
+          onSearchMembership={openMembershipSearch}
+        />
       ) : (
         <>
           <ListPageTableSection>

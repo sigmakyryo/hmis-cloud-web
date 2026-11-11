@@ -31,7 +31,7 @@ type ClinicalOrderProductListProps = {
 
 function catalogFiltersForItemType(
   itemType: ClinicalOrderItemType,
-  procedureContext: "opd" | "dental",
+  procedureContext: "opd" | "dental" | "ipd",
 ) {
   switch (itemType) {
     case "LABORATORY":

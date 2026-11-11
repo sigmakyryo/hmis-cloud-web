@@ -22,7 +22,6 @@ import {
   toolActivityLabel,
 } from "@/features/oh-template-builder/lib/parseAiStream";
 import {
-  TEMPLATE_KIND_META,
   templateGalleryHref,
   templateQueryKeys,
 } from "@/features/oh-template-builder/lib/templateKinds";

@@ -55,7 +55,7 @@ export function PricelistMasmSyncJobPanel({
             names_updated: terminalJob.names_updated ?? 0,
           },
           {
-            id: syncToastId,
+            replaceId: syncToastId,
             title: "MASM Core prices synced",
           },
         );

@@ -91,7 +91,10 @@ export function validateCertificateAiDraft(raw: string): { assistant_message: st
 }
 
 /** Shared transport framing; domain-specific wording must not imply an exam edits COF resources. */
-export async function* readTemplateAiStream(response: Response, kind: "exam" | "certificate") {
+export async function* readTemplateAiStream(
+  response: Response,
+  kind: "employee" | "exam" | "certificate",
+) {
   try {
     yield* readCertificateAiStream(response);
   } catch (error) {

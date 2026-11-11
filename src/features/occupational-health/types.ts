@@ -563,6 +563,7 @@ export type OhExamination = {
   form_schema?: OhFormSchema | null;
   checklist_complete?: boolean;
   encounter_department_type?: string;
+  is_active?: boolean;
   created_at: string;
   updated_at: string;
 };

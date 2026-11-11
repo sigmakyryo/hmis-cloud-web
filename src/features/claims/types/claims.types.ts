@@ -46,6 +46,7 @@ export type ClaimLineItem = {
   is_procedure?: boolean;
   dental?: ClaimLineItemDental[];
   remittance_settlement_status?: RemittanceLineSettlementStatus | null;
+  payer_advisories?: Array<{ code: string; message: string }>;
   created_at: string;
   updated_at: string;
 };

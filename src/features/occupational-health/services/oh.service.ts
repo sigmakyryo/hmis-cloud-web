@@ -1806,7 +1806,7 @@ export async function publishOhEmployeeFormTemplate(templateUuid: string) {
 }
 
 export async function fetchOhEmployeeFormTemplateVersions(templateUuid: string) {
-  return bffRequest<OhTemplateVersion[]>(
+  return bffRequest<OhExamTemplateVersion[]>(
     BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormTemplateVersions(templateUuid),
   );
 }

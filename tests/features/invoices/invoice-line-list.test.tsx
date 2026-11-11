@@ -1,8 +1,12 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { InvoiceLineList } from "@/features/invoices/components/detail/InvoiceLineList";
 import type { Invoice } from "@/features/invoices/types/invoice.types";
+
+afterEach(() => {
+  cleanup();
+});
 
 const invoice = {
   id: 81,
@@ -63,5 +67,54 @@ describe("InvoiceLineList", () => {
     expect(screen.queryByRole("columnheader", { name: "Client" })).not.toBeInTheDocument();
     expect(screen.queryByText("10,000.00")).not.toBeInTheDocument();
     expect(screen.queryByText("5,000.00")).not.toBeInTheDocument();
+  });
+
+  it("renders subtle red payer advisories under the line name", () => {
+    render(
+      <InvoiceLineList
+        invoice={
+          {
+            ...invoice,
+            lines: [
+              {
+                ...invoice.lines![0],
+                payer_advisories: [
+                  {
+                    code: "requires_preauthorization",
+                    message: "Pre-authorisation required",
+                  },
+                ],
+              },
+            ],
+          } as Invoice
+        }
+        onViewDetails={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("invoice-line-advisories-11")).toHaveTextContent(
+      "Pre-authorisation required",
+    );
+  });
+
+  it("omits advisory text when payer_advisories are empty", () => {
+    render(
+      <InvoiceLineList
+        invoice={
+          {
+            ...invoice,
+            lines: [
+              {
+                ...invoice.lines![0],
+                payer_advisories: [],
+              },
+            ],
+          } as Invoice
+        }
+        onViewDetails={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByTestId("invoice-line-advisories-11")).not.toBeInTheDocument();
   });
 });

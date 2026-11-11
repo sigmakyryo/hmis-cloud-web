@@ -218,7 +218,13 @@ export function ItemInspector({ attachment, item }: ItemInspectorProps) {
                     name="billing"
                     render={({ field }) => (
                       <ItemBillingFields
-                        value={field.value}
+                        value={
+                          field.value ?? {
+                            destination: null,
+                            billable: false,
+                            productUuids: [],
+                          }
+                        }
                         onChange={field.onChange}
                         formBillable={Boolean(template?.billing.billable)}
                       />

@@ -185,7 +185,7 @@ export function summarizeExamAnswers(
       });
     }
     if (section.content_mode === "direct") {
-      for (const field of section.response_fields) {
+      for (const field of section.response_fields ?? []) {
         const raw = answers.fields[section.code]?.[field.code] ?? "";
         if (String(raw).trim() === "") continue;
         rows.push({
@@ -197,9 +197,14 @@ export function summarizeExamAnswers(
       continue;
     }
     for (const item of section.items) {
-      if (!picks.includes(item.code) && !picks.includes(item.uuid)) continue;
+      if (
+        !picks.includes(item.code) &&
+        !(item.uuid != null && picks.includes(item.uuid))
+      ) {
+        continue;
+      }
       const owner = `${section.code}:${item.code}`;
-      for (const field of item.response_fields) {
+      for (const field of item.response_fields ?? []) {
         const raw = answers.fields[owner]?.[field.code] ?? "";
         if (String(raw).trim() === "") continue;
         rows.push({

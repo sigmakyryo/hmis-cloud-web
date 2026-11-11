@@ -30,6 +30,7 @@ export type InvoiceLine = {
   excess_amount?: string | number | null;
   pricing_rule_snapshot?: Record<string, unknown> | null;
   remittance_settlement_status?: RemittanceLineSettlementStatus | null;
+  payer_advisories?: Array<{ code: string; message: string }>;
 };
 
 export type Invoice = {

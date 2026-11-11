@@ -69,7 +69,7 @@ afterEach(() => {
 });
 
 describe("CustomersListPage empty state", () => {
-  it("hides header actions when there are no clients", async () => {
+  it("hides directory header but keeps register and membership search", async () => {
     render(<CustomersListPage />);
 
     expect(await screen.findByTestId("customers-empty-state")).toBeInTheDocument();
@@ -77,11 +77,10 @@ describe("CustomersListPage empty state", () => {
     expect(screen.queryByTestId("customers-search")).not.toBeInTheDocument();
     expect(screen.queryByTestId("customers-search-submit")).not.toBeInTheDocument();
     expect(screen.queryByTestId("customers-filters-button")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("membership-search-button")).not.toBeInTheDocument();
     expect(screen.queryByTestId("add-client-button")).not.toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.queryByTestId("customers-search")).not.toBeInTheDocument();
+      expect(screen.getByTestId("membership-search-button")).toBeInTheDocument();
     });
   });
 });

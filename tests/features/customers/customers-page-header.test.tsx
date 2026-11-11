@@ -52,4 +52,24 @@ describe("CustomersPageHeader", () => {
     fireEvent.click(screen.getByTestId("add-client-button"));
     expect(onAddClient).toHaveBeenCalledTimes(1);
   });
+
+  it("shows membership search when onSearchMembership is provided", () => {
+    const onSearchMembership = vi.fn();
+
+    render(
+      <CustomersPageHeader
+        search=""
+        filters={defaultFilters}
+        onSearchChange={vi.fn()}
+        onSearchSubmit={vi.fn()}
+        onClearSearch={vi.fn()}
+        onFiltersApply={vi.fn()}
+        onAddClient={vi.fn()}
+        onSearchMembership={onSearchMembership}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("membership-search-button"));
+    expect(onSearchMembership).toHaveBeenCalledTimes(1);
+  });
 });

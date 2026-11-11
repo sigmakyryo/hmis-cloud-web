@@ -17,6 +17,7 @@ import {
   LineRemittanceSettlementBadge,
   shouldShowRemittanceSettlementBadge,
 } from "@/features/claims/components/LineRemittanceSettlementBadge";
+import { formatPayerAdvisoriesLine } from "@/features/catalog/utils/payer-advisories";
 import type { Invoice, InvoiceLine } from "@/features/invoices/types/invoice.types";
 import { formatInvoiceAmount } from "@/features/invoices/utils/format-invoice";
 import { isInvoiceLineNonPayable } from "@/features/invoices/utils/invoice-line-payability";
@@ -99,30 +100,43 @@ export function InvoiceLineList({
           </ListPageDataTableHeaderRow>
         </ListPageDataTableHeader>
         <ListPageDataTableBody>
-          {lines.map((line) => (
+          {lines.map((line) => {
+            const advisoryLine = formatPayerAdvisoriesLine(line.payer_advisories);
+            return (
               <ListPageDataTableRow key={line.id}>
                 <ListPageDataTableCell className="py-3">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => onViewDetails(line)}
-                      className="text-left text-sm font-medium text-brand-navy hover:text-brand-primary"
-                    >
-                      {line.name}
-                    </button>
-                    {showNonPayableBadges && isInvoiceLineNonPayable(line) ? (
-                      <LineNonPayableBadge />
-                    ) : showNonPayableBadges ? (
-                      <Badge variant="success" className="font-normal">
-                        Payable
-                      </Badge>
-                    ) : null}
-                    {shouldShowRemittanceSettlementBadge(
-                      line.remittance_settlement_status,
-                    ) ? (
-                      <LineRemittanceSettlementBadge
-                        status={line.remittance_settlement_status}
-                      />
+                  <div className="space-y-0.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => onViewDetails(line)}
+                        className="text-left text-sm font-medium text-brand-navy hover:text-brand-primary"
+                      >
+                        {line.name}
+                      </button>
+                      {showNonPayableBadges && isInvoiceLineNonPayable(line) ? (
+                        <LineNonPayableBadge />
+                      ) : showNonPayableBadges ? (
+                        <Badge variant="success" className="font-normal">
+                          Payable
+                        </Badge>
+                      ) : null}
+                      {shouldShowRemittanceSettlementBadge(
+                        line.remittance_settlement_status,
+                      ) ? (
+                        <LineRemittanceSettlementBadge
+                          status={line.remittance_settlement_status}
+                        />
+                      ) : null}
+                    </div>
+                    {advisoryLine ? (
+                      <p
+                        className="truncate text-[11px] text-red-600"
+                        title={advisoryLine}
+                        data-testid={`invoice-line-advisories-${line.id}`}
+                      >
+                        {advisoryLine}
+                      </p>
                     ) : null}
                   </div>
                 </ListPageDataTableCell>
@@ -151,7 +165,8 @@ export function InvoiceLineList({
                   </Button>
                 </ListPageDataTableCell>
               </ListPageDataTableRow>
-            ))}
+            );
+          })}
         </ListPageDataTableBody>
       </ListPageDataTable>
     </div>
