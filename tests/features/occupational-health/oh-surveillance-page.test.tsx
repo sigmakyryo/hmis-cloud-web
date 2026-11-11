@@ -4,6 +4,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { OhSurveillancePage } from "@/features/occupational-health/pages/OhSurveillancePage";
 
+vi.mock("@/features/occupational-health/components/OhSurveillanceRecallsCard", () => ({
+  OhSurveillanceRecallsCard: () => null,
+}));
+
 vi.mock("@/providers/user-provider", () => ({
   useUser: () => ({
     isLoading: false,

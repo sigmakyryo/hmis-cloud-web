@@ -26,6 +26,7 @@ import { CreateAppointmentDialog } from "@/features/appointments/components/Crea
 import { OpdEncounterStatusBadge } from "@/features/clinical-opd/components/OpdEncounterStatusBadge";
 import type { Customer } from "@/features/customers/types/customer.types";
 import { OhAccessDenied } from "@/features/occupational-health/components/OhAccessDenied";
+import { OhSurveillanceRecallsCard } from "@/features/occupational-health/components/OhSurveillanceRecallsCard";
 import { canAccessOccupationalHealth } from "@/features/occupational-health/utils/oh-access";
 import {
   useOhCampaignQueue,
@@ -182,6 +183,8 @@ export function OhSurveillancePage() {
             </ul>
           </section>
         ) : null}
+
+        <OhSurveillanceRecallsCard />
 
         <section className="grid gap-3 border-b border-dash-border px-4 py-3 md:grid-cols-4 md:px-6">
           <div className="space-y-1.5">
