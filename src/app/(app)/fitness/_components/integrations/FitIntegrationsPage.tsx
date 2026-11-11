@@ -30,9 +30,21 @@ import {
 import { BffError } from "@/lib/bff-client";
 import { useToast } from "@/providers/toast-provider";
 import { SCOPE_LABEL, errorText, fmtDateTime } from "../shared/fit-format";
+import { OhDataExchange } from "./OhDataExchange";
 
-type Tab = "systems" | "deliveries" | "audit";
-const SCOPES: FitFeedScope[] = ["access_cards", "rosters", "payroll", "hr_events"];
+type Tab = "systems" | "deliveries" | "data" | "audit";
+const SCOPES: FitFeedScope[] = [
+  "access_cards",
+  "rosters",
+  "payroll",
+  "hr_events",
+  "certificate_events",
+  "surveillance_events",
+  "iod_events",
+  "exports",
+  "roster_import",
+  "device_import",
+];
 
 function ClientDrawer({ client: existing, onClose }: { client: FitClient | null; onClose: () => void }) {
   const { toast } = useToast();
@@ -132,6 +144,7 @@ export function FitIntegrationsPage() {
         tabs={[
           { key: "systems", label: "Connected systems", count: clients.data?.length },
           { key: "deliveries", label: "Deliveries" },
+          { key: "data", label: "Imports & exports" },
           { key: "audit", label: "Audit log" },
         ]}
         active={tab}
@@ -208,6 +221,7 @@ export function FitIntegrationsPage() {
           ) : null}
         </>
       ) : null}
+      {tab === "data" && !forbidden ? <OhDataExchange /> : null}
       {tab === "audit" && !forbidden ? (
         <>
           {audit.isLoading ? <QuietLoading /> : null}

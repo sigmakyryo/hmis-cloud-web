@@ -38,6 +38,7 @@ import { OhVisitCancellationsReport } from "@/features/occupational-health/compo
 import { OhSurveillanceRecallsCard } from "@/features/occupational-health/components/OhSurveillanceRecallsCard";
 import { OhRecordDetailPage } from "@/features/occupational-health/pages/OhRecordDetailPage";
 import { ohExtProxy } from "@/lib/server/oh-ext-bff";
+import { OhDataExchange } from "@/app/(app)/fitness/_components/integrations/OhDataExchange";
 
 const UUID = "0b7c3f9e-1d2a-4c5b-8e6f-7a8b9c0d1e2f";
 
@@ -172,5 +173,45 @@ describe("sick leave detail", () => {
         body: { returned_on: "2026-06-06", outcome: "fit_with_restrictions", restrictions: ["No lifting"] },
       }),
     );
+  });
+});
+
+describe("integration imports and exports", () => {
+  it("allowlists dataset exports and lists them with CSV links", async () => {
+    expect(ohExtProxy.resolve("GET", ["oh", "integrations", "exports", "workers", "csv"])).not.toBeNull();
+    expect(ohExtProxy.resolve("GET", ["oh", "integrations", "exports", "secrets"])).toBeNull();
+    mocks.bffRequest.mockResolvedValueOnce({
+      datasets: [{ code: "workers", label: "Workers and employment", columns: ["customer_uuid"] }],
+      device_templates: { hearing: [], lung: [] },
+      roster_columns: [],
+      scopes: { events: [], api: [] },
+    });
+    renderWithClient(<OhDataExchange />);
+    expect(await screen.findByText("Workers and employment")).toBeTruthy();
+    const link = screen.getByText("CSV").closest("a");
+    expect(link?.getAttribute("href")).toContain("oh/integrations/exports/workers/csv");
+  });
+
+  it("checks a roster file before it can be imported", async () => {
+    mocks.bffRequest.mockImplementation((path: string, init?: { body?: { dry_run?: boolean } }) => {
+      if (path.endsWith("oh/integrations")) return Promise.resolve({ datasets: [], device_templates: { hearing: [], lung: [] }, roster_columns: [], scopes: { events: [], api: [] } });
+      return Promise.resolve({
+        dry_run: init?.body?.dry_run ?? true,
+        summary: { created: 1, error: 0 },
+        rows: [{ line: 2, customer_uuid: UUID, employee_number: "E1", action: "created" }],
+      });
+    });
+    renderWithClient(<OhDataExchange />);
+    const file = new File(["customer_uuid,employer\n" + UUID + ",Acme\n"], "roster.csv", { type: "text/csv" });
+    fireEvent.change(screen.getByLabelText("CSV file"), { target: { files: [file] } });
+    const importBtn = screen.getByText("Import").closest("button")!;
+    expect(importBtn.disabled).toBe(true);
+    await waitFor(() => expect(screen.getByText("Check file").closest("button")!.disabled).toBe(false));
+    fireEvent.click(screen.getByText("Check file"));
+    expect(await screen.findByText(/Check only/)).toBeTruthy();
+    fireEvent.click(screen.getByText("Import"));
+    await waitFor(() => expect(mocks.toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Import saved" })));
+    const post = mocks.bffRequest.mock.calls.find((c) => String(c[0]).endsWith("roster-import") && c[1]?.body?.dry_run === false);
+    expect(post).toBeTruthy();
   });
 });

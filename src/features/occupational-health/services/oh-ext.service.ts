@@ -135,3 +135,32 @@ export const recordSickLeaveReturn = (uuid: string, body: { returned_on: string;
   ohExtPost<OhSickLeave>(`oh/sick-leave/${uuid}/return`, body);
 export const cancelSickLeave = (uuid: string, reason: string) => ohExtPost<OhSickLeave>(`oh/sick-leave/${uuid}/cancel`, { reason });
 export const fetchSickLeaveReturnDue = (within = 7) => ohExtGet<OhSickLeave[]>(`oh/sick-leave/return-due${ohExtQs({ within })}`);
+
+// ---- Integration layer: exports, roster import, device result import -----
+
+export type OhExportDataset = { code: string; label: string; columns: string[] };
+export type OhIntegrationCatalogue = {
+  datasets: OhExportDataset[];
+  device_templates: Record<"hearing" | "lung", string[]>;
+  roster_columns: string[];
+  scopes: { events: string[]; api: string[] };
+};
+export type OhImportRow = {
+  line: number;
+  customer_uuid: string;
+  employee_number: string;
+  action: string;
+  errors?: string[];
+  changes?: string[];
+  outcome?: string | null;
+};
+export type OhImportResult = { dry_run: boolean; summary: Record<string, number>; rows: OhImportRow[] };
+
+export const fetchIntegrationCatalogue = () => ohExtGet<OhIntegrationCatalogue>("oh/integrations");
+export const ohExportCsvUrl = (dataset: string, params: { from?: string; to?: string; updated_since?: string } = {}) =>
+  ohExtFileUrl(`oh/integrations/exports/${dataset}/csv${ohExtQs(params)}`);
+export const ohTemplateCsvUrl = (kind: "roster" | "hearing" | "lung") => ohExtFileUrl(`oh/integrations/templates/${kind}/csv`);
+export const importRoster = (body: { csv: string; dry_run: boolean; create_job_titles?: boolean }) =>
+  ohExtPost<OhImportResult>("oh/integrations/roster-import", body);
+export const importDeviceResults = (body: { program: "hearing" | "lung"; csv: string; dry_run: boolean }) =>
+  ohExtPost<OhImportResult>("oh/integrations/device-import", body);

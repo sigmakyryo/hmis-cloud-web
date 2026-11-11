@@ -86,7 +86,17 @@ export type FitTraining = {
   state: "valid" | "expiring" | "expired" | "removed";
 };
 
-export type FitFeedScope = "access_cards" | "rosters" | "payroll" | "hr_events";
+export type FitFeedScope =
+  | "access_cards"
+  | "rosters"
+  | "payroll"
+  | "hr_events"
+  | "certificate_events"
+  | "surveillance_events"
+  | "iod_events"
+  | "exports"
+  | "roster_import"
+  | "device_import";
 
 export type FitClient = {
   uuid: string;
