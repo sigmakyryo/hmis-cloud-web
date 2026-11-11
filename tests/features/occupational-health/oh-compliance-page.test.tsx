@@ -92,6 +92,18 @@ it("shows KPIs from the dashboard and insights with the compliance delta", async
   expect(screen.getByTestId("oh-cancellations-report")).toBeInTheDocument();
 });
 
+it("has no page header and keeps refresh, rules and export in a toolbar", async () => {
+  renderPage();
+  expect(screen.queryByText(/How well medical surveillance keeps up/)).toBeNull();
+  expect(screen.getByRole("heading", { level: 1, name: "Compliance" }).className).toContain("sr-only");
+  const toolbar = screen.getByRole("toolbar", { name: "Compliance actions" });
+  expect(within(toolbar).getByRole("button", { name: "Refresh" })).toBeInTheDocument();
+  expect(within(toolbar).getByRole("link", { name: /Rules/ }).getAttribute("href")).toBe("#oh-exam-battery-rules");
+  expect(within(toolbar).getByRole("button", { name: /Export/ })).toBeInTheDocument();
+  expect(screen.getByTestId("oh-compliance-metric-overdue").className).not.toMatch(/\bborder\b|rounded-xl|shadow/);
+  expect(document.getElementById("oh-exam-battery-rules")).not.toBeNull();
+});
+
 it("switches the trend period and the breakdown dimension", async () => {
   renderPage();
   await screen.findByText("84%");

@@ -19,6 +19,7 @@ import {
 import { OhExamBatteryRuleDialog, type OhRuleDraft } from "@/features/occupational-health/components/compliance/OhExamBatteryRuleDialog";
 import { OhConfirmDialog } from "@/features/occupational-health/components/dashboard/OhConfirmDialog";
 import { OhPanel, OhPanelState } from "@/features/occupational-health/components/dashboard/OhPanel";
+import { OH_STICKY_TABLE } from "@/features/occupational-health/components/dashboard/oh-flat";
 import { OhSegmented } from "@/features/occupational-health/components/dashboard/OhSegmented";
 import {
   createOhExamBatteryRule,
@@ -148,10 +149,9 @@ export function OhExamBatteryRulesPanel() {
           </Button>
         </>
       }
-      bodyClassName="p-0"
       data-testid="oh-exam-battery-rules"
     >
-      <div className="border-b border-dash-border/70 px-4 py-2.5">
+      <div className="pb-3">
         <OhSegmented
           label="Rule status"
           value={view}
@@ -163,7 +163,7 @@ export function OhExamBatteryRulesPanel() {
           ]}
         />
       </div>
-      <div className="px-4 pb-3 pt-1">
+      <div>
         <OhPanelState
           isLoading={rulesQuery.isLoading}
           error={rulesQuery.error}
@@ -172,7 +172,7 @@ export function OhExamBatteryRulesPanel() {
           emptyText={rules.length === 0 ? "No rules yet. Add one to start generating surveillance." : "No rules in this view."}
           height={140}
         >
-          <ListPageDataTable>
+          <ListPageDataTable className={OH_STICKY_TABLE}>
             <ListPageDataTableHeader>
               <ListPageDataTableHeaderRow>
                 <ListPageDataTableHeaderCell>Component</ListPageDataTableHeaderCell>

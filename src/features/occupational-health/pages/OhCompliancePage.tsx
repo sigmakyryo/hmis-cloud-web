@@ -1,25 +1,20 @@
 "use client";
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { AlertTriangle, BadgeCheck, Briefcase, CalendarClock, CheckCircle2, Download, Gauge, RefreshCw } from "lucide-react";
+import { format } from "date-fns";
+import { AlertTriangle, Download, ListChecks, RefreshCw } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  ListPageHeaderActions,
-  ListPageHeaderSection,
-  ListPageHeaderTitleBlock,
-  ListPageHeaderTopRow,
-  ListPageLayout,
-} from "@/features/app-shell/components/page-layout";
+import { ListPageLayout } from "@/features/app-shell/components/page-layout";
 import { OhAccessDenied } from "@/features/occupational-health/components/OhAccessDenied";
 import { OhExamBatteryRulesPanel } from "@/features/occupational-health/components/OhExamBatteryRulesPanel";
 import { OhVisitCancellationsReport } from "@/features/occupational-health/components/OhVisitCancellationsReport";
 import { OhBreakdownBars, OhComplianceTrendChart, OhDonutChart } from "@/features/occupational-health/components/dashboard/OhCharts";
 import { OhExportDialog } from "@/features/occupational-health/components/dashboard/OhExportDialog";
-import { OhKpiCard, OhKpiGrid } from "@/features/occupational-health/components/dashboard/OhKpiCard";
+import { OhKpiStat, OhKpiStrip } from "@/features/occupational-health/components/dashboard/OhKpiStrip";
 import { OhPanel, OhPanelState } from "@/features/occupational-health/components/dashboard/OhPanel";
 import { OhSegmented } from "@/features/occupational-health/components/dashboard/OhSegmented";
 import { OH_COLORS } from "@/features/occupational-health/components/dashboard/oh-dashboard-colors";
@@ -113,75 +108,81 @@ export function OhCompliancePage() {
   const statusTotal = statusData.reduce((s, x) => s + x.value, 0);
   const refreshing = dashboard.isFetching || insights.isFetching;
 
+  const updatedAt = dashboard.dataUpdatedAt ? format(new Date(dashboard.dataUpdatedAt), "HH:mm") : null;
+
   return (
     <ListPageLayout data-testid="oh-compliance-page">
-      <ListPageHeaderSection className="bg-white px-4 pt-4 md:px-6">
-        <ListPageHeaderTopRow>
-          <ListPageHeaderTitleBlock
-            title="Compliance"
-            description="How well medical surveillance keeps up, where it slips, and the rules that drive it."
-          />
-          <ListPageHeaderActions className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              aria-label="Refresh"
-              disabled={refreshing}
-              onClick={() => {
-                void dashboard.refetch();
-                void insights.refetch();
-              }}
-            >
-              <RefreshCw className={refreshing ? "size-3.5 animate-spin" : "size-3.5"} aria-hidden />
-              <span className="hidden sm:inline">Refresh</span>
+      <h1 className="sr-only">Compliance</h1>
+      <div data-list-band className="px-4 pb-10 md:px-6">
+        <div
+          className="flex flex-wrap items-center justify-between gap-2 border-b border-dash-border/70 py-3"
+          role="toolbar"
+          aria-label="Compliance actions"
+        >
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 gap-1.5 px-2 text-[12px] text-dash-muted hover:text-brand-navy"
+            aria-label="Refresh"
+            disabled={refreshing}
+            onClick={() => {
+              void dashboard.refetch();
+              void insights.refetch();
+            }}
+          >
+            <RefreshCw className={refreshing ? "size-3.5 animate-spin" : "size-3.5"} aria-hidden />
+            <span>{refreshing ? "Refreshing…" : updatedAt ? `Updated ${updatedAt}` : "Refresh"}</span>
+          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button asChild type="button" variant="ghost" size="sm" className="h-8 gap-1.5">
+              <a href="#oh-exam-battery-rules">
+                <ListChecks className="size-3.5" aria-hidden /> Rules
+              </a>
             </Button>
-            <Button type="button" variant="primary" size="sm" className="gap-1.5" onClick={() => setExportOpen(true)}>
+            <Button type="button" variant="primary" size="sm" className="h-8 gap-1.5" onClick={() => setExportOpen(true)}>
               <Download className="size-3.5" aria-hidden /> Export
             </Button>
-          </ListPageHeaderActions>
-        </ListPageHeaderTopRow>
-      </ListPageHeaderSection>
+          </div>
+        </div>
 
-      <div data-list-band className="space-y-4 px-4 pb-8 md:px-6">
         {dashboard.error ? (
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-800" role="alert">
-            <span>Could not load compliance dashboard. The compliance figures could not be loaded.</span>
-            <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => void dashboard.refetch()}>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-red-200 py-2.5 text-[13px] text-red-800" role="alert">
+            <span className="flex items-center gap-2">
+              <AlertTriangle className="size-4" aria-hidden />
+              Could not load compliance dashboard. The compliance figures could not be loaded.
+            </span>
+            <Button type="button" variant="ghost" size="sm" className="h-7 text-xs text-red-800" onClick={() => void dashboard.refetch()}>
               Try again
             </Button>
           </div>
         ) : null}
 
-        <OhKpiGrid className="xl:grid-cols-6">
-          <OhKpiCard
-            label="Compliance, 3 months"
+        <OhKpiStrip>
+          <OhKpiStat
+            label="Compliance, 3 mo"
             value={rate !== null ? `${Math.round(rate)}%` : "—"}
             delta={{ value: rateDelta, suffix: " pts", goodWhen: "up", label: "vs prior 3" }}
             tone={rate === null ? "default" : rate >= 90 ? "success" : rate >= 75 ? "warning" : "danger"}
-            icon={Gauge}
             isLoading={insights.isLoading}
             data-testid="oh-compliance-metric-rate"
           />
-          <OhKpiCard label="Overdue" value={d?.overdue ?? "—"} tone={(d?.overdue ?? 0) > 0 ? "danger" : "success"} icon={AlertTriangle} isLoading={dashboard.isLoading} data-testid="oh-compliance-metric-overdue" />
-          <OhKpiCard label="Due in 30 days" value={d?.due_within_30_days ?? "—"} hint={d ? `${d.due} due in total` : undefined} tone="warning" icon={CalendarClock} isLoading={dashboard.isLoading} data-testid="oh-compliance-metric-due_within_30_days" />
-          <OhKpiCard
-            label="Completed, 30 days"
+          <OhKpiStat label="Overdue" value={d?.overdue ?? "—"} tone={(d?.overdue ?? 0) > 0 ? "danger" : "success"} isLoading={dashboard.isLoading} data-testid="oh-compliance-metric-overdue" />
+          <OhKpiStat label="Due in 30 days" value={d?.due_within_30_days ?? "—"} hint={d ? `${d.due} due in total` : undefined} tone="warning" isLoading={dashboard.isLoading} data-testid="oh-compliance-metric-due_within_30_days" />
+          <OhKpiStat
+            label="Completed, 30 d"
             value={i?.completed.last_30_days ?? "—"}
             delta={{ value: i ? i.completed.last_30_days - i.completed.previous_30_days : null, goodWhen: "up", label: "vs previous 30" }}
-            tone="success"
-            icon={CheckCircle2}
             isLoading={insights.isLoading}
             data-testid="oh-compliance-metric-completed30"
           />
-          <OhKpiCard label="Certificates expiring" value={d?.fitness_validity_alerts ?? "—"} hint="within 30 days" icon={BadgeCheck} isLoading={dashboard.isLoading} data-testid="oh-compliance-metric-fitness_validity_alerts" />
-          <OhKpiCard label="Open employment" value={d?.open_episodes ?? "—"} hint="workers on file" icon={Briefcase} isLoading={dashboard.isLoading} data-testid="oh-compliance-metric-open_episodes" />
-        </OhKpiGrid>
+          <OhKpiStat label="Certs expiring" value={d?.fitness_validity_alerts ?? "—"} hint="within 30 days" isLoading={dashboard.isLoading} data-testid="oh-compliance-metric-fitness_validity_alerts" />
+          <OhKpiStat label="Workers on file" value={d?.open_episodes ?? "—"} hint="open employment" isLoading={dashboard.isLoading} data-testid="oh-compliance-metric-open_episodes" />
+        </OhKpiStrip>
 
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="grid gap-10 border-b border-dash-border/70 py-7 lg:grid-cols-3 lg:gap-0 lg:divide-x lg:divide-dash-border/70">
           <OhPanel
-            className="lg:col-span-2"
+            className="lg:col-span-2 lg:pr-8"
             title="Compliance over time"
             description="Requirements by the month they fell due: completed vs still open, and the share completed."
             actions={
@@ -210,7 +211,7 @@ export function OhCompliancePage() {
               {i ? <OhComplianceTrendChart data={i.trend} /> : null}
             </OhPanelState>
           </OhPanel>
-          <OhPanel title="Status breakdown" description="All surveillance requirements" data-testid="oh-compliance-status">
+          <OhPanel className="lg:pl-8" title="Status breakdown" description="All surveillance requirements" data-testid="oh-compliance-status">
             <OhPanelState
               isLoading={insights.isLoading}
               error={insights.error}
@@ -232,6 +233,7 @@ export function OhCompliancePage() {
         </div>
 
         <OhPanel
+          className="border-b border-dash-border/70 py-7"
           title="Where open work sits"
           description="Due and overdue requirements grouped by the selected dimension (top 8)."
           actions={
@@ -257,8 +259,12 @@ export function OhCompliancePage() {
           </OhPanelState>
         </OhPanel>
 
-        <OhExamBatteryRulesPanel />
-        <OhVisitCancellationsReport />
+        <div className="border-b border-dash-border/70 py-7">
+          <OhExamBatteryRulesPanel />
+        </div>
+        <div className="pt-7">
+          <OhVisitCancellationsReport />
+        </div>
       </div>
 
       <OhExportDialog
