@@ -4,7 +4,7 @@ import type { AppIconName } from "@/components/icons/app-icon";
  * Clinical specialties served by the shared EMR workspace.
  * Keep in sync with api/eportal/clinical/specialties/builtin.py.
  */
-export type ClinicalSpecialtyCode = "opd" | "dental" | "ipd";
+export type ClinicalSpecialtyCode = "opd" | "dental" | "ipd" | "theatre";
 
 /** Visit order item types the Orders tab can place. */
 export type ClinicalOrdersTabItemType =
@@ -12,6 +12,9 @@ export type ClinicalOrdersTabItemType =
   | "RADIOLOGY"
   | "PROCEDURE"
   | "SUNDRY";
+
+/** Catalog `procedure_context` values a clinical workspace can order with. */
+export type ClinicalProcedureContext = "opd" | "dental" | "ipd" | "theatre";
 
 export type ClinicalSpecialtyDefinition = {
   code: ClinicalSpecialtyCode;
@@ -27,7 +30,7 @@ export type ClinicalSpecialtyDefinition = {
   /** Shown when the queue has no encounters. */
   queueEmptyDescription: string;
   /** Catalog `procedure_context` of procedures ordered in this workspace. */
-  procedureContext: "opd" | "dental" | "ipd";
+  procedureContext: ClinicalProcedureContext;
   /** Orders tab item types; omitted means every type. */
   orderItemTypes?: readonly ClinicalOrdersTabItemType[];
   icon: AppIconName;
@@ -84,6 +87,19 @@ export const CLINICAL_SPECIALTIES: readonly ClinicalSpecialtyDefinition[] = [
       "Active inpatient encounters will appear here once clients are admitted to an IPD ward.",
     procedureContext: "ipd",
     icon: "hospital",
+  },
+  {
+    code: "theatre",
+    label: "Theatre",
+    basePath: "/clinical/theatre",
+    accessGroup: "Theatre",
+    moduleName: "Theatre",
+    departmentTypes: ["theatre"],
+    queueNavLabel: "Theatre Queue",
+    queueEmptyDescription:
+      "Theatre cases appear here once they are checked in (waiting) on a theatre department you belong to.",
+    procedureContext: "theatre",
+    icon: "activity",
   },
 ];
 

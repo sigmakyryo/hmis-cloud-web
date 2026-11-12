@@ -144,3 +144,26 @@ export const DENTAL_ROLE_CAPABILITIES: ClinicalRoleCapabilityMeta[] = [
     description: "Perform procedures and bill them to the visit",
   },
 ];
+
+export const THEATRE_ROLE_CAPABILITIES: ClinicalRoleCapabilityMeta[] = [
+  {
+    key: "view_theatre_queue",
+    label: "Theatre queue & workspace",
+    description: "Open the theatre queue and theatre encounters",
+  },
+  {
+    key: "book_theatre_case",
+    label: "Book theatre cases",
+    description: "Book theatre cases, including from the IPD Theatre tab",
+  },
+  {
+    key: "transition_theatre_case",
+    label: "Move case status",
+    description: "Check in, start, sign out, recover, discharge, postpone or cancel cases",
+  },
+  {
+    key: "manage_theatre_rooms",
+    label: "Manage theatre rooms",
+    description: "Add, rename and deactivate operating rooms",
+  },
+];

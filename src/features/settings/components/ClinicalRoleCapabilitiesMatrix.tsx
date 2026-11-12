@@ -20,6 +20,12 @@ export const EMR_CAPABILITY_ROLES: readonly ClinicalCapabilityRoleKey[] = [
   "physician",
 ];
 
+/** Theatre module capability columns (admin role is seeded server-side). */
+export const THEATRE_CAPABILITY_ROLES: readonly ClinicalCapabilityRoleKey[] = [
+  "nurse",
+  "physician",
+];
+
 /** Dental module capability columns. */
 export const DENTAL_CAPABILITY_ROLES: readonly ClinicalCapabilityRoleKey[] = [
   "dentist",

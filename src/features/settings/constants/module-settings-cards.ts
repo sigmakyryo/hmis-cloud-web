@@ -26,6 +26,7 @@ const MODULE_DESCRIPTIONS: Record<string, string> = {
   Radiology: "Imaging orders and reporting configuration.",
   Inventory: "Stock, purchasing, transfers, and approval workflows.",
   Dental: "Dental clinic charting and procedure settings.",
+  Theatre: "Operating rooms and theatre role capabilities.",
   Clinical: "Patient records, providers, and clinical documentation.",
   Therapy: "Therapy sessions, plans, and documentation settings.",
   OccupationalHealth:
@@ -46,6 +47,7 @@ const MODULE_SETTINGS_META: Record<
   Radiology: { slug: "radiology", hasSettings: false },
   Inventory: { slug: "inventory", hasSettings: true },
   Dental: { slug: "dental", hasSettings: true },
+  Theatre: { slug: "theatre", hasSettings: true },
   Clinical: { slug: "clinical", hasSettings: true },
   Therapy: { slug: "therapy", hasSettings: false },
   OccupationalHealth: { slug: "occupational-health", hasSettings: true },
@@ -66,6 +68,9 @@ function hrefForSlug(slug: string): string {
   }
   if (slug === "dental") {
     return ROUTES.settingsModuleDental;
+  }
+  if (slug === "theatre") {
+    return ROUTES.settingsModuleTheatre;
   }
   if (slug === "registration") {
     return ROUTES.settingsModuleRegistration;

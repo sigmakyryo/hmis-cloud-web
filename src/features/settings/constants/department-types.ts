@@ -1,6 +1,8 @@
 export const ORGANIZATION_DEPARTMENT_TYPES = [
   { value: "opd", label: "OPD" },
   { value: "dental", label: "Dental" },
+  { value: "ipd", label: "IPD" },
+  { value: "theatre", label: "Theatre" },
   { value: "physio", label: "Physiotherapy" },
   { value: "speech", label: "Speech Therapy" },
   { value: "occupational", label: "Occupational Therapy" },

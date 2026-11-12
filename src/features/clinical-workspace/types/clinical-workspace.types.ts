@@ -38,7 +38,11 @@ export type ClinicalCapabilityKey =
   | "perform_dental_procedure"
   | "view_dental_chart_tab"
   | "view_treatment_plan_tab"
-  | "view_dental_history_tab";
+  | "view_dental_history_tab"
+  | "view_theatre_queue"
+  | "book_theatre_case"
+  | "manage_theatre_rooms"
+  | "transition_theatre_case";
 
 export type ClinicalWorkspaceTabGroup = "nurse" | "consult" | "record";
 
