@@ -203,17 +203,18 @@ describe("theatre advanced A components", () => {
     wrap(
       <TheatreCrashBanner
         theatreCase={makeCase()}
-        sectionHref={(section, sub) => `/x/${section}${sub ? `?section=${sub}` : ""}`}
+        stepHref={(step) => `/x?step=${step}`}
       />,
     );
     expect(screen.getByTestId("theatre-crash-banner")).toHaveTextContent("Decision to incision: 18 min");
     const links = screen.getAllByRole("link");
-    expect(links[0]).toHaveAttribute("href", "/x/pre-op");
-    expect(links[1]).toHaveAttribute("href", "/x/intra-op?section=checklist");
+    // Each outstanding record links to the case-flow step that completes it.
+    expect(links[0]).toHaveAttribute("href", "/x?step=pre-op");
+    expect(links[1]).toHaveAttribute("href", "/x?step=time-out");
   });
 
   it("hides the crash banner for ordinary cases", () => {
-    wrap(<TheatreCrashBanner theatreCase={makeCase({ is_crash: false })} sectionHref={() => "/"} />);
+    wrap(<TheatreCrashBanner theatreCase={makeCase({ is_crash: false })} stepHref={() => "/"} />);
     expect(screen.queryByTestId("theatre-crash-banner")).toBeNull();
   });
 

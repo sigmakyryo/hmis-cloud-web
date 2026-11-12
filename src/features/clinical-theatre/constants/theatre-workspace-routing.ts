@@ -7,9 +7,6 @@ import type {
 export type TheatreEncounterTabId =
   | "overview"
   | "case"
-  | "pre-op"
-  | "intra-op"
-  | "recovery"
   | "activity"
   | "complaint"
   | "notes"
@@ -23,40 +20,18 @@ export type TheatreEncounterTabId =
   | "client";
 
 /**
- * Theatre workspace tabs. Disposition is left out on purpose: the theatre
- * encounter is completed by the case status machine (return to ward /
- * discharge home), not by the generic disposition flow.
+ * Theatre workspace sections. The case itself is one guided flow on the
+ * `case` route (`?step=` picks the perioperative step); the case header owns
+ * navigation, so the shared tab bar is hidden. Disposition is left out on
+ * purpose: the theatre encounter is completed by the case status machine
+ * (return to ward / discharge home), not by the generic disposition flow.
  */
 export const THEATRE_ENCOUNTER_TABS: ClinicalWorkspaceTab<TheatreEncounterTabId>[] = [
   {
     id: "case",
-    label: "Overview",
+    label: "Theatre case",
     segment: "case",
     group: "consult",
-    surface: "tab",
-    requiredCapability: "view_theatre_queue",
-  },
-  {
-    id: "pre-op",
-    label: "Pre-op",
-    segment: "pre-op",
-    group: "consult",
-    surface: "tab",
-    requiredCapability: "view_theatre_queue",
-  },
-  {
-    id: "intra-op",
-    label: "Intra-op",
-    segment: "intra-op",
-    group: "consult",
-    surface: "tab",
-    requiredCapability: "view_theatre_queue",
-  },
-  {
-    id: "recovery",
-    label: "Recovery",
-    segment: "recovery",
-    group: "nurse",
     surface: "tab",
     requiredCapability: "view_theatre_queue",
   },
@@ -161,17 +136,22 @@ export const THEATRE_ENCOUNTER_TABS: ClinicalWorkspaceTab<TheatreEncounterTabId>
 ];
 
 /**
- * Segments of the old one-tab-per-record layout, mapped to the section (and
- * intra-op sub-section) that now holds them, so saved links keep working.
+ * Older theatre URL segments (the one-tab-per-record layout and the later
+ * Pre-op / Intra-op / Recovery sections), mapped to the case-flow step and
+ * Operation part that now hold them, so saved links keep working.
+ * `checklist` resolves to whichever WHO stage is due once the case loads.
  */
 export const THEATRE_LEGACY_SEGMENTS: Readonly<
-  Record<string, { tab: TheatreEncounterTabId; section?: string }>
+  Record<string, { step: string; section?: string }>
 > = {
-  checklist: { tab: "pre-op" },
-  team: { tab: "case" },
-  anaesthesia: { tab: "intra-op", section: "anaesthesia" },
-  "op-note": { tab: "intra-op", section: "op-note" },
-  consumables: { tab: "intra-op", section: "consumables" },
+  checklist: { step: "checklist" },
+  team: { step: "booking" },
+  anaesthesia: { step: "intra-op", section: "anaesthesia" },
+  "op-note": { step: "op-note" },
+  consumables: { step: "intra-op", section: "consumables" },
+  "pre-op": { step: "pre-op" },
+  "intra-op": { step: "intra-op" },
+  recovery: { step: "recovery" },
 };
 
 export const THEATRE_WORKSPACE_ROUTING: ClinicalWorkspaceRouting<TheatreEncounterTabId> =
@@ -188,30 +168,35 @@ export const THEATRE_WORKSPACE_ROUTING: ClinicalWorkspaceRouting<TheatreEncounte
       "physical-examination",
       "diagnoses",
     ]),
-    fullWidthTabIds: new Set<TheatreEncounterTabId>([
-      "activity",
-      "case",
-      "pre-op",
-      "intra-op",
-      "recovery",
-    ]),
+    fullWidthTabIds: new Set<TheatreEncounterTabId>(["activity", "case"]),
     preferredTabsByRole: {
-      nurse: ["case", "pre-op", "recovery"],
-      physician: ["case", "pre-op", "intra-op"],
+      nurse: ["case"],
+      physician: ["case"],
     },
     fallbackTabId: "case",
+    hideSectionTabBar: true,
   };
 
-/** Where an old per-record theatre URL segment now lives. */
+/** The theatre case flow route for an encounter. */
+export function theatreCaseHref(visitUuid: string, encounterUuid: string): string {
+  return `${THEATRE_WORKSPACE_ROUTING.specialty.basePath}/${visitUuid}/${encounterUuid}/case`;
+}
+
+/**
+ * Where an old theatre URL segment now lives. `section` (the old intra-op
+ * `?section=`) is carried over so the right Operation part opens.
+ */
 export function theatreLegacySegmentHref(
   visitUuid: string,
   encounterUuid: string,
   segment: keyof typeof THEATRE_LEGACY_SEGMENTS | string,
+  section?: string | null,
 ): string {
-  const base = `${THEATRE_WORKSPACE_ROUTING.specialty.basePath}/${visitUuid}/${encounterUuid}`;
+  const caseHref = theatreCaseHref(visitUuid, encounterUuid);
   const target = THEATRE_LEGACY_SEGMENTS[segment];
-  if (!target) return base;
-  const tab = THEATRE_ENCOUNTER_TABS.find((item) => item.id === target.tab);
-  const href = `${base}/${tab?.segment ?? target.tab}`;
-  return target.section ? `${href}?section=${target.section}` : href;
+  if (!target) return caseHref;
+  const params = new URLSearchParams({ step: target.step });
+  const carried = section || target.section;
+  if (carried) params.set("section", carried);
+  return `${caseHref}?${params.toString()}`;
 }

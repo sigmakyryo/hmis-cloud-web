@@ -114,7 +114,7 @@ export function TheatreReturnLinkPanel({
       ) : null}
       {editing ? (
         <form
-          className="space-y-2 rounded-md border p-3"
+          className="space-y-2 rounded-lg bg-muted/40 p-3"
           onSubmit={(event) => {
             event.preventDefault();
             update.mutate(

@@ -218,7 +218,7 @@ export function TheatreRecoveryPanel({ theatreCase }: { theatreCase: TheatreCase
           </div>
         )}
         {open ? (
-          <div className="space-y-2 rounded-md border p-3">
+          <div className="space-y-2 rounded-lg bg-muted/40 p-3">
             <div className="flex flex-wrap items-end gap-2">
               {THEATRE_ALDRETE_ITEMS.map((item) => (
                 <div key={item} className="space-y-1">

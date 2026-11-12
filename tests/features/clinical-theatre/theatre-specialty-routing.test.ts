@@ -34,15 +34,14 @@ describe("theatre specialty routing", () => {
     expect(resolvePortalModuleForPath("/settings/modules/theatre")).toBe("Theatre");
   });
 
-  it("groups the workspace into stage sections and keeps disposition out", () => {
+  it("runs the case as one guided flow with records under More", () => {
     const tabIds = THEATRE_WORKSPACE_ROUTING.tabs.map((tab) => tab.id);
     const barTabs = THEATRE_WORKSPACE_ROUTING.tabs
       .filter((tab) => tab.surface === "tab")
       .map((tab) => tab.label);
-    expect(barTabs).toEqual(["Overview", "Pre-op", "Intra-op", "Recovery"]);
-    expect(tabIds).toEqual(
-      expect.arrayContaining(["case", "pre-op", "intra-op", "recovery", "activity", "nursing"]),
-    );
+    expect(barTabs).toEqual(["Theatre case"]);
+    expect(THEATRE_WORKSPACE_ROUTING.hideSectionTabBar).toBe(true);
+    expect(tabIds).toEqual(expect.arrayContaining(["case", "activity", "nursing", "vital-signs"]));
     expect(tabIds).not.toContain("disposition" as never);
     for (const id of tabIds) {
       expect(THEATRE_WORKSPACE_CONFIG.panels[id]).toBeTruthy();
@@ -50,20 +49,26 @@ describe("theatre specialty routing", () => {
     expect(THEATRE_WORKSPACE_CONFIG.workspaceBanner).toBeTruthy();
   });
 
-  it("redirects the old per-record tab URLs into the grouped sections", () => {
-    expect(theatreLegacySegmentHref("v1", "e1", "checklist")).toBe(
-      "/clinical/theatre/v1/e1/pre-op",
-    );
-    expect(theatreLegacySegmentHref("v1", "e1", "team")).toBe("/clinical/theatre/v1/e1/case");
-    expect(theatreLegacySegmentHref("v1", "e1", "op-note")).toBe(
-      "/clinical/theatre/v1/e1/intra-op?section=op-note",
-    );
+  it("redirects older theatre URLs to the matching case-flow step", () => {
+    const base = "/clinical/theatre/v1/e1/case";
+    expect(theatreLegacySegmentHref("v1", "e1", "checklist")).toBe(`${base}?step=checklist`);
+    expect(theatreLegacySegmentHref("v1", "e1", "team")).toBe(`${base}?step=booking`);
+    expect(theatreLegacySegmentHref("v1", "e1", "op-note")).toBe(`${base}?step=op-note`);
     expect(theatreLegacySegmentHref("v1", "e1", "anaesthesia")).toBe(
-      "/clinical/theatre/v1/e1/intra-op?section=anaesthesia",
+      `${base}?step=intra-op&section=anaesthesia`,
     );
     expect(theatreLegacySegmentHref("v1", "e1", "consumables")).toBe(
-      "/clinical/theatre/v1/e1/intra-op?section=consumables",
+      `${base}?step=intra-op&section=consumables`,
     );
+    expect(theatreLegacySegmentHref("v1", "e1", "pre-op")).toBe(`${base}?step=pre-op`);
+    expect(theatreLegacySegmentHref("v1", "e1", "recovery")).toBe(`${base}?step=recovery`);
+    expect(theatreLegacySegmentHref("v1", "e1", "intra-op", "counts")).toBe(
+      `${base}?step=intra-op&section=counts`,
+    );
+    expect(theatreLegacySegmentHref("v1", "e1", "intra-op", "op-note")).toBe(
+      `${base}?step=intra-op&section=op-note`,
+    );
+    expect(theatreLegacySegmentHref("v1", "e1", "unknown")).toBe(base);
   });
 
   it("builds encounter deep links for theatre departments", () => {

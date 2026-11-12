@@ -41,7 +41,7 @@ export function TheatreConsumableReturnForm({
 
   return (
     <form
-      className="space-y-2 rounded-md border bg-muted/30 p-3"
+      className="space-y-2 rounded-lg bg-muted/40 p-3"
       data-testid="theatre-consumable-return-form"
       onSubmit={(event) => {
         event.preventDefault();

@@ -28,6 +28,8 @@ vi.mock("@/features/clinical-theatre/services/clinical-theatre.service", () => (
     { uuid: "m2", role: "anaesthetist", user_name: "Dr Phiri" },
   ]),
   fetchTheatreChecklist: () => Promise.resolve(STAGES),
+  fetchTheatreAnaesthesia: vi.fn().mockResolvedValue({ pending_device_vitals: 0, signed_at: null }),
+  fetchTheatreOperationNote: vi.fn().mockResolvedValue({ signed_at: null }),
   recordTheatreChecklistStage: vi.fn(),
 }));
 
@@ -171,8 +173,8 @@ describe("theatre case header", () => {
     wrap(<TheatreCaseHeader visitUuid="v1" encounterUuid="e1" />);
     const action = await screen.findByRole("button", { name: "Into theatre" });
     expect(action).toHaveProperty("disabled", true);
-    const fix = screen.getByRole("link", { name: "Open" });
-    expect(fix.getAttribute("href")).toBe("/clinical/theatre/v1/e1/pre-op");
+    const fix = screen.getByRole("link", { name: "Go to step" });
+    expect(fix.getAttribute("href")).toBe("/clinical/theatre/v1/e1/case?step=sign-in");
   });
 });
 

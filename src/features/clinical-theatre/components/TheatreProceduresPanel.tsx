@@ -152,7 +152,7 @@ export function TheatreProceduresPanel({
             : "No procedure recorded yet."}
         </p>
       ) : (
-        <ol className="divide-y rounded-md border">
+        <ol className="divide-y divide-dash-border/70 border-y border-dash-border/70">
           {procedures.map((procedure) => {
             const codes = formatProcedureCodes(procedure.coding);
             const billable = canBill && canBillProcedure(procedure, theatreCase.status);

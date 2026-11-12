@@ -178,7 +178,7 @@ export function TheatreTimingPanel({
           Times can be recorded once the patient has arrived for theatre.
         </p>
       ) : null}
-      <ol className="divide-y rounded-md border">
+      <ol className="divide-y divide-dash-border/70 border-y border-dash-border/70">
         {data.milestones.map((row) => (
           <MilestoneRow
             key={row.key}
@@ -323,7 +323,7 @@ function TimingIntervals({ timings }: { timings: TheatreCaseTimings }) {
   return (
     <dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3" data-testid="theatre-timing-intervals">
       {recorded.map((row) => (
-        <div key={row.key} className="rounded-md border p-2">
+        <div key={row.key} className="rounded-lg bg-muted/40 p-2">
           <dt className="text-xs text-muted-foreground">{row.label}</dt>
           <dd className="font-semibold text-brand-navy">{formatMinutes(row.minutes)}</dd>
         </div>
@@ -338,7 +338,7 @@ function TimingAudit({ timings }: { timings: TheatreCaseTimings }) {
   const events = timings.events ?? [];
   if (events.length === 0) return null;
   return (
-    <details className="rounded-md border p-2 text-sm" data-testid="theatre-timing-audit">
+    <details className="rounded-lg bg-muted/40 p-2 text-sm" data-testid="theatre-timing-audit">
       <summary className="cursor-pointer font-medium">Audit trail ({events.length})</summary>
       <ul className="mt-2 space-y-1">
         {events.map((event, index) => (

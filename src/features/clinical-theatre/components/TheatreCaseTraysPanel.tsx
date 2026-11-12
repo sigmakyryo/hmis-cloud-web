@@ -232,7 +232,7 @@ export function TheatreCaseTraysPanel({
         </div>
       ) : null}
       {assignable && picking ? (
-        <div className="space-y-2 rounded-md border p-3">
+        <div className="space-y-2 rounded-lg bg-muted/40 p-3">
           <Input
             aria-label="Search trays"
             placeholder="Search by barcode or set"

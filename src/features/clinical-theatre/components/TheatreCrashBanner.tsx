@@ -9,15 +9,20 @@ import {
   formatMinutes,
   ncepodShortLabel,
 } from "@/features/clinical-theatre/utils/theatre-advanced-display";
+import {
+  paperworkStep,
+  type TheatreFlowStepId,
+} from "@/features/clinical-theatre/utils/theatre-case-flow";
+import { cn } from "@/lib/utils";
 
 type TheatreCrashBannerProps = {
   theatreCase: TheatreCase;
-  /** Href for a workspace section ("pre-op" | "intra-op") and optional sub-section. */
-  sectionHref: (section: "pre-op" | "intra-op", sub?: "checklist" | "op-note" | null) => string;
+  /** Href of the case-flow step where an outstanding record is completed. */
+  stepHref: (step: TheatreFlowStepId) => string;
 };
 
-/** Amber banner listing what a crash case still owes (retrospective paperwork). */
-export function TheatreCrashBanner({ theatreCase, sectionHref }: TheatreCrashBannerProps) {
+/** Band listing what a crash case still owes (retrospective paperwork). */
+export function TheatreCrashBanner({ theatreCase, stepHref }: TheatreCrashBannerProps) {
   if (!theatreCase.is_crash) return null;
   const outstanding = crashPaperworkOutstanding(theatreCase);
   const minutes = theatreCase.paperwork?.decision_to_incision_minutes ?? null;
@@ -25,39 +30,32 @@ export function TheatreCrashBanner({ theatreCase, sectionHref }: TheatreCrashBan
     <div
       role="status"
       data-testid="theatre-crash-banner"
-      className={
+      className={cn(
+        "flex flex-wrap items-center gap-x-4 gap-y-2 border-l-2 px-3.5 py-2 text-sm",
         outstanding
-          ? "rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"
-          : "rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"
-      }
+          ? "border-rose-500 bg-rose-50/80 text-rose-950"
+          : "border-emerald-500 bg-emerald-50/70 text-emerald-950",
+      )}
     >
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <span className="inline-flex items-center gap-1.5 font-semibold">
-          <Siren className="size-4" aria-hidden />
-          Emergency crash case
-        </span>
-        {theatreCase.ncepod_category ? (
-          <span>{ncepodShortLabel(theatreCase.ncepod_category)}</span>
-        ) : null}
-        <span>Decision to incision: {formatMinutes(minutes)}</span>
-        {!outstanding ? <span>· All paperwork completed</span> : null}
-      </div>
+      <span className="inline-flex items-center gap-1.5 font-semibold">
+        <Siren className="size-4" aria-hidden />
+        Emergency crash case
+      </span>
+      <span className="text-[13px] opacity-90">
+        {theatreCase.ncepod_category ? `${ncepodShortLabel(theatreCase.ncepod_category)} · ` : ""}
+        Decision to incision: {formatMinutes(minutes)}
+        {!outstanding ? " · All paperwork completed" : ""}
+      </span>
       {outstanding ? (
-        <div className="mt-1.5">
-          <p className="text-xs">Outstanding paperwork (complete retrospectively):</p>
-          <ul className="mt-1 flex flex-wrap gap-1.5" data-testid="theatre-crash-outstanding">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-xs font-medium">Still owed:</span>
+          <ul className="flex flex-wrap gap-1.5" data-testid="theatre-crash-outstanding">
             {theatreCase.paperwork.outstanding.map((item) => (
               <li key={item.key}>
                 <Link
-                  className="inline-flex rounded-full border border-amber-300 bg-white px-2 py-0.5 text-xs font-medium hover:bg-amber-100"
-                  href={sectionHref(
-                    item.section === "intra-op" ? "intra-op" : "pre-op",
-                    item.key === "operation_note"
-                      ? "op-note"
-                      : item.section === "intra-op"
-                        ? "checklist"
-                        : null,
-                  )}
+                  className="inline-flex rounded-full bg-white/80 px-2 py-0.5 text-xs font-medium text-rose-900 ring-1 ring-rose-200 hover:bg-white"
+                  href={stepHref(paperworkStep(item))}
+                  scroll={false}
                 >
                   {item.label}
                 </Link>

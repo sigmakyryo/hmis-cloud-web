@@ -180,7 +180,7 @@ export function TheatrePreferenceCardPanel({
             {counts.planned} planned · {counts.confirmed} confirmed · {counts.dismissed}{" "}
             dismissed. Planned items are not billed until confirmed.
           </p>
-          <ul className="divide-y rounded-md border">
+          <ul className="divide-y divide-dash-border/70 border-y border-dash-border/70">
             {items.map((item) => (
               <PlannedRow
                 key={item.uuid}

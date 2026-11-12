@@ -39,7 +39,7 @@ export function TheatreCancelReasonForm({
 
   return (
     <form
-      className="space-y-2 rounded-md border p-3"
+      className="space-y-2 rounded-lg bg-muted/40 p-3"
       data-testid="theatre-cancel-reason-form"
       onSubmit={(event) => {
         event.preventDefault();
