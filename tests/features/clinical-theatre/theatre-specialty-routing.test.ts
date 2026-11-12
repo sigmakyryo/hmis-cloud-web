@@ -112,6 +112,8 @@ describe("theatre specialty routing", () => {
       "convert_theatre_case_to_ipd",
       "issue_theatre_consumables",
       "manage_theatre_cancellation_reasons",
+      "manage_theatre_preference_cards",
+      "manage_theatre_procedure_codes",
       "manage_theatre_rooms",
       "manage_theatre_team",
       "record_theatre_anaesthesia",

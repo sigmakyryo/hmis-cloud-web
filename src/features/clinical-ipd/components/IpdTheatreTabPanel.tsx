@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { fetchIpdStays } from "@/features/clinical-ipd/services/clinical-ipd.service";
 import { TheatreCaseSummary } from "@/features/clinical-theatre/components/TheatreCaseSummary";
+import { TheatreProcedureProductPicker } from "@/features/clinical-theatre/components/TheatreProcedureProductPicker";
 import { TheatreRoomSelect } from "@/features/clinical-theatre/components/TheatreRoomSelect";
 import {
   useCreateTheatreCase,
@@ -18,6 +19,7 @@ import type {
   TheatreCaseUrgency,
   TheatreRoom,
 } from "@/features/clinical-theatre/types/clinical-theatre.types";
+import type { TheatreProcedureProduct } from "@/features/clinical-theatre/types/theatre-catalog.types";
 import { localInputToIso } from "@/features/clinical-theatre/utils/theatre-case-display";
 import type { ClinicalWorkspacePanelProps } from "@/features/clinical-workspace/types/clinical-workspace.types";
 
@@ -34,6 +36,8 @@ export function IpdTheatreTabPanel({ visitUuid }: ClinicalWorkspacePanelProps) {
   const [end, setEnd] = useState("");
   const [urgency, setUrgency] = useState<TheatreCaseUrgency>("elective");
   const [description, setDescription] = useState("");
+  const [procedureProduct, setProcedureProduct] =
+    useState<TheatreProcedureProduct | null>(null);
 
   const stayQuery = useQuery({
     queryKey: ["ipd-stay-for-visit", visitUuid],
@@ -77,10 +81,14 @@ export function IpdTheatreTabPanel({ visitUuid }: ClinicalWorkspacePanelProps) {
               scheduled_start: localInputToIso(start),
               scheduled_end: localInputToIso(end),
               procedure_description: description,
+              ...(procedureProduct
+                ? { procedures: [{ product: procedureProduct.uuid }] }
+                : {}),
             },
             {
               onSuccess: () => {
                 setDescription("");
+                setProcedureProduct(null);
                 setStart("");
                 setEnd("");
               },
@@ -127,13 +135,23 @@ export function IpdTheatreTabPanel({ visitUuid }: ClinicalWorkspacePanelProps) {
             onChange={(event) => setEnd(event.target.value)}
           />
         </div>
-        <Input
-          className="sm:col-span-2"
-          aria-label="Procedure description"
-          placeholder="Procedure description"
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
-        />
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label htmlFor="ipd-theatre-procedure">Procedure (from the catalogue)</Label>
+          <TheatreProcedureProductPicker
+            id="ipd-theatre-procedure"
+            value={procedureProduct}
+            onChange={setProcedureProduct}
+          />
+        </div>
+        {procedureProduct ? null : (
+          <Input
+            className="sm:col-span-2"
+            aria-label="Procedure description"
+            placeholder="Procedure description (free text if not in the catalogue)"
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+          />
+        )}
         <div className="flex items-center gap-3 sm:col-span-2">
           <Button
             type="submit"

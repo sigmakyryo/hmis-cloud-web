@@ -236,6 +236,18 @@ export const THEATRE_ROLE_CAPABILITIES: ClinicalRoleCapabilityMeta[] = [
       "Admit a day case to a ward bed part-way through the case (needs IPD access)",
   },
   {
+    key: "manage_theatre_preference_cards",
+    label: "Manage preference cards",
+    description:
+      "Create and edit surgeon preference cards; save a case's setup as a card (non-admins: their own cards only)",
+  },
+  {
+    key: "manage_theatre_procedure_codes",
+    label: "Manage procedure codes",
+    description:
+      "Import CPT / ICD-10-PCS / local code sets and attach codes to procedure products",
+  },
+  {
     key: "view_theatre_reports",
     label: "Theatre reports",
     description: "See case volumes, room utilisation and cancellations",

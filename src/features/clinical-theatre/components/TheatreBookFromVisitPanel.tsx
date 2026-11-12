@@ -11,6 +11,7 @@ import type { CareProvider } from "@/features/appointments/types/appointment.typ
 import { useMyClinicalCapabilities } from "@/features/clinical-opd/hooks/use-clinical-opd";
 import { TheatreCaseSummary } from "@/features/clinical-theatre/components/TheatreCaseSummary";
 import { TheatreCrashCaseDialog } from "@/features/clinical-theatre/components/TheatreCrashCaseDialog";
+import { TheatreProcedureProductPicker } from "@/features/clinical-theatre/components/TheatreProcedureProductPicker";
 import { TheatreRoomSelect } from "@/features/clinical-theatre/components/TheatreRoomSelect";
 import {
   useCreateTheatreCase,
@@ -21,6 +22,7 @@ import type {
   TheatreCaseUrgency,
   TheatreRoom,
 } from "@/features/clinical-theatre/types/clinical-theatre.types";
+import type { TheatreProcedureProduct } from "@/features/clinical-theatre/types/theatre-catalog.types";
 import { localInputToIso } from "@/features/clinical-theatre/utils/theatre-case-display";
 import type { ClinicalWorkspacePanelProps } from "@/features/clinical-workspace/types/clinical-workspace.types";
 
@@ -40,7 +42,12 @@ export function buildVisitTheatreBooking(input: {
   description: string;
   surgeonId: number | null;
   createAppointment: boolean;
+  /** Catalogue procedure product; the case procedure and billing come from it. */
+  procedureProductUuid?: string | null;
 }): CreateTheatreCasePayload {
+  const procedures = input.procedureProductUuid
+    ? { procedures: [{ product: input.procedureProductUuid }] }
+    : {};
   return {
     source: "existing_visit",
     visit: input.visitUuid,
@@ -51,6 +58,7 @@ export function buildVisitTheatreBooking(input: {
     procedure_description: input.description.trim(),
     lead_surgeon: input.surgeonId,
     create_appointment: input.createAppointment,
+    ...procedures,
   };
 }
 
@@ -64,6 +72,9 @@ export function TheatreBookFromVisitPanel({ visitUuid }: ClinicalWorkspacePanelP
   const [end, setEnd] = useState("");
   const [urgency, setUrgency] = useState<TheatreCaseUrgency>("elective");
   const [description, setDescription] = useState("");
+  const [procedureProduct, setProcedureProduct] = useState<TheatreProcedureProduct | null>(
+    null,
+  );
   const [surgeon, setSurgeon] = useState<CareProvider | null>(null);
   const [createAppointment, setCreateAppointment] = useState(true);
   const casesQuery = useTheatreCases({ visit: visitUuid });
@@ -97,10 +108,12 @@ export function TheatreBookFromVisitPanel({ visitUuid }: ClinicalWorkspacePanelP
               description,
               surgeonId: surgeon?.id ?? null,
               createAppointment,
+              procedureProductUuid: procedureProduct?.uuid ?? null,
             }),
             {
               onSuccess: () => {
                 setDescription("");
+                setProcedureProduct(null);
                 setStart("");
                 setEnd("");
               },
@@ -148,13 +161,23 @@ export function TheatreBookFromVisitPanel({ visitUuid }: ClinicalWorkspacePanelP
           displayName={surgeon?.name ?? null}
           onSelect={setSurgeon}
         />
-        <Input
-          className="self-end"
-          aria-label="Procedure description"
-          placeholder="Procedure description"
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
-        />
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label htmlFor="opd-theatre-procedure">Procedure (from the catalogue)</Label>
+          <TheatreProcedureProductPicker
+            id="opd-theatre-procedure"
+            value={procedureProduct}
+            onChange={setProcedureProduct}
+          />
+        </div>
+        {procedureProduct ? null : (
+          <Input
+            className="sm:col-span-2"
+            aria-label="Procedure description"
+            placeholder="Procedure description (free text if not in the catalogue)"
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+          />
+        )}
         <label className="flex items-center gap-2 text-sm sm:col-span-2">
           <input
             type="checkbox"

@@ -16,6 +16,7 @@ import { TheatreIpdConversionPanel } from "@/features/clinical-theatre/component
 import { TheatreObstetricPanel } from "@/features/clinical-theatre/components/TheatreObstetricPanel";
 import { TheatreOperationNotePanel } from "@/features/clinical-theatre/components/TheatreOperationNotePanel";
 import { TheatrePreOpPanel } from "@/features/clinical-theatre/components/TheatrePreOpPanel";
+import { TheatrePreferenceCardPanel } from "@/features/clinical-theatre/components/TheatrePreferenceCardPanel";
 import { TheatreProceduresPanel } from "@/features/clinical-theatre/components/TheatreProceduresPanel";
 import { TheatreRecoveryPanel } from "@/features/clinical-theatre/components/TheatreRecoveryPanel";
 import { TheatreReturnLinkPanel } from "@/features/clinical-theatre/components/TheatreReturnLinkPanel";
@@ -101,6 +102,14 @@ export function TheatreOverviewSection({ encounterUuid }: ClinicalWorkspacePanel
                 canEdit={
                   can("book_theatre_case") || can("record_theatre_operation_note")
                 }
+                canBill={can("record_theatre_consumables")}
+              />
+            </SectionCard>
+            <SectionCard title="Preference card">
+              <TheatrePreferenceCardPanel
+                theatreCase={theatreCase}
+                canRecord={can("record_theatre_consumables")}
+                canManageCards={can("manage_theatre_preference_cards")}
               />
             </SectionCard>
             <SectionCard title="Return to theatre">
