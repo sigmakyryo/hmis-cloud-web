@@ -45,12 +45,13 @@ export async function theatreGet(request: Request, upstreamPath: string) {
 export async function theatreMutate(
   request: Request,
   upstreamPath: string,
-  method: "POST" | "PATCH" = "POST",
+  method: "POST" | "PATCH" | "PUT" | "DELETE" = "POST",
 ) {
   try {
     const auth = await requireAccessToken();
     if ("error" in auth) return auth.error;
-    const body = await request.json().catch(() => ({}));
+    const body =
+      method === "DELETE" ? undefined : await request.json().catch(() => ({}));
     const data = await hmisApiRequest(upstreamPath, {
       token: auth.accessToken,
       method,

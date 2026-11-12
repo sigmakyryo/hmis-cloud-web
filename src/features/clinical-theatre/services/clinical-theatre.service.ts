@@ -1,12 +1,21 @@
 import { BFF_CLINICAL_THEATRE_ROUTES as ROUTES } from "@/constants/clinical-theatre-api";
 import type {
+  AddTheatreTeamMemberPayload,
   CreateTheatreCasePayload,
   CreateTheatreRoomPayload,
+  RecordTheatreChecklistPayload,
+  TheatreBoard,
+  TheatreBoardFilters,
   TheatreCase,
   TheatreCaseFilters,
   TheatreCaseStatus,
+  TheatreChecklistStage,
+  TheatreChecklistStageId,
+  TheatrePreOp,
   TheatreRoom,
   TheatreRoomFilters,
+  TheatreTeamMember,
+  UpdateTheatrePreOpPayload,
   UpdateTheatreRoomPayload,
 } from "@/features/clinical-theatre/types/clinical-theatre.types";
 import { bffRequest } from "@/lib/bff-client";
@@ -84,5 +93,58 @@ export function assignTheatreCaseRoom(uuid: string, room: string) {
   return bffRequest<TheatreCase>(ROUTES.assignRoom(uuid), {
     method: "POST",
     body: { room },
+  });
+}
+
+export function fetchTheatreBoard(filters: TheatreBoardFilters = {}) {
+  return bffRequest<TheatreBoard>(`${ROUTES.board}${theatreQueryString(filters)}`);
+}
+
+export function fetchTheatreTeam(caseUuid: string) {
+  return bffRequest<TheatreTeamMember[]>(ROUTES.team(caseUuid));
+}
+
+export function addTheatreTeamMember(
+  caseUuid: string,
+  payload: AddTheatreTeamMemberPayload,
+) {
+  return bffRequest<TheatreTeamMember>(ROUTES.team(caseUuid), {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function removeTheatreTeamMember(caseUuid: string, memberUuid: string) {
+  return bffRequest<null>(ROUTES.teamMember(caseUuid, memberUuid), {
+    method: "DELETE",
+  });
+}
+
+export function fetchTheatreChecklist(caseUuid: string) {
+  return bffRequest<TheatreChecklistStage[]>(ROUTES.checklist(caseUuid));
+}
+
+export function recordTheatreChecklistStage(
+  caseUuid: string,
+  stage: TheatreChecklistStageId,
+  payload: RecordTheatreChecklistPayload,
+) {
+  return bffRequest<TheatreChecklistStage[]>(
+    ROUTES.checklistStage(caseUuid, stage),
+    { method: "POST", body: payload },
+  );
+}
+
+export function fetchTheatrePreOp(caseUuid: string) {
+  return bffRequest<TheatrePreOp | null>(ROUTES.preOp(caseUuid));
+}
+
+export function updateTheatrePreOp(
+  caseUuid: string,
+  payload: UpdateTheatrePreOpPayload,
+) {
+  return bffRequest<TheatrePreOp>(ROUTES.preOp(caseUuid), {
+    method: "PUT",
+    body: payload,
   });
 }

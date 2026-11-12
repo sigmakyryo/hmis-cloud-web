@@ -2,6 +2,7 @@
 
 import { TheatreCaseActions } from "@/features/clinical-theatre/components/TheatreCaseActions";
 import { TheatreCaseSummary } from "@/features/clinical-theatre/components/TheatreCaseSummary";
+import { TheatreSafetyBadges } from "@/features/clinical-theatre/components/TheatreSafetyBadges";
 import { useTheatreCases } from "@/features/clinical-theatre/hooks/use-clinical-theatre";
 import type { ClinicalWorkspacePanelProps } from "@/features/clinical-workspace/types/clinical-workspace.types";
 
@@ -33,6 +34,7 @@ export function TheatreCaseTabPanel({ encounterUuid }: ClinicalWorkspacePanelPro
   return (
     <div className="space-y-6" data-testid="theatre-case-tab">
       <TheatreCaseSummary theatreCase={theatreCase} />
+      <TheatreSafetyBadges safety={theatreCase.safety} />
       {theatreCase.notes ? (
         <p className="whitespace-pre-wrap text-sm">{theatreCase.notes}</p>
       ) : null}

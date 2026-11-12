@@ -15,6 +15,7 @@ import { OpdOverviewTabPanel } from "@/features/clinical-opd/components/tabs/Opd
 import { OpdPhysicalExaminationTabPanel } from "@/features/clinical-opd/components/tabs/OpdPhysicalExaminationTabPanel";
 import { OpdProblemsTabPanel } from "@/features/clinical-opd/components/tabs/OpdProblemsTabPanel";
 import { OpdVitalSignsTabPanel } from "@/features/clinical-opd/components/tabs/OpdVitalSignsTabPanel";
+import { TheatreBookFromVisitPanel } from "@/features/clinical-theatre/components/TheatreBookFromVisitPanel";
 import {
   OPD_WORKSPACE_ROUTING,
   type OpdEncounterTabId,
@@ -42,11 +43,15 @@ export const SHARED_CLINICAL_PANELS = {
   client: OpdClientTabPanel,
   overview: OpdOverviewTabPanel,
 } as const satisfies Record<
-  OpdEncounterTabId,
+  Exclude<OpdEncounterTabId, "theatre">,
   ComponentType<ClinicalWorkspacePanelProps>
 >;
 
 export const OPD_WORKSPACE_CONFIG: ClinicalWorkspaceConfig<OpdEncounterTabId> = {
   ...OPD_WORKSPACE_ROUTING,
-  panels: SHARED_CLINICAL_PANELS,
+  panels: {
+    ...SHARED_CLINICAL_PANELS,
+    // Why: OPD-only; other specialties book theatre from their own tabs.
+    theatre: TheatreBookFromVisitPanel,
+  },
 };

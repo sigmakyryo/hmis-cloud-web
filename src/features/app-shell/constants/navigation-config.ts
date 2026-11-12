@@ -309,6 +309,14 @@ export const navigation: NavigationItem[] = [
     }),
   ),
   {
+    name: "Theatre board",
+    href: ROUTES.clinicalTheatreBoard,
+    icon: "activity",
+    requiredGroup: "Theatre",
+    moduleName: "Theatre",
+    enabledInWebNew: true,
+  },
+  {
     name: "Ward board",
     href: ROUTES.clinicalIpdBoard,
     icon: "hospital",

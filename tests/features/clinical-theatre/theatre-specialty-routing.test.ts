@@ -34,6 +34,7 @@ describe("theatre specialty routing", () => {
   it("gives every workspace tab a panel and keeps disposition out", () => {
     const tabIds = THEATRE_WORKSPACE_ROUTING.tabs.map((tab) => tab.id);
     expect(tabIds).toContain("case");
+    expect(tabIds).toEqual(expect.arrayContaining(["pre-op", "checklist", "team"]));
     expect(tabIds).not.toContain("disposition" as never);
     for (const id of tabIds) {
       expect(THEATRE_WORKSPACE_CONFIG.panels[id]).toBeTruthy();
@@ -61,6 +62,7 @@ describe("theatre specialty routing", () => {
     );
     const urls = items.flatMap((item) => item.items?.map((child) => child.url) ?? []);
     expect(urls).toContain("/clinical/theatre");
+    expect(urls).toContain("/clinical/theatre/board");
   });
 
   it("hides the Theatre Queue when the module is disabled", () => {
@@ -75,14 +77,18 @@ describe("theatre specialty routing", () => {
     expect(urls).not.toContain("/clinical/theatre");
   });
 
-  it("exposes theatre module settings with all four capabilities", () => {
+  it("exposes theatre module settings with all theatre capabilities", () => {
     const item = getModuleSettingsItemBySlug("theatre", ["Theatre"]);
     expect(item?.href).toBe("/settings/modules/theatre");
     expect(item?.hasSettings).toBe(true);
     expect(THEATRE_ROLE_CAPABILITIES.map((cap) => cap.key).sort()).toEqual([
       "book_theatre_case",
       "manage_theatre_rooms",
+      "manage_theatre_team",
+      "record_theatre_checklist",
+      "record_theatre_pre_op",
       "transition_theatre_case",
+      "view_theatre_board",
       "view_theatre_queue",
     ]);
   });

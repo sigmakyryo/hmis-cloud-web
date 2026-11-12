@@ -7,6 +7,9 @@ import type {
 export type TheatreEncounterTabId =
   | "overview"
   | "case"
+  | "pre-op"
+  | "checklist"
+  | "team"
   | "activity"
   | "complaint"
   | "notes"
@@ -29,6 +32,30 @@ export const THEATRE_ENCOUNTER_TABS: ClinicalWorkspaceTab<TheatreEncounterTabId>
     id: "case",
     label: "Case",
     segment: "case",
+    group: "consult",
+    surface: "tab",
+    requiredCapability: "view_theatre_queue",
+  },
+  {
+    id: "pre-op",
+    label: "Pre-op",
+    segment: "pre-op",
+    group: "consult",
+    surface: "tab",
+    requiredCapability: "view_theatre_queue",
+  },
+  {
+    id: "checklist",
+    label: "WHO checklist",
+    segment: "checklist",
+    group: "consult",
+    surface: "tab",
+    requiredCapability: "view_theatre_queue",
+  },
+  {
+    id: "team",
+    label: "Team",
+    segment: "team",
     group: "consult",
     surface: "tab",
     requiredCapability: "view_theatre_queue",
@@ -145,10 +172,16 @@ export const THEATRE_WORKSPACE_ROUTING: ClinicalWorkspaceRouting<TheatreEncounte
       "physical-examination",
       "diagnoses",
     ]),
-    fullWidthTabIds: new Set<TheatreEncounterTabId>(["activity", "case"]),
+    fullWidthTabIds: new Set<TheatreEncounterTabId>([
+      "activity",
+      "case",
+      "pre-op",
+      "checklist",
+      "team",
+    ]),
     preferredTabsByRole: {
-      nurse: ["case", "vital-signs", "nursing"],
-      physician: ["case", "notes", "orders"],
+      nurse: ["case", "checklist", "vital-signs", "nursing"],
+      physician: ["case", "pre-op", "notes", "orders"],
     },
     fallbackTabId: "case",
   };
