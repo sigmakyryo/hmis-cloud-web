@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
+import { TheatreCssdSettingsPanel } from "@/features/clinical-theatre/components/TheatreCssdSettingsPanel";
 import { TheatreCancellationReasonsSettingsPanel } from "@/features/clinical-theatre/components/TheatreCancellationReasonsSettingsPanel";
 import { TheatrePreferenceCardsSettingsPanel } from "@/features/clinical-theatre/components/TheatrePreferenceCardsSettingsPanel";
 import { TheatrePreOpRulesSettingsPanel } from "@/features/clinical-theatre/components/TheatrePreOpRulesSettingsPanel";
@@ -34,6 +35,7 @@ export type TheatreModuleTabId =
   | "cancellations"
   | "preference-cards"
   | "procedure-codes"
+  | "cssd"
   | "capabilities";
 
 const TABS: Array<{ id: TheatreModuleTabId; label: string }> = [
@@ -44,6 +46,7 @@ const TABS: Array<{ id: TheatreModuleTabId; label: string }> = [
   { id: "cancellations", label: "Cancellation reasons" },
   { id: "preference-cards", label: "Preference cards" },
   { id: "procedure-codes", label: "Procedure codes" },
+  { id: "cssd", label: "CSSD & counts" },
   { id: "capabilities", label: "Role capabilities" },
 ];
 
@@ -55,7 +58,8 @@ function parseTab(value: string | null): TheatreModuleTabId {
     value === "pre-op-rules" ||
     value === "cancellations" ||
     value === "preference-cards" ||
-    value === "procedure-codes"
+    value === "procedure-codes" ||
+    value === "cssd"
   ) {
     return value;
   }
@@ -107,6 +111,7 @@ export function TheatreModuleSettingsTabs() {
         {activeTab === "procedure-codes" ? (
           <TheatreProcedureCodesSettingsPanel />
         ) : null}
+        {activeTab === "cssd" ? <TheatreCssdSettingsPanel /> : null}
         {activeTab === "capabilities" ? <TheatreRoleCapabilitiesTab /> : null}
       </div>
     </div>
