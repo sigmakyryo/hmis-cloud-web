@@ -169,7 +169,7 @@ export function TheatreCaseFlow({ theatreCase }: { theatreCase: TheatreCase }) {
       </div>
       <div className="grid gap-8 lg:grid-cols-[17rem_minmax(0,1fr)] xl:gap-12">
         <aside className="hidden lg:block">
-          <div className="sticky top-36">
+          <div className="sticky top-48">
             <p className="mb-3 px-2 text-xs font-semibold uppercase tracking-wider text-brand-muted">
               Perioperative journey
             </p>

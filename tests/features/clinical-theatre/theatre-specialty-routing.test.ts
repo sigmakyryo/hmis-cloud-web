@@ -47,6 +47,7 @@ describe("theatre specialty routing", () => {
       expect(THEATRE_WORKSPACE_CONFIG.panels[id]).toBeTruthy();
     }
     expect(THEATRE_WORKSPACE_CONFIG.workspaceBanner).toBeTruthy();
+    expect(THEATRE_WORKSPACE_CONFIG.hideEncounterHeader).toBe(true);
   });
 
   it("redirects older theatre URLs to the matching case-flow step", () => {

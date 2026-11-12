@@ -253,10 +253,12 @@ export function OpdEncounterWorkspacePage({
         }}
       >
         <DetailPageLayout data-testid="opd-encounter-workspace">
-          <OpdEncounterHeader
-            customer={customer}
-            actions={<OpdEncounterScheduleButton customer={customer} />}
-          />
+          {config.hideEncounterHeader ? null : (
+            <OpdEncounterHeader
+              customer={customer}
+              actions={<OpdEncounterScheduleButton customer={customer} />}
+            />
+          )}
           <DetailPageTabsSection>
             <OpdEncounterWorkspaceBody>
               {isCustomerLoading && !customer ? (

@@ -150,6 +150,12 @@ export type ClinicalWorkspaceConfig<TabId extends string = string> =
     panels: Readonly<Record<TabId, ComponentType<ClinicalWorkspacePanelProps>>>;
     /** Optional specialty header rendered above the section tabs. */
     workspaceBanner?: ComponentType<ClinicalWorkspaceBannerProps>;
+    /**
+     * When true, the shared OPD-style patient header is omitted. The specialty
+     * is responsible for showing patient identity (theatre uses a compact chip
+     * on its workspace banner).
+     */
+    hideEncounterHeader?: boolean;
     historySections?: readonly ClinicalWorkspaceHistorySection[];
     /**
      * Built-in and specialty history section ids shown in the right pane.

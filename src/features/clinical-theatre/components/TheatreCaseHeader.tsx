@@ -1,39 +1,25 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
-  ArrowLeft,
   CalendarClock,
-  ChevronDown,
   DoorOpen,
-  FolderOpen,
-  Scissors,
-  Siren,
   TriangleAlert,
-  UserRound,
+  type LucideIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { StatusDotBadge } from "@/components/ui/status-dot-badge";
 import { useOpdEncounterWorkspace } from "@/features/clinical-opd/components/detail/opd-encounter-workspace-context";
 import { TheatreCaseSetupCard } from "@/features/clinical-theatre/components/TheatreCaseSetupCard";
-import { TheatreCaseStepper } from "@/features/clinical-theatre/components/TheatreCaseStepper";
 import { TheatreCrashBanner } from "@/features/clinical-theatre/components/TheatreCrashBanner";
+import { TheatrePatientChip } from "@/features/clinical-theatre/components/TheatrePatientChip";
 import { TheatreTimingQuickCapture } from "@/features/clinical-theatre/components/TheatreTimingPanel";
+import { TheatreWorkspaceTabs } from "@/features/clinical-theatre/components/TheatreWorkspaceTabs";
 import { personInitials } from "@/features/clinical-theatre/components/case-flow/theatre-flow-ui";
-import {
-  THEATRE_WORKSPACE_ROUTING,
-  theatreCaseHref,
-} from "@/features/clinical-theatre/constants/theatre-workspace-routing";
+import { theatreCaseHref } from "@/features/clinical-theatre/constants/theatre-workspace-routing";
 import {
   useTheatreCaseForEncounter,
   useTheatreTeam,
@@ -57,12 +43,6 @@ import {
 import { THEATRE_TEAM_ROLE_LABELS } from "@/features/clinical-theatre/utils/theatre-safety-display";
 import { theatreNextAction } from "@/features/clinical-theatre/utils/theatre-workflow";
 import type { ClinicalWorkspaceBannerProps } from "@/features/clinical-workspace/types/clinical-workspace.types";
-import {
-  getVisibleWorkspaceMenuSections,
-  workspaceTabHref,
-} from "@/features/clinical-workspace/utils/workspace-tabs";
-import { appFont } from "@/lib/fonts";
-import { cn } from "@/lib/utils";
 
 const URGENCY_TONE = {
   elective: "neutral",
@@ -72,45 +52,88 @@ const URGENCY_TONE = {
 
 const KEY_ROLES = ["surgeon", "anaesthetist", "scrub_nurse"];
 
-/** Sticky case header shown above the theatre case flow and its records. */
+/** Sticky case chrome: compact patient chip, procedure identity, and section tabs. */
 export function TheatreCaseHeader({ visitUuid, encounterUuid }: ClinicalWorkspaceBannerProps) {
   const { capabilities } = useOpdEncounterWorkspace();
   const { theatreCase, isLoading, error } = useTheatreCaseForEncounter(encounterUuid);
 
   if (isLoading) {
     return (
-      <div className="border-b border-dash-border/70 px-4 py-4 sm:px-6">
-        <div className="h-5 w-72 animate-pulse rounded bg-muted/70" />
-        <div className="mt-2 h-4 w-96 max-w-full animate-pulse rounded bg-muted/50" />
-      </div>
+      <TheatreCaseChrome visitUuid={visitUuid} encounterUuid={encounterUuid}>
+        <div className="px-4 py-3 sm:px-6">
+          <div className="h-4 w-56 animate-pulse rounded bg-muted/70" />
+          <div className="mt-2 h-3 w-72 max-w-full animate-pulse rounded bg-muted/50" />
+        </div>
+      </TheatreCaseChrome>
     );
   }
   if (error) {
     return (
-      <p className="px-4 pt-3 text-sm text-red-600 sm:px-6">
-        {error instanceof Error ? error.message : "Could not load the theatre case."}
-      </p>
+      <TheatreCaseChrome visitUuid={visitUuid} encounterUuid={encounterUuid}>
+        <p className="px-4 py-3 text-sm text-red-600 sm:px-6">
+          {error instanceof Error ? error.message : "Could not load the theatre case."}
+        </p>
+      </TheatreCaseChrome>
     );
   }
   if (!theatreCase) {
     return (
-      <div className="px-4 pt-3 sm:px-6" data-testid="theatre-case-header">
-        <TheatreCaseSetupCard
-          encounterUuid={encounterUuid}
-          canBook={capabilities.includes("book_theatre_case")}
-        />
-        <TheatreRecordsMenuRow visitUuid={visitUuid} encounterUuid={encounterUuid} />
-      </div>
+      <TheatreCaseChrome visitUuid={visitUuid} encounterUuid={encounterUuid}>
+        <div className="px-4 py-3 sm:px-6">
+          <TheatreCaseSetupCard
+            encounterUuid={encounterUuid}
+            canBook={capabilities.includes("book_theatre_case")}
+          />
+        </div>
+      </TheatreCaseChrome>
     );
   }
   return (
-    <TheatreCaseHeaderBar
-      theatreCase={theatreCase}
+    <TheatreCaseChrome
+      fallbackName={theatreCase.customer_name}
       visitUuid={visitUuid}
       encounterUuid={encounterUuid}
-      canTransition={capabilities.includes("transition_theatre_case")}
-      canRecordTimings={capabilities.includes("record_theatre_timings")}
-    />
+      theatreCase={theatreCase}
+    >
+      <TheatreCaseHeaderBar
+        theatreCase={theatreCase}
+        visitUuid={visitUuid}
+        encounterUuid={encounterUuid}
+        canTransition={capabilities.includes("transition_theatre_case")}
+        canRecordTimings={capabilities.includes("record_theatre_timings")}
+      />
+    </TheatreCaseChrome>
+  );
+}
+
+function TheatreCaseChrome({
+  children,
+  fallbackName,
+  visitUuid,
+  encounterUuid,
+  theatreCase = null,
+}: {
+  children: ReactNode;
+  fallbackName?: string | null;
+  visitUuid: string;
+  encounterUuid: string;
+  theatreCase?: TheatreCase | null;
+}) {
+  return (
+    <header
+      className="sticky top-0 z-30 border-b border-dash-border/70 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85"
+      data-testid="theatre-case-header"
+    >
+      <div className="px-4 py-1.5 sm:px-6">
+        <TheatrePatientChip fallbackName={fallbackName} />
+      </div>
+      {children}
+      <TheatreWorkspaceTabs
+        visitUuid={visitUuid}
+        encounterUuid={encounterUuid}
+        theatreCase={theatreCase}
+      />
+    </header>
   );
 }
 
@@ -149,11 +172,7 @@ function TheatreCaseHeaderBar({
   teamParams.set("sheet", "team");
 
   return (
-    <header
-      className="sticky top-0 z-30 border-b border-dash-border/70 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85"
-      data-testid="theatre-case-header"
-    >
-      <div className="space-y-3 px-4 py-3 sm:px-6">
+    <div className="space-y-3 px-4 py-3 sm:px-6">
         <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
           <div className="flex min-w-0 flex-1 items-start gap-3">
             <span
@@ -217,7 +236,6 @@ function TheatreCaseHeaderBar({
                 </p>
               ) : null}
               <dl className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[13px] text-muted-foreground">
-                <HeaderFact icon={UserRound} label="Patient" value={theatreCase.customer_name} />
                 <HeaderFact
                   icon={DoorOpen}
                   label="Room"
@@ -264,8 +282,7 @@ function TheatreCaseHeaderBar({
         </div>
 
         <TheatreCrashBanner theatreCase={theatreCase} stepHref={(step) => stepHref(step)} />
-      </div>
-    </header>
+    </div>
   );
 }
 
@@ -274,7 +291,7 @@ function HeaderFact({
   label,
   value,
 }: {
-  icon: typeof UserRound;
+  icon: LucideIcon;
   label: string;
   value: string;
 }) {

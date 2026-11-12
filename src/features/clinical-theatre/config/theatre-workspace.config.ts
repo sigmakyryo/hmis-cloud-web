@@ -10,6 +10,7 @@ import type { ClinicalWorkspaceConfig } from "@/features/clinical-workspace/type
 export const THEATRE_WORKSPACE_CONFIG: ClinicalWorkspaceConfig<TheatreEncounterTabId> = {
   ...THEATRE_WORKSPACE_ROUTING,
   workspaceBanner: TheatreCaseHeader,
+  hideEncounterHeader: true,
   panels: {
     overview: SHARED_CLINICAL_PANELS.overview,
     case: TheatreCaseFlowSection,
