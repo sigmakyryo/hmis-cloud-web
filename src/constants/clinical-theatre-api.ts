@@ -39,6 +39,12 @@ export const CLINICAL_THEATRE_API_PATHS = {
     upstream(`cases/${uuid}/consumables/${itemUuid}/issue/`),
   consumableReturn: (uuid: string, itemUuid: string) =>
     upstream(`cases/${uuid}/consumables/${itemUuid}/return/`),
+  obstetric: (uuid: string) => upstream(`cases/${uuid}/obstetric/`),
+  babies: (uuid: string) => upstream(`cases/${uuid}/babies/`),
+  baby: (uuid: string, babyUuid: string) => upstream(`cases/${uuid}/babies/${babyUuid}/`),
+  babyRegister: (uuid: string, babyUuid: string) =>
+    upstream(`cases/${uuid}/babies/${babyUuid}/register/`),
+  convertToIpd: (uuid: string) => upstream(`cases/${uuid}/convert-to-ipd/`),
   cancellationReasons: upstream("cancellation-reasons/"),
   cancellationReason: (uuid: string) => upstream(`cancellation-reasons/${uuid}/`),
   reportSummary: upstream("reports/summary/"),
@@ -81,6 +87,12 @@ export const BFF_CLINICAL_THEATRE_ROUTES = {
     bff(`cases/${uuid}/consumables/${itemUuid}/issue`),
   consumableReturn: (uuid: string, itemUuid: string) =>
     bff(`cases/${uuid}/consumables/${itemUuid}/return`),
+  obstetric: (uuid: string) => bff(`cases/${uuid}/obstetric`),
+  babies: (uuid: string) => bff(`cases/${uuid}/babies`),
+  baby: (uuid: string, babyUuid: string) => bff(`cases/${uuid}/babies/${babyUuid}`),
+  babyRegister: (uuid: string, babyUuid: string) =>
+    bff(`cases/${uuid}/babies/${babyUuid}/register`),
+  convertToIpd: (uuid: string) => bff(`cases/${uuid}/convert-to-ipd`),
   cancellationReasons: bff("cancellation-reasons"),
   cancellationReason: (uuid: string) => bff(`cancellation-reasons/${uuid}`),
   reportSummary: bff("reports/summary"),

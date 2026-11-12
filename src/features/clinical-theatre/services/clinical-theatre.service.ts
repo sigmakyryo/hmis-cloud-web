@@ -38,6 +38,11 @@ import type {
   UpdateTheatreRoomPayload,
   StartTheatreCrashCasePayload,
   TheatreCaseProcedurePayload,
+  TheatreObstetricPayload,
+  UpdateTheatreObstetricPayload,
+  TheatreBabyWritePayload,
+  RegisterTheatreNewbornPayload,
+  ConvertTheatreCaseToIpdPayload,
 } from "@/features/clinical-theatre/types/clinical-theatre.types";
 import { bffRequest } from "@/lib/bff-client";
 
@@ -372,6 +377,65 @@ export function updateTheatreCancellationReason(
 ) {
   return bffRequest<TheatreCancellationReason>(ROUTES.cancellationReason(uuid), {
     method: "PATCH",
+    body: payload,
+  });
+}
+
+export function fetchTheatreObstetric(caseUuid: string) {
+  return bffRequest<TheatreObstetricPayload>(ROUTES.obstetric(caseUuid));
+}
+
+export function updateTheatreObstetric(
+  caseUuid: string,
+  payload: UpdateTheatreObstetricPayload,
+) {
+  return bffRequest<TheatreObstetricPayload>(ROUTES.obstetric(caseUuid), {
+    method: "PUT",
+    body: payload,
+  });
+}
+
+export function addTheatreBaby(caseUuid: string, payload: TheatreBabyWritePayload) {
+  return bffRequest<TheatreObstetricPayload>(ROUTES.babies(caseUuid), {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function updateTheatreBaby(
+  caseUuid: string,
+  babyUuid: string,
+  payload: Partial<TheatreBabyWritePayload>,
+) {
+  return bffRequest<TheatreObstetricPayload>(ROUTES.baby(caseUuid, babyUuid), {
+    method: "PATCH",
+    body: payload,
+  });
+}
+
+export function removeTheatreBaby(caseUuid: string, babyUuid: string) {
+  return bffRequest<TheatreObstetricPayload>(ROUTES.baby(caseUuid, babyUuid), {
+    method: "DELETE",
+  });
+}
+
+export function registerTheatreNewborn(
+  caseUuid: string,
+  babyUuid: string,
+  payload: RegisterTheatreNewbornPayload = {},
+) {
+  return bffRequest<TheatreObstetricPayload>(ROUTES.babyRegister(caseUuid, babyUuid), {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function convertTheatreCaseToIpd(
+  caseUuid: string,
+  payload: ConvertTheatreCaseToIpdPayload,
+) {
+  return bffRequest<TheatreCase>(ROUTES.convertToIpd(caseUuid), {
+    method: "POST",
     body: payload,
   });
 }

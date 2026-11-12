@@ -199,6 +199,42 @@ export function TheatreReportBody({ report }: { report: TheatreReportSummary }) 
           ])}
         />
       ) : null}
+      {report.obstetrics && (report.obstetrics.caesareans > 0 || report.obstetrics.babies > 0) ? (
+        <section className="space-y-3" data-testid="theatre-report-obstetrics">
+          <h2 className="text-sm font-semibold text-brand-navy">Caesareans & births</h2>
+          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            <Stat label="Caesareans" value={report.obstetrics.caesareans} />
+            <Stat label="Babies" value={report.obstetrics.babies} />
+            <Stat label="Live births" value={report.obstetrics.live_births} />
+            <Stat label="Stillbirths" value={report.obstetrics.stillbirths} />
+            <Stat label="Apgar < 7 at 5 min" value={report.obstetrics.low_apgar_5} />
+            <Stat label="Low birth weight" value={report.obstetrics.low_birth_weight} />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {report.obstetrics.registered_newborns} newborn(s) registered;{" "}
+            {report.obstetrics.unregistered_live_births} live birth(s) not yet registered.
+          </p>
+          <ReportTable
+            title="Caesareans by urgency category"
+            headers={["Category", "Cases"]}
+            empty="No caesareans in this period."
+            rows={report.obstetrics.by_category.map((row) => [row.label, row.cases])}
+          />
+        </section>
+      ) : null}
+      {report.ipd_conversions && report.ipd_conversions.converted > 0 ? (
+        <ReportTable
+          title={`Day cases converted to inpatient (${report.ipd_conversions.converted} of ${report.ipd_conversions.day_cases}, ${(report.ipd_conversions.rate * 100).toFixed(1)}%)`}
+          headers={["Converted", "Patient", "Procedure", "Reason"]}
+          empty="No conversions."
+          rows={report.ipd_conversions.cases.map((row) => [
+            new Date(row.converted_at).toLocaleString(),
+            row.customer_name || "—",
+            row.procedure_description || "—",
+            row.reason || "—",
+          ])}
+        />
+      ) : null}
       {report.returns ? (
         <section className="space-y-3" data-testid="theatre-report-returns">
           <div className="grid gap-3 sm:grid-cols-4">

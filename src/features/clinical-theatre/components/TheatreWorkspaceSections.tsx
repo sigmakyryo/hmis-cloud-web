@@ -12,6 +12,8 @@ import { TheatreCaseDetailsForm } from "@/features/clinical-theatre/components/T
 import { TheatreCasePanelGate } from "@/features/clinical-theatre/components/TheatreCasePanelGate";
 import { TheatreChecklistPanel } from "@/features/clinical-theatre/components/TheatreChecklistPanel";
 import { TheatreConsumablesPanel } from "@/features/clinical-theatre/components/TheatreConsumablesPanel";
+import { TheatreIpdConversionPanel } from "@/features/clinical-theatre/components/TheatreIpdConversionPanel";
+import { TheatreObstetricPanel } from "@/features/clinical-theatre/components/TheatreObstetricPanel";
 import { TheatreOperationNotePanel } from "@/features/clinical-theatre/components/TheatreOperationNotePanel";
 import { TheatrePreOpPanel } from "@/features/clinical-theatre/components/TheatrePreOpPanel";
 import { TheatreProceduresPanel } from "@/features/clinical-theatre/components/TheatreProceduresPanel";
@@ -107,6 +109,12 @@ export function TheatreOverviewSection({ encounterUuid }: ClinicalWorkspacePanel
                 canEdit={can("book_theatre_case")}
               />
             </SectionCard>
+            <SectionCard title="Inpatient stay">
+              <TheatreIpdConversionPanel
+                theatreCase={theatreCase}
+                canConvert={can("convert_theatre_case_to_ipd")}
+              />
+            </SectionCard>
             <div className="lg:col-span-2">
               <SectionCard>
                 <TheatreTeamPanel theatreCase={theatreCase} />
@@ -150,7 +158,16 @@ function IntraOpBody({
   theatreCase: TheatreCase;
   section: TheatreIntraOpSection;
 }) {
+  const can = useCan();
   switch (section) {
+    case "caesarean":
+      return (
+        <TheatreObstetricPanel
+          theatreCase={theatreCase}
+          canRecord={can("record_theatre_obstetrics")}
+          canRegister={can("register_theatre_newborn")}
+        />
+      );
     case "anaesthesia":
       return <TheatreAnaesthesiaPanel theatreCase={theatreCase} />;
     case "op-note":

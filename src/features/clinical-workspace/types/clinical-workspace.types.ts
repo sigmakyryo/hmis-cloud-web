@@ -56,7 +56,10 @@ export type ClinicalCapabilityKey =
   | "view_theatre_reports"
   | "start_theatre_crash_case"
   | "manage_theatre_cancellation_reasons"
-  | "return_theatre_consumables";
+  | "return_theatre_consumables"
+  | "record_theatre_obstetrics"
+  | "register_theatre_newborn"
+  | "convert_theatre_case_to_ipd";
 
 export type ClinicalWorkspaceTabGroup = "nurse" | "consult" | "record";
 

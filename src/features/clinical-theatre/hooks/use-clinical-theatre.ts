@@ -45,6 +45,13 @@ import {
   removeTheatreCaseProcedure,
   startTheatreCrashCase,
   updateTheatreCaseProcedure,
+  addTheatreBaby,
+  convertTheatreCaseToIpd,
+  fetchTheatreObstetric,
+  registerTheatreNewborn,
+  removeTheatreBaby,
+  updateTheatreBaby,
+  updateTheatreObstetric,
 } from "@/features/clinical-theatre/services/clinical-theatre.service";
 import type {
   AddTheatreAnaesthesiaVitalPayload,
@@ -72,6 +79,10 @@ import type {
   UpdateTheatreRoomPayload,
   StartTheatreCrashCasePayload,
   TheatreCaseProcedurePayload,
+  ConvertTheatreCaseToIpdPayload,
+  RegisterTheatreNewbornPayload,
+  TheatreBabyWritePayload,
+  UpdateTheatreObstetricPayload,
 } from "@/features/clinical-theatre/types/clinical-theatre.types";
 
 export const theatreQueryKeys = {
@@ -93,6 +104,7 @@ export const theatreQueryKeys = {
   report: (filters: TheatreReportFilters) => ["theatre", "report", filters] as const,
   cancellationReasons: (includeInactive = false) =>
     ["theatre", "cancellation-reasons", includeInactive] as const,
+  obstetric: (caseUuid: string) => ["theatre", "obstetric", caseUuid] as const,
 };
 
 export function useTheatreRooms(
@@ -490,5 +502,68 @@ export function useTheatreReportSummary(
     queryKey: theatreQueryKeys.report(filters),
     queryFn: () => fetchTheatreReportSummary(filters),
     enabled: options.enabled ?? true,
+  });
+}
+
+export function useTheatreObstetric(
+  caseUuid: string | undefined,
+  options: { enabled?: boolean } = {},
+) {
+  return useQuery({
+    queryKey: theatreQueryKeys.obstetric(caseUuid ?? ""),
+    queryFn: () => fetchTheatreObstetric(caseUuid as string),
+    enabled: Boolean(caseUuid) && (options.enabled ?? true),
+  });
+}
+
+export function useUpdateTheatreObstetric() {
+  return useCaseMutation(
+    (input: { caseUuid: string; payload: UpdateTheatreObstetricPayload }) =>
+      updateTheatreObstetric(input.caseUuid, input.payload),
+  );
+}
+
+export function useAddTheatreBaby() {
+  return useCaseMutation(
+    (input: { caseUuid: string; payload: TheatreBabyWritePayload }) =>
+      addTheatreBaby(input.caseUuid, input.payload),
+  );
+}
+
+export function useUpdateTheatreBaby() {
+  return useCaseMutation(
+    (input: {
+      caseUuid: string;
+      babyUuid: string;
+      payload: Partial<TheatreBabyWritePayload>;
+    }) => updateTheatreBaby(input.caseUuid, input.babyUuid, input.payload),
+  );
+}
+
+export function useRemoveTheatreBaby() {
+  return useCaseMutation((input: { caseUuid: string; babyUuid: string }) =>
+    removeTheatreBaby(input.caseUuid, input.babyUuid),
+  );
+}
+
+export function useRegisterTheatreNewborn() {
+  return useCaseMutation(
+    (input: {
+      caseUuid: string;
+      babyUuid: string;
+      payload?: RegisterTheatreNewbornPayload;
+    }) => registerTheatreNewborn(input.caseUuid, input.babyUuid, input.payload ?? {}),
+  );
+}
+
+export function useConvertTheatreCaseToIpd() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { caseUuid: string; payload: ConvertTheatreCaseToIpdPayload }) =>
+      convertTheatreCaseToIpd(input.caseUuid, input.payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: theatreQueryKeys.all });
+      void queryClient.invalidateQueries({ queryKey: ["ipd"] });
+    },
   });
 }
