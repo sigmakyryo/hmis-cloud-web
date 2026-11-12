@@ -254,3 +254,282 @@ export type TheatreBoardFilters = {
   date?: string;
   clinic?: string;
 };
+
+/* ------------------------------------------------------------------ */
+/* Phase 3: anaesthesia, operation note, recovery, consumables, reports */
+/* ------------------------------------------------------------------ */
+
+export const THEATRE_ANAESTHESIA_TECHNIQUES = [
+  "general",
+  "spinal",
+  "epidural",
+  "cse",
+  "regional",
+  "local",
+  "sedation",
+] as const;
+
+export type TheatreAnaesthesiaTechnique =
+  (typeof THEATRE_ANAESTHESIA_TECHNIQUES)[number];
+
+export const THEATRE_AIRWAYS = [
+  "none",
+  "face_mask",
+  "lma",
+  "ett",
+  "tracheostomy",
+] as const;
+
+export type TheatreAirway = (typeof THEATRE_AIRWAYS)[number];
+
+/** Free-form chart rows (agents, fluids, blood products, events). */
+export type TheatreChartEntry = {
+  name?: string;
+  dose?: string;
+  volume_ml?: number | string;
+  time?: string;
+  note?: string;
+};
+
+export type TheatreAnaesthesiaVital = {
+  uuid: string;
+  recorded_at: string;
+  heart_rate: number | null;
+  systolic_bp: number | null;
+  diastolic_bp: number | null;
+  spo2: number | null;
+  etco2: number | null;
+  respiratory_rate: number | null;
+  temperature_c: string | null;
+  notes: string;
+};
+
+export type TheatreAnaesthesiaRecord = {
+  uuid: string;
+  anaesthetist: number | null;
+  anaesthetist_name: string;
+  technique: TheatreAnaesthesiaTechnique | "";
+  airway: TheatreAirway | "";
+  airway_notes: string;
+  agents: TheatreChartEntry[];
+  fluids: TheatreChartEntry[];
+  blood_products: TheatreChartEntry[];
+  events: TheatreChartEntry[];
+  estimated_blood_loss_ml: number | null;
+  urine_output_ml: number | null;
+  anaesthesia_start: string | null;
+  induction_at: string | null;
+  anaesthesia_end: string | null;
+  notes: string;
+  vitals: TheatreAnaesthesiaVital[];
+  signed_at: string | null;
+  signed_by_name: string;
+  updated_at: string;
+};
+
+export type UpdateTheatreAnaesthesiaPayload = Partial<
+  Omit<
+    TheatreAnaesthesiaRecord,
+    "uuid" | "anaesthetist_name" | "vitals" | "signed_at" | "signed_by_name" | "updated_at"
+  >
+>;
+
+export type AddTheatreAnaesthesiaVitalPayload = Partial<
+  Omit<TheatreAnaesthesiaVital, "uuid">
+>;
+
+export type TheatreOperationNote = {
+  uuid: string;
+  surgeon: number | null;
+  surgeon_name: string;
+  assistants: string;
+  procedure_performed: string;
+  indication: string;
+  incision: string;
+  findings: string;
+  procedure_details: string;
+  implants: string;
+  specimens: string;
+  specimens_sent_to_lab: boolean;
+  drains: string;
+  closure: string;
+  estimated_blood_loss_ml: number | null;
+  complications: string;
+  post_op_instructions: string;
+  signed_at: string | null;
+  signed_by_name: string;
+  updated_at: string;
+};
+
+export type UpdateTheatreOperationNotePayload = Partial<
+  Omit<
+    TheatreOperationNote,
+    "uuid" | "surgeon_name" | "signed_at" | "signed_by_name" | "updated_at"
+  >
+>;
+
+export const THEATRE_HANDOVER_DESTINATIONS = [
+  "ward",
+  "home",
+  "hdu",
+  "icu",
+  "other",
+] as const;
+
+export type TheatreHandoverDestination =
+  (typeof THEATRE_HANDOVER_DESTINATIONS)[number];
+
+export const THEATRE_ALDRETE_ITEMS = [
+  "activity",
+  "respiration",
+  "circulation",
+  "consciousness",
+  "oxygen_saturation",
+] as const;
+
+export type TheatreAldreteItem = (typeof THEATRE_ALDRETE_ITEMS)[number];
+
+export type TheatreRecoveryObservation = {
+  uuid: string;
+  recorded_at: string;
+  activity: number;
+  respiration: number;
+  circulation: number;
+  consciousness: number;
+  oxygen_saturation: number;
+  aldrete_total: number;
+  heart_rate: number | null;
+  systolic_bp: number | null;
+  diastolic_bp: number | null;
+  spo2: number | null;
+  pain_score: number | null;
+  notes: string;
+};
+
+export type AddTheatreRecoveryObservationPayload = Record<TheatreAldreteItem, number> &
+  Partial<
+    Pick<
+      TheatreRecoveryObservation,
+      "heart_rate" | "systolic_bp" | "diastolic_bp" | "spo2" | "pain_score" | "notes"
+    >
+  >;
+
+export type TheatreRecoveryRecord = {
+  uuid: string;
+  arrived_at: string | null;
+  handover_destination: TheatreHandoverDestination | "";
+  handed_over_to: string;
+  notes: string;
+  observations: TheatreRecoveryObservation[];
+  latest_aldrete: number | null;
+  discharge_score: number | null;
+  discharged_at: string | null;
+  discharged_by_name: string;
+  updated_at: string;
+};
+
+export type UpdateTheatreRecoveryPayload = Partial<
+  Pick<TheatreRecoveryRecord, "handover_destination" | "handed_over_to" | "notes">
+>;
+
+export type TheatreConsumableKind = "consumable" | "implant" | "procedure";
+
+export type TheatreConsumableStatus = "recorded" | "issued" | "cancelled";
+
+export type TheatreConsumable = {
+  uuid: string;
+  kind: TheatreConsumableKind;
+  kind_label: string;
+  status: TheatreConsumableStatus;
+  status_label: string;
+  product_uuid: string;
+  product_name: string;
+  product_type: string;
+  quantity: string;
+  visit_order_uuid: string | null;
+  issued_at: string | null;
+  issued_by_name: string;
+  manufacturer: string;
+  lot_number: string;
+  serial_number: string;
+  expiry_date: string | null;
+  implant_site: string;
+  notes: string;
+  created_at: string;
+};
+
+export type AddTheatreConsumablePayload = {
+  product_uuid: string;
+  kind: TheatreConsumableKind;
+  quantity?: string | number;
+  manufacturer?: string;
+  lot_number?: string;
+  serial_number?: string;
+  expiry_date?: string | null;
+  implant_site?: string;
+  notes?: string;
+};
+
+export type IssueTheatreConsumablePayload = {
+  location_uuid?: string | null;
+  batches?: { batch_id: number; quantity: string }[];
+};
+
+export type TheatreReportFilters = {
+  date_from: string;
+  date_to: string;
+  clinic?: string;
+  session_hours?: string;
+};
+
+export type TheatreReportRoomRow = {
+  room_uuid: string | null;
+  room_name: string;
+  cases: number;
+  completed: number;
+  cancelled: number;
+  operating_minutes: number;
+  utilisation_percent: number | null;
+};
+
+export type TheatreReportSurgeonRow = {
+  surgeon_id: number | null;
+  surgeon_name: string;
+  cases: number;
+  completed: number;
+  cancelled: number;
+  operating_minutes: number;
+};
+
+export type TheatreReportCancellation = {
+  case_uuid: string;
+  status: "cancelled" | "postponed";
+  procedure_description: string;
+  scheduled_start: string | null;
+  room_name: string;
+  surgeon_name: string;
+  reason: string;
+  recorded_at: string | null;
+  recorded_by: string;
+};
+
+export type TheatreReportSummary = {
+  date_from: string;
+  date_to: string;
+  days: number;
+  session_hours: number;
+  totals: {
+    cases: number;
+    completed: number;
+    cancelled: number;
+    postponed: number;
+    in_progress: number;
+    operating_minutes: number;
+    average_case_minutes: number | null;
+  };
+  by_status: { status: TheatreCaseStatus; label: string; count: number }[];
+  by_urgency: { urgency: TheatreCaseUrgency; label: string; count: number }[];
+  by_room: TheatreReportRoomRow[];
+  by_surgeon: TheatreReportSurgeonRow[];
+  cancellations: TheatreReportCancellation[];
+};

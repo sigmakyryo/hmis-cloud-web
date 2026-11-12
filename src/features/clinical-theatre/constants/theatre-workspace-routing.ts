@@ -10,6 +10,10 @@ export type TheatreEncounterTabId =
   | "pre-op"
   | "checklist"
   | "team"
+  | "anaesthesia"
+  | "op-note"
+  | "recovery"
+  | "consumables"
   | "activity"
   | "complaint"
   | "notes"
@@ -61,6 +65,38 @@ export const THEATRE_ENCOUNTER_TABS: ClinicalWorkspaceTab<TheatreEncounterTabId>
     requiredCapability: "view_theatre_queue",
   },
   {
+    id: "anaesthesia",
+    label: "Anaesthesia",
+    segment: "anaesthesia",
+    group: "consult",
+    surface: "tab",
+    requiredCapability: "view_theatre_queue",
+  },
+  {
+    id: "op-note",
+    label: "Op note",
+    segment: "op-note",
+    group: "record",
+    surface: "tab",
+    requiredCapability: "view_theatre_queue",
+  },
+  {
+    id: "recovery",
+    label: "Recovery",
+    segment: "recovery",
+    group: "nurse",
+    surface: "tab",
+    requiredCapability: "view_theatre_queue",
+  },
+  {
+    id: "consumables",
+    label: "Consumables",
+    segment: "consumables",
+    group: "consult",
+    surface: "tab",
+    requiredCapability: "view_theatre_queue",
+  },
+  {
     id: "activity",
     label: "Activity",
     segment: "activity",
@@ -102,7 +138,7 @@ export const THEATRE_ENCOUNTER_TABS: ClinicalWorkspaceTab<TheatreEncounterTabId>
   },
   {
     id: "notes",
-    label: "Operation notes",
+    label: "Clinical notes",
     segment: "notes",
     group: "record",
     surface: "tab",
@@ -178,10 +214,14 @@ export const THEATRE_WORKSPACE_ROUTING: ClinicalWorkspaceRouting<TheatreEncounte
       "pre-op",
       "checklist",
       "team",
+      "anaesthesia",
+      "op-note",
+      "recovery",
+      "consumables",
     ]),
     preferredTabsByRole: {
-      nurse: ["case", "checklist", "vital-signs", "nursing"],
-      physician: ["case", "pre-op", "notes", "orders"],
+      nurse: ["case", "checklist", "recovery", "consumables"],
+      physician: ["case", "pre-op", "op-note", "anaesthesia"],
     },
     fallbackTabId: "case",
   };

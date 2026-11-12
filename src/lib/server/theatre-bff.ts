@@ -14,6 +14,9 @@ export const THEATRE_QUERY_KEYS = [
   "encounter",
   "source",
   "date",
+  "date_from",
+  "date_to",
+  "session_hours",
   "include_inactive",
 ] as const;
 

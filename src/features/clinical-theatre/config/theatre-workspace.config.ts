@@ -1,6 +1,12 @@
 import { SHARED_CLINICAL_PANELS } from "@/features/clinical-opd/config/opd-workspace.config";
 import { TheatreCaseTabPanel } from "@/features/clinical-theatre/components/TheatreCaseTabPanel";
 import {
+  TheatreAnaesthesiaTabPanel,
+  TheatreConsumablesTabPanel,
+  TheatreOperationNoteTabPanel,
+  TheatreRecoveryTabPanel,
+} from "@/features/clinical-theatre/components/TheatreRecordTabPanels";
+import {
   TheatreChecklistTabPanel,
   TheatrePreOpTabPanel,
   TheatreTeamTabPanel,
@@ -19,6 +25,10 @@ export const THEATRE_WORKSPACE_CONFIG: ClinicalWorkspaceConfig<TheatreEncounterT
     "pre-op": TheatrePreOpTabPanel,
     checklist: TheatreChecklistTabPanel,
     team: TheatreTeamTabPanel,
+    anaesthesia: TheatreAnaesthesiaTabPanel,
+    "op-note": TheatreOperationNoteTabPanel,
+    recovery: TheatreRecoveryTabPanel,
+    consumables: TheatreConsumablesTabPanel,
     activity: SHARED_CLINICAL_PANELS.activity,
     complaint: SHARED_CLINICAL_PANELS.complaint,
     notes: SHARED_CLINICAL_PANELS.notes,

@@ -3,7 +3,23 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
+  addTheatreAnaesthesiaVital,
+  addTheatreConsumable,
+  addTheatreRecoveryObservation,
   addTheatreTeamMember,
+  cancelTheatreConsumable,
+  dischargeTheatreRecovery,
+  fetchTheatreAnaesthesia,
+  fetchTheatreConsumables,
+  fetchTheatreOperationNote,
+  fetchTheatreRecovery,
+  fetchTheatreReportSummary,
+  issueTheatreConsumable,
+  signTheatreAnaesthesia,
+  signTheatreOperationNote,
+  updateTheatreAnaesthesia,
+  updateTheatreOperationNote,
+  updateTheatreRecovery,
   assignTheatreCaseRoom,
   createTheatreCase,
   createTheatreRoom,
@@ -21,7 +37,15 @@ import {
   updateTheatreRoom,
 } from "@/features/clinical-theatre/services/clinical-theatre.service";
 import type {
+  AddTheatreAnaesthesiaVitalPayload,
+  AddTheatreConsumablePayload,
+  AddTheatreRecoveryObservationPayload,
   AddTheatreTeamMemberPayload,
+  IssueTheatreConsumablePayload,
+  TheatreReportFilters,
+  UpdateTheatreAnaesthesiaPayload,
+  UpdateTheatreOperationNotePayload,
+  UpdateTheatreRecoveryPayload,
   CreateTheatreCasePayload,
   CreateTheatreRoomPayload,
   RecordTheatreChecklistPayload,
@@ -45,6 +69,12 @@ export const theatreQueryKeys = {
   team: (caseUuid: string) => ["theatre", "team", caseUuid] as const,
   checklist: (caseUuid: string) => ["theatre", "checklist", caseUuid] as const,
   preOp: (caseUuid: string) => ["theatre", "pre-op", caseUuid] as const,
+  anaesthesia: (caseUuid: string) => ["theatre", "anaesthesia", caseUuid] as const,
+  operationNote: (caseUuid: string) =>
+    ["theatre", "operation-note", caseUuid] as const,
+  recovery: (caseUuid: string) => ["theatre", "recovery", caseUuid] as const,
+  consumables: (caseUuid: string) => ["theatre", "consumables", caseUuid] as const,
+  report: (filters: TheatreReportFilters) => ["theatre", "report", filters] as const,
 };
 
 export function useTheatreRooms(
@@ -215,4 +245,137 @@ export function useUpdateTheatrePreOp() {
 export function useTheatreCaseForEncounter(encounterUuid: string) {
   const query = useTheatreCases({ encounter: encounterUuid });
   return { ...query, theatreCase: query.data?.[0] };
+}
+
+function useCaseQuery<T>(
+  key: readonly unknown[],
+  caseUuid: string | undefined,
+  fetcher: (caseUuid: string) => Promise<T>,
+) {
+  return useQuery({
+    queryKey: key,
+    queryFn: () => fetcher(caseUuid as string),
+    enabled: Boolean(caseUuid),
+  });
+}
+
+function useCaseMutation<TInput>(mutationFn: (input: TInput) => Promise<unknown>) {
+  const invalidate = useInvalidateTheatre();
+  return useMutation({ mutationFn, onSuccess: () => void invalidate() });
+}
+
+export function useTheatreAnaesthesia(caseUuid: string | undefined) {
+  return useCaseQuery(
+    theatreQueryKeys.anaesthesia(caseUuid ?? ""),
+    caseUuid,
+    fetchTheatreAnaesthesia,
+  );
+}
+
+export function useUpdateTheatreAnaesthesia() {
+  return useCaseMutation(
+    (input: { caseUuid: string; payload: UpdateTheatreAnaesthesiaPayload }) =>
+      updateTheatreAnaesthesia(input.caseUuid, input.payload),
+  );
+}
+
+export function useAddTheatreAnaesthesiaVital() {
+  return useCaseMutation(
+    (input: { caseUuid: string; payload: AddTheatreAnaesthesiaVitalPayload }) =>
+      addTheatreAnaesthesiaVital(input.caseUuid, input.payload),
+  );
+}
+
+export function useSignTheatreAnaesthesia() {
+  return useCaseMutation((caseUuid: string) => signTheatreAnaesthesia(caseUuid));
+}
+
+export function useTheatreOperationNote(caseUuid: string | undefined) {
+  return useCaseQuery(
+    theatreQueryKeys.operationNote(caseUuid ?? ""),
+    caseUuid,
+    fetchTheatreOperationNote,
+  );
+}
+
+export function useUpdateTheatreOperationNote() {
+  return useCaseMutation(
+    (input: { caseUuid: string; payload: UpdateTheatreOperationNotePayload }) =>
+      updateTheatreOperationNote(input.caseUuid, input.payload),
+  );
+}
+
+export function useSignTheatreOperationNote() {
+  return useCaseMutation((caseUuid: string) => signTheatreOperationNote(caseUuid));
+}
+
+export function useTheatreRecovery(caseUuid: string | undefined) {
+  return useCaseQuery(
+    theatreQueryKeys.recovery(caseUuid ?? ""),
+    caseUuid,
+    fetchTheatreRecovery,
+  );
+}
+
+export function useUpdateTheatreRecovery() {
+  return useCaseMutation(
+    (input: { caseUuid: string; payload: UpdateTheatreRecoveryPayload }) =>
+      updateTheatreRecovery(input.caseUuid, input.payload),
+  );
+}
+
+export function useAddTheatreRecoveryObservation() {
+  return useCaseMutation(
+    (input: { caseUuid: string; payload: AddTheatreRecoveryObservationPayload }) =>
+      addTheatreRecoveryObservation(input.caseUuid, input.payload),
+  );
+}
+
+export function useDischargeTheatreRecovery() {
+  return useCaseMutation(
+    (input: { caseUuid: string; payload?: UpdateTheatreRecoveryPayload }) =>
+      dischargeTheatreRecovery(input.caseUuid, input.payload),
+  );
+}
+
+export function useTheatreConsumables(caseUuid: string | undefined) {
+  return useCaseQuery(
+    theatreQueryKeys.consumables(caseUuid ?? ""),
+    caseUuid,
+    fetchTheatreConsumables,
+  );
+}
+
+export function useAddTheatreConsumable() {
+  return useCaseMutation(
+    (input: { caseUuid: string; payload: AddTheatreConsumablePayload }) =>
+      addTheatreConsumable(input.caseUuid, input.payload),
+  );
+}
+
+export function useIssueTheatreConsumable() {
+  return useCaseMutation(
+    (input: {
+      caseUuid: string;
+      itemUuid: string;
+      payload?: IssueTheatreConsumablePayload;
+    }) => issueTheatreConsumable(input.caseUuid, input.itemUuid, input.payload),
+  );
+}
+
+export function useCancelTheatreConsumable() {
+  return useCaseMutation((input: { caseUuid: string; itemUuid: string }) =>
+    cancelTheatreConsumable(input.caseUuid, input.itemUuid),
+  );
+}
+
+export function useTheatreReportSummary(
+  filters: TheatreReportFilters,
+  options: { enabled?: boolean } = {},
+) {
+  return useQuery({
+    queryKey: theatreQueryKeys.report(filters),
+    queryFn: () => fetchTheatreReportSummary(filters),
+    enabled: options.enabled ?? true,
+  });
 }

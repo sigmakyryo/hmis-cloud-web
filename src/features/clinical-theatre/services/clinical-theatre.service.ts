@@ -1,6 +1,19 @@
 import { BFF_CLINICAL_THEATRE_ROUTES as ROUTES } from "@/constants/clinical-theatre-api";
 import type {
+  AddTheatreAnaesthesiaVitalPayload,
+  AddTheatreConsumablePayload,
+  AddTheatreRecoveryObservationPayload,
   AddTheatreTeamMemberPayload,
+  IssueTheatreConsumablePayload,
+  TheatreAnaesthesiaRecord,
+  TheatreConsumable,
+  TheatreOperationNote,
+  TheatreRecoveryRecord,
+  TheatreReportFilters,
+  TheatreReportSummary,
+  UpdateTheatreAnaesthesiaPayload,
+  UpdateTheatreOperationNotePayload,
+  UpdateTheatreRecoveryPayload,
   CreateTheatreCasePayload,
   CreateTheatreRoomPayload,
   RecordTheatreChecklistPayload,
@@ -147,4 +160,127 @@ export function updateTheatrePreOp(
     method: "PUT",
     body: payload,
   });
+}
+
+export function fetchTheatreAnaesthesia(caseUuid: string) {
+  return bffRequest<TheatreAnaesthesiaRecord | null>(ROUTES.anaesthesia(caseUuid));
+}
+
+export function updateTheatreAnaesthesia(
+  caseUuid: string,
+  payload: UpdateTheatreAnaesthesiaPayload,
+) {
+  return bffRequest<TheatreAnaesthesiaRecord>(ROUTES.anaesthesia(caseUuid), {
+    method: "PUT",
+    body: payload,
+  });
+}
+
+export function addTheatreAnaesthesiaVital(
+  caseUuid: string,
+  payload: AddTheatreAnaesthesiaVitalPayload,
+) {
+  return bffRequest<TheatreAnaesthesiaRecord>(ROUTES.anaesthesiaVitals(caseUuid), {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function signTheatreAnaesthesia(caseUuid: string) {
+  return bffRequest<TheatreAnaesthesiaRecord>(ROUTES.anaesthesiaSign(caseUuid), {
+    method: "POST",
+    body: {},
+  });
+}
+
+export function fetchTheatreOperationNote(caseUuid: string) {
+  return bffRequest<TheatreOperationNote | null>(ROUTES.operationNote(caseUuid));
+}
+
+export function updateTheatreOperationNote(
+  caseUuid: string,
+  payload: UpdateTheatreOperationNotePayload,
+) {
+  return bffRequest<TheatreOperationNote>(ROUTES.operationNote(caseUuid), {
+    method: "PUT",
+    body: payload,
+  });
+}
+
+export function signTheatreOperationNote(caseUuid: string) {
+  return bffRequest<TheatreOperationNote>(ROUTES.operationNoteSign(caseUuid), {
+    method: "POST",
+    body: {},
+  });
+}
+
+export function fetchTheatreRecovery(caseUuid: string) {
+  return bffRequest<TheatreRecoveryRecord | null>(ROUTES.recovery(caseUuid));
+}
+
+export function updateTheatreRecovery(
+  caseUuid: string,
+  payload: UpdateTheatreRecoveryPayload,
+) {
+  return bffRequest<TheatreRecoveryRecord>(ROUTES.recovery(caseUuid), {
+    method: "PATCH",
+    body: payload,
+  });
+}
+
+export function addTheatreRecoveryObservation(
+  caseUuid: string,
+  payload: AddTheatreRecoveryObservationPayload,
+) {
+  return bffRequest<TheatreRecoveryRecord>(ROUTES.recoveryObservations(caseUuid), {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function dischargeTheatreRecovery(
+  caseUuid: string,
+  payload: UpdateTheatreRecoveryPayload = {},
+) {
+  return bffRequest<TheatreRecoveryRecord>(ROUTES.recoveryDischarge(caseUuid), {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function fetchTheatreConsumables(caseUuid: string) {
+  return bffRequest<TheatreConsumable[]>(ROUTES.consumables(caseUuid));
+}
+
+export function addTheatreConsumable(
+  caseUuid: string,
+  payload: AddTheatreConsumablePayload,
+) {
+  return bffRequest<TheatreConsumable>(ROUTES.consumables(caseUuid), {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function issueTheatreConsumable(
+  caseUuid: string,
+  itemUuid: string,
+  payload: IssueTheatreConsumablePayload = {},
+) {
+  return bffRequest<TheatreConsumable>(ROUTES.consumableIssue(caseUuid, itemUuid), {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function cancelTheatreConsumable(caseUuid: string, itemUuid: string) {
+  return bffRequest<TheatreConsumable>(ROUTES.consumable(caseUuid, itemUuid), {
+    method: "DELETE",
+  });
+}
+
+export function fetchTheatreReportSummary(filters: TheatreReportFilters) {
+  return bffRequest<TheatreReportSummary>(
+    `${ROUTES.reportSummary}${theatreQueryString(filters)}`,
+  );
 }

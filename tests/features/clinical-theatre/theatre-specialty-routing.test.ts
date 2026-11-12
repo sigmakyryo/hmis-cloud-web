@@ -34,7 +34,17 @@ describe("theatre specialty routing", () => {
   it("gives every workspace tab a panel and keeps disposition out", () => {
     const tabIds = THEATRE_WORKSPACE_ROUTING.tabs.map((tab) => tab.id);
     expect(tabIds).toContain("case");
-    expect(tabIds).toEqual(expect.arrayContaining(["pre-op", "checklist", "team"]));
+    expect(tabIds).toEqual(
+      expect.arrayContaining([
+        "pre-op",
+        "checklist",
+        "team",
+        "anaesthesia",
+        "op-note",
+        "recovery",
+        "consumables",
+      ]),
+    );
     expect(tabIds).not.toContain("disposition" as never);
     for (const id of tabIds) {
       expect(THEATRE_WORKSPACE_CONFIG.panels[id]).toBeTruthy();
@@ -63,6 +73,7 @@ describe("theatre specialty routing", () => {
     const urls = items.flatMap((item) => item.items?.map((child) => child.url) ?? []);
     expect(urls).toContain("/clinical/theatre");
     expect(urls).toContain("/clinical/theatre/board");
+    expect(urls).toContain("/clinical/theatre/reports");
   });
 
   it("hides the Theatre Queue when the module is disabled", () => {
@@ -83,13 +94,20 @@ describe("theatre specialty routing", () => {
     expect(item?.hasSettings).toBe(true);
     expect(THEATRE_ROLE_CAPABILITIES.map((cap) => cap.key).sort()).toEqual([
       "book_theatre_case",
+      "issue_theatre_consumables",
       "manage_theatre_rooms",
       "manage_theatre_team",
+      "record_theatre_anaesthesia",
       "record_theatre_checklist",
+      "record_theatre_consumables",
+      "record_theatre_operation_note",
       "record_theatre_pre_op",
+      "record_theatre_recovery",
+      "sign_theatre_operation_note",
       "transition_theatre_case",
       "view_theatre_board",
       "view_theatre_queue",
+      "view_theatre_reports",
     ]);
   });
 });

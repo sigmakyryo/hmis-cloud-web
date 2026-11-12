@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StatusDotBadge } from "@/components/ui/status-dot-badge";
 import { ROUTES } from "@/constants/routes";
+import { TheatreClinicSelect } from "@/features/clinical-theatre/components/TheatreClinicSelect";
 import { TheatreSafetyBadges } from "@/features/clinical-theatre/components/TheatreSafetyBadges";
 import { useTheatreBoard } from "@/features/clinical-theatre/hooks/use-clinical-theatre";
 import type {
@@ -115,15 +116,19 @@ export function TheatreBoardPage() {
   const searchParams = useSearchParams();
   const today = toDateInputValue(new Date());
   const date = searchParams.get("date") || today;
-  const { data, isLoading, error } = useTheatreBoard({ date });
+  const clinic = searchParams.get("clinic") || "";
+  const { data, isLoading, error } = useTheatreBoard(
+    clinic ? { date, clinic } : { date },
+  );
 
-  const setDate = (next: string) => {
+  const setParam = (key: string, next: string, fallback = "") => {
     const params = new URLSearchParams(searchParams.toString());
-    if (next && next !== today) params.set("date", next);
-    else params.delete("date");
+    if (next && next !== fallback) params.set(key, next);
+    else params.delete(key);
     const query = params.toString();
     router.replace(query ? `${pathname}?${query}` : pathname);
   };
+  const setDate = (next: string) => setParam("date", next, today);
 
   const lanes = (data?.lanes ?? []).filter(
     (lane) => lane.room !== null || lane.cases.length > 0,
@@ -159,6 +164,10 @@ export function TheatreBoardPage() {
               Today
             </Button>
           ) : null}
+          <TheatreClinicSelect
+            value={clinic}
+            onChange={(next) => setParam("clinic", next)}
+          />
         </div>
       </div>
       {isLoading ? (

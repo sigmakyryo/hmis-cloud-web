@@ -46,7 +46,14 @@ export type ClinicalCapabilityKey =
   | "view_theatre_board"
   | "manage_theatre_team"
   | "record_theatre_checklist"
-  | "record_theatre_pre_op";
+  | "record_theatre_pre_op"
+  | "record_theatre_anaesthesia"
+  | "record_theatre_operation_note"
+  | "sign_theatre_operation_note"
+  | "record_theatre_recovery"
+  | "record_theatre_consumables"
+  | "issue_theatre_consumables"
+  | "view_theatre_reports";
 
 export type ClinicalWorkspaceTabGroup = "nurse" | "consult" | "record";
 
