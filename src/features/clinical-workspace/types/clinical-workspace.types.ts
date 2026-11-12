@@ -61,7 +61,15 @@ export type ClinicalCapabilityKey =
   | "register_theatre_newborn"
   | "convert_theatre_case_to_ipd"
   | "manage_theatre_preference_cards"
-  | "manage_theatre_procedure_codes";
+  | "manage_theatre_procedure_codes"
+  | "record_theatre_timings"
+  | "manage_theatre_sessions"
+  | "view_theatre_waiting_list"
+  | "manage_theatre_waiting_list"
+  | "manage_theatre_urgency_categories"
+  | "manage_theatre_pre_op_rules"
+  | "record_theatre_pre_op_clinic"
+  | "record_theatre_fitness_clearance";
 
 export type ClinicalWorkspaceTabGroup = "nurse" | "consult" | "record";
 

@@ -5,8 +5,11 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { TheatreCancellationReasonsSettingsPanel } from "@/features/clinical-theatre/components/TheatreCancellationReasonsSettingsPanel";
 import { TheatrePreferenceCardsSettingsPanel } from "@/features/clinical-theatre/components/TheatrePreferenceCardsSettingsPanel";
+import { TheatrePreOpRulesSettingsPanel } from "@/features/clinical-theatre/components/TheatrePreOpRulesSettingsPanel";
 import { TheatreProcedureCodesSettingsPanel } from "@/features/clinical-theatre/components/TheatreProcedureCodesSettingsPanel";
 import { TheatreRoomsSettingsPanel } from "@/features/clinical-theatre/components/TheatreRoomsSettingsPanel";
+import { TheatreSessionsSettingsPanel } from "@/features/clinical-theatre/components/TheatreSessionsSettingsPanel";
+import { TheatreUrgencyCategoriesSettingsPanel } from "@/features/clinical-theatre/components/TheatreUrgencyCategoriesSettingsPanel";
 import {
   useRoleCapabilities,
   useUpdateRoleCapabilities,
@@ -25,6 +28,9 @@ import { THEATRE_ROLE_CAPABILITIES } from "@/features/settings/constants/clinica
 
 export type TheatreModuleTabId =
   | "rooms"
+  | "sessions"
+  | "urgency-categories"
+  | "pre-op-rules"
   | "cancellations"
   | "preference-cards"
   | "procedure-codes"
@@ -32,6 +38,9 @@ export type TheatreModuleTabId =
 
 const TABS: Array<{ id: TheatreModuleTabId; label: string }> = [
   { id: "rooms", label: "Rooms" },
+  { id: "sessions", label: "Sessions" },
+  { id: "urgency-categories", label: "Waiting list categories" },
+  { id: "pre-op-rules", label: "Pre-op test rules" },
   { id: "cancellations", label: "Cancellation reasons" },
   { id: "preference-cards", label: "Preference cards" },
   { id: "procedure-codes", label: "Procedure codes" },
@@ -41,6 +50,9 @@ const TABS: Array<{ id: TheatreModuleTabId; label: string }> = [
 function parseTab(value: string | null): TheatreModuleTabId {
   if (
     value === "capabilities" ||
+    value === "sessions" ||
+    value === "urgency-categories" ||
+    value === "pre-op-rules" ||
     value === "cancellations" ||
     value === "preference-cards" ||
     value === "procedure-codes"
@@ -81,6 +93,11 @@ export function TheatreModuleSettingsTabs() {
 
       <div className="pt-6">
         {activeTab === "rooms" ? <TheatreRoomsSettingsPanel /> : null}
+        {activeTab === "sessions" ? <TheatreSessionsSettingsPanel /> : null}
+        {activeTab === "urgency-categories" ? (
+          <TheatreUrgencyCategoriesSettingsPanel />
+        ) : null}
+        {activeTab === "pre-op-rules" ? <TheatrePreOpRulesSettingsPanel /> : null}
         {activeTab === "cancellations" ? (
           <TheatreCancellationReasonsSettingsPanel />
         ) : null}

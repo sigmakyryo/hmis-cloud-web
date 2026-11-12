@@ -27,6 +27,14 @@ export const THEATRE_QUERY_KEYS = [
   "mine",
   "surgeon",
   "product",
+  "include_cancelled",
+  "category",
+  "breached",
+  "readiness",
+  "sort",
+  "include_ready",
+  "entry",
+  "clearance",
 ] as const;
 
 export function buildTheatreQuery(request: Request): string {

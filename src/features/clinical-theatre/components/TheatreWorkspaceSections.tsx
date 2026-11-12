@@ -22,6 +22,7 @@ import { TheatreRecoveryPanel } from "@/features/clinical-theatre/components/The
 import { TheatreReturnLinkPanel } from "@/features/clinical-theatre/components/TheatreReturnLinkPanel";
 import { TheatreSafetyBadges } from "@/features/clinical-theatre/components/TheatreSafetyBadges";
 import { TheatreTeamPanel } from "@/features/clinical-theatre/components/TheatreTeamPanel";
+import { TheatreTimingPanel } from "@/features/clinical-theatre/components/TheatreTimingPanel";
 import type { TheatreCase } from "@/features/clinical-theatre/types/clinical-theatre.types";
 import {
   THEATRE_INTRA_OP_SECTIONS,
@@ -183,6 +184,13 @@ function IntraOpBody({
       return <TheatreOperationNotePanel theatreCase={theatreCase} />;
     case "consumables":
       return <TheatreConsumablesPanel theatreCase={theatreCase} />;
+    case "timings":
+      return (
+        <TheatreTimingPanel
+          theatreCase={theatreCase}
+          canRecord={can("record_theatre_timings")}
+        />
+      );
     default:
       return (
         <TheatreChecklistPanel
@@ -194,7 +202,7 @@ function IntraOpBody({
   }
 }
 
-/** Intra-op: time-out / sign-out, anaesthesia, op note and consumables. */
+/** Intra-op: time-out / sign-out, anaesthesia, op note, consumables and times. */
 export function TheatreIntraOpSection({ encounterUuid }: ClinicalWorkspacePanelProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();

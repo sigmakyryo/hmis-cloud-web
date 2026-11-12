@@ -268,4 +268,47 @@ export const THEATRE_ROLE_CAPABILITIES: ClinicalRoleCapabilityMeta[] = [
     label: "Manage cancellation reasons",
     description: "Add, rename and retire the standard cancellation / postponement reasons",
   },
+  {
+    key: "record_theatre_timings",
+    label: "Record theatre times",
+    description:
+      "Tap in suite, anaesthesia, knife to skin, closure and out-of-theatre times; corrections need a reason",
+  },
+  {
+    key: "manage_theatre_sessions",
+    label: "Manage theatre sessions",
+    description:
+      "Set weekly session templates per room, one-off overrides and the first-case tolerance",
+  },
+  {
+    key: "view_theatre_waiting_list",
+    label: "View waiting list",
+    description: "See the elective surgery waiting list, waits and breaches",
+  },
+  {
+    key: "manage_theatre_waiting_list",
+    label: "Manage waiting list",
+    description: "Add patients, change priority, schedule into sessions and remove with a reason",
+  },
+  {
+    key: "manage_theatre_urgency_categories",
+    label: "Manage urgency categories",
+    description: "Edit P1–P4 categories and their target waiting days",
+  },
+  {
+    key: "manage_theatre_pre_op_rules",
+    label: "Manage pre-op test rules",
+    description: "Configure which tests are required by procedure, ASA, age and comorbidity",
+  },
+  {
+    key: "record_theatre_pre_op_clinic",
+    label: "Run pre-op clinic",
+    description:
+      "Record pre-op assessments, order the required tests (after confirmation) and track results",
+  },
+  {
+    key: "record_theatre_fitness_clearance",
+    label: "Record fitness clearance",
+    description: "Mark patients fit, unfit or deferred for surgery, with notes and expiry",
+  },
 ];
