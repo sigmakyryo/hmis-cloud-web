@@ -174,7 +174,7 @@ export function IpdTheatreTabPanel({ visitUuid }: ClinicalWorkspacePanelProps) {
             key={theatreCase.uuid}
             className="border-b border-border/60 pb-3"
           >
-            <TheatreCaseSummary theatreCase={theatreCase} showWorkspaceLink />
+            <TheatreCaseSummary theatreCase={theatreCase} showWorkspaceLink showImplants />
           </li>
         ))}
       </ul>

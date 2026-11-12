@@ -202,7 +202,7 @@ export function TheatreBookFromVisitPanel({ visitUuid }: ClinicalWorkspacePanelP
       <ul className="space-y-3">
         {(casesQuery.data ?? []).map((theatreCase) => (
           <li key={theatreCase.uuid} className="border-b border-border/60 pb-3">
-            <TheatreCaseSummary theatreCase={theatreCase} showWorkspaceLink />
+            <TheatreCaseSummary theatreCase={theatreCase} showWorkspaceLink showImplants />
           </li>
         ))}
       </ul>

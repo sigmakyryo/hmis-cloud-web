@@ -13,6 +13,8 @@ export type TheatreWorkspaceSection = "case" | "pre-op" | "intra-op" | "recovery
 /** Sub-sections of the Intra-op section (`?section=`). */
 export const THEATRE_INTRA_OP_SECTIONS = [
   { id: "checklist", label: "Time-out & sign-out" },
+  { id: "counts", label: "Counts" },
+  { id: "trays", label: "Trays" },
   { id: "anaesthesia", label: "Anaesthesia" },
   { id: "op-note", label: "Op note" },
   { id: "consumables", label: "Consumables" },
@@ -117,12 +119,19 @@ export function theatreNextAction(
     ? null
     : safetyGateBlocker(theatreCase.status, next, theatreCase.safety, theatreCase.urgency);
   const stage = blocker ? requiredChecklistStage(theatreCase.status, next) : null;
+  // The surgical count gates sign-out before the checklist can be completed.
+  const countBlocked =
+    stage === "sign_out" && Boolean(theatreCase.safety?.count_blocker);
   return {
     kind: "transition",
     status: next,
     blocker,
     fixSection: stage === null ? null : stage === "sign_in" ? "pre-op" : "intra-op",
-    fixSubSection: stage === "time_out" || stage === "sign_out" ? "checklist" : null,
+    fixSubSection: countBlocked
+      ? "counts"
+      : stage === "time_out" || stage === "sign_out"
+        ? "checklist"
+        : null,
   };
 }
 

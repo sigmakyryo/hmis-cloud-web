@@ -311,4 +311,39 @@ export const THEATRE_ROLE_CAPABILITIES: ClinicalRoleCapabilityMeta[] = [
     label: "Record fitness clearance",
     description: "Mark patients fit, unfit or deferred for surgery, with notes and expiry",
   },
+  {
+    key: "manage_theatre_trays",
+    label: "Manage trays & sterilisers",
+    description:
+      "Set up sterilisers, instrument tray sets and their contents, register tray barcodes and quarantine trays",
+  },
+  {
+    key: "record_theatre_sterilisation",
+    label: "Record sterilisation cycles",
+    description:
+      "Load trays into a sterilisation cycle, record chemical / biological indicator results and recall failed loads",
+  },
+  {
+    key: "assign_theatre_trays",
+    label: "Assign trays to cases",
+    description:
+      "Scan sterile trays onto a case (expired, unsterile or failed-indicator trays are blocked) and return them for reprocessing",
+  },
+  {
+    key: "record_theatre_counts",
+    label: "Record surgical counts",
+    description:
+      "Record swab, sharps and instrument counts; each count is confirmed with a second staff member",
+  },
+  {
+    key: "sign_theatre_count_resolution",
+    label: "Sign count discrepancies",
+    description:
+      "As the operating surgeon, document the search, x-ray and outcome for a final count mismatch so sign-out can proceed",
+  },
+  {
+    key: "view_theatre_implant_recall",
+    label: "Implant recall search",
+    description: "Find patients and cases by implant lot, serial, product or manufacturer and export CSV",
+  },
 ];

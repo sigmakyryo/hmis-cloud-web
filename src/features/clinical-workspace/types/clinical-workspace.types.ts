@@ -69,7 +69,13 @@ export type ClinicalCapabilityKey =
   | "manage_theatre_urgency_categories"
   | "manage_theatre_pre_op_rules"
   | "record_theatre_pre_op_clinic"
-  | "record_theatre_fitness_clearance";
+  | "record_theatre_fitness_clearance"
+  | "manage_theatre_trays"
+  | "record_theatre_sterilisation"
+  | "assign_theatre_trays"
+  | "record_theatre_counts"
+  | "sign_theatre_count_resolution"
+  | "view_theatre_implant_recall";
 
 export type ClinicalWorkspaceTabGroup = "nurse" | "consult" | "record";
 
