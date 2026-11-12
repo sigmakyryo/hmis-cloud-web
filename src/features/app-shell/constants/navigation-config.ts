@@ -16,6 +16,7 @@ export type NavigationItem = {
 export const moduleDisplayNames: Record<string, string> = {
   Registration: "Front Desk",
   Dental: "Dental Clinic",
+  Theatre: "Theatre",
   Billing: "Billing",
   Claims: "Claims",
   Orders: "Orders",
@@ -43,6 +44,7 @@ export const moduleIcons: Record<string, AppIconName> = {
   Radiology: "heartPulse",
   Inventory: "store",
   Dental: "dental",
+  Theatre: "activity",
   Clinical: "hospital",
   Therapy: "dumbbell",
   OccupationalHealth: "clipboard",
@@ -64,6 +66,7 @@ export const moduleOrder = [
   "Inventory",
   "Dental",
   "Clinical",
+  "Theatre",
   "Therapy",
   "OccupationalHealth",
   "Immunizations",
@@ -750,6 +753,7 @@ const PORTAL_NAV_GROUPS = new Set([
   "Radiology",
   "Dental",
   "Clinical",
+  "Theatre",
   "OccupationalHealth",
   "Therapy",
 ]);

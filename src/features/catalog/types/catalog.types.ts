@@ -324,7 +324,7 @@ export type CatalogListFilters = {
   is_sundry?: boolean;
   is_drug?: boolean;
   /** Department context for procedure scope (opd | dental | ipd | physio). */
-  procedure_context?: "opd" | "dental" | "ipd" | "physio";
+  procedure_context?: "opd" | "dental" | "ipd" | "theatre" | "physio";
   /** When set, attach visit-scoped payer_advisories from the effective pricelist. */
   visit_uuid?: string;
 };

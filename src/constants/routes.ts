@@ -133,6 +133,9 @@ export const ROUTES = {
   clinicalIpdStays: "/clinical/ipd/stays",
   clinicalIpdEncounter: (visitUuid: string, encounterUuid: string) =>
     `/clinical/ipd/${visitUuid}/${encounterUuid}`,
+  clinicalTheatre: "/clinical/theatre",
+  clinicalTheatreEncounter: (visitUuid: string, encounterUuid: string) =>
+    `/clinical/theatre/${visitUuid}/${encounterUuid}`,
   occupationalHealth: "/occupational-health",
   occupationalHealthHome: "/occupational-health/home",
   occupationalHealthEmployees: "/occupational-health/employees",
@@ -267,6 +270,7 @@ export const ROUTES = {
   settingsModuleLaboratory: "/settings/modules/laboratory",
   settingsModuleClinical: "/settings/modules/clinical",
   settingsModuleDental: "/settings/modules/dental",
+  settingsModuleTheatre: "/settings/modules/theatre",
   settingsModuleRegistration: "/settings/modules/registration",
   settingsModuleOccupationalHealth: "/settings/modules/occupational-health",
   settingsOccupationalHealthEmployer: (

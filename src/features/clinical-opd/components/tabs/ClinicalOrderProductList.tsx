@@ -10,6 +10,7 @@ import { fetchCatalogProducts } from "@/features/catalog/services/catalog.servic
 import { useWorkspaceRouting } from "@/features/clinical-opd/hooks/use-workspace-routing";
 import type { ClinicalOrderItemType } from "@/features/clinical-opd/schemas/clinical-opd.schema";
 import { formatPayerAdvisoriesLine } from "@/features/clinical-opd/utils/payer-advisories";
+import type { ClinicalProcedureContext } from "@/features/clinical-workspace/constants/clinical-specialties";
 import type { InventoryProduct } from "@/features/inventory/types/inventory.types";
 import { formatProductLabel } from "@/features/inventory/utils/format-inventory";
 import { cn } from "@/lib/utils";
@@ -31,7 +32,7 @@ type ClinicalOrderProductListProps = {
 
 function catalogFiltersForItemType(
   itemType: ClinicalOrderItemType,
-  procedureContext: "opd" | "dental" | "ipd",
+  procedureContext: ClinicalProcedureContext,
 ) {
   switch (itemType) {
     case "LABORATORY":

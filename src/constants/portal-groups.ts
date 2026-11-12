@@ -9,6 +9,8 @@ export const PORTAL_GROUP_OPTIONS = [
   { name: "Lab", label: "Laboratory" },
   { name: "Radiology", label: "Radiology" },
   { name: "Dental", label: "Dental" },
+  { name: "IPD", label: "IPD" },
+  { name: "Theatre", label: "Theatre" },
   { name: "Clinical", label: "Clinical" },
   { name: "OccupationalHealth", label: "Occupational health" },
   { name: "Therapy", label: "Therapy" },
