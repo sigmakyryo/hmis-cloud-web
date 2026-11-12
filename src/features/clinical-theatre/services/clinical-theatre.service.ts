@@ -29,6 +29,7 @@ import type {
   TheatreRoomFilters,
   TheatreTeamMember,
   UpdateTheatrePreOpPayload,
+  UpdateTheatreCaseDetailsPayload,
   UpdateTheatreRoomPayload,
 } from "@/features/clinical-theatre/types/clinical-theatre.types";
 import { bffRequest } from "@/lib/bff-client";
@@ -79,6 +80,24 @@ export function createTheatreCase(payload: CreateTheatreCasePayload) {
   return bffRequest<TheatreCase>(ROUTES.cases, {
     method: "POST",
     body: payload,
+  });
+}
+
+export function updateTheatreCaseDetails(
+  uuid: string,
+  payload: UpdateTheatreCaseDetailsPayload,
+) {
+  return bffRequest<TheatreCase>(ROUTES.case(uuid), {
+    method: "PATCH",
+    body: payload,
+  });
+}
+
+/** Return the encounter's theatre case, setting up a draft one when missing. */
+export function ensureTheatreCaseForEncounter(encounterUuid: string) {
+  return bffRequest<TheatreCase>(ROUTES.caseForEncounter, {
+    method: "POST",
+    body: { encounter: encounterUuid },
   });
 }
 

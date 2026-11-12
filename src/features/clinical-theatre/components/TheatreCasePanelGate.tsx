@@ -29,8 +29,8 @@ export function TheatreCasePanelGate({
   }
   if (!theatreCase) {
     return (
-      <p className="text-sm text-muted-foreground">
-        No theatre case is linked to this encounter.
+      <p className="text-sm text-muted-foreground" data-testid="theatre-case-missing">
+        Set up the theatre case above to start recording.
       </p>
     );
   }

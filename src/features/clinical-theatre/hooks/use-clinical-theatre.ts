@@ -23,6 +23,7 @@ import {
   assignTheatreCaseRoom,
   createTheatreCase,
   createTheatreRoom,
+  ensureTheatreCaseForEncounter,
   fetchTheatreBoard,
   fetchTheatreCases,
   fetchTheatreChecklist,
@@ -33,6 +34,7 @@ import {
   removeTheatreTeamMember,
   rescheduleTheatreCase,
   transitionTheatreCase,
+  updateTheatreCaseDetails,
   updateTheatrePreOp,
   updateTheatreRoom,
 } from "@/features/clinical-theatre/services/clinical-theatre.service";
@@ -54,6 +56,7 @@ import type {
   TheatreCaseStatus,
   TheatreChecklistStageId,
   TheatreRoomFilters,
+  UpdateTheatreCaseDetailsPayload,
   UpdateTheatrePreOpPayload,
   UpdateTheatreRoomPayload,
 } from "@/features/clinical-theatre/types/clinical-theatre.types";
@@ -109,6 +112,24 @@ export function useCreateTheatreCase() {
   const invalidate = useInvalidateTheatre();
   return useMutation({
     mutationFn: (payload: CreateTheatreCasePayload) => createTheatreCase(payload),
+    onSuccess: () => void invalidate(),
+  });
+}
+
+export function useUpdateTheatreCaseDetails() {
+  const invalidate = useInvalidateTheatre();
+  return useMutation({
+    mutationFn: (input: { uuid: string; payload: UpdateTheatreCaseDetailsPayload }) =>
+      updateTheatreCaseDetails(input.uuid, input.payload),
+    onSuccess: () => void invalidate(),
+  });
+}
+
+/** Set up the draft case of a theatre encounter that has none. */
+export function useEnsureTheatreCaseForEncounter() {
+  const invalidate = useInvalidateTheatre();
+  return useMutation({
+    mutationFn: (encounterUuid: string) => ensureTheatreCaseForEncounter(encounterUuid),
     onSuccess: () => void invalidate(),
   });
 }

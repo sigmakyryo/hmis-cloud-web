@@ -23,6 +23,7 @@ import {
   localInputToIso,
 } from "@/features/clinical-theatre/utils/theatre-case-display";
 import { safetyGateBlocker } from "@/features/clinical-theatre/utils/theatre-safety-display";
+import { theatreSecondaryTransitions } from "@/features/clinical-theatre/utils/theatre-workflow";
 
 const RESCHEDULABLE: ReadonlySet<TheatreCaseStatus> = new Set([
   "booked",
@@ -38,10 +39,18 @@ function errorMessage(error: unknown): string | null {
 
 type TheatreCaseActionsProps = {
   theatreCase: TheatreCase;
+  /**
+   * `all` shows every allowed move; `secondary` only postpone / cancel (the
+   * workspace header owns the primary next step).
+   */
+  transitions?: "all" | "secondary";
 };
 
 /** Status, reschedule and room actions for one theatre case. */
-export function TheatreCaseActions({ theatreCase }: TheatreCaseActionsProps) {
+export function TheatreCaseActions({
+  theatreCase,
+  transitions = "all",
+}: TheatreCaseActionsProps) {
   const transition = useTransitionTheatreCase();
   const reschedule = useRescheduleTheatreCase();
   const assignRoom = useAssignTheatreCaseRoom();
@@ -59,7 +68,11 @@ export function TheatreCaseActions({ theatreCase }: TheatreCaseActionsProps) {
     errorMessage(reschedule.error) ??
     errorMessage(assignRoom.error);
 
-  const gateMessages = theatreCase.allowed_transitions
+  const shownTransitions =
+    transitions === "all"
+      ? theatreCase.allowed_transitions
+      : theatreSecondaryTransitions(theatreCase);
+  const gateMessages = (transitions === "all" ? shownTransitions : [])
     .map((status) =>
       safetyGateBlocker(
         theatreCase.status,
@@ -80,9 +93,9 @@ export function TheatreCaseActions({ theatreCase }: TheatreCaseActionsProps) {
 
   return (
     <div className="space-y-4" data-testid="theatre-case-actions">
-      {theatreCase.allowed_transitions.length > 0 ? (
+      {shownTransitions.length > 0 ? (
         <div className="flex flex-wrap gap-2">
-          {theatreCase.allowed_transitions.map((status) => {
+          {shownTransitions.map((status) => {
             const blocker = safetyGateBlocker(
               theatreCase.status,
               status,

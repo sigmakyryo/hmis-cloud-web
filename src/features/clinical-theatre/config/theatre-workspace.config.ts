@@ -1,16 +1,11 @@
 import { SHARED_CLINICAL_PANELS } from "@/features/clinical-opd/config/opd-workspace.config";
-import { TheatreCaseTabPanel } from "@/features/clinical-theatre/components/TheatreCaseTabPanel";
+import { TheatreCaseHeader } from "@/features/clinical-theatre/components/TheatreCaseHeader";
 import {
-  TheatreAnaesthesiaTabPanel,
-  TheatreConsumablesTabPanel,
-  TheatreOperationNoteTabPanel,
-  TheatreRecoveryTabPanel,
-} from "@/features/clinical-theatre/components/TheatreRecordTabPanels";
-import {
-  TheatreChecklistTabPanel,
-  TheatrePreOpTabPanel,
-  TheatreTeamTabPanel,
-} from "@/features/clinical-theatre/components/TheatreSafetyTabPanels";
+  TheatreIntraOpSection,
+  TheatreOverviewSection,
+  TheatrePreOpSection,
+  TheatreRecoverySection,
+} from "@/features/clinical-theatre/components/TheatreWorkspaceSections";
 import {
   THEATRE_WORKSPACE_ROUTING,
   type TheatreEncounterTabId,
@@ -19,16 +14,13 @@ import type { ClinicalWorkspaceConfig } from "@/features/clinical-workspace/type
 
 export const THEATRE_WORKSPACE_CONFIG: ClinicalWorkspaceConfig<TheatreEncounterTabId> = {
   ...THEATRE_WORKSPACE_ROUTING,
+  workspaceBanner: TheatreCaseHeader,
   panels: {
     overview: SHARED_CLINICAL_PANELS.overview,
-    case: TheatreCaseTabPanel,
-    "pre-op": TheatrePreOpTabPanel,
-    checklist: TheatreChecklistTabPanel,
-    team: TheatreTeamTabPanel,
-    anaesthesia: TheatreAnaesthesiaTabPanel,
-    "op-note": TheatreOperationNoteTabPanel,
-    recovery: TheatreRecoveryTabPanel,
-    consumables: TheatreConsumablesTabPanel,
+    case: TheatreOverviewSection,
+    "pre-op": TheatrePreOpSection,
+    "intra-op": TheatreIntraOpSection,
+    recovery: TheatreRecoverySection,
     activity: SHARED_CLINICAL_PANELS.activity,
     complaint: SHARED_CLINICAL_PANELS.complaint,
     notes: SHARED_CLINICAL_PANELS.notes,
