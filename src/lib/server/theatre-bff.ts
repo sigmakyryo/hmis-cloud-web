@@ -20,6 +20,13 @@ export const THEATRE_QUERY_KEYS = [
   "return_window_days",
   "customer",
   "include_inactive",
+  "q",
+  "case",
+  "limit",
+  "system",
+  "mine",
+  "surgeon",
+  "product",
 ] as const;
 
 export function buildTheatreQuery(request: Request): string {

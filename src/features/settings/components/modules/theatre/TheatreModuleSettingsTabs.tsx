@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { TheatreCancellationReasonsSettingsPanel } from "@/features/clinical-theatre/components/TheatreCancellationReasonsSettingsPanel";
+import { TheatrePreferenceCardsSettingsPanel } from "@/features/clinical-theatre/components/TheatrePreferenceCardsSettingsPanel";
+import { TheatreProcedureCodesSettingsPanel } from "@/features/clinical-theatre/components/TheatreProcedureCodesSettingsPanel";
 import { TheatreRoomsSettingsPanel } from "@/features/clinical-theatre/components/TheatreRoomsSettingsPanel";
 import {
   useRoleCapabilities,
@@ -21,16 +23,30 @@ import {
 } from "@/features/settings/components/SettingsPageLayout";
 import { THEATRE_ROLE_CAPABILITIES } from "@/features/settings/constants/clinical-role-capability-config";
 
-export type TheatreModuleTabId = "rooms" | "cancellations" | "capabilities";
+export type TheatreModuleTabId =
+  | "rooms"
+  | "cancellations"
+  | "preference-cards"
+  | "procedure-codes"
+  | "capabilities";
 
 const TABS: Array<{ id: TheatreModuleTabId; label: string }> = [
   { id: "rooms", label: "Rooms" },
   { id: "cancellations", label: "Cancellation reasons" },
+  { id: "preference-cards", label: "Preference cards" },
+  { id: "procedure-codes", label: "Procedure codes" },
   { id: "capabilities", label: "Role capabilities" },
 ];
 
 function parseTab(value: string | null): TheatreModuleTabId {
-  if (value === "capabilities" || value === "cancellations") return value;
+  if (
+    value === "capabilities" ||
+    value === "cancellations" ||
+    value === "preference-cards" ||
+    value === "procedure-codes"
+  ) {
+    return value;
+  }
   return "rooms";
 }
 
@@ -67,6 +83,12 @@ export function TheatreModuleSettingsTabs() {
         {activeTab === "rooms" ? <TheatreRoomsSettingsPanel /> : null}
         {activeTab === "cancellations" ? (
           <TheatreCancellationReasonsSettingsPanel />
+        ) : null}
+        {activeTab === "preference-cards" ? (
+          <TheatrePreferenceCardsSettingsPanel />
+        ) : null}
+        {activeTab === "procedure-codes" ? (
+          <TheatreProcedureCodesSettingsPanel />
         ) : null}
         {activeTab === "capabilities" ? <TheatreRoleCapabilitiesTab /> : null}
       </div>

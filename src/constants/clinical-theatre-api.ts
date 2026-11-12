@@ -48,6 +48,26 @@ export const CLINICAL_THEATRE_API_PATHS = {
   cancellationReasons: upstream("cancellation-reasons/"),
   cancellationReason: (uuid: string) => upstream(`cancellation-reasons/${uuid}/`),
   reportSummary: upstream("reports/summary/"),
+  procedureBill: (uuid: string, procedureUuid: string) =>
+    upstream(`cases/${uuid}/procedures/${procedureUuid}/bill/`),
+  plannedItems: (uuid: string) => upstream(`cases/${uuid}/planned-items/`),
+  plannedItemsLoad: (uuid: string) => upstream(`cases/${uuid}/planned-items/load/`),
+  plannedItemsConfirmAll: (uuid: string) =>
+    upstream(`cases/${uuid}/planned-items/confirm-all/`),
+  plannedItemConfirm: (uuid: string, itemUuid: string) =>
+    upstream(`cases/${uuid}/planned-items/${itemUuid}/confirm/`),
+  plannedItemDismiss: (uuid: string, itemUuid: string) =>
+    upstream(`cases/${uuid}/planned-items/${itemUuid}/dismiss/`),
+  savePreferenceCard: (uuid: string) => upstream(`cases/${uuid}/save-preference-card/`),
+  procedureProducts: upstream("procedure-products/"),
+  procedureProductCodes: (productUuid: string) =>
+    upstream(`procedure-products/${productUuid}/codes/`),
+  procedureCodes: upstream("procedure-codes/"),
+  procedureCodesImport: upstream("procedure-codes/import/"),
+  procedureCodesLoadSample: upstream("procedure-codes/load-sample/"),
+  procedureCode: (uuid: string) => upstream(`procedure-codes/${uuid}/`),
+  preferenceCards: upstream("preference-cards/"),
+  preferenceCard: (uuid: string) => upstream(`preference-cards/${uuid}/`),
 } as const;
 
 /** Browser-facing BFF theatre routes. */
@@ -96,4 +116,24 @@ export const BFF_CLINICAL_THEATRE_ROUTES = {
   cancellationReasons: bff("cancellation-reasons"),
   cancellationReason: (uuid: string) => bff(`cancellation-reasons/${uuid}`),
   reportSummary: bff("reports/summary"),
+  procedureBill: (uuid: string, procedureUuid: string) =>
+    bff(`cases/${uuid}/procedures/${procedureUuid}/bill`),
+  plannedItems: (uuid: string) => bff(`cases/${uuid}/planned-items`),
+  plannedItemsLoad: (uuid: string) => bff(`cases/${uuid}/planned-items/load`),
+  plannedItemsConfirmAll: (uuid: string) =>
+    bff(`cases/${uuid}/planned-items/confirm-all`),
+  plannedItemConfirm: (uuid: string, itemUuid: string) =>
+    bff(`cases/${uuid}/planned-items/${itemUuid}/confirm`),
+  plannedItemDismiss: (uuid: string, itemUuid: string) =>
+    bff(`cases/${uuid}/planned-items/${itemUuid}/dismiss`),
+  savePreferenceCard: (uuid: string) => bff(`cases/${uuid}/save-preference-card`),
+  procedureProducts: bff("procedure-products"),
+  procedureProductCodes: (productUuid: string) =>
+    bff(`procedure-products/${productUuid}/codes`),
+  procedureCodes: bff("procedure-codes"),
+  procedureCodesImport: bff("procedure-codes/import"),
+  procedureCodesLoadSample: bff("procedure-codes/load-sample"),
+  procedureCode: (uuid: string) => bff(`procedure-codes/${uuid}`),
+  preferenceCards: bff("preference-cards"),
+  preferenceCard: (uuid: string) => bff(`preference-cards/${uuid}`),
 } as const;

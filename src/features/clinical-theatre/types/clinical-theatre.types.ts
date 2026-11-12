@@ -56,6 +56,23 @@ export type TheatreCaseProcedure = {
   surgeon_id: number | null;
   surgeon_name: string;
   notes: string;
+  /** Procedure codes snapshotted from the catalogue product. */
+  coding?: TheatreProcedureCodeRef[];
+  /** Free text with no catalogue product (older rows). */
+  is_legacy?: boolean;
+  is_billed?: boolean;
+  visit_order_status?: string;
+};
+
+export type TheatreProcedureCodeSystem = "cpt" | "icd10pcs" | "local";
+
+export type TheatreProcedureCodeRef = {
+  uuid?: string;
+  system: TheatreProcedureCodeSystem;
+  system_label?: string;
+  code: string;
+  description: string;
+  is_primary: boolean;
 };
 
 export type TheatreCaseProcedurePayload = {
@@ -176,6 +193,8 @@ export type TheatreCase = {
   cancelled_on_the_day?: boolean | null;
   cancelled_at?: string | null;
   customer_gender?: string | null;
+  preference_card_applied_at?: string | null;
+  preference_setup?: TheatrePreferenceSetup;
   converted_to_ipd_at?: string | null;
   converted_from_source?: TheatreCaseSource | "";
   conversion_reason?: string;
@@ -925,4 +944,15 @@ export type TheatreReportProcedureRow = {
   procedure: string;
   count: number;
   as_primary: number;
+};
+
+/** Setup copied from a surgeon preference card into a case. */
+export type TheatrePreferenceSetup = {
+  card_uuid?: string;
+  title?: string;
+  positioning?: string;
+  skin_prep?: string;
+  equipment?: string;
+  instrument_trays?: string[];
+  notes?: string;
 };

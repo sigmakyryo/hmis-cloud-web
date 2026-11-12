@@ -217,9 +217,10 @@ describe("theatre advanced A components", () => {
     expect(screen.queryByTestId("theatre-crash-banner")).toBeNull();
   });
 
-  it("adds a procedure with side and approach", async () => {
+  it("adds a free-text (legacy) procedure with side and approach", async () => {
     wrap(<TheatreProceduresPanel theatreCase={makeCase()} canEdit />);
     expect(screen.getByText("Primary")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Not in the catalogue/ }));
     fireEvent.change(screen.getByLabelText("Add procedure"), {
       target: { value: "Appendicectomy" },
     });
@@ -230,7 +231,6 @@ describe("theatre advanced A components", () => {
         name: "Appendicectomy",
         laterality: "right",
         approach: "",
-        code: "",
       }),
     );
   });

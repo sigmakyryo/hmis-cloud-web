@@ -59,7 +59,9 @@ export type ClinicalCapabilityKey =
   | "return_theatre_consumables"
   | "record_theatre_obstetrics"
   | "register_theatre_newborn"
-  | "convert_theatre_case_to_ipd";
+  | "convert_theatre_case_to_ipd"
+  | "manage_theatre_preference_cards"
+  | "manage_theatre_procedure_codes";
 
 export type ClinicalWorkspaceTabGroup = "nurse" | "consult" | "record";
 
