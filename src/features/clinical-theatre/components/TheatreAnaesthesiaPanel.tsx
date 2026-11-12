@@ -15,12 +15,14 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { TheatreChartEntryList } from "@/features/clinical-theatre/components/TheatreChartEntryList";
+import { useMyClinicalCapabilities } from "@/features/clinical-opd/hooks/use-clinical-opd";
+import { TheatreLiveVitalsPanel } from "@/features/clinical-theatre/components/TheatreLiveVitalsPanel";
 import {
   useAddTheatreAnaesthesiaVital,
   useSignTheatreAnaesthesia,
-  useTheatreAnaesthesia,
   useUpdateTheatreAnaesthesia,
 } from "@/features/clinical-theatre/hooks/use-clinical-theatre";
+import { useTheatreAnaesthesiaLive } from "@/features/clinical-theatre/hooks/use-theatre-p4";
 import {
   THEATRE_AIRWAYS,
   THEATRE_ANAESTHESIA_TECHNIQUES,
@@ -30,6 +32,7 @@ import {
   type UpdateTheatreAnaesthesiaPayload,
 } from "@/features/clinical-theatre/types/clinical-theatre.types";
 import { localInputToIso } from "@/features/clinical-theatre/utils/theatre-case-display";
+import { isLiveChart } from "@/features/clinical-theatre/utils/theatre-p4-display";
 import {
   AIRWAY_LABELS,
   ANAESTHESIA_TECHNIQUE_LABELS,
@@ -66,13 +69,21 @@ const VITAL_FIELDS: { key: keyof AddTheatreAnaesthesiaVitalPayload; label: strin
 
 /** Intra-operative anaesthesia chart: technique, airway, agents, vitals, times. */
 export function TheatreAnaesthesiaPanel({ theatreCase }: { theatreCase: TheatreCase }) {
-  const { data: saved, isLoading } = useTheatreAnaesthesia(theatreCase.uuid);
+  const { data: saved, isLoading } = useTheatreAnaesthesiaLive(
+    theatreCase.uuid,
+    isLiveChart(theatreCase.status, null),
+  );
+  const { data: capabilityData } = useMyClinicalCapabilities();
+  const canValidate = (capabilityData?.capabilities ?? []).includes(
+    "validate_theatre_device_vitals",
+  );
   const update = useUpdateTheatreAnaesthesia();
   const addVital = useAddTheatreAnaesthesiaVital();
   const sign = useSignTheatreAnaesthesia();
   const [draft, setDraft] = useState<UpdateTheatreAnaesthesiaPayload>({});
   const [vital, setVital] = useState<Record<string, string>>({});
   const editable = isAnaesthesiaEditable(theatreCase.status, saved?.signed_at);
+  const live = isLiveChart(theatreCase.status, saved?.signed_at);
 
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">Loading anaesthesia record…</p>;
@@ -106,7 +117,6 @@ export function TheatreAnaesthesiaPanel({ theatreCase }: { theatreCase: TheatreC
   };
 
   const error = update.error ?? addVital.error ?? sign.error;
-  const vitals = saved?.vitals ?? [];
 
   return (
     <section className="space-y-5" data-testid="theatre-anaesthesia-panel">
@@ -259,41 +269,16 @@ export function TheatreAnaesthesiaPanel({ theatreCase }: { theatreCase: TheatreC
 
       <div className="space-y-2">
         <h4 className="text-sm font-medium text-brand-navy">Vitals timeline</h4>
-        {vitals.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No vitals recorded yet.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm" data-testid="theatre-anaesthesia-vitals">
-              <thead className="text-left text-xs text-muted-foreground">
-                <tr>
-                  <th className="py-1 pr-3">Time</th>
-                  {VITAL_FIELDS.map((field) => (
-                    <th key={field.key as string} className="py-1 pr-3">
-                      {field.label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {vitals.map((row) => (
-                  <tr key={row.uuid} className="border-t">
-                    <td className="py-1 pr-3">
-                      {new Date(row.recorded_at).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </td>
-                    {VITAL_FIELDS.map((field) => (
-                      <td key={field.key as string} className="py-1 pr-3">
-                        {row[field.key as keyof typeof row] ?? "—"}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <p className="text-xs text-muted-foreground">
+          Monitor readings appear automatically; manual entry below stays available.
+        </p>
+        <TheatreLiveVitalsPanel
+          caseUuid={theatreCase.uuid}
+          record={saved}
+          live={live}
+          canValidate={canValidate}
+          editable={editable}
+        />
         {editable ? (
           <div className="flex flex-wrap items-end gap-2">
             {VITAL_FIELDS.map((field) => (

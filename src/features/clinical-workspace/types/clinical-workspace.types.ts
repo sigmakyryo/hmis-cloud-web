@@ -75,7 +75,11 @@ export type ClinicalCapabilityKey =
   | "assign_theatre_trays"
   | "record_theatre_counts"
   | "sign_theatre_count_resolution"
-  | "view_theatre_implant_recall";
+  | "view_theatre_implant_recall"
+  | "manage_theatre_devices"
+  | "validate_theatre_device_vitals"
+  | "view_theatre_family_board"
+  | "manage_theatre_family_board";
 
 export type ClinicalWorkspaceTabGroup = "nurse" | "consult" | "record";
 

@@ -495,7 +495,21 @@ export type TheatreAnaesthesiaVital = {
   etco2: number | null;
   respiratory_rate: number | null;
   temperature_c: string | null;
+  mean_bp?: number | null;
+  ibp_systolic?: number | null;
+  ibp_diastolic?: number | null;
+  ibp_mean?: number | null;
+  mac?: string | null;
+  agent?: string;
   notes: string;
+  source?: "manual" | "device";
+  device_name?: string;
+  review_status?: "not_required" | "pending" | "validated" | "rejected";
+  is_artefact?: boolean;
+  artefact_reasons?: string[];
+  reviewed_by_name?: string;
+  reviewed_at?: string | null;
+  review_note?: string;
 };
 
 export type TheatreAnaesthesiaRecord = {
@@ -516,6 +530,7 @@ export type TheatreAnaesthesiaRecord = {
   anaesthesia_end: string | null;
   notes: string;
   vitals: TheatreAnaesthesiaVital[];
+  pending_device_vitals?: number;
   signed_at: string | null;
   signed_by_name: string;
   updated_at: string;
@@ -524,12 +539,29 @@ export type TheatreAnaesthesiaRecord = {
 export type UpdateTheatreAnaesthesiaPayload = Partial<
   Omit<
     TheatreAnaesthesiaRecord,
-    "uuid" | "anaesthetist_name" | "vitals" | "signed_at" | "signed_by_name" | "updated_at"
+    | "uuid"
+    | "anaesthetist_name"
+    | "vitals"
+    | "pending_device_vitals"
+    | "signed_at"
+    | "signed_by_name"
+    | "updated_at"
   >
 >;
 
 export type AddTheatreAnaesthesiaVitalPayload = Partial<
-  Omit<TheatreAnaesthesiaVital, "uuid">
+  Omit<
+    TheatreAnaesthesiaVital,
+    | "uuid"
+    | "source"
+    | "device_name"
+    | "review_status"
+    | "is_artefact"
+    | "artefact_reasons"
+    | "reviewed_by_name"
+    | "reviewed_at"
+    | "review_note"
+  >
 >;
 
 export type TheatreOperationNote = {

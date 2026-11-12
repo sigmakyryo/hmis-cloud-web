@@ -55,6 +55,10 @@ export type TheatreSettings = {
   clearance_validity_days: number;
   /** Every case needs a reconciled surgical count before WHO sign-out. */
   require_surgical_count?: boolean;
+  /** Family status board: how the patient code is shown. */
+  family_board_code_mode?: "initials_digits" | "tracking_code";
+  family_board_digits?: number;
+  family_board_title?: string;
 };
 
 export type TheatreRoomRef = { uuid: string; name: string; code: string };

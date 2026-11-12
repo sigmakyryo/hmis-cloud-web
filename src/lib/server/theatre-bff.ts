@@ -43,6 +43,7 @@ export const THEATRE_QUERY_KEYS = [
   "include_retired",
   "include_archived",
   "assignable",
+  "include_revoked",
 ] as const;
 
 export function buildTheatreQuery(request: Request): string {

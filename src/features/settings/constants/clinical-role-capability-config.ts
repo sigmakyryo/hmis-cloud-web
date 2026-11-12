@@ -346,4 +346,28 @@ export const THEATRE_ROLE_CAPABILITIES: ClinicalRoleCapabilityMeta[] = [
     label: "Implant recall search",
     description: "Find patients and cases by implant lot, serial, product or manufacturer and export CSV",
   },
+  {
+    key: "manage_theatre_devices",
+    label: "Manage theatre monitors",
+    description:
+      "Register anaesthesia monitors or gateways per theatre room, and rotate or revoke their API keys",
+  },
+  {
+    key: "validate_theatre_device_vitals",
+    label: "Validate monitor vitals",
+    description:
+      "Validate or reject vitals received from monitors on the anaesthesia chart before it is signed",
+  },
+  {
+    key: "view_theatre_family_board",
+    label: "View family status board",
+    description:
+      "See the in-app family status board and print or share patient tracking codes with families",
+  },
+  {
+    key: "manage_theatre_family_board",
+    label: "Manage family status board",
+    description:
+      "Configure patient codes and create, rotate or revoke public kiosk links for waiting-area screens",
+  },
 ];

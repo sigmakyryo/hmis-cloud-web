@@ -140,6 +140,8 @@ export const ROUTES = {
   clinicalTheatrePreOpClinic: "/clinical/theatre/pre-op-clinic",
   clinicalTheatreCssd: "/clinical/theatre/cssd",
   clinicalTheatreImplants: "/clinical/theatre/implants",
+  clinicalTheatreFamilyBoard: "/clinical/theatre/family-board",
+  theatreFamilyKiosk: (token: string) => `/theatre-board/${encodeURIComponent(token)}`,
   clinicalTheatreEncounter: (visitUuid: string, encounterUuid: string) =>
     `/clinical/theatre/${visitUuid}/${encounterUuid}`,
   occupationalHealth: "/occupational-health",
@@ -416,6 +418,7 @@ export const APP_ROUTE_PREFIXES = [
   ROUTES.employerPortalJoin,
   ROUTES.employerPortalSignIn,
   "/workforce-forms",
+  "/theatre-board",
   "/clinical",
   "/reports",
   "/visits",
