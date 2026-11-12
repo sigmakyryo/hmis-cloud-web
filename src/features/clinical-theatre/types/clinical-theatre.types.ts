@@ -175,6 +175,10 @@ export type TheatreCase = {
   cancellation_note?: string;
   cancelled_on_the_day?: boolean | null;
   cancelled_at?: string | null;
+  customer_gender?: string | null;
+  converted_to_ipd_at?: string | null;
+  converted_from_source?: TheatreCaseSource | "";
+  conversion_reason?: string;
   created_at: string;
   updated_at: string;
 };
@@ -762,6 +766,129 @@ export type TheatreReportSummary = {
   returns?: TheatreReportReturns;
   crash?: TheatreReportCrash;
   by_procedure?: TheatreReportProcedureRow[];
+  obstetrics?: TheatreReportObstetrics;
+  ipd_conversions?: TheatreReportIpdConversions;
+};
+
+export type TheatreReportObstetrics = {
+  caesareans: number;
+  by_category: { category: TheatreCaesareanCategory | ""; label: string; cases: number }[];
+  babies: number;
+  live_births: number;
+  stillbirths: number;
+  low_apgar_5: number;
+  low_birth_weight: number;
+  registered_newborns: number;
+  unregistered_live_births: number;
+};
+
+export type TheatreReportIpdConversions = {
+  converted: number;
+  day_cases: number;
+  rate: number;
+  cases: {
+    case_uuid: string;
+    procedure_description: string;
+    customer_name: string;
+    converted_at: string;
+    reason: string;
+  }[];
+};
+
+// --- Caesarean / obstetric record, babies and newborn registration ---------
+
+export type TheatreCaesareanCategory = "1" | "2" | "3" | "4";
+export type TheatreUterineIncision = "lower_segment" | "classical" | "j_shaped" | "other";
+export type TheatrePlacentaDelivery = "complete" | "incomplete" | "manual" | "retained";
+export type TheatreBabySex = "female" | "male" | "indeterminate";
+export type TheatreBabyOutcome =
+  | "live_birth"
+  | "fresh_stillbirth"
+  | "macerated_stillbirth"
+  | "early_neonatal_death";
+export type TheatreBabyDestination = "with_mother" | "nursery" | "nicu" | "other";
+
+export type TheatreObstetricRecord = {
+  uuid: string;
+  caesarean_category: TheatreCaesareanCategory | "";
+  caesarean_category_label: string;
+  indication: string;
+  gestation_weeks: number | null;
+  gestation_days: number | null;
+  gravida: number | null;
+  para: number | null;
+  previous_caesareans: number | null;
+  decision_to_delivery_minutes: number | null;
+  uterine_incision: TheatreUterineIncision | "";
+  placenta: TheatrePlacentaDelivery | "";
+  estimated_blood_loss_ml: number | null;
+  complications: string;
+  notes: string;
+  updated_by_name: string;
+  updated_at: string;
+};
+
+export type TheatreBaby = {
+  uuid: string;
+  birth_order: number;
+  time_of_birth: string;
+  sex: TheatreBabySex;
+  sex_label: string;
+  outcome: TheatreBabyOutcome;
+  outcome_label: string;
+  birth_weight_g: number | null;
+  apgar_1: number | null;
+  apgar_5: number | null;
+  apgar_10: number | null;
+  resuscitation: boolean;
+  resuscitation_notes: string;
+  destination: TheatreBabyDestination;
+  notes: string;
+  newborn_uuid: string | null;
+  newborn_name: string;
+  newborn_identifier: string;
+  newborn_stay_uuid: string | null;
+  registered_at: string | null;
+  registered_by_name: string;
+};
+
+export type TheatreObstetricPayload = {
+  record: TheatreObstetricRecord | null;
+  babies: TheatreBaby[];
+};
+
+export type UpdateTheatreObstetricPayload = Partial<
+  Omit<TheatreObstetricRecord, "uuid" | "caesarean_category_label" | "updated_by_name" | "updated_at">
+>;
+
+export type TheatreBabyWritePayload = {
+  birth_order?: number | null;
+  time_of_birth?: string | null;
+  sex: TheatreBabySex;
+  outcome?: TheatreBabyOutcome;
+  birth_weight_g?: number | null;
+  apgar_1?: number | null;
+  apgar_5?: number | null;
+  apgar_10?: number | null;
+  resuscitation?: boolean;
+  resuscitation_notes?: string;
+  destination?: TheatreBabyDestination;
+  notes?: string;
+};
+
+export type RegisterTheatreNewbornPayload = {
+  first_name?: string;
+  middle_name?: string;
+  last_name?: string;
+  bed?: string | null;
+  department?: string | null;
+  mode_of_payment?: string;
+};
+
+export type ConvertTheatreCaseToIpdPayload = {
+  bed: string;
+  reason: string;
+  department?: string | null;
 };
 
 export type TheatreReportReturns = {

@@ -109,6 +109,7 @@ describe("theatre specialty routing", () => {
     expect(item?.hasSettings).toBe(true);
     expect(THEATRE_ROLE_CAPABILITIES.map((cap) => cap.key).sort()).toEqual([
       "book_theatre_case",
+      "convert_theatre_case_to_ipd",
       "issue_theatre_consumables",
       "manage_theatre_cancellation_reasons",
       "manage_theatre_rooms",
@@ -116,9 +117,11 @@ describe("theatre specialty routing", () => {
       "record_theatre_anaesthesia",
       "record_theatre_checklist",
       "record_theatre_consumables",
+      "record_theatre_obstetrics",
       "record_theatre_operation_note",
       "record_theatre_pre_op",
       "record_theatre_recovery",
+      "register_theatre_newborn",
       "return_theatre_consumables",
       "sign_theatre_operation_note",
       "start_theatre_crash_case",

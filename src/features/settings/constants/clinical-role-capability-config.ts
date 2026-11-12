@@ -218,6 +218,24 @@ export const THEATRE_ROLE_CAPABILITIES: ClinicalRoleCapabilityMeta[] = [
       "Return unused issued items to stock and reduce the bill (needs Dispensation access)",
   },
   {
+    key: "record_theatre_obstetrics",
+    label: "Caesarean & babies",
+    description:
+      "Record caesarean details (category, indication, gestation, blood loss) and each baby's birth time, weight and Apgar",
+  },
+  {
+    key: "register_theatre_newborn",
+    label: "Register newborns",
+    description:
+      "Create the baby's own patient record linked to the mother; admitting the baby also needs IPD access",
+  },
+  {
+    key: "convert_theatre_case_to_ipd",
+    label: "Convert day case to inpatient",
+    description:
+      "Admit a day case to a ward bed part-way through the case (needs IPD access)",
+  },
+  {
     key: "view_theatre_reports",
     label: "Theatre reports",
     description: "See case volumes, room utilisation and cancellations",

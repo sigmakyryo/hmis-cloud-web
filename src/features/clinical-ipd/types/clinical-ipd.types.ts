@@ -41,7 +41,7 @@ export type IpdBed = {
 export type IpdStay = {
   uuid: string;
   status: IpdStayStatus;
-  admission_source: "direct" | "opd_transfer";
+  admission_source: "direct" | "opd_transfer" | "theatre_conversion";
   admitted_at: string;
   discharged_at: string | null;
   presenting_complaint: string;
