@@ -129,6 +129,20 @@ export const CLINICAL_THEATRE_API_PATHS = {
   implantRecall: upstream("implants/recall/"),
   implantRecallExport: upstream("implants/recall/export/"),
   implantBatches: upstream("implants/batches/"),
+  monitorDevices: upstream("monitor-devices/"),
+  monitorDevice: (uuid: string) => upstream(`monitor-devices/${uuid}/`),
+  monitorDeviceRotate: (uuid: string) => upstream(`monitor-devices/${uuid}/rotate/`),
+  monitorDeviceRevoke: (uuid: string) => upstream(`monitor-devices/${uuid}/revoke/`),
+  anaesthesiaDevices: (uuid: string) => upstream(`cases/${uuid}/anaesthesia/devices/`),
+  anaesthesiaVitalsReview: (uuid: string) =>
+    upstream(`cases/${uuid}/anaesthesia/vitals/review/`),
+  familyBoard: upstream("family-board/"),
+  familyCode: (uuid: string) => upstream(`cases/${uuid}/family-code/`),
+  familyBoardLinks: upstream("family-board/links/"),
+  familyBoardLinkRotate: (uuid: string) => upstream(`family-board/links/${uuid}/rotate/`),
+  familyBoardLinkRevoke: (uuid: string) => upstream(`family-board/links/${uuid}/revoke/`),
+  publicFamilyBoard: (token: string) =>
+    upstream(`public/family-board/${encodeURIComponent(token)}/`),
 } as const;
 
 /** Browser-facing BFF theatre routes. */
@@ -253,4 +267,19 @@ export const BFF_CLINICAL_THEATRE_ROUTES = {
   implantRecall: bff("implants/recall"),
   implantRecallExport: bff("implants/recall/export"),
   implantBatches: bff("implants/batches"),
+  monitorDevices: bff("monitor-devices"),
+  monitorDevice: (uuid: string) => bff(`monitor-devices/${uuid}`),
+  monitorDeviceRotate: (uuid: string) => bff(`monitor-devices/${uuid}/rotate`),
+  monitorDeviceRevoke: (uuid: string) => bff(`monitor-devices/${uuid}/revoke`),
+  anaesthesiaDevices: (uuid: string) => bff(`cases/${uuid}/anaesthesia/devices`),
+  anaesthesiaVitalsReview: (uuid: string) => bff(`cases/${uuid}/anaesthesia/vitals/review`),
+  familyBoard: bff("family-board"),
+  familyCode: (uuid: string) => bff(`cases/${uuid}/family-code`),
+  familyBoardLinks: bff("family-board/links"),
+  familyBoardLinkRotate: (uuid: string) => bff(`family-board/links/${uuid}/rotate`),
+  familyBoardLinkRevoke: (uuid: string) => bff(`family-board/links/${uuid}/revoke`),
 } as const;
+
+/** Public (no login) kiosk feed for the family status board. */
+export const BFF_PUBLIC_THEATRE_BOARD = (token: string) =>
+  `/api/public/theatre-board/${encodeURIComponent(token)}`;

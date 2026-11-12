@@ -349,6 +349,14 @@ export const navigation: NavigationItem[] = [
     enabledInWebNew: true,
   },
   {
+    name: "Family board",
+    href: ROUTES.clinicalTheatreFamilyBoard,
+    icon: "users",
+    requiredGroup: "Theatre",
+    moduleName: "Theatre",
+    enabledInWebNew: true,
+  },
+  {
     name: "Theatre reports",
     href: ROUTES.clinicalTheatreReports,
     icon: "activity",
