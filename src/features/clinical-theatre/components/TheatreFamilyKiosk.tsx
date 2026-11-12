@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { fetchPublicTheatreBoard } from "@/features/clinical-theatre/services/theatre-p4.service";
 import type { TheatrePublicFamilyBoard } from "@/features/clinical-theatre/types/theatre-p4.types";
@@ -19,31 +19,33 @@ export function TheatreFamilyKiosk({ token }: { token: string }) {
   const [page, setPage] = useState(0);
   const [now, setNow] = useState(() => new Date());
 
-  const load = useCallback(async () => {
-    try {
-      const data = await fetchPublicTheatreBoard(token);
-      setBoard(data);
-      setState("ready");
-    } catch (error) {
-      const status = (error as { status?: number }).status;
-      // Why: keep showing the last board through network blips; only a
-      // rejected link (404) clears the screen.
-      setState(status === 404 ? "invalid" : "offline");
-      if (status === 404) setBoard(null);
-    }
-  }, [token]);
-
   const refreshSeconds = Math.max(10, board?.refresh_seconds ?? DEFAULT_REFRESH);
 
   useEffect(() => {
-    void load();
-  }, [load]);
-
-  useEffect(() => {
     if (state === "invalid") return undefined;
+    let cancelled = false;
+    const load = () =>
+      fetchPublicTheatreBoard(token).then(
+        (data) => {
+          if (cancelled) return;
+          setBoard(data);
+          setState("ready");
+        },
+        (error: { status?: number }) => {
+          if (cancelled) return;
+          // Why: keep showing the last board through network blips; only a
+          // rejected link (404) clears the screen.
+          setState(error?.status === 404 ? "invalid" : "offline");
+          if (error?.status === 404) setBoard(null);
+        },
+      );
+    if (state === "loading") void load();
     const timer = window.setInterval(() => void load(), refreshSeconds * 1000);
-    return () => window.clearInterval(timer);
-  }, [load, refreshSeconds, state]);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [token, refreshSeconds, state]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 15_000);
@@ -54,10 +56,7 @@ export function TheatreFamilyKiosk({ token }: { token: string }) {
   const pages = Math.max(1, Math.ceil(entries.length / PAGE_SIZE));
 
   useEffect(() => {
-    if (pages <= 1) {
-      setPage(0);
-      return undefined;
-    }
+    if (pages <= 1) return undefined;
     const timer = window.setInterval(() => setPage((current) => (current + 1) % pages), PAGE_SECONDS * 1000);
     return () => window.clearInterval(timer);
   }, [pages]);
