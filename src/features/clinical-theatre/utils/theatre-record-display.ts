@@ -91,6 +91,47 @@ export function areConsumablesEditable(status: TheatreCaseStatus): boolean {
   return CONSUMABLE_STATUSES.has(status);
 }
 
+/** Issued stock can still be returned after the patient leaves theatre. */
+const RETURN_STATUSES: ReadonlySet<TheatreCaseStatus> = new Set([
+  ...CONSUMABLE_STATUSES,
+  "discharged_ward",
+  "discharged_home",
+]);
+
+export function areReturnsAllowed(status: TheatreCaseStatus): boolean {
+  return RETURN_STATUSES.has(status);
+}
+
+/** Quantity of an issued item that can still go back to stock. */
+export function returnableQuantity(item: {
+  status: string;
+  quantity: string;
+  returned_quantity?: string;
+  returnable_quantity?: string;
+}): number {
+  if (item.status !== "issued") return 0;
+  if (item.returnable_quantity !== undefined) return Number(item.returnable_quantity);
+  return Math.max(Number(item.quantity) - Number(item.returned_quantity ?? 0), 0);
+}
+
+/** Validation message for a stock return, or null when valid. */
+export function stockReturnError(
+  available: number,
+  quantity: string,
+  reason: string,
+  batchSplit?: { quantity: string }[],
+): string | null {
+  const amount = Number(quantity);
+  if (!(amount > 0)) return "Enter a quantity greater than zero.";
+  if (amount > available) return `Only ${available} can be returned.`;
+  if (!reason.trim()) return "Give a reason for the return.";
+  if (batchSplit && batchSplit.length > 1) {
+    const total = batchSplit.reduce((sum, row) => sum + (Number(row.quantity) || 0), 0);
+    if (Math.abs(total - amount) > 1e-9) return "Batch quantities must add up to the return.";
+  }
+  return null;
+}
+
 /** Sum of the five Aldrete items (each 0–2). */
 export function aldreteTotal(
   scores: Partial<Record<TheatreAldreteItem, number>>,

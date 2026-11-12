@@ -110,6 +110,7 @@ describe("theatre specialty routing", () => {
     expect(THEATRE_ROLE_CAPABILITIES.map((cap) => cap.key).sort()).toEqual([
       "book_theatre_case",
       "issue_theatre_consumables",
+      "manage_theatre_cancellation_reasons",
       "manage_theatre_rooms",
       "manage_theatre_team",
       "record_theatre_anaesthesia",
@@ -118,6 +119,7 @@ describe("theatre specialty routing", () => {
       "record_theatre_operation_note",
       "record_theatre_pre_op",
       "record_theatre_recovery",
+      "return_theatre_consumables",
       "sign_theatre_operation_note",
       "start_theatre_crash_case",
       "transition_theatre_case",

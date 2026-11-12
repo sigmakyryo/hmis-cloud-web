@@ -44,7 +44,7 @@ export function TheatreModuleSettingsPage() {
   return (
     <SettingsPageLayout
       title="Theatre"
-      description="Manage operating rooms and role capabilities for the theatre workspace."
+      description="Manage operating rooms, cancellation reasons and role capabilities for the theatre workspace."
       className="max-w-3xl"
     >
       <Suspense fallback={<SettingsContentSkeleton variant="staff" />}>

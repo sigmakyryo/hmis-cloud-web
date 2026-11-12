@@ -8,6 +8,10 @@ import {
   addTheatreRecoveryObservation,
   addTheatreTeamMember,
   cancelTheatreConsumable,
+  createTheatreCancellationReason,
+  fetchTheatreCancellationReasons,
+  returnTheatreConsumable,
+  updateTheatreCancellationReason,
   dischargeTheatreRecovery,
   fetchTheatreAnaesthesia,
   fetchTheatreConsumables,
@@ -48,6 +52,9 @@ import type {
   AddTheatreRecoveryObservationPayload,
   AddTheatreTeamMemberPayload,
   IssueTheatreConsumablePayload,
+  CreateTheatreCancellationReasonPayload,
+  ReturnTheatreConsumablePayload,
+  UpdateTheatreCancellationReasonPayload,
   TheatreReportFilters,
   UpdateTheatreAnaesthesiaPayload,
   UpdateTheatreOperationNotePayload,
@@ -84,6 +91,8 @@ export const theatreQueryKeys = {
   recovery: (caseUuid: string) => ["theatre", "recovery", caseUuid] as const,
   consumables: (caseUuid: string) => ["theatre", "consumables", caseUuid] as const,
   report: (filters: TheatreReportFilters) => ["theatre", "report", filters] as const,
+  cancellationReasons: (includeInactive = false) =>
+    ["theatre", "cancellation-reasons", includeInactive] as const,
 };
 
 export function useTheatreRooms(
@@ -185,10 +194,14 @@ export function useTransitionTheatreCase() {
       uuid: string;
       status: TheatreCaseStatus;
       reason?: string;
+      cancellation_reason?: string | null;
     }) =>
       transitionTheatreCase(input.uuid, {
         status: input.status,
         reason: input.reason,
+        ...(input.cancellation_reason
+          ? { cancellation_reason: input.cancellation_reason }
+          : {}),
       }),
     onSuccess: () => void invalidate(),
   });
@@ -425,6 +438,41 @@ export function useIssueTheatreConsumable() {
       itemUuid: string;
       payload?: IssueTheatreConsumablePayload;
     }) => issueTheatreConsumable(input.caseUuid, input.itemUuid, input.payload),
+  );
+}
+
+export function useReturnTheatreConsumable() {
+  return useCaseMutation(
+    (input: {
+      caseUuid: string;
+      itemUuid: string;
+      payload: ReturnTheatreConsumablePayload;
+    }) => returnTheatreConsumable(input.caseUuid, input.itemUuid, input.payload),
+  );
+}
+
+export function useTheatreCancellationReasons(
+  options: { includeInactive?: boolean; enabled?: boolean } = {},
+) {
+  const includeInactive = options.includeInactive ?? false;
+  return useQuery({
+    queryKey: theatreQueryKeys.cancellationReasons(includeInactive),
+    queryFn: () => fetchTheatreCancellationReasons({ includeInactive }),
+    enabled: options.enabled ?? true,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useCreateTheatreCancellationReason() {
+  return useCaseMutation((payload: CreateTheatreCancellationReasonPayload) =>
+    createTheatreCancellationReason(payload),
+  );
+}
+
+export function useUpdateTheatreCancellationReason() {
+  return useCaseMutation(
+    (input: { uuid: string; payload: UpdateTheatreCancellationReasonPayload }) =>
+      updateTheatreCancellationReason(input.uuid, input.payload),
   );
 }
 

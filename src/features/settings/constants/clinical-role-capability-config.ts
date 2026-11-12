@@ -212,6 +212,12 @@ export const THEATRE_ROLE_CAPABILITIES: ClinicalRoleCapabilityMeta[] = [
     description: "Issue recorded items from inventory (needs Dispensation access)",
   },
   {
+    key: "return_theatre_consumables",
+    label: "Return theatre stock",
+    description:
+      "Return unused issued items to stock and reduce the bill (needs Dispensation access)",
+  },
+  {
     key: "view_theatre_reports",
     label: "Theatre reports",
     description: "See case volumes, room utilisation and cancellations",
@@ -226,5 +232,10 @@ export const THEATRE_ROLE_CAPABILITIES: ClinicalRoleCapabilityMeta[] = [
     key: "manage_theatre_rooms",
     label: "Manage theatre rooms",
     description: "Add, rename and deactivate operating rooms",
+  },
+  {
+    key: "manage_theatre_cancellation_reasons",
+    label: "Manage cancellation reasons",
+    description: "Add, rename and retire the standard cancellation / postponement reasons",
   },
 ];

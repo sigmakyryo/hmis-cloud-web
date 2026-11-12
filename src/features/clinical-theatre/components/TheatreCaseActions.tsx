@@ -4,8 +4,8 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { DateTimeLocalInput } from "@/components/ui/datetime-local-input";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TheatreCancelReasonForm } from "@/features/clinical-theatre/components/TheatreCancelReasonForm";
 import { TheatreRoomSelect } from "@/features/clinical-theatre/components/TheatreRoomSelect";
 import {
   useAssignTheatreCaseRoom,
@@ -57,7 +57,6 @@ export function TheatreCaseActions({
   const [pendingStatus, setPendingStatus] = useState<TheatreCaseStatus | null>(
     null,
   );
-  const [reason, setReason] = useState("");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [room, setRoom] = useState<TheatreRoom | null>(null);
@@ -127,44 +126,18 @@ export function TheatreCaseActions({
       ) : null}
 
       {pendingStatus ? (
-        <form
-          className="flex flex-wrap items-end gap-2"
-          onSubmit={(event) => {
-            event.preventDefault();
+        <TheatreCancelReasonForm
+          caseUuid={theatreCase.uuid}
+          actionLabel={THEATRE_TRANSITION_ACTION_LABELS[pendingStatus]}
+          pending={transition.isPending}
+          onBack={() => setPendingStatus(null)}
+          onSubmit={(input) =>
             transition.mutate(
-              { uuid: theatreCase.uuid, status: pendingStatus, reason },
-              {
-                onSuccess: () => {
-                  setPendingStatus(null);
-                  setReason("");
-                },
-              },
-            );
-          }}
-        >
-          <div className="min-w-[240px] flex-1 space-y-1.5">
-            <Label htmlFor={`reason-${theatreCase.uuid}`}>
-              Reason ({THEATRE_TRANSITION_ACTION_LABELS[pendingStatus]})
-            </Label>
-            <Input
-              id={`reason-${theatreCase.uuid}`}
-              value={reason}
-              onChange={(event) => setReason(event.target.value)}
-              required
-            />
-          </div>
-          <Button type="submit" size="sm" disabled={transition.isPending}>
-            Confirm
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            onClick={() => setPendingStatus(null)}
-          >
-            Back
-          </Button>
-        </form>
+              { uuid: theatreCase.uuid, status: pendingStatus, ...input },
+              { onSuccess: () => setPendingStatus(null) },
+            )
+          }
+        />
       ) : null}
 
       {canChangeSlot ? (
