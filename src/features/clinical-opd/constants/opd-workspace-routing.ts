@@ -19,6 +19,7 @@ export type OpdEncounterTabId =
   | "problems"
   | "medications"
   | "disposition"
+  | "theatre"
   | "client";
 
 export type OpdEncounterTab = ClinicalWorkspaceTab<OpdEncounterTabId>;
@@ -134,6 +135,14 @@ export const OPD_ENCOUNTER_TABS: OpdEncounterTab[] = [
     requiredCapability: "manage_problem_list",
   },
   {
+    id: "theatre",
+    label: "Book theatre",
+    segment: "theatre",
+    group: "consult",
+    surface: "menu",
+    requiredCapability: "book_theatre_case",
+  },
+  {
     id: "disposition",
     label: "Disposition",
     segment: "disposition",
@@ -169,7 +178,7 @@ export const OPD_WORKSPACE_ROUTING: ClinicalWorkspaceRouting<OpdEncounterTabId> 
   tabs: OPD_ENCOUNTER_TABS,
   consultLayoutTabIds: OPD_CONSULT_LAYOUT_TAB_IDS,
   // Activity uses a client-style main + aside grid and needs full width.
-  fullWidthTabIds: new Set<OpdEncounterTabId>(["activity"]),
+  fullWidthTabIds: new Set<OpdEncounterTabId>(["activity", "theatre"]),
   preferredTabsByRole: {
     nurse: ["activity", "vital-signs"],
     physician: ["activity", "complaint"],

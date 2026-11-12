@@ -3,21 +3,34 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
+  addTheatreTeamMember,
   assignTheatreCaseRoom,
   createTheatreCase,
   createTheatreRoom,
+  fetchTheatreBoard,
   fetchTheatreCases,
+  fetchTheatreChecklist,
+  fetchTheatrePreOp,
   fetchTheatreRooms,
+  fetchTheatreTeam,
+  recordTheatreChecklistStage,
+  removeTheatreTeamMember,
   rescheduleTheatreCase,
   transitionTheatreCase,
+  updateTheatrePreOp,
   updateTheatreRoom,
 } from "@/features/clinical-theatre/services/clinical-theatre.service";
 import type {
+  AddTheatreTeamMemberPayload,
   CreateTheatreCasePayload,
   CreateTheatreRoomPayload,
+  RecordTheatreChecklistPayload,
+  TheatreBoardFilters,
   TheatreCaseFilters,
   TheatreCaseStatus,
+  TheatreChecklistStageId,
   TheatreRoomFilters,
+  UpdateTheatrePreOpPayload,
   UpdateTheatreRoomPayload,
 } from "@/features/clinical-theatre/types/clinical-theatre.types";
 
@@ -27,6 +40,11 @@ export const theatreQueryKeys = {
     ["theatre", "rooms", filters] as const,
   cases: (filters: TheatreCaseFilters = {}) =>
     ["theatre", "cases", filters] as const,
+  board: (filters: TheatreBoardFilters = {}) =>
+    ["theatre", "board", filters] as const,
+  team: (caseUuid: string) => ["theatre", "team", caseUuid] as const,
+  checklist: (caseUuid: string) => ["theatre", "checklist", caseUuid] as const,
+  preOp: (caseUuid: string) => ["theatre", "pre-op", caseUuid] as const,
 };
 
 export function useTheatreRooms(
@@ -121,4 +139,80 @@ export function useUpdateTheatreRoom() {
       updateTheatreRoom(input.uuid, input.payload),
     onSuccess: () => void invalidate(),
   });
+}
+
+export function useTheatreBoard(filters: TheatreBoardFilters) {
+  return useQuery({
+    queryKey: theatreQueryKeys.board(filters),
+    queryFn: () => fetchTheatreBoard(filters),
+  });
+}
+
+export function useTheatreTeam(caseUuid: string | undefined) {
+  return useQuery({
+    queryKey: theatreQueryKeys.team(caseUuid ?? ""),
+    queryFn: () => fetchTheatreTeam(caseUuid as string),
+    enabled: Boolean(caseUuid),
+  });
+}
+
+export function useAddTheatreTeamMember() {
+  const invalidate = useInvalidateTheatre();
+  return useMutation({
+    mutationFn: (input: { caseUuid: string; payload: AddTheatreTeamMemberPayload }) =>
+      addTheatreTeamMember(input.caseUuid, input.payload),
+    onSuccess: () => void invalidate(),
+  });
+}
+
+export function useRemoveTheatreTeamMember() {
+  const invalidate = useInvalidateTheatre();
+  return useMutation({
+    mutationFn: (input: { caseUuid: string; memberUuid: string }) =>
+      removeTheatreTeamMember(input.caseUuid, input.memberUuid),
+    onSuccess: () => void invalidate(),
+  });
+}
+
+export function useTheatreChecklist(caseUuid: string | undefined) {
+  return useQuery({
+    queryKey: theatreQueryKeys.checklist(caseUuid ?? ""),
+    queryFn: () => fetchTheatreChecklist(caseUuid as string),
+    enabled: Boolean(caseUuid),
+  });
+}
+
+export function useRecordTheatreChecklistStage() {
+  const invalidate = useInvalidateTheatre();
+  return useMutation({
+    mutationFn: (input: {
+      caseUuid: string;
+      stage: TheatreChecklistStageId;
+      payload: RecordTheatreChecklistPayload;
+    }) => recordTheatreChecklistStage(input.caseUuid, input.stage, input.payload),
+    onSuccess: () => void invalidate(),
+  });
+}
+
+export function useTheatrePreOp(caseUuid: string | undefined) {
+  return useQuery({
+    queryKey: theatreQueryKeys.preOp(caseUuid ?? ""),
+    queryFn: () => fetchTheatrePreOp(caseUuid as string),
+    enabled: Boolean(caseUuid),
+  });
+}
+
+export function useUpdateTheatrePreOp() {
+  const invalidate = useInvalidateTheatre();
+  return useMutation({
+    mutationFn: (input: { caseUuid: string; payload: UpdateTheatrePreOpPayload }) =>
+      updateTheatrePreOp(input.caseUuid, input.payload),
+    onSuccess: () => void invalidate(),
+  });
+}
+
+/** The theatre case behind a theatre workspace encounter (one per encounter). */
+export function useTheatreCaseForEncounter(encounterUuid: string) {
+  const query = useTheatreCases({ encounter: encounterUuid });
+  return { ...query, theatreCase: query.data?.[0] };
 }

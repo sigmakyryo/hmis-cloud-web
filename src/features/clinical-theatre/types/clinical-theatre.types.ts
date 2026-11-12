@@ -78,8 +78,17 @@ export type TheatreCase = {
   lead_surgeon_name: string;
   booked_by_name: string;
   allowed_transitions: TheatreCaseStatus[];
+  safety: TheatreCaseSafety;
   created_at: string;
   updated_at: string;
+};
+
+/** WHO checklist and pre-op readiness badges on every case. */
+export type TheatreCaseSafety = {
+  sign_in: boolean;
+  time_out: boolean;
+  sign_out: boolean;
+  pre_op_ready: boolean;
 };
 
 export type TheatreCaseFilters = {
@@ -115,6 +124,9 @@ export type CreateTheatreCasePayload = {
   procedure_description?: string;
   notes?: string;
   procedure_order?: string;
+  lead_surgeon?: number | null;
+  /** Non-IPD cases with a room and slot are put on the scheduling calendar. */
+  create_appointment?: boolean;
 };
 
 export type CreateTheatreRoomPayload = {
@@ -129,3 +141,116 @@ export type CreateTheatreRoomPayload = {
 export type UpdateTheatreRoomPayload = Partial<
   Pick<TheatreRoom, "name" | "kind" | "notes" | "is_active">
 >;
+
+export const THEATRE_TEAM_ROLES = [
+  "surgeon",
+  "assistant_surgeon",
+  "anaesthetist",
+  "anaesthetic_nurse",
+  "scrub_nurse",
+  "circulating_nurse",
+  "other",
+] as const;
+
+export type TheatreTeamRole = (typeof THEATRE_TEAM_ROLES)[number];
+
+export type TheatreTeamMember = {
+  uuid: string;
+  role: TheatreTeamRole;
+  role_label: string;
+  user_id: number;
+  user_name: string;
+  user_role: string;
+  notes: string;
+  created_at: string;
+};
+
+export type AddTheatreTeamMemberPayload = {
+  user: number;
+  role: TheatreTeamRole;
+  notes?: string;
+};
+
+export const THEATRE_CHECKLIST_STAGES = ["sign_in", "time_out", "sign_out"] as const;
+
+export type TheatreChecklistStageId = (typeof THEATRE_CHECKLIST_STAGES)[number];
+
+export type TheatreChecklistItem = {
+  key: string;
+  label: string;
+  checked: boolean;
+};
+
+export type TheatreChecklistStage = {
+  stage: TheatreChecklistStageId;
+  label: string;
+  items: TheatreChecklistItem[];
+  notes: string;
+  is_complete: boolean;
+  completed_at: string | null;
+  completed_by_name: string;
+};
+
+export type RecordTheatreChecklistPayload = {
+  responses: Record<string, boolean>;
+  notes?: string;
+  complete?: boolean;
+};
+
+export type TheatreAsaGrade = "1" | "2" | "3" | "4" | "5" | "6";
+
+export type TheatreAnaesthesiaPlan =
+  | "general"
+  | "spinal"
+  | "regional"
+  | "local"
+  | "sedation";
+
+export type TheatrePreOp = {
+  uuid: string;
+  asa_grade: TheatreAsaGrade | "";
+  asa_emergency: boolean;
+  anaesthesia_plan: TheatreAnaesthesiaPlan | "";
+  consent_signed: boolean;
+  consent_signed_at: string | null;
+  fasting_since: string | null;
+  site_marked: boolean;
+  allergies_reviewed: boolean;
+  blood_available: boolean;
+  weight_kg: string | null;
+  notes: string;
+  assessed_by_name: string;
+  assessed_at: string | null;
+  updated_at: string;
+};
+
+export type UpdateTheatrePreOpPayload = Partial<
+  Omit<
+    TheatrePreOp,
+    "uuid" | "consent_signed_at" | "assessed_by_name" | "assessed_at" | "updated_at"
+  >
+>;
+
+export type TheatreBoardRoom = {
+  uuid: string;
+  name: string;
+  code: string;
+  kind: TheatreRoomKind;
+  is_active: boolean;
+};
+
+export type TheatreBoardLane = {
+  /** ``null`` is the unassigned lane (emergency add-ons, cases with no room). */
+  room: TheatreBoardRoom | null;
+  cases: TheatreCase[];
+};
+
+export type TheatreBoard = {
+  date: string;
+  lanes: TheatreBoardLane[];
+};
+
+export type TheatreBoardFilters = {
+  date?: string;
+  clinic?: string;
+};

@@ -42,7 +42,11 @@ export type ClinicalCapabilityKey =
   | "view_theatre_queue"
   | "book_theatre_case"
   | "manage_theatre_rooms"
-  | "transition_theatre_case";
+  | "transition_theatre_case"
+  | "view_theatre_board"
+  | "manage_theatre_team"
+  | "record_theatre_checklist"
+  | "record_theatre_pre_op";
 
 export type ClinicalWorkspaceTabGroup = "nurse" | "consult" | "record";
 

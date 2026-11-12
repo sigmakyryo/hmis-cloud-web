@@ -162,6 +162,26 @@ export const THEATRE_ROLE_CAPABILITIES: ClinicalRoleCapabilityMeta[] = [
     description: "Check in, start, sign out, recover, discharge, postpone or cancel cases",
   },
   {
+    key: "view_theatre_board",
+    label: "Theatre board",
+    description: "See the day's cases by operating room",
+  },
+  {
+    key: "manage_theatre_team",
+    label: "Manage surgical team",
+    description: "Add or remove surgeons, anaesthetists and nurses on a case",
+  },
+  {
+    key: "record_theatre_checklist",
+    label: "WHO safety checklist",
+    description: "Record sign in, time out and sign out",
+  },
+  {
+    key: "record_theatre_pre_op",
+    label: "Pre-op assessment",
+    description: "Record ASA grade, consent, fasting and anaesthesia plan",
+  },
+  {
     key: "manage_theatre_rooms",
     label: "Manage theatre rooms",
     description: "Add, rename and deactivate operating rooms",

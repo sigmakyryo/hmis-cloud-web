@@ -22,6 +22,7 @@ import {
   THEATRE_TRANSITION_ACTION_LABELS,
   localInputToIso,
 } from "@/features/clinical-theatre/utils/theatre-case-display";
+import { safetyGateBlocker } from "@/features/clinical-theatre/utils/theatre-safety-display";
 
 const RESCHEDULABLE: ReadonlySet<TheatreCaseStatus> = new Set([
   "booked",
@@ -58,6 +59,17 @@ export function TheatreCaseActions({ theatreCase }: TheatreCaseActionsProps) {
     errorMessage(reschedule.error) ??
     errorMessage(assignRoom.error);
 
+  const gateMessages = theatreCase.allowed_transitions
+    .map((status) =>
+      safetyGateBlocker(
+        theatreCase.status,
+        status,
+        theatreCase.safety,
+        theatreCase.urgency,
+      ),
+    )
+    .filter((message): message is string => Boolean(message));
+
   function move(status: TheatreCaseStatus) {
     if (REASON_REQUIRED_STATUSES.has(status)) {
       setPendingStatus(status);
@@ -70,19 +82,35 @@ export function TheatreCaseActions({ theatreCase }: TheatreCaseActionsProps) {
     <div className="space-y-4" data-testid="theatre-case-actions">
       {theatreCase.allowed_transitions.length > 0 ? (
         <div className="flex flex-wrap gap-2">
-          {theatreCase.allowed_transitions.map((status) => (
-            <Button
-              key={status}
-              type="button"
-              size="sm"
-              variant={REASON_REQUIRED_STATUSES.has(status) ? "outline" : "default"}
-              disabled={transition.isPending}
-              onClick={() => move(status)}
-            >
-              {THEATRE_TRANSITION_ACTION_LABELS[status]}
-            </Button>
-          ))}
+          {theatreCase.allowed_transitions.map((status) => {
+            const blocker = safetyGateBlocker(
+              theatreCase.status,
+              status,
+              theatreCase.safety,
+              theatreCase.urgency,
+            );
+            return (
+              <Button
+                key={status}
+                type="button"
+                size="sm"
+                variant={REASON_REQUIRED_STATUSES.has(status) ? "outline" : "default"}
+                disabled={transition.isPending || Boolean(blocker)}
+                title={blocker ?? undefined}
+                onClick={() => move(status)}
+              >
+                {THEATRE_TRANSITION_ACTION_LABELS[status]}
+              </Button>
+            );
+          })}
         </div>
+      ) : null}
+      {gateMessages.length > 0 ? (
+        <ul className="space-y-1 text-xs text-amber-700" data-testid="theatre-gate-messages">
+          {gateMessages.map((message) => (
+            <li key={message}>{message}</li>
+          ))}
+        </ul>
       ) : null}
 
       {pendingStatus ? (
