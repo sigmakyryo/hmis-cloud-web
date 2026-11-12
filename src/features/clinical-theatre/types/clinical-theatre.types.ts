@@ -171,9 +171,53 @@ export type TheatreCase = {
   return_planned: boolean | null;
   return_interval_days: number | null;
   returns: TheatreCaseReturnLink[];
+  cancellation_reason?: TheatreCaseCancellationReason | null;
+  cancellation_note?: string;
+  cancelled_on_the_day?: boolean | null;
+  cancelled_at?: string | null;
   created_at: string;
   updated_at: string;
 };
+
+export type TheatreCancellationCategory =
+  | "patient"
+  | "clinical"
+  | "organisational"
+  | "resources"
+  | "other";
+
+/** Reason summary embedded in a cancelled / postponed case. */
+export type TheatreCaseCancellationReason = {
+  uuid: string;
+  code: string;
+  label: string;
+  category: TheatreCancellationCategory;
+  category_label: string;
+};
+
+/** A tenant's standard cancellation / postponement reason. */
+export type TheatreCancellationReason = {
+  uuid: string;
+  code: string;
+  label: string;
+  category: TheatreCancellationCategory;
+  category_label: string;
+  requires_note: boolean;
+  sort_order: number;
+  is_active: boolean;
+};
+
+export type CreateTheatreCancellationReasonPayload = {
+  label: string;
+  code?: string;
+  category: TheatreCancellationCategory;
+  requires_note?: boolean;
+  sort_order?: number;
+};
+
+export type UpdateTheatreCancellationReasonPayload = Partial<
+  Omit<CreateTheatreCancellationReasonPayload, "code"> & { is_active: boolean }
+>;
 
 /** WHO checklist and pre-op readiness badges on every case. */
 export type TheatreCaseSafety = {
@@ -559,7 +603,28 @@ export type UpdateTheatreRecoveryPayload = Partial<
 
 export type TheatreConsumableKind = "consumable" | "implant" | "procedure";
 
-export type TheatreConsumableStatus = "recorded" | "issued" | "cancelled";
+export type TheatreConsumableStatus = "recorded" | "issued" | "returned" | "cancelled";
+
+export type TheatreConsumableReturn = {
+  uuid: string;
+  quantity: string;
+  location_name: string;
+  batches: { batch_id: number | null; quantity: string }[];
+  reason: string;
+  returned_by_name: string;
+  returned_at: string;
+  billing_action: "line_reduced" | "line_reversed";
+  billing_action_label: string;
+  billed_quantity_before: string;
+  billed_quantity_after: string;
+};
+
+export type ReturnTheatreConsumablePayload = {
+  quantity: string;
+  reason: string;
+  location_uuid?: string | null;
+  batches?: { batch_id: number; quantity: string }[];
+};
 
 export type TheatreConsumable = {
   uuid: string;
@@ -571,9 +636,14 @@ export type TheatreConsumable = {
   product_name: string;
   product_type: string;
   quantity: string;
+  returned_quantity?: string;
+  returnable_quantity?: string;
   visit_order_uuid: string | null;
   issued_at: string | null;
   issued_by_name: string;
+  issued_location_uuid?: string | null;
+  issued_batches?: { batch_id: number; batch_number: string; quantity: string }[];
+  returns?: TheatreConsumableReturn[];
   manufacturer: string;
   lot_number: string;
   serial_number: string;
@@ -634,8 +704,38 @@ export type TheatreReportCancellation = {
   room_name: string;
   surgeon_name: string;
   reason: string;
+  reason_code?: string;
+  reason_label?: string;
+  category?: TheatreCancellationCategory | "unspecified";
+  on_the_day?: boolean;
   recorded_at: string | null;
   recorded_by: string;
+};
+
+export type TheatreReportCancellationSummary = {
+  total: number;
+  on_the_day: number;
+  scheduled_cases: number;
+  on_the_day_rate_percent: number | null;
+  by_category: {
+    category: TheatreCancellationCategory | "unspecified";
+    label: string;
+    count: number;
+    on_the_day: number;
+  }[];
+  by_reason: {
+    code: string;
+    label: string;
+    category: TheatreCancellationCategory | "unspecified";
+    count: number;
+    on_the_day: number;
+  }[];
+};
+
+export type TheatreReportStockReturns = {
+  returns: number;
+  quantity: number;
+  by_product: { product_name: string; returns: number; quantity: number }[];
 };
 
 export type TheatreReportSummary = {
@@ -657,6 +757,8 @@ export type TheatreReportSummary = {
   by_room: TheatreReportRoomRow[];
   by_surgeon: TheatreReportSurgeonRow[];
   cancellations: TheatreReportCancellation[];
+  cancellation_summary?: TheatreReportCancellationSummary;
+  stock_returns?: TheatreReportStockReturns;
   returns?: TheatreReportReturns;
   crash?: TheatreReportCrash;
   by_procedure?: TheatreReportProcedureRow[];

@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useDeferredValue, useState } from "react";
+import { Fragment, useDeferredValue, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { fetchCatalogProducts } from "@/features/catalog/services/catalog.service";
+import { TheatreConsumableReturnForm } from "@/features/clinical-theatre/components/TheatreConsumableReturnForm";
 import {
   useAddTheatreConsumable,
   useCancelTheatreConsumable,
@@ -28,7 +29,9 @@ import type {
 import {
   CONSUMABLE_KIND_LABELS,
   areConsumablesEditable,
+  areReturnsAllowed,
   errorMessage,
+  returnableQuantity,
 } from "@/features/clinical-theatre/utils/theatre-record-display";
 import type { InventoryProduct } from "@/features/inventory/types/inventory.types";
 
@@ -48,16 +51,22 @@ type ImplantDraft = Partial<Record<(typeof IMPLANT_FIELDS)[number]["key"], strin
 function ConsumableRow({
   item,
   editable,
+  returnsAllowed,
   busy,
   onIssue,
   onCancel,
+  onReturn,
 }: {
   item: TheatreConsumable;
   editable: boolean;
+  returnsAllowed: boolean;
   busy: boolean;
   onIssue: () => void;
   onCancel: () => void;
+  onReturn: () => void;
 }) {
+  const returned = Number(item.returned_quantity ?? 0);
+  const canReturn = returnsAllowed && returnableQuantity(item) > 0;
   const details = [item.lot_number && `Lot ${item.lot_number}`, item.serial_number && `SN ${item.serial_number}`, item.implant_site]
     .filter(Boolean)
     .join(" · ");
@@ -68,7 +77,14 @@ function ConsumableRow({
         {details ? <p className="text-xs text-muted-foreground">{details}</p> : null}
       </td>
       <td className="py-1 pr-3">{item.kind_label}</td>
-      <td className="py-1 pr-3">{Number(item.quantity)}</td>
+      <td className="py-1 pr-3">
+        {Number(item.quantity)}
+        {returned > 0 ? (
+          <p className="text-xs text-muted-foreground" data-testid="theatre-consumable-returned">
+            {returned} returned
+          </p>
+        ) : null}
+      </td>
       <td className="py-1 pr-3">
         {item.status_label}
         {item.issued_by_name ? (
@@ -87,6 +103,10 @@ function ConsumableRow({
               Cancel
             </Button>
           </div>
+        ) : canReturn ? (
+          <Button size="sm" variant="outline" disabled={busy} onClick={onReturn}>
+            Return to stock
+          </Button>
         ) : null}
       </td>
     </tr>
@@ -105,6 +125,8 @@ export function TheatreConsumablesPanel({ theatreCase }: { theatreCase: TheatreC
   const [quantity, setQuantity] = useState("1");
   const [implant, setImplant] = useState<ImplantDraft>({});
   const editable = areConsumablesEditable(theatreCase.status);
+  const returnsAllowed = areReturnsAllowed(theatreCase.status);
+  const [returning, setReturning] = useState<string | null>(null);
   const deferredSearch = useDeferredValue(search.trim());
 
   const products = useQuery({
@@ -180,18 +202,32 @@ export function TheatreConsumablesPanel({ theatreCase }: { theatreCase: TheatreC
             </thead>
             <tbody>
               {items.map((item) => (
-                <ConsumableRow
-                  key={item.uuid}
-                  item={item}
-                  editable={editable}
-                  busy={busy}
-                  onIssue={() =>
-                    issue.mutate({ caseUuid: theatreCase.uuid, itemUuid: item.uuid })
-                  }
-                  onCancel={() =>
-                    cancel.mutate({ caseUuid: theatreCase.uuid, itemUuid: item.uuid })
-                  }
-                />
+                <Fragment key={item.uuid}>
+                  <ConsumableRow
+                    item={item}
+                    editable={editable}
+                    returnsAllowed={returnsAllowed}
+                    busy={busy}
+                    onIssue={() =>
+                      issue.mutate({ caseUuid: theatreCase.uuid, itemUuid: item.uuid })
+                    }
+                    onCancel={() =>
+                      cancel.mutate({ caseUuid: theatreCase.uuid, itemUuid: item.uuid })
+                    }
+                    onReturn={() => setReturning(item.uuid)}
+                  />
+                  {returning === item.uuid ? (
+                    <tr>
+                      <td colSpan={5} className="pb-2">
+                        <TheatreConsumableReturnForm
+                          caseUuid={theatreCase.uuid}
+                          item={item}
+                          onDone={() => setReturning(null)}
+                        />
+                      </td>
+                    </tr>
+                  ) : null}
+                </Fragment>
               ))}
             </tbody>
           </table>

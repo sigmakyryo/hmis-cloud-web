@@ -135,6 +135,7 @@ function getMovementTypeVariant(type: string): BadgeVariant {
   switch (type) {
     case "PURCHASE_RECEIPT":
     case "INTERNAL_ORDER_IN":
+    case "DISPENSATION_RETURN":
       return "success";
     case "INTERNAL_ORDER_OUT":
       return "default";

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
+import { TheatreCancellationReasonsSettingsPanel } from "@/features/clinical-theatre/components/TheatreCancellationReasonsSettingsPanel";
 import { TheatreRoomsSettingsPanel } from "@/features/clinical-theatre/components/TheatreRoomsSettingsPanel";
 import {
   useRoleCapabilities,
@@ -20,15 +21,17 @@ import {
 } from "@/features/settings/components/SettingsPageLayout";
 import { THEATRE_ROLE_CAPABILITIES } from "@/features/settings/constants/clinical-role-capability-config";
 
-export type TheatreModuleTabId = "rooms" | "capabilities";
+export type TheatreModuleTabId = "rooms" | "cancellations" | "capabilities";
 
 const TABS: Array<{ id: TheatreModuleTabId; label: string }> = [
   { id: "rooms", label: "Rooms" },
+  { id: "cancellations", label: "Cancellation reasons" },
   { id: "capabilities", label: "Role capabilities" },
 ];
 
 function parseTab(value: string | null): TheatreModuleTabId {
-  return value === "capabilities" ? "capabilities" : "rooms";
+  if (value === "capabilities" || value === "cancellations") return value;
+  return "rooms";
 }
 
 export function TheatreModuleSettingsTabs() {
@@ -62,6 +65,9 @@ export function TheatreModuleSettingsTabs() {
 
       <div className="pt-6">
         {activeTab === "rooms" ? <TheatreRoomsSettingsPanel /> : null}
+        {activeTab === "cancellations" ? (
+          <TheatreCancellationReasonsSettingsPanel />
+        ) : null}
         {activeTab === "capabilities" ? <TheatreRoleCapabilitiesTab /> : null}
       </div>
     </div>

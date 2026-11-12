@@ -7,6 +7,11 @@ import type {
   IssueTheatreConsumablePayload,
   TheatreAnaesthesiaRecord,
   TheatreConsumable,
+  TheatreConsumableReturn,
+  TheatreCancellationReason,
+  CreateTheatreCancellationReasonPayload,
+  UpdateTheatreCancellationReasonPayload,
+  ReturnTheatreConsumablePayload,
   TheatreOperationNote,
   TheatreRecoveryRecord,
   TheatreReportFilters,
@@ -139,7 +144,11 @@ export function ensureTheatreCaseForEncounter(encounterUuid: string) {
 
 export function transitionTheatreCase(
   uuid: string,
-  payload: { status: TheatreCaseStatus; reason?: string },
+  payload: {
+    status: TheatreCaseStatus;
+    reason?: string;
+    cancellation_reason?: string | null;
+  },
 ) {
   return bffRequest<TheatreCase>(ROUTES.transition(uuid), {
     method: "POST",
@@ -324,6 +333,45 @@ export function issueTheatreConsumable(
 ) {
   return bffRequest<TheatreConsumable>(ROUTES.consumableIssue(caseUuid, itemUuid), {
     method: "POST",
+    body: payload,
+  });
+}
+
+export function returnTheatreConsumable(
+  caseUuid: string,
+  itemUuid: string,
+  payload: ReturnTheatreConsumablePayload,
+) {
+  return bffRequest<{ item: TheatreConsumable; return: TheatreConsumableReturn }>(
+    ROUTES.consumableReturn(caseUuid, itemUuid),
+    { method: "POST", body: payload },
+  );
+}
+
+export function fetchTheatreCancellationReasons(
+  options: { includeInactive?: boolean } = {},
+) {
+  const query = options.includeInactive ? "?include_inactive=true" : "";
+  return bffRequest<TheatreCancellationReason[]>(
+    `${ROUTES.cancellationReasons}${query}`,
+  );
+}
+
+export function createTheatreCancellationReason(
+  payload: CreateTheatreCancellationReasonPayload,
+) {
+  return bffRequest<TheatreCancellationReason>(ROUTES.cancellationReasons, {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function updateTheatreCancellationReason(
+  uuid: string,
+  payload: UpdateTheatreCancellationReasonPayload,
+) {
+  return bffRequest<TheatreCancellationReason>(ROUTES.cancellationReason(uuid), {
+    method: "PATCH",
     body: payload,
   });
 }

@@ -8,6 +8,7 @@ import { TheatreClinicSelect } from "@/features/clinical-theatre/components/Thea
 import { useTheatreReportSummary } from "@/features/clinical-theatre/hooks/use-clinical-theatre";
 import { shiftDateInput, toDateInputValue } from "@/features/clinical-theatre/pages/TheatreBoardPage";
 import type { TheatreReportSummary } from "@/features/clinical-theatre/types/clinical-theatre.types";
+import { CANCELLATION_CATEGORY_LABELS } from "@/features/clinical-theatre/utils/theatre-cancellation-display";
 import {
   errorMessage,
   formatMinutes,
@@ -121,9 +122,59 @@ export function TheatreReportBody({ report }: { report: TheatreReportSummary }) 
           rows={report.by_urgency.map((row) => [row.label, row.count])}
         />
       </div>
+      {report.cancellation_summary ? (
+        <section className="space-y-3" data-testid="theatre-report-cancellation-summary">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Stat
+              label="On-the-day cancellation rate"
+              value={
+                report.cancellation_summary.on_the_day_rate_percent === null
+                  ? "—"
+                  : `${report.cancellation_summary.on_the_day_rate_percent}%`
+              }
+            />
+            <Stat label="On the day" value={report.cancellation_summary.on_the_day} />
+            <Stat
+              label="Cancelled / postponed"
+              value={report.cancellation_summary.total}
+            />
+          </div>
+          <div className="grid gap-6 md:grid-cols-2">
+            <ReportTable
+              title="Cancellations by category"
+              headers={["Category", "Cases", "On the day"]}
+              empty="No cancellations in this period."
+              rows={report.cancellation_summary.by_category.map((row) => [
+                row.label,
+                row.count,
+                row.on_the_day,
+              ])}
+            />
+            <ReportTable
+              title="Cancellations by reason"
+              headers={["Reason", "Cases", "On the day"]}
+              empty="No cancellations in this period."
+              rows={report.cancellation_summary.by_reason.map((row) => [
+                row.label,
+                row.count,
+                row.on_the_day,
+              ])}
+            />
+          </div>
+        </section>
+      ) : null}
       <ReportTable
         title="Cancellations & postponements"
-        headers={["Scheduled", "Procedure", "Room", "Surgeon", "Status", "Reason"]}
+        headers={[
+          "Scheduled",
+          "Procedure",
+          "Room",
+          "Surgeon",
+          "Status",
+          "Category",
+          "On the day",
+          "Reason",
+        ]}
         empty="No cancellations in this period."
         rows={report.cancellations.map((row) => [
           row.scheduled_start ? new Date(row.scheduled_start).toLocaleString() : "—",
@@ -131,9 +182,23 @@ export function TheatreReportBody({ report }: { report: TheatreReportSummary }) 
           row.room_name || "—",
           row.surgeon_name || "—",
           row.status === "cancelled" ? "Cancelled" : "Postponed",
+          row.category ? CANCELLATION_CATEGORY_LABELS[row.category] : "—",
+          row.on_the_day ? "Yes" : "No",
           row.reason || "—",
         ])}
       />
+      {report.stock_returns && report.stock_returns.returns > 0 ? (
+        <ReportTable
+          title={`Stock returned to inventory (${report.stock_returns.returns} returns)`}
+          headers={["Item", "Returns", "Quantity"]}
+          empty="No stock returns."
+          rows={report.stock_returns.by_product.map((row) => [
+            row.product_name,
+            row.returns,
+            row.quantity,
+          ])}
+        />
+      ) : null}
       {report.returns ? (
         <section className="space-y-3" data-testid="theatre-report-returns">
           <div className="grid gap-3 sm:grid-cols-4">

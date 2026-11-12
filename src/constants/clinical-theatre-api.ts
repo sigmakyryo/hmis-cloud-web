@@ -37,6 +37,10 @@ export const CLINICAL_THEATRE_API_PATHS = {
     upstream(`cases/${uuid}/consumables/${itemUuid}/`),
   consumableIssue: (uuid: string, itemUuid: string) =>
     upstream(`cases/${uuid}/consumables/${itemUuid}/issue/`),
+  consumableReturn: (uuid: string, itemUuid: string) =>
+    upstream(`cases/${uuid}/consumables/${itemUuid}/return/`),
+  cancellationReasons: upstream("cancellation-reasons/"),
+  cancellationReason: (uuid: string) => upstream(`cancellation-reasons/${uuid}/`),
   reportSummary: upstream("reports/summary/"),
 } as const;
 
@@ -75,5 +79,9 @@ export const BFF_CLINICAL_THEATRE_ROUTES = {
     bff(`cases/${uuid}/consumables/${itemUuid}`),
   consumableIssue: (uuid: string, itemUuid: string) =>
     bff(`cases/${uuid}/consumables/${itemUuid}/issue`),
+  consumableReturn: (uuid: string, itemUuid: string) =>
+    bff(`cases/${uuid}/consumables/${itemUuid}/return`),
+  cancellationReasons: bff("cancellation-reasons"),
+  cancellationReason: (uuid: string) => bff(`cancellation-reasons/${uuid}`),
   reportSummary: bff("reports/summary"),
 } as const;

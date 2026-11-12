@@ -128,7 +128,19 @@ function TheatreCaseHeaderCard({
                 {theatreCase.return_planned ? "Planned return" : "Return to theatre"}
               </StatusDotBadge>
             ) : null}
+            {theatreCase.cancelled_on_the_day &&
+            (theatreCase.status === "cancelled" || theatreCase.status === "postponed") ? (
+              <StatusDotBadge tone="danger">On-the-day</StatusDotBadge>
+            ) : null}
           </div>
+          {theatreCase.cancellation_reason &&
+          (theatreCase.status === "cancelled" || theatreCase.status === "postponed") ? (
+            <p className="text-xs text-muted-foreground" data-testid="theatre-cancellation-reason">
+              {theatreCase.cancellation_reason.category_label}:{" "}
+              {theatreCase.cancellation_reason.label}
+              {theatreCase.cancellation_note ? ` — ${theatreCase.cancellation_note}` : ""}
+            </p>
+          ) : null}
           <dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
             <HeaderFact icon={UserRound} label="Patient" value={theatreCase.customer_name} />
             <HeaderFact

@@ -344,6 +344,7 @@ export const MOVEMENT_TYPE_OPTIONS = [
   { value: "ADJUSTMENT_QTY", label: "Quantity adjustment" },
   { value: "ADJUSTMENT_COST", label: "Cost adjustment" },
   { value: "RETURN_TO_VENDOR", label: "Return to vendor" },
+  { value: "DISPENSATION_RETURN", label: "Dispensation return" },
 ] as const;
 
 export const ACTIVE_STATUS_OPTIONS = [
