@@ -18,6 +18,21 @@ export const CLINICAL_THEATRE_API_PATHS = {
   checklistStage: (uuid: string, stage: string) =>
     upstream(`cases/${uuid}/checklist/${stage}/`),
   preOp: (uuid: string) => upstream(`cases/${uuid}/pre-op/`),
+  anaesthesia: (uuid: string) => upstream(`cases/${uuid}/anaesthesia/`),
+  anaesthesiaVitals: (uuid: string) => upstream(`cases/${uuid}/anaesthesia/vitals/`),
+  anaesthesiaSign: (uuid: string) => upstream(`cases/${uuid}/anaesthesia/sign/`),
+  operationNote: (uuid: string) => upstream(`cases/${uuid}/operation-note/`),
+  operationNoteSign: (uuid: string) => upstream(`cases/${uuid}/operation-note/sign/`),
+  recovery: (uuid: string) => upstream(`cases/${uuid}/recovery/`),
+  recoveryObservations: (uuid: string) =>
+    upstream(`cases/${uuid}/recovery/observations/`),
+  recoveryDischarge: (uuid: string) => upstream(`cases/${uuid}/recovery/discharge/`),
+  consumables: (uuid: string) => upstream(`cases/${uuid}/consumables/`),
+  consumable: (uuid: string, itemUuid: string) =>
+    upstream(`cases/${uuid}/consumables/${itemUuid}/`),
+  consumableIssue: (uuid: string, itemUuid: string) =>
+    upstream(`cases/${uuid}/consumables/${itemUuid}/issue/`),
+  reportSummary: upstream("reports/summary/"),
 } as const;
 
 /** Browser-facing BFF theatre routes. */
@@ -37,4 +52,18 @@ export const BFF_CLINICAL_THEATRE_ROUTES = {
   checklistStage: (uuid: string, stage: string) =>
     bff(`cases/${uuid}/checklist/${stage}`),
   preOp: (uuid: string) => bff(`cases/${uuid}/pre-op`),
+  anaesthesia: (uuid: string) => bff(`cases/${uuid}/anaesthesia`),
+  anaesthesiaVitals: (uuid: string) => bff(`cases/${uuid}/anaesthesia/vitals`),
+  anaesthesiaSign: (uuid: string) => bff(`cases/${uuid}/anaesthesia/sign`),
+  operationNote: (uuid: string) => bff(`cases/${uuid}/operation-note`),
+  operationNoteSign: (uuid: string) => bff(`cases/${uuid}/operation-note/sign`),
+  recovery: (uuid: string) => bff(`cases/${uuid}/recovery`),
+  recoveryObservations: (uuid: string) => bff(`cases/${uuid}/recovery/observations`),
+  recoveryDischarge: (uuid: string) => bff(`cases/${uuid}/recovery/discharge`),
+  consumables: (uuid: string) => bff(`cases/${uuid}/consumables`),
+  consumable: (uuid: string, itemUuid: string) =>
+    bff(`cases/${uuid}/consumables/${itemUuid}`),
+  consumableIssue: (uuid: string, itemUuid: string) =>
+    bff(`cases/${uuid}/consumables/${itemUuid}/issue`),
+  reportSummary: bff("reports/summary"),
 } as const;

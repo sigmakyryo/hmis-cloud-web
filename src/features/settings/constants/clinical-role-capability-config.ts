@@ -182,6 +182,41 @@ export const THEATRE_ROLE_CAPABILITIES: ClinicalRoleCapabilityMeta[] = [
     description: "Record ASA grade, consent, fasting and anaesthesia plan",
   },
   {
+    key: "record_theatre_anaesthesia",
+    label: "Anaesthesia record",
+    description: "Record technique, airway, agents, fluids, vitals and times",
+  },
+  {
+    key: "record_theatre_operation_note",
+    label: "Write operation notes",
+    description: "Record procedure, findings, implants, specimens and closure",
+  },
+  {
+    key: "sign_theatre_operation_note",
+    label: "Sign operation notes",
+    description: "Sign and lock the operation note",
+  },
+  {
+    key: "record_theatre_recovery",
+    label: "Recovery (PACU)",
+    description: "Record recovery observations, Aldrete score and handover",
+  },
+  {
+    key: "record_theatre_consumables",
+    label: "Record consumables & implants",
+    description: "Bill consumables, implants and procedure charges to the visit",
+  },
+  {
+    key: "issue_theatre_consumables",
+    label: "Issue theatre stock",
+    description: "Issue recorded items from inventory (needs Dispensation access)",
+  },
+  {
+    key: "view_theatre_reports",
+    label: "Theatre reports",
+    description: "See case volumes, room utilisation and cancellations",
+  },
+  {
     key: "manage_theatre_rooms",
     label: "Manage theatre rooms",
     description: "Add, rename and deactivate operating rooms",

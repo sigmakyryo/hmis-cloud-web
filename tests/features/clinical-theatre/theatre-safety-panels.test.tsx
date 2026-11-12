@@ -73,6 +73,7 @@ vi.mock("@/features/clinical-theatre/services/clinical-theatre.service", () => (
   updateTheatrePreOp: (...args: unknown[]) => updateTheatrePreOp(...args),
   fetchTheatreBoard: () => Promise.resolve(BOARD),
   fetchTheatreTeam: vi.fn().mockResolvedValue([]),
+  fetchTheatreRooms: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock("next/navigation", () => ({

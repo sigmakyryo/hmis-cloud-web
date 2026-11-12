@@ -317,6 +317,14 @@ export const navigation: NavigationItem[] = [
     enabledInWebNew: true,
   },
   {
+    name: "Theatre reports",
+    href: ROUTES.clinicalTheatreReports,
+    icon: "activity",
+    requiredGroup: "Theatre",
+    moduleName: "Theatre",
+    enabledInWebNew: true,
+  },
+  {
     name: "Ward board",
     href: ROUTES.clinicalIpdBoard,
     icon: "hospital",

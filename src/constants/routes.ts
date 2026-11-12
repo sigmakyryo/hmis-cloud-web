@@ -135,6 +135,7 @@ export const ROUTES = {
     `/clinical/ipd/${visitUuid}/${encounterUuid}`,
   clinicalTheatre: "/clinical/theatre",
   clinicalTheatreBoard: "/clinical/theatre/board",
+  clinicalTheatreReports: "/clinical/theatre/reports",
   clinicalTheatreEncounter: (visitUuid: string, encounterUuid: string) =>
     `/clinical/theatre/${visitUuid}/${encounterUuid}`,
   occupationalHealth: "/occupational-health",
