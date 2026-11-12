@@ -34,9 +34,35 @@ export type Customer = {
   oh_employer_name?: string | null;
   /** OH employment episode risk profile (when has_employment_episode list). */
   oh_hazard_profile_name?: string | null;
+  employment?: CustomerEmployment | null;
   created_at: string;
   updated_at: string;
   created_by: number | null;
+};
+
+export type CustomerEmployment = {
+  uuid: string;
+  category: "company" | "contractor";
+  role: "employee" | "dependant";
+  contractor_uuid: string | null;
+  contractor_name: string | null;
+  employee_number: string;
+  related_employee_uuid: string | null;
+  related_employee_name: string | null;
+  related_employee_number: string | null;
+  relationship: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CustomerEmploymentWritePayload = {
+  category: "company" | "contractor";
+  role: "employee" | "dependant";
+  contractor?: string | null;
+  employee_number?: string;
+  related_employee?: string | null;
+  relationship?: string;
 };
 
 export type { CustomerVisitStatus };
@@ -62,6 +88,9 @@ export type CustomerListFilters = {
   tags?: string[];
   membershipNumber?: string;
   hasEmploymentEpisode?: boolean;
+  employmentCategory?: "company" | "contractor";
+  employmentRole?: "employee" | "dependant";
+  contractor?: string;
 };
 
 export type CreateCustomerPayload = {
@@ -75,6 +104,7 @@ export type CreateCustomerPayload = {
   email?: string;
   customer_identifier?: string;
   internal_reference?: string;
+  employment?: CustomerEmploymentWritePayload | null;
 };
 
 export type UpdateCustomerPayload = CreateCustomerPayload;

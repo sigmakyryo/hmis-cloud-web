@@ -18,6 +18,9 @@ const FORWARDED_QUERY_KEYS = [
   "tags",
   "membership_number",
   "has_employment_episode",
+  "employment_category",
+  "employment_role",
+  "contractor",
 ] as const;
 
 function buildUpstreamQuery(request: Request): string {

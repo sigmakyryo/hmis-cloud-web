@@ -47,6 +47,18 @@ function buildCustomersQuery(filters: CustomerListFilters = {}): string {
     params.set("has_employment_episode", "1");
   }
 
+  if (filters.employmentCategory) {
+    params.set("employment_category", filters.employmentCategory);
+  }
+
+  if (filters.employmentRole) {
+    params.set("employment_role", filters.employmentRole);
+  }
+
+  if (filters.contractor?.trim()) {
+    params.set("contractor", filters.contractor.trim());
+  }
+
   const query = params.toString();
   return query ? `?${query}` : "";
 }

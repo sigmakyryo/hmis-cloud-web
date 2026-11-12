@@ -416,9 +416,45 @@ export type OrganizationTabId =
   | "general"
   | "branding"
   | "departments"
+  | "contractors"
   | "clinics"
   | "locations"
   | "care-providers";
+
+export type OrganizationContractor = {
+  id: number;
+  uuid: string;
+  tenant: number;
+  name: string;
+  code: string;
+  contact_person: string;
+  phone_number: string;
+  email: string;
+  address: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CreateOrganizationContractorPayload = {
+  name: string;
+  code?: string;
+  contact_person?: string;
+  phone_number?: string;
+  email?: string;
+  address?: string;
+  is_active?: boolean;
+};
+
+export type UpdateOrganizationContractorPayload = {
+  name: string;
+  code?: string;
+  contact_person?: string;
+  phone_number?: string;
+  email?: string;
+  address?: string;
+  is_active?: boolean;
+};
 
 export type UserManagementTabId = "users" | "groups";
 

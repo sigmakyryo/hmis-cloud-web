@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/sheet";
 import { CreateAppointmentDialog } from "@/features/appointments/components/CreateAppointmentDialog";
 import type { Appointment } from "@/features/appointments/types/appointment.types";
+import { CustomerEmploymentFields } from "@/features/customers/components/CustomerEmploymentFields";
 import { CustomerFormFields } from "@/features/customers/components/CustomerFormFields";
 import { CustomerOnboardingForms } from "@/features/customers/components/CustomerOnboardingForms";
 import { CustomerInsuranceFormFields } from "@/features/customers/components/CustomerInsuranceFormFields";
@@ -30,6 +31,12 @@ import {
   toCustomerInsurancePayload,
   type CreateCustomerInsuranceFormValues,
 } from "@/features/customers/schemas/customer-insurance.schema";
+import {
+  customerEmploymentDefaultValues,
+  customerEmploymentFormSchema,
+  toCustomerEmploymentWritePayload,
+  type CustomerEmploymentFormValues,
+} from "@/features/customers/schemas/customer-employment.schema";
 import {
   createCustomerDefaultValues,
   createCustomerSchema,
@@ -46,11 +53,14 @@ import type { CustomerVisit } from "@/features/customers/types/customer-visit.ty
 import type { InsuranceScheme } from "@/features/customers/types/customer-insurance.types";
 import type { ClinicalFormRecord } from "@/features/occupational-health/lib/oh-form-catalog";
 import { fetchClinicalForms } from "@/features/occupational-health/services/oh.service";
+import type { OrganizationContractor } from "@/features/settings/types/settings.types";
+import { isEmployeeBasedOrganization } from "@/features/settings/utils/organization-type";
 import { BffError } from "@/lib/bff-client";
 import { formatBffErrorMessage, mapBffErrorsToForm } from "@/lib/bff-field-errors";
 import { appFont } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/providers/toast-provider";
+import { useUser } from "@/providers/user-provider";
 
 type CreateCustomerDialogProps = {
   open: boolean;
@@ -62,7 +72,12 @@ type CreateCustomerDialogProps = {
   mode?: "full" | "quick";
 };
 
-type CreateCustomerTab = "personal" | "onboarding" | "insurance" | "whats-next";
+type CreateCustomerTab =
+  | "employment"
+  | "personal"
+  | "onboarding"
+  | "insurance"
+  | "whats-next";
 
 function getCustomerDisplayName(customer: Customer) {
   return (
@@ -83,13 +98,23 @@ export function CreateCustomerDialog({
 }: CreateCustomerDialogProps) {
   const router = useRouter();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<CreateCustomerTab>("personal");
+  const { userData } = useUser();
+  const showEmploymentTab = isEmployeeBasedOrganization(userData?.tenant);
+  const initialTab: CreateCustomerTab = showEmploymentTab
+    ? "employment"
+    : "personal";
+  const [activeTab, setActiveTab] = useState<CreateCustomerTab>(initialTab);
   const [createdCustomer, setCreatedCustomer] = useState<Customer | null>(null);
   const [schemes, setSchemes] = useState<InsuranceScheme[]>([]);
   const [isLoadingSchemes, setIsLoadingSchemes] = useState(false);
   const [visitDialogOpen, setVisitDialogOpen] = useState(false);
   const [appointmentDialogOpen, setAppointmentDialogOpen] = useState(false);
   const [onboardingForms, setOnboardingForms] = useState<ClinicalFormRecord[]>([]);
+  const [employmentContractor, setEmploymentContractor] =
+    useState<OrganizationContractor | null>(null);
+  const [employmentRelatedEmployee, setEmploymentRelatedEmployee] =
+    useState<Customer | null>(null);
+  const [employmentComplete, setEmploymentComplete] = useState(false);
 
   const personalForm = useForm<CreateCustomerFormValues>({
     resolver: zodResolver(createCustomerSchema),
@@ -97,6 +122,11 @@ export function CreateCustomerDialog({
       ...createCustomerDefaultValues,
       ...splitClientSearchName(initialName),
     },
+  });
+
+  const employmentForm = useForm<CustomerEmploymentFormValues>({
+    resolver: zodResolver(customerEmploymentFormSchema),
+    defaultValues: customerEmploymentDefaultValues,
   });
 
   const insuranceForm = useForm<CreateCustomerInsuranceFormValues>({
@@ -124,8 +154,12 @@ export function CreateCustomerDialog({
       return;
     }
     appliedRegistrationKey.current = key;
-    setActiveTab("personal");
+    setActiveTab(showEmploymentTab ? "employment" : "personal");
     setCreatedCustomer(null);
+    setEmploymentComplete(false);
+    setEmploymentContractor(null);
+    setEmploymentRelatedEmployee(null);
+    employmentForm.reset(customerEmploymentDefaultValues);
     const searchedName = registration ? null : splitClientSearchName(initialName);
     personalForm.reset({
       ...createCustomerDefaultValues,
@@ -147,12 +181,14 @@ export function CreateCustomerDialog({
       is_primary: Boolean(registration?.membershipNumber),
     });
   }, [
+    employmentForm,
     initialName,
     insuranceForm,
     open,
     personalForm,
     registration,
     registrationKey,
+    showEmploymentTab,
   ]);
 
   const isCustomerCreated = Boolean(createdCustomer);
@@ -172,16 +208,20 @@ export function CreateCustomerDialog({
   }, [createdCustomer, personalForm]);
 
   const resetDialogState = useCallback(() => {
-    setActiveTab("personal");
+    setActiveTab(showEmploymentTab ? "employment" : "personal");
     setCreatedCustomer(null);
     setSchemes([]);
     setIsLoadingSchemes(false);
     setVisitDialogOpen(false);
     setAppointmentDialogOpen(false);
     setOnboardingForms([]);
+    setEmploymentComplete(false);
+    setEmploymentContractor(null);
+    setEmploymentRelatedEmployee(null);
+    employmentForm.reset(customerEmploymentDefaultValues);
     personalForm.reset(createCustomerDefaultValues);
     insuranceForm.reset(createCustomerInsuranceDefaultValues);
-  }, [insuranceForm, personalForm]);
+  }, [employmentForm, insuranceForm, personalForm, showEmploymentTab]);
 
   const loadInsuranceSchemes = useCallback(async () => {
     const hint = registration?.schemeName.trim().toLowerCase();
@@ -290,9 +330,41 @@ export function CreateCustomerDialog({
     onOpenChange(nextOpen);
   }
 
+  async function handleContinueFromEmployment(
+    values: CustomerEmploymentFormValues,
+  ) {
+    const payload = toCustomerEmploymentWritePayload(values);
+    if (!payload) {
+      return;
+    }
+    if (
+      payload.role === "employee" &&
+      payload.employee_number &&
+      !personalForm.getValues("internal_reference")
+    ) {
+      personalForm.setValue("internal_reference", payload.employee_number);
+    }
+    setEmploymentComplete(true);
+    setActiveTab("personal");
+  }
+
   async function handleCreateCustomer(values: CreateCustomerFormValues) {
     try {
-      const customer = await createCustomer(toCustomerWritePayload(values));
+      const employmentPayload = showEmploymentTab
+        ? toCustomerEmploymentWritePayload(employmentForm.getValues())
+        : null;
+      if (showEmploymentTab && !employmentPayload) {
+        setActiveTab("employment");
+        toast({
+          variant: "error",
+          title: "Employment details required",
+          description: "Complete the Employment tab before saving the client.",
+        });
+        return;
+      }
+      const customer = await createCustomer(
+        toCustomerWritePayload(values, employmentPayload),
+      );
       toast({
         variant: "success",
         title: "Client created",
@@ -322,6 +394,14 @@ export function CreateCustomerDialog({
             personalForm.setError(field as keyof CreateCustomerFormValues, {
               message,
             });
+          }
+          if (field.startsWith("employment.")) {
+            const employmentField = field.replace(
+              "employment.",
+              "",
+            ) as keyof CustomerEmploymentFormValues;
+            employmentForm.setError(employmentField, { message });
+            setActiveTab("employment");
           }
         }
 
@@ -389,20 +469,27 @@ export function CreateCustomerDialog({
   }
 
   const onboardingPending = onboardingForms.length > 0;
+  const personalDisabled = showEmploymentTab && !employmentComplete && !isCustomerCreated;
   const tabs: Array<{
     id: CreateCustomerTab;
     label: string;
     disabled?: boolean;
   }> =
     mode === "quick"
-      ? onboardingPending
-        ? [
-            { id: "personal", label: "Client" },
-            { id: "onboarding", label: "Forms" },
-          ]
-        : [{ id: "personal", label: "Client" }]
+      ? [
+          ...(showEmploymentTab
+            ? [{ id: "employment" as const, label: "Employment", disabled: isCustomerCreated }]
+            : []),
+          { id: "personal", label: "Client", disabled: personalDisabled },
+          ...(onboardingPending
+            ? [{ id: "onboarding" as const, label: "Forms", disabled: !isCustomerCreated }]
+            : []),
+        ]
       : [
-          { id: "personal", label: "Personal" },
+          ...(showEmploymentTab
+            ? [{ id: "employment" as const, label: "Employment", disabled: isCustomerCreated }]
+            : []),
+          { id: "personal", label: "Personal", disabled: personalDisabled },
           ...(onboardingPending
             ? [{ id: "onboarding" as const, label: "Forms", disabled: !isCustomerCreated }]
             : []),
@@ -474,7 +561,7 @@ export function CreateCustomerDialog({
   }
 
   function renderFooter() {
-    if (activeTab === "personal" && !isCustomerCreated) {
+    if (activeTab === "employment" && !isCustomerCreated) {
       return (
         <>
           <SecondaryButton
@@ -484,6 +571,38 @@ export function CreateCustomerDialog({
           >
             Cancel
           </SecondaryButton>
+          <PrimaryButton
+            type="submit"
+            form="create-customer-employment-form"
+            disabled={isBusy}
+            data-testid="create-customer-employment-continue"
+          >
+            Continue
+          </PrimaryButton>
+        </>
+      );
+    }
+
+    if (activeTab === "personal" && !isCustomerCreated) {
+      return (
+        <>
+          {showEmploymentTab ? (
+            <SecondaryButton
+              type="button"
+              disabled={isBusy}
+              onClick={() => setActiveTab("employment")}
+            >
+              Back
+            </SecondaryButton>
+          ) : (
+            <SecondaryButton
+              type="button"
+              disabled={isBusy}
+              onClick={() => handleOpenChange(false)}
+            >
+              Cancel
+            </SecondaryButton>
+          )}
           <PrimaryButton
             type="submit"
             form="create-customer-personal-form"
@@ -609,7 +728,8 @@ export function CreateCustomerDialog({
                     onClick={() => {
                       if (
                         !tab.disabled &&
-                        (tab.id === "personal" ||
+                        (tab.id === "employment" ||
+                          tab.id === "personal" ||
                           tab.id === "onboarding" ||
                           tab.id === "insurance" ||
                           tab.id === "whats-next")
@@ -633,6 +753,33 @@ export function CreateCustomerDialog({
           ) : null}
 
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+            {activeTab === "employment" ? (
+              <Form {...employmentForm}>
+                <form
+                  id="create-customer-employment-form"
+                  className="space-y-4"
+                  onSubmit={employmentForm.handleSubmit(
+                    handleContinueFromEmployment,
+                  )}
+                  data-testid="create-customer-employment-form"
+                >
+                  {isCustomerCreated ? (
+                    <p className="rounded-lg border border-brand-primary/30 bg-brand-tint px-3 py-2.5 text-sm text-brand-slate">
+                      Client created. Employment details are locked.
+                    </p>
+                  ) : null}
+                  <CustomerEmploymentFields
+                    form={employmentForm}
+                    contractor={employmentContractor}
+                    relatedEmployee={employmentRelatedEmployee}
+                    onContractorChange={setEmploymentContractor}
+                    onRelatedEmployeeChange={setEmploymentRelatedEmployee}
+                    disabled={isCustomerCreated}
+                  />
+                </form>
+              </Form>
+            ) : null}
+
             {activeTab === "personal" ? (
               <Form {...personalForm}>
                 <form

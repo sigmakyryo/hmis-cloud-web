@@ -978,6 +978,9 @@ export const BFF_SETTINGS_ROUTES = {
   departments: "/api/departments",
   departmentDetail: (uuid: string) => `/api/departments/${uuid}`,
   departmentMembers: (uuid: string) => `/api/departments/${uuid}/members`,
+  organizationContractors: "/api/organization-contractors",
+  organizationContractorDetail: (uuid: string) =>
+    `/api/organization-contractors/${uuid}`,
   visitTypes: "/api/consultation-services",
   visitTypeDetail: (uuid: string) => `/api/consultation-services/${uuid}`,
   consultationServices: "/api/consultation-services",

@@ -1,6 +1,9 @@
 import { z } from "zod";
 
-import type { Customer } from "@/features/customers/types/customer.types";
+import type {
+  Customer,
+  CustomerEmploymentWritePayload,
+} from "@/features/customers/types/customer.types";
 
 const namePattern = /^[a-zA-Z\s\-']+$/;
 const lastNamePattern = /^[a-zA-Z\-']+$/;
@@ -84,7 +87,10 @@ export const createCustomerSchema = z
 
 export type CreateCustomerFormValues = z.infer<typeof createCustomerSchema>;
 
-export function toCustomerWritePayload(values: CreateCustomerFormValues) {
+export function toCustomerWritePayload(
+  values: CreateCustomerFormValues,
+  employment?: CustomerEmploymentWritePayload | null,
+) {
   return {
     first_name: values.first_name.trim(),
     middle_name: values.middle_name?.trim() || "",
@@ -95,6 +101,7 @@ export function toCustomerWritePayload(values: CreateCustomerFormValues) {
     phone_number: values.phone_number?.trim() || "",
     email: values.email?.trim() || "",
     internal_reference: values.internal_reference?.trim() || "",
+    ...(employment ? { employment } : {}),
   };
 }
 

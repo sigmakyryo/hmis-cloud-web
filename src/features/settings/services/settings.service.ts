@@ -3,6 +3,7 @@ import type { User } from "@/features/auth/types/auth.types";
 import type {
   CreateOrganizationClinicPayload,
   CreateOrganizationLocationPayload,
+  CreateOrganizationContractorPayload,
   CreateOrganizationDepartmentPayload,
   CreateOrganizationPayerPayload,
   CreateOrganizationPayerSchemePayload,
@@ -14,6 +15,7 @@ import type {
   CreateTenantEmailConfigurationPayload,
   OrganizationDefaultPricelist,
   OrganizationClinic,
+  OrganizationContractor,
   OrganizationDepartment,
   OrganizationListResponse,
   OrganizationLocation,
@@ -28,6 +30,7 @@ import type {
   TenantEmailConfiguration,
   UpdateOrganizationClinicPayload,
   UpdateOrganizationContactPayload,
+  UpdateOrganizationContractorPayload,
   UpdateOrganizationDepartmentPayload,
   UpdateOrganizationLocationPayload,
   UpdateOrganizationPayerSchemePayload,
@@ -276,6 +279,61 @@ export async function updateOrganizationDepartment(
 ): Promise<OrganizationDepartment> {
   return bffRequest<OrganizationDepartment>(
     BFF_SETTINGS_ROUTES.departmentDetail(uuid),
+    {
+      method: "PATCH",
+      body: payload,
+    },
+  );
+}
+
+export type FetchOrganizationContractorsOptions = {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  includeInactive?: boolean;
+  isActive?: boolean;
+};
+
+export async function fetchOrganizationContractorsPage(
+  options: FetchOrganizationContractorsOptions = {},
+): Promise<OrganizationListResponse<OrganizationContractor>> {
+  const params = new URLSearchParams({
+    page: String(options.page ?? 1),
+    page_size: String(options.pageSize ?? 10),
+    ordering: "name",
+  });
+  if (options.search?.trim()) {
+    params.set("search", options.search.trim());
+  }
+  if (options.includeInactive) {
+    params.set("include_inactive", "true");
+  }
+  if (typeof options.isActive === "boolean") {
+    params.set("is_active", String(options.isActive));
+  }
+  return bffRequest<OrganizationListResponse<OrganizationContractor>>(
+    `${BFF_SETTINGS_ROUTES.organizationContractors}?${params.toString()}`,
+  );
+}
+
+export async function createOrganizationContractor(
+  payload: CreateOrganizationContractorPayload,
+): Promise<OrganizationContractor> {
+  return bffRequest<OrganizationContractor>(
+    BFF_SETTINGS_ROUTES.organizationContractors,
+    {
+      method: "POST",
+      body: payload,
+    },
+  );
+}
+
+export async function updateOrganizationContractor(
+  uuid: string,
+  payload: UpdateOrganizationContractorPayload,
+): Promise<OrganizationContractor> {
+  return bffRequest<OrganizationContractor>(
+    BFF_SETTINGS_ROUTES.organizationContractorDetail(uuid),
     {
       method: "PATCH",
       body: payload,
