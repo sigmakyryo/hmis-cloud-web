@@ -56,7 +56,7 @@ export function OpdEncounterWorkspaceBody({
       {WorkspaceBanner ? (
         <WorkspaceBanner visitUuid={visitUuid} encounterUuid={encounterUuid} />
       ) : null}
-      <OpdEncounterTabs />
+      {routing.hideSectionTabBar ? null : <OpdEncounterTabs />}
 
       {isFullWidthLayout ? (
         children

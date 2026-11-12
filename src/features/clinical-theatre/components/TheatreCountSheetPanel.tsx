@@ -151,7 +151,7 @@ function ResolutionForm({ caseUuid }: { caseUuid: string }) {
 function SheetSummary({ sheet }: { sheet: TheatreCountSheet }) {
   if (sheet.status !== "resolved") return null;
   return (
-    <div className="rounded-md border p-3 text-sm">
+    <div className="rounded-lg bg-muted/40 p-3 text-sm">
       <p className="font-medium">Discrepancy resolved</p>
       <p>
         Search: {sheet.search_performed ? "performed" : "not recorded"}
@@ -408,7 +408,7 @@ export function TheatreCountSheetPanel({
       </div>
 
       {editable ? (
-        <div className="flex flex-wrap items-end gap-2 rounded-md border p-3">
+        <div className="flex flex-wrap items-end gap-2 rounded-lg bg-muted/40 p-3">
           <div className="space-y-1">
             <Label>Category</Label>
             <Select
@@ -467,7 +467,7 @@ export function TheatreCountSheetPanel({
       ) : null}
 
       {editable ? (
-        <div className="space-y-2 rounded-md border p-3">
+        <div className="space-y-2 rounded-lg bg-muted/40 p-3">
           <p className="text-sm font-medium">
             Confirm the {COUNT_PHASES.find((row) => row.value === phase)?.label.toLowerCase()}
           </p>

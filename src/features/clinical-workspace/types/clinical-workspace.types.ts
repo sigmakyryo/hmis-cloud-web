@@ -132,6 +132,11 @@ export type ClinicalWorkspaceRouting<TabId extends string = string> = {
   preferredTabsByRole: Readonly<Record<string, readonly TabId[]>>;
   /** Tab used when the user can see no other section. */
   fallbackTabId: TabId;
+  /**
+   * Hide the shared section tab bar; the specialty banner then owns section
+   * navigation (theatre's case flow and its "More" menu).
+   */
+  hideSectionTabBar?: boolean;
 };
 
 export type ClinicalWorkspaceBannerProps = {

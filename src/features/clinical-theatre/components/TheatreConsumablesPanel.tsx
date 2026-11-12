@@ -275,7 +275,7 @@ export function TheatreConsumablesPanel({ theatreCase }: { theatreCase: TheatreC
       )}
 
       {editable ? (
-        <div className="space-y-3 rounded-md border p-3">
+        <div className="space-y-3 rounded-lg bg-muted/40 p-3">
           <div className="flex flex-wrap items-end gap-2">
             <div className="space-y-1">
               <Label>Kind</Label>

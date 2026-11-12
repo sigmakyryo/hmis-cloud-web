@@ -68,7 +68,7 @@ export function TheatreTeamPanel({ theatreCase }: { theatreCase: TheatreCase }) 
       ) : members.length === 0 ? (
         <p className="text-sm text-muted-foreground">No one is on the team yet.</p>
       ) : (
-        <ul className="divide-y rounded-md border">
+        <ul className="divide-y divide-dash-border/70 border-y border-dash-border/70">
           {members.map((member) => (
             <li
               key={member.uuid}
@@ -101,7 +101,7 @@ export function TheatreTeamPanel({ theatreCase }: { theatreCase: TheatreCase }) 
         </ul>
       )}
       {locked ? null : (
-        <div className="grid gap-3 rounded-md border p-3 md:grid-cols-[2fr_1fr_1fr_auto] md:items-end">
+        <div className="grid gap-3 rounded-lg bg-muted/40 p-3 md:grid-cols-[2fr_1fr_1fr_auto] md:items-end">
           <CareProviderCombobox
             id="theatre-team-member"
             label="Team member"

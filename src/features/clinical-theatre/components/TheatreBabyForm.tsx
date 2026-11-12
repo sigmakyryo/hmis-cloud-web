@@ -77,7 +77,7 @@ export function TheatreBabyForm({ caseUuid, baby, onDone }: TheatreBabyFormProps
 
   return (
     <form
-      className="space-y-3 rounded-md border bg-muted/30 p-3"
+      className="space-y-3 rounded-lg bg-muted/40 p-3"
       data-testid="theatre-baby-form"
       onSubmit={(event) => {
         event.preventDefault();

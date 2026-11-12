@@ -48,7 +48,8 @@ export function TheatreChecklistPanel({
   theatreCase: TheatreCase;
   /** Limit to these WHO stages (order kept from the API); all when omitted. */
   stages?: readonly TheatreChecklistStageId[];
-  title?: string;
+  /** Heading above the stages; `null` when the surrounding step names it. */
+  title?: string | null;
 }) {
   const { data: stages = [], isLoading, error } = useTheatreChecklist(theatreCase.uuid);
   const record = useRecordTheatreChecklistStage();
@@ -107,7 +108,7 @@ export function TheatreChecklistPanel({
 
   return (
     <section className="space-y-4" data-testid="theatre-checklist-panel">
-      <h3 className="text-base font-semibold text-brand-navy">{title}</h3>
+      {title ? <h3 className="text-base font-semibold text-brand-navy">{title}</h3> : null}
       {stages.map((stage, index) => {
         if (onlyStages && !onlyStages.includes(stage.stage)) return null;
         const previousDone = index === 0 || stages[index - 1]?.is_complete;
@@ -121,7 +122,7 @@ export function TheatreChecklistPanel({
         return (
           <div
             key={stage.stage}
-            className="space-y-3 rounded-md border p-4"
+            className="space-y-4"
             data-testid={`checklist-stage-${stage.stage}`}
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -137,13 +138,13 @@ export function TheatreChecklistPanel({
                   : "Not complete"}
               </StatusDotBadge>
             </div>
-            <ul className="space-y-2">
+            <ul className="divide-y divide-dash-border/70 border-y border-dash-border/70">
               {stage.items.map((item) => (
                 <li key={item.key}>
-                  <label className="flex items-start gap-2 text-sm">
+                  <label className="flex cursor-pointer items-start gap-3 py-2.5 text-sm">
                     <input
                       type="checkbox"
-                      className="mt-0.5"
+                      className="mt-0.5 size-4 shrink-0"
                       checked={isChecked(stage, item.key, drafts)}
                       disabled={!editable}
                       onChange={(event) =>

@@ -253,7 +253,7 @@ function BabyRow({
   const admittable = Boolean(baby.newborn_uuid) && canAdmitBaby(baby);
 
   return (
-    <li className="space-y-2 rounded-md border p-3" data-testid="theatre-baby-row">
+    <li className="space-y-2 rounded-lg bg-muted/40 p-3" data-testid="theatre-baby-row">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="space-y-0.5">
           <p className="text-sm font-semibold text-brand-navy">

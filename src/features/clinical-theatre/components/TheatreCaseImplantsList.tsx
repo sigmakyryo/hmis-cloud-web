@@ -40,7 +40,7 @@ export function TheatreCaseImplantsList({
   if (!enabled || implants.length === 0) return null;
   const lines = implants.map(implantSummary);
   return (
-    <div className="rounded-md border bg-slate-50 px-3 py-2" data-testid="theatre-case-implants">
+    <div className="rounded-lg bg-slate-50 px-3 py-2" data-testid="theatre-case-implants">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-semibold uppercase text-muted-foreground">{title}</p>
         {onCopy ? (

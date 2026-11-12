@@ -45,7 +45,7 @@ export function TheatreNewbornRegisterForm({
 
   return (
     <form
-      className="space-y-3 rounded-md border bg-muted/30 p-3"
+      className="space-y-3 rounded-lg bg-muted/40 p-3"
       data-testid="theatre-newborn-register-form"
       onSubmit={(event) => {
         event.preventDefault();
