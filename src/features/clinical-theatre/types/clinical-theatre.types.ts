@@ -19,6 +19,87 @@ export type TheatreCaseSource = "ipd_stay" | "existing_visit" | "elective";
 
 export type TheatreCaseUrgency = "elective" | "urgent" | "emergency";
 
+/** NCEPOD classification of intervention (timing of surgery). */
+export type TheatreNcepodCategory = "immediate" | "urgent" | "expedited" | "elective";
+
+export type TheatreProcedureLaterality =
+  | "not_applicable"
+  | "left"
+  | "right"
+  | "bilateral"
+  | "midline";
+
+export type TheatreProcedureApproach =
+  | "open"
+  | "laparoscopic"
+  | "endoscopic"
+  | "robotic"
+  | "percutaneous"
+  | "vaginal"
+  | "other";
+
+/** One procedure of a case; the primary one comes first. */
+export type TheatreCaseProcedure = {
+  uuid: string;
+  name: string;
+  code: string;
+  is_primary: boolean;
+  sequence: number;
+  laterality: TheatreProcedureLaterality | "";
+  laterality_label: string;
+  approach: TheatreProcedureApproach | "";
+  approach_label: string;
+  product_uuid: string | null;
+  product_name: string;
+  visit_order_uuid: string | null;
+  visit_order_description: string;
+  surgeon_id: number | null;
+  surgeon_name: string;
+  notes: string;
+};
+
+export type TheatreCaseProcedurePayload = {
+  name?: string;
+  code?: string;
+  is_primary?: boolean;
+  sequence?: number;
+  laterality?: TheatreProcedureLaterality | "";
+  approach?: TheatreProcedureApproach | "";
+  product?: string | null;
+  visit_order?: string | null;
+  surgeon?: number | null;
+  notes?: string;
+};
+
+export type TheatrePaperworkItem = {
+  key: string;
+  label: string;
+  /** Workspace section where it is completed: "pre-op" | "intra-op". */
+  section: string;
+};
+
+/** Outstanding records of an emergency crash case. */
+export type TheatreCasePaperwork = {
+  required: boolean;
+  outstanding: TheatrePaperworkItem[];
+  is_complete: boolean;
+  decision_to_incision_minutes: number | null;
+};
+
+/** Either side of a return-to-theatre link. */
+export type TheatreCaseReturnLink = {
+  uuid: string;
+  status: TheatreCaseStatus;
+  status_label: string;
+  procedure_description: string;
+  actual_start: string | null;
+  actual_end: string | null;
+  visit_uuid: string | null;
+  encounter_uuid: string | null;
+  return_planned: boolean | null;
+  return_reason: string;
+};
+
 export type TheatreRoomKind = "major" | "minor" | "endoscopy";
 
 export type TheatreRoom = {
@@ -79,6 +160,17 @@ export type TheatreCase = {
   booked_by_name: string;
   allowed_transitions: TheatreCaseStatus[];
   safety: TheatreCaseSafety;
+  is_crash: boolean;
+  ncepod_category: TheatreNcepodCategory | "";
+  ncepod_category_label: string;
+  decision_at: string | null;
+  procedures: TheatreCaseProcedure[];
+  paperwork: TheatreCasePaperwork;
+  return_of: TheatreCaseReturnLink | null;
+  return_reason: string;
+  return_planned: boolean | null;
+  return_interval_days: number | null;
+  returns: TheatreCaseReturnLink[];
   created_at: string;
   updated_at: string;
 };
@@ -101,6 +193,7 @@ export type TheatreCaseFilters = {
   encounter?: string;
   source?: TheatreCaseSource;
   date?: string;
+  customer?: string;
 };
 
 export type TheatreRoomFilters = {
@@ -127,12 +220,38 @@ export type CreateTheatreCasePayload = {
   lead_surgeon?: number | null;
   /** Non-IPD cases with a room and slot are put on the scheduling calendar. */
   create_appointment?: boolean;
+  ncepod_category?: TheatreNcepodCategory | "";
+  decision_at?: string | null;
+  procedures?: TheatreCaseProcedurePayload[];
+  return_of?: string | null;
+  return_reason?: string;
+  return_planned?: boolean | null;
+};
+
+/** Minimal input for an emergency crash case (straight into theatre). */
+export type StartTheatreCrashCasePayload = {
+  stay?: string;
+  visit?: string;
+  customer?: string;
+  clinic?: string;
+  room?: string | null;
+  lead_surgeon?: number | null;
+  procedure_description?: string;
+  procedures?: TheatreCaseProcedurePayload[];
+  ncepod_category?: TheatreNcepodCategory;
+  decision_at?: string | null;
+  notes?: string;
 };
 
 export type UpdateTheatreCaseDetailsPayload = {
   procedure_description?: string;
   urgency?: TheatreCaseUrgency;
   notes?: string;
+  ncepod_category?: TheatreNcepodCategory | "";
+  decision_at?: string | null;
+  return_of?: string | null;
+  return_reason?: string;
+  return_planned?: boolean | null;
 };
 
 export type CreateTheatreRoomPayload = {
@@ -538,4 +657,43 @@ export type TheatreReportSummary = {
   by_room: TheatreReportRoomRow[];
   by_surgeon: TheatreReportSurgeonRow[];
   cancellations: TheatreReportCancellation[];
+  returns?: TheatreReportReturns;
+  crash?: TheatreReportCrash;
+  by_procedure?: TheatreReportProcedureRow[];
+};
+
+export type TheatreReportReturns = {
+  window_days: number;
+  total: number;
+  planned: number;
+  unplanned: number;
+  unplanned_within_window: number;
+  operated_cases: number;
+  unplanned_return_rate_percent: number | null;
+  cases: {
+    case_uuid: string;
+    original_case_uuid: string;
+    procedure_description: string;
+    reason: string;
+    planned: boolean | null;
+    days_after: number | null;
+    surgeon_name: string;
+  }[];
+};
+
+export type TheatreReportCrash = {
+  total: number;
+  paperwork_outstanding: number;
+  by_ncepod: {
+    category: TheatreNcepodCategory;
+    label: string;
+    cases: number;
+    median_decision_to_incision_minutes: number | null;
+  }[];
+};
+
+export type TheatreReportProcedureRow = {
+  procedure: string;
+  count: number;
+  as_primary: number;
 };

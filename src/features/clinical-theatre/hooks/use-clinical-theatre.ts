@@ -37,6 +37,10 @@ import {
   updateTheatreCaseDetails,
   updateTheatrePreOp,
   updateTheatreRoom,
+  addTheatreCaseProcedure,
+  removeTheatreCaseProcedure,
+  startTheatreCrashCase,
+  updateTheatreCaseProcedure,
 } from "@/features/clinical-theatre/services/clinical-theatre.service";
 import type {
   AddTheatreAnaesthesiaVitalPayload,
@@ -59,6 +63,8 @@ import type {
   UpdateTheatreCaseDetailsPayload,
   UpdateTheatrePreOpPayload,
   UpdateTheatreRoomPayload,
+  StartTheatreCrashCasePayload,
+  TheatreCaseProcedurePayload,
 } from "@/features/clinical-theatre/types/clinical-theatre.types";
 
 export const theatreQueryKeys = {
@@ -106,6 +112,44 @@ function useInvalidateTheatre() {
   const queryClient = useQueryClient();
   return () =>
     queryClient.invalidateQueries({ queryKey: theatreQueryKeys.all });
+}
+
+export function useStartTheatreCrashCase() {
+  const invalidate = useInvalidateTheatre();
+  return useMutation({
+    mutationFn: (payload: StartTheatreCrashCasePayload) => startTheatreCrashCase(payload),
+    onSuccess: () => void invalidate(),
+  });
+}
+
+export function useAddTheatreCaseProcedure() {
+  const invalidate = useInvalidateTheatre();
+  return useMutation({
+    mutationFn: (input: { uuid: string; payload: TheatreCaseProcedurePayload }) =>
+      addTheatreCaseProcedure(input.uuid, input.payload),
+    onSuccess: () => void invalidate(),
+  });
+}
+
+export function useUpdateTheatreCaseProcedure() {
+  const invalidate = useInvalidateTheatre();
+  return useMutation({
+    mutationFn: (input: {
+      uuid: string;
+      procedureUuid: string;
+      payload: TheatreCaseProcedurePayload;
+    }) => updateTheatreCaseProcedure(input.uuid, input.procedureUuid, input.payload),
+    onSuccess: () => void invalidate(),
+  });
+}
+
+export function useRemoveTheatreCaseProcedure() {
+  const invalidate = useInvalidateTheatre();
+  return useMutation({
+    mutationFn: (input: { uuid: string; procedureUuid: string }) =>
+      removeTheatreCaseProcedure(input.uuid, input.procedureUuid),
+    onSuccess: () => void invalidate(),
+  });
 }
 
 export function useCreateTheatreCase() {

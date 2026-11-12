@@ -119,6 +119,7 @@ describe("theatre specialty routing", () => {
       "record_theatre_pre_op",
       "record_theatre_recovery",
       "sign_theatre_operation_note",
+      "start_theatre_crash_case",
       "transition_theatre_case",
       "view_theatre_board",
       "view_theatre_queue",

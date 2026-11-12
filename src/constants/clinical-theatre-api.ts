@@ -8,6 +8,10 @@ export const CLINICAL_THEATRE_API_PATHS = {
   cases: upstream("cases/"),
   case: (uuid: string) => upstream(`cases/${uuid}/`),
   caseForEncounter: upstream("cases/for-encounter/"),
+  crash: upstream("cases/crash/"),
+  procedures: (uuid: string) => upstream(`cases/${uuid}/procedures/`),
+  procedure: (uuid: string, procedureUuid: string) =>
+    upstream(`cases/${uuid}/procedures/${procedureUuid}/`),
   transition: (uuid: string) => upstream(`cases/${uuid}/transition/`),
   reschedule: (uuid: string) => upstream(`cases/${uuid}/reschedule/`),
   assignRoom: (uuid: string) => upstream(`cases/${uuid}/assign-room/`),
@@ -43,6 +47,10 @@ export const BFF_CLINICAL_THEATRE_ROUTES = {
   cases: bff("cases"),
   case: (uuid: string) => bff(`cases/${uuid}`),
   caseForEncounter: bff("cases/for-encounter"),
+  crash: bff("cases/crash"),
+  procedures: (uuid: string) => bff(`cases/${uuid}/procedures`),
+  procedure: (uuid: string, procedureUuid: string) =>
+    bff(`cases/${uuid}/procedures/${procedureUuid}`),
   transition: (uuid: string) => bff(`cases/${uuid}/transition`),
   reschedule: (uuid: string) => bff(`cases/${uuid}/reschedule`),
   assignRoom: (uuid: string) => bff(`cases/${uuid}/assign-room`),

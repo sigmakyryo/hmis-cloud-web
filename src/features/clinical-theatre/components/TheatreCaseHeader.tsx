@@ -8,6 +8,7 @@ import { StatusDotBadge } from "@/components/ui/status-dot-badge";
 import { useOpdEncounterWorkspace } from "@/features/clinical-opd/components/detail/opd-encounter-workspace-context";
 import { TheatreCaseSetupCard } from "@/features/clinical-theatre/components/TheatreCaseSetupCard";
 import { TheatreCaseStepper } from "@/features/clinical-theatre/components/TheatreCaseStepper";
+import { TheatreCrashBanner } from "@/features/clinical-theatre/components/TheatreCrashBanner";
 import { THEATRE_WORKSPACE_ROUTING } from "@/features/clinical-theatre/constants/theatre-workspace-routing";
 import {
   useTheatreCaseForEncounter,
@@ -21,6 +22,7 @@ import {
   formatTheatreSlot,
   theatreStatusTone,
 } from "@/features/clinical-theatre/utils/theatre-case-display";
+import { ncepodShortLabel } from "@/features/clinical-theatre/utils/theatre-advanced-display";
 import { THEATRE_TEAM_ROLE_LABELS } from "@/features/clinical-theatre/utils/theatre-safety-display";
 import {
   theatreNextAction,
@@ -116,6 +118,16 @@ function TheatreCaseHeaderCard({
                 {theatreCase.urgency === "emergency" ? "Emergency" : "Urgent"}
               </StatusDotBadge>
             ) : null}
+            {theatreCase.ncepod_category ? (
+              <StatusDotBadge tone="neutral">
+                {ncepodShortLabel(theatreCase.ncepod_category)}
+              </StatusDotBadge>
+            ) : null}
+            {theatreCase.return_of ? (
+              <StatusDotBadge tone={theatreCase.return_planned ? "info" : "danger"}>
+                {theatreCase.return_planned ? "Planned return" : "Return to theatre"}
+              </StatusDotBadge>
+            ) : null}
           </div>
           <dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
             <HeaderFact icon={UserRound} label="Patient" value={theatreCase.customer_name} />
@@ -152,6 +164,10 @@ function TheatreCaseHeaderCard({
         ) : null}
       </div>
       <TheatreCaseStepper status={theatreCase.status} />
+      <TheatreCrashBanner
+        theatreCase={theatreCase}
+        sectionHref={(section, sub) => sectionHref(section, sub ?? null)}
+      />
     </div>
   );
 }

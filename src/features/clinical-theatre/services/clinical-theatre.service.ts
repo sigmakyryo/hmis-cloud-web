@@ -31,6 +31,8 @@ import type {
   UpdateTheatrePreOpPayload,
   UpdateTheatreCaseDetailsPayload,
   UpdateTheatreRoomPayload,
+  StartTheatreCrashCasePayload,
+  TheatreCaseProcedurePayload,
 } from "@/features/clinical-theatre/types/clinical-theatre.types";
 import { bffRequest } from "@/lib/bff-client";
 
@@ -80,6 +82,40 @@ export function createTheatreCase(payload: CreateTheatreCasePayload) {
   return bffRequest<TheatreCase>(ROUTES.cases, {
     method: "POST",
     body: payload,
+  });
+}
+
+export function startTheatreCrashCase(payload: StartTheatreCrashCasePayload) {
+  return bffRequest<TheatreCase>(ROUTES.crash, {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function addTheatreCaseProcedure(
+  uuid: string,
+  payload: TheatreCaseProcedurePayload,
+) {
+  return bffRequest<TheatreCase>(ROUTES.procedures(uuid), {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function updateTheatreCaseProcedure(
+  uuid: string,
+  procedureUuid: string,
+  payload: TheatreCaseProcedurePayload,
+) {
+  return bffRequest<TheatreCase>(ROUTES.procedure(uuid, procedureUuid), {
+    method: "PATCH",
+    body: payload,
+  });
+}
+
+export function removeTheatreCaseProcedure(uuid: string, procedureUuid: string) {
+  return bffRequest<TheatreCase>(ROUTES.procedure(uuid, procedureUuid), {
+    method: "DELETE",
   });
 }
 

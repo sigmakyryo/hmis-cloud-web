@@ -8,7 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CareProviderCombobox } from "@/features/appointments/components/CareProviderCombobox";
 import type { CareProvider } from "@/features/appointments/types/appointment.types";
+import { useMyClinicalCapabilities } from "@/features/clinical-opd/hooks/use-clinical-opd";
 import { TheatreCaseSummary } from "@/features/clinical-theatre/components/TheatreCaseSummary";
+import { TheatreCrashCaseDialog } from "@/features/clinical-theatre/components/TheatreCrashCaseDialog";
 import { TheatreRoomSelect } from "@/features/clinical-theatre/components/TheatreRoomSelect";
 import {
   useCreateTheatreCase,
@@ -67,9 +69,20 @@ export function TheatreBookFromVisitPanel({ visitUuid }: ClinicalWorkspacePanelP
   const casesQuery = useTheatreCases({ visit: visitUuid });
   const createCase = useCreateTheatreCase();
   const isEmergency = urgency === "emergency";
+  const { data: capabilityData } = useMyClinicalCapabilities();
+  const canCrash = (capabilityData?.capabilities ?? []).includes("start_theatre_crash_case");
 
   return (
     <div className="space-y-6" data-testid="opd-theatre-booking">
+      {canCrash ? (
+        <div className="flex items-center justify-between gap-3 rounded-md border border-red-200 bg-red-50 px-3 py-2">
+          <p className="text-sm text-red-900">
+            Life- or limb-threatening? Take the patient straight to theatre and do the
+            paperwork afterwards.
+          </p>
+          <TheatreCrashCaseDialog visitUuid={visitUuid} triggerLabel="Crash to theatre" />
+        </div>
+      ) : null}
       <form
         className="grid gap-3 sm:grid-cols-2"
         onSubmit={(event) => {

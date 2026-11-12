@@ -217,6 +217,12 @@ export const THEATRE_ROLE_CAPABILITIES: ClinicalRoleCapabilityMeta[] = [
     description: "See case volumes, room utilisation and cancellations",
   },
   {
+    key: "start_theatre_crash_case",
+    label: "Start crash cases",
+    description:
+      "Take an emergency patient straight into theatre; pre-op, consent and WHO checklist are completed afterwards",
+  },
+  {
     key: "manage_theatre_rooms",
     label: "Manage theatre rooms",
     description: "Add, rename and deactivate operating rooms",
