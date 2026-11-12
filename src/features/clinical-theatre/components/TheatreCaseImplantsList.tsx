@@ -1,6 +1,9 @@
 "use client";
 
-import { useTheatreConsumables } from "@/features/clinical-theatre/hooks/use-clinical-theatre";
+import { useQuery } from "@tanstack/react-query";
+
+import { theatreQueryKeys } from "@/features/clinical-theatre/hooks/use-clinical-theatre";
+import { fetchTheatreConsumables } from "@/features/clinical-theatre/services/clinical-theatre.service";
 import type { TheatreCase } from "@/features/clinical-theatre/types/clinical-theatre.types";
 import {
   caseImplants,
@@ -27,7 +30,12 @@ export function TheatreCaseImplantsList({
   onCopy?: (text: string) => void;
 }) {
   const enabled = IMPLANT_STATUSES.has(theatreCase.status);
-  const { data: items = [] } = useTheatreConsumables(enabled ? theatreCase.uuid : undefined);
+  // Same cache entry as the consumables panel; only fetched once implants are possible.
+  const { data: items = [] } = useQuery({
+    queryKey: theatreQueryKeys.consumables(theatreCase.uuid),
+    queryFn: () => fetchTheatreConsumables(theatreCase.uuid),
+    enabled,
+  });
   const implants = caseImplants(items);
   if (!enabled || implants.length === 0) return null;
   const lines = implants.map(implantSummary);
