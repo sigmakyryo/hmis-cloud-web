@@ -248,6 +248,8 @@ export type TheatreCaseSafety = {
   time_out: boolean;
   sign_out: boolean;
   pre_op_ready: boolean;
+  /** Why the surgical count blocks sign-out ("" or absent when it does not). */
+  count_blocker?: string;
 };
 
 export type TheatreCaseFilters = {
@@ -672,6 +674,8 @@ export type TheatreConsumable = {
   serial_number: string;
   expiry_date: string | null;
   implant_site: string;
+  implant_laterality?: string;
+  inventory_batch?: { id: number; batch_number: string; expiry_date: string | null } | null;
   notes: string;
   created_at: string;
 };
@@ -685,6 +689,8 @@ export type AddTheatreConsumablePayload = {
   serial_number?: string;
   expiry_date?: string | null;
   implant_site?: string;
+  implant_laterality?: string;
+  inventory_batch_id?: number | null;
   notes?: string;
 };
 

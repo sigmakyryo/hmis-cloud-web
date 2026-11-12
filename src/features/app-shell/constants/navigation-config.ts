@@ -333,6 +333,22 @@ export const navigation: NavigationItem[] = [
     enabledInWebNew: true,
   },
   {
+    name: "CSSD & trays",
+    href: ROUTES.clinicalTheatreCssd,
+    icon: "shield",
+    requiredGroup: "Theatre",
+    moduleName: "Theatre",
+    enabledInWebNew: true,
+  },
+  {
+    name: "Implant recall",
+    href: ROUTES.clinicalTheatreImplants,
+    icon: "package",
+    requiredGroup: "Theatre",
+    moduleName: "Theatre",
+    enabledInWebNew: true,
+  },
+  {
     name: "Theatre reports",
     href: ROUTES.clinicalTheatreReports,
     icon: "activity",

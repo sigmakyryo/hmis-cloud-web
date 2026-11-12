@@ -35,6 +35,14 @@ export const THEATRE_QUERY_KEYS = [
   "include_ready",
   "entry",
   "clearance",
+  "lot",
+  "serial",
+  "manufacturer",
+  "steriliser",
+  "tray_set",
+  "include_retired",
+  "include_archived",
+  "assignable",
 ] as const;
 
 export function buildTheatreQuery(request: Request): string {

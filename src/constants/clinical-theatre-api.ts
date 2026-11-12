@@ -97,6 +97,38 @@ export const CLINICAL_THEATRE_API_PATHS = {
   preOpTest: (uuid: string, testUuid: string) =>
     upstream(`pre-op/assessments/${uuid}/tests/${testUuid}/`),
   preOpClearance: (uuid: string) => upstream(`pre-op/assessments/${uuid}/clearance/`),
+  // Pro P3: CSSD trays, surgical counts and implant traceability.
+  sterilisers: upstream("sterilisers/"),
+  steriliser: (uuid: string) => upstream(`sterilisers/${uuid}/`),
+  traySets: upstream("tray-sets/"),
+  traySet: (uuid: string) => upstream(`tray-sets/${uuid}/`),
+  trays: upstream("trays/"),
+  tray: (uuid: string) => upstream(`trays/${uuid}/`),
+  trayQuarantine: (uuid: string) => upstream(`trays/${uuid}/quarantine/`),
+  trayReleaseQuarantine: (uuid: string) => upstream(`trays/${uuid}/release-quarantine/`),
+  cycles: upstream("sterilisation-cycles/"),
+  cycle: (uuid: string) => upstream(`sterilisation-cycles/${uuid}/`),
+  cycleResult: (uuid: string) => upstream(`sterilisation-cycles/${uuid}/result/`),
+  cycleRecall: (uuid: string) => upstream(`sterilisation-cycles/${uuid}/recall/`),
+  caseTrays: (uuid: string) => upstream(`cases/${uuid}/trays/`),
+  caseTraysAvailable: (uuid: string) => upstream(`cases/${uuid}/trays/available/`),
+  caseTrayRelease: (uuid: string, itemUuid: string) =>
+    upstream(`cases/${uuid}/trays/${itemUuid}/release/`),
+  caseTrayReturn: (uuid: string, itemUuid: string) =>
+    upstream(`cases/${uuid}/trays/${itemUuid}/return/`),
+  counts: (uuid: string) => upstream(`cases/${uuid}/counts/`),
+  countItems: (uuid: string) => upstream(`cases/${uuid}/counts/items/`),
+  countItem: (uuid: string, itemUuid: string) =>
+    upstream(`cases/${uuid}/counts/items/${itemUuid}/`),
+  countItemAdd: (uuid: string, itemUuid: string) =>
+    upstream(`cases/${uuid}/counts/items/${itemUuid}/add/`),
+  countRecord: (uuid: string) => upstream(`cases/${uuid}/counts/record/`),
+  countConfirm: (uuid: string) => upstream(`cases/${uuid}/counts/confirm/`),
+  countResolve: (uuid: string) => upstream(`cases/${uuid}/counts/resolve/`),
+  countWitnesses: (uuid: string) => upstream(`cases/${uuid}/counts/witnesses/`),
+  implantRecall: upstream("implants/recall/"),
+  implantRecallExport: upstream("implants/recall/export/"),
+  implantBatches: upstream("implants/batches/"),
 } as const;
 
 /** Browser-facing BFF theatre routes. */
@@ -191,4 +223,34 @@ export const BFF_CLINICAL_THEATRE_ROUTES = {
   preOpTest: (uuid: string, testUuid: string) =>
     bff(`pre-op/assessments/${uuid}/tests/${testUuid}`),
   preOpClearance: (uuid: string) => bff(`pre-op/assessments/${uuid}/clearance`),
+  sterilisers: bff("sterilisers"),
+  steriliser: (uuid: string) => bff(`sterilisers/${uuid}`),
+  traySets: bff("tray-sets"),
+  traySet: (uuid: string) => bff(`tray-sets/${uuid}`),
+  trays: bff("trays"),
+  tray: (uuid: string) => bff(`trays/${uuid}`),
+  trayQuarantine: (uuid: string) => bff(`trays/${uuid}/quarantine`),
+  trayReleaseQuarantine: (uuid: string) => bff(`trays/${uuid}/release-quarantine`),
+  cycles: bff("sterilisation-cycles"),
+  cycle: (uuid: string) => bff(`sterilisation-cycles/${uuid}`),
+  cycleResult: (uuid: string) => bff(`sterilisation-cycles/${uuid}/result`),
+  cycleRecall: (uuid: string) => bff(`sterilisation-cycles/${uuid}/recall`),
+  caseTrays: (uuid: string) => bff(`cases/${uuid}/trays`),
+  caseTraysAvailable: (uuid: string) => bff(`cases/${uuid}/trays/available`),
+  caseTrayRelease: (uuid: string, itemUuid: string) =>
+    bff(`cases/${uuid}/trays/${itemUuid}/release`),
+  caseTrayReturn: (uuid: string, itemUuid: string) =>
+    bff(`cases/${uuid}/trays/${itemUuid}/return`),
+  counts: (uuid: string) => bff(`cases/${uuid}/counts`),
+  countItems: (uuid: string) => bff(`cases/${uuid}/counts/items`),
+  countItem: (uuid: string, itemUuid: string) => bff(`cases/${uuid}/counts/items/${itemUuid}`),
+  countItemAdd: (uuid: string, itemUuid: string) =>
+    bff(`cases/${uuid}/counts/items/${itemUuid}/add`),
+  countRecord: (uuid: string) => bff(`cases/${uuid}/counts/record`),
+  countConfirm: (uuid: string) => bff(`cases/${uuid}/counts/confirm`),
+  countResolve: (uuid: string) => bff(`cases/${uuid}/counts/resolve`),
+  countWitnesses: (uuid: string) => bff(`cases/${uuid}/counts/witnesses`),
+  implantRecall: bff("implants/recall"),
+  implantRecallExport: bff("implants/recall/export"),
+  implantBatches: bff("implants/batches"),
 } as const;
