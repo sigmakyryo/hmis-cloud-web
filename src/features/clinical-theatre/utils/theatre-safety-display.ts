@@ -45,6 +45,10 @@ export function safetyGateBlocker(
 ): string | null {
   const stage = requiredChecklistStage(from, to);
   if (!stage || !safety) return null;
+  if (stage === "sign_out" && safety.count_blocker) {
+    // Sign-out cannot be completed until the final count reconciles.
+    return safety.count_blocker;
+  }
   if (!safety[stage]) {
     return `Complete the WHO ${THEATRE_CHECKLIST_STAGE_LABELS[stage].toLowerCase()} checklist first.`;
   }

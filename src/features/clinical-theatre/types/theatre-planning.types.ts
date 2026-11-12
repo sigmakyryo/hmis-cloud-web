@@ -53,6 +53,8 @@ export type TheatreSettings = {
   first_case_tolerance_minutes: number;
   turnover_gap_cap_minutes: number;
   clearance_validity_days: number;
+  /** Every case needs a reconciled surgical count before WHO sign-out. */
+  require_surgical_count?: boolean;
 };
 
 export type TheatreRoomRef = { uuid: string; name: string; code: string };

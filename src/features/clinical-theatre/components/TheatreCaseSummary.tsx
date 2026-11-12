@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { StatusDotBadge } from "@/components/ui/status-dot-badge";
 import { ROUTES } from "@/constants/routes";
+import { TheatreCaseImplantsList } from "@/features/clinical-theatre/components/TheatreCaseImplantsList";
 import type { TheatreCase } from "@/features/clinical-theatre/types/clinical-theatre.types";
 import {
   THEATRE_STATUS_LABELS,
@@ -21,11 +22,14 @@ type TheatreCaseSummaryProps = {
   theatreCase: TheatreCase;
   /** Show a link to the theatre workspace when the case has an encounter. */
   showWorkspaceLink?: boolean;
+  /** List implants used on the case (fetched only once implants are possible). */
+  showImplants?: boolean;
 };
 
 export function TheatreCaseSummary({
   theatreCase,
   showWorkspaceLink = false,
+  showImplants = false,
 }: TheatreCaseSummaryProps) {
   const workspaceHref =
     theatreCase.visit_uuid && theatreCase.encounter_uuid
@@ -51,6 +55,7 @@ export function TheatreCaseSummary({
             ? ` · Surgeon: ${theatreCase.lead_surgeon_name}`
             : ""}
         </p>
+        {showImplants ? <TheatreCaseImplantsList theatreCase={theatreCase} /> : null}
         {showWorkspaceLink && workspaceHref ? (
           <Link className="text-brand-primary underline" href={workspaceHref}>
             Open theatre workspace

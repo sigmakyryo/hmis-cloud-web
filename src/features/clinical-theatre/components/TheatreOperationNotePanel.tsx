@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { TheatreCaseImplantsList } from "@/features/clinical-theatre/components/TheatreCaseImplantsList";
 import {
   useSignTheatreOperationNote,
   useTheatreOperationNote,
@@ -127,6 +128,10 @@ export function TheatreOperationNotePanel({ theatreCase }: { theatreCase: Theatr
           </ol>
         </div>
       ) : null}
+      <TheatreCaseImplantsList
+        theatreCase={theatreCase}
+        onCopy={editable ? (text) => set("implants", text) : undefined}
+      />
       <div className="grid gap-4 md:grid-cols-2">
         {SHORT_FIELDS.map((field) => (
           <div key={field.key} className="space-y-1.5">

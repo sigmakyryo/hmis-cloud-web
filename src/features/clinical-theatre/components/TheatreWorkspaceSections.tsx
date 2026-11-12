@@ -9,9 +9,11 @@ import { useOpdEncounterWorkspace } from "@/features/clinical-opd/components/det
 import { TheatreAnaesthesiaPanel } from "@/features/clinical-theatre/components/TheatreAnaesthesiaPanel";
 import { TheatreCaseActions } from "@/features/clinical-theatre/components/TheatreCaseActions";
 import { TheatreCaseDetailsForm } from "@/features/clinical-theatre/components/TheatreCaseDetailsForm";
+import { TheatreCaseTraysPanel } from "@/features/clinical-theatre/components/TheatreCaseTraysPanel";
 import { TheatreCasePanelGate } from "@/features/clinical-theatre/components/TheatreCasePanelGate";
 import { TheatreChecklistPanel } from "@/features/clinical-theatre/components/TheatreChecklistPanel";
 import { TheatreConsumablesPanel } from "@/features/clinical-theatre/components/TheatreConsumablesPanel";
+import { TheatreCountSheetPanel } from "@/features/clinical-theatre/components/TheatreCountSheetPanel";
 import { TheatreIpdConversionPanel } from "@/features/clinical-theatre/components/TheatreIpdConversionPanel";
 import { TheatreObstetricPanel } from "@/features/clinical-theatre/components/TheatreObstetricPanel";
 import { TheatreOperationNotePanel } from "@/features/clinical-theatre/components/TheatreOperationNotePanel";
@@ -189,6 +191,21 @@ function IntraOpBody({
         <TheatreTimingPanel
           theatreCase={theatreCase}
           canRecord={can("record_theatre_timings")}
+        />
+      );
+    case "counts":
+      return (
+        <TheatreCountSheetPanel
+          theatreCase={theatreCase}
+          canRecord={can("record_theatre_counts")}
+          canSign={can("sign_theatre_count_resolution")}
+        />
+      );
+    case "trays":
+      return (
+        <TheatreCaseTraysPanel
+          theatreCase={theatreCase}
+          canAssign={can("assign_theatre_trays")}
         />
       );
     default:

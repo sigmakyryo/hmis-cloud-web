@@ -21,11 +21,17 @@ import {
   useIssueTheatreConsumable,
   useTheatreConsumables,
 } from "@/features/clinical-theatre/hooks/use-clinical-theatre";
+import { useTheatreImplantBatches } from "@/features/clinical-theatre/hooks/use-theatre-cssd";
 import type {
   TheatreCase,
   TheatreConsumable,
   TheatreConsumableKind,
 } from "@/features/clinical-theatre/types/clinical-theatre.types";
+import {
+  IMPLANT_LATERALITIES,
+  implantDraftProblem,
+  isPastDate,
+} from "@/features/clinical-theatre/utils/theatre-cssd-display";
 import {
   CONSUMABLE_KIND_LABELS,
   areConsumablesEditable,
@@ -46,7 +52,13 @@ const MIN_SEARCH = 2;
 
 type ImplantDraft = Partial<Record<(typeof IMPLANT_FIELDS)[number]["key"], string>> & {
   expiry_date?: string;
+  implant_laterality?: string;
 };
+
+/** Today's local date as YYYY-MM-DD. */
+function localToday(): string {
+  return new Date().toLocaleDateString("en-CA");
+}
 
 function ConsumableRow({
   item,
@@ -67,14 +79,29 @@ function ConsumableRow({
 }) {
   const returned = Number(item.returned_quantity ?? 0);
   const canReturn = returnsAllowed && returnableQuantity(item) > 0;
-  const details = [item.lot_number && `Lot ${item.lot_number}`, item.serial_number && `SN ${item.serial_number}`, item.implant_site]
+  const laterality =
+    item.implant_laterality && item.implant_laterality !== "not_applicable"
+      ? IMPLANT_LATERALITIES.find((row) => row.value === item.implant_laterality)?.label
+      : "";
+  const expiry = item.expiry_date ?? item.inventory_batch?.expiry_date ?? null;
+  const details = [
+    item.manufacturer,
+    item.lot_number && `Lot ${item.lot_number}`,
+    item.serial_number && `SN ${item.serial_number}`,
+    [item.implant_site, laterality].filter(Boolean).join(" "),
+    expiry && `exp ${expiry}`,
+  ]
     .filter(Boolean)
     .join(" · ");
+  const expired = item.kind === "implant" && isPastDate(expiry ?? undefined, localToday());
   return (
     <tr className="border-t" data-testid="theatre-consumable-row">
       <td className="py-1 pr-3">
         {item.product_name}
         {details ? <p className="text-xs text-muted-foreground">{details}</p> : null}
+        {expired ? (
+          <p className="text-xs font-medium text-red-600">Expired implant</p>
+        ) : null}
       </td>
       <td className="py-1 pr-3">{item.kind_label}</td>
       <td className="py-1 pr-3">
@@ -124,6 +151,7 @@ export function TheatreConsumablesPanel({ theatreCase }: { theatreCase: TheatreC
   const [product, setProduct] = useState<InventoryProduct | null>(null);
   const [quantity, setQuantity] = useState("1");
   const [implant, setImplant] = useState<ImplantDraft>({});
+  const [batchId, setBatchId] = useState("");
   const editable = areConsumablesEditable(theatreCase.status);
   const returnsAllowed = areReturnsAllowed(theatreCase.status);
   const [returning, setReturning] = useState<string | null>(null);
@@ -141,6 +169,12 @@ export function TheatreConsumablesPanel({ theatreCase }: { theatreCase: TheatreC
       }),
     enabled: editable && deferredSearch.length >= MIN_SEARCH && product === null,
   });
+  const batches = useTheatreImplantBatches(
+    kind === "implant" && product ? product.uuid : null,
+  );
+  const batch = (batches.data ?? []).find((row) => String(row.id) === batchId) ?? null;
+  const implantProblem =
+    kind === "implant" && product ? implantDraftProblem(implant, batch, localToday()) : "";
   const candidates = (products.data?.results ?? []).filter((row) =>
     kind === "procedure" ? true : row.product_type !== "service",
   );
@@ -150,6 +184,7 @@ export function TheatreConsumablesPanel({ theatreCase }: { theatreCase: TheatreC
     setSearch("");
     setQuantity("1");
     setImplant({});
+    setBatchId("");
   };
 
   const submit = () => {
@@ -162,7 +197,12 @@ export function TheatreConsumablesPanel({ theatreCase }: { theatreCase: TheatreC
           kind,
           quantity,
           ...(kind === "implant"
-            ? { ...implant, expiry_date: implant.expiry_date || null }
+            ? {
+                ...implant,
+                expiry_date: implant.expiry_date || null,
+                implant_laterality: implant.implant_laterality || "not_applicable",
+                ...(batch ? { inventory_batch_id: batch.id } : {}),
+              }
             : {}),
         },
       },
@@ -291,7 +331,9 @@ export function TheatreConsumablesPanel({ theatreCase }: { theatreCase: TheatreC
               />
             </div>
             <Button
-              disabled={!product || add.isPending || !(Number(quantity) > 0)}
+              disabled={
+                !product || add.isPending || !(Number(quantity) > 0) || Boolean(implantProblem)
+              }
               onClick={submit}
             >
               Add to case
@@ -335,6 +377,52 @@ export function TheatreConsumablesPanel({ theatreCase }: { theatreCase: TheatreC
                   }
                 />
               ))}
+              <Select
+                value={implant.implant_laterality ?? ""}
+                onValueChange={(value) =>
+                  setImplant((current) => ({ ...current, implant_laterality: value }))
+                }
+              >
+                <SelectTrigger aria-label="Implant laterality" className="w-40">
+                  <SelectValue placeholder="Laterality" />
+                </SelectTrigger>
+                <SelectContent>
+                  {IMPLANT_LATERALITIES.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {(batches.data ?? []).length ? (
+                <Select
+                  value={batchId}
+                  onValueChange={(value) => {
+                    setBatchId(value);
+                    const picked = (batches.data ?? []).find((row) => String(row.id) === value);
+                    if (picked) {
+                      setImplant((current) => ({
+                        ...current,
+                        lot_number: picked.batch_number,
+                        expiry_date: picked.expiry_date ?? current.expiry_date,
+                      }));
+                    }
+                  }}
+                >
+                  <SelectTrigger aria-label="Implant stock batch" className="w-56">
+                    <SelectValue placeholder="Stock batch (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(batches.data ?? []).map((row) => (
+                      <SelectItem key={row.id} value={String(row.id)} disabled={row.is_expired}>
+                        {row.batch_number}
+                        {row.expiry_date ? ` · exp ${row.expiry_date}` : ""}
+                        {row.is_expired ? " (expired)" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : null}
               <Input
                 aria-label="Implant expiry"
                 type="date"
@@ -344,6 +432,11 @@ export function TheatreConsumablesPanel({ theatreCase }: { theatreCase: TheatreC
                   setImplant((current) => ({ ...current, expiry_date: event.target.value }))
                 }
               />
+              {implantProblem ? (
+                <p className="w-full text-sm text-red-600" data-testid="theatre-implant-problem">
+                  {implantProblem}
+                </p>
+              ) : null}
             </div>
           ) : null}
         </div>
