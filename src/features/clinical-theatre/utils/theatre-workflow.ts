@@ -16,6 +16,7 @@ export const THEATRE_INTRA_OP_SECTIONS = [
   { id: "anaesthesia", label: "Anaesthesia" },
   { id: "op-note", label: "Op note" },
   { id: "consumables", label: "Consumables" },
+  { id: "timings", label: "Theatre times" },
   { id: "caesarean", label: "Caesarean & babies" },
 ] as const;
 

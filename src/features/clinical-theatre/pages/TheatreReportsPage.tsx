@@ -2,12 +2,25 @@
 
 import { useState } from "react";
 
+import { CareProviderCombobox } from "@/features/appointments/components/CareProviderCombobox";
+import type { CareProvider } from "@/features/appointments/types/appointment.types";
+
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TheatreClinicSelect } from "@/features/clinical-theatre/components/TheatreClinicSelect";
+import {
+  TheatrePerformanceReportSection,
+  TheatreWaitingListReportSection,
+} from "@/features/clinical-theatre/components/TheatrePlanningReports";
+import { ReportTable, Stat } from "@/features/clinical-theatre/components/TheatreReportPrimitives";
+import { TheatreRoomSelect } from "@/features/clinical-theatre/components/TheatreRoomSelect";
 import { useTheatreReportSummary } from "@/features/clinical-theatre/hooks/use-clinical-theatre";
 import { shiftDateInput, toDateInputValue } from "@/features/clinical-theatre/pages/TheatreBoardPage";
-import type { TheatreReportSummary } from "@/features/clinical-theatre/types/clinical-theatre.types";
+import type {
+  TheatreReportSummary,
+  TheatreRoom,
+} from "@/features/clinical-theatre/types/clinical-theatre.types";
+import { cn } from "@/lib/utils";
 import { CANCELLATION_CATEGORY_LABELS } from "@/features/clinical-theatre/utils/theatre-cancellation-display";
 import {
   errorMessage,
@@ -15,61 +28,6 @@ import {
 } from "@/features/clinical-theatre/utils/theatre-record-display";
 
 const DEFAULT_RANGE_DAYS = 30;
-
-function Stat({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded-md border p-3">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-lg font-semibold text-brand-navy">{value}</p>
-    </div>
-  );
-}
-
-function ReportTable({
-  title,
-  headers,
-  rows,
-  empty,
-}: {
-  title: string;
-  headers: string[];
-  rows: (string | number)[][];
-  empty: string;
-}) {
-  return (
-    <section className="space-y-2">
-      <h2 className="text-sm font-semibold text-brand-navy">{title}</h2>
-      {rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{empty}</p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="text-left text-xs text-muted-foreground">
-              <tr>
-                {headers.map((header) => (
-                  <th key={header} className="py-1 pr-3">
-                    {header}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, index) => (
-                <tr key={index} className="border-t">
-                  {row.map((cell, cellIndex) => (
-                    <td key={cellIndex} className="py-1 pr-3">
-                      {cell}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </section>
-  );
-}
 
 export function TheatreReportBody({ report }: { report: TheatreReportSummary }) {
   const { totals } = report;
@@ -292,13 +250,24 @@ export function TheatreReportBody({ report }: { report: TheatreReportSummary }) 
   );
 }
 
-/** Theatre activity report: volumes, utilisation and cancellations. */
+type ReportTab = "activity" | "performance" | "waiting-list";
+
+const REPORT_TABS: { id: ReportTab; label: string }[] = [
+  { id: "activity", label: "Activity" },
+  { id: "performance", label: "Utilisation & starts" },
+  { id: "waiting-list", label: "Waiting list" },
+];
+
+/** Theatre reports: activity, session performance and the elective waiting list. */
 export function TheatreReportsPage() {
   const today = toDateInputValue(new Date());
+  const [tab, setTab] = useState<ReportTab>("activity");
   const [dateFrom, setDateFrom] = useState(shiftDateInput(today, -DEFAULT_RANGE_DAYS));
   const [dateTo, setDateTo] = useState(today);
   const [clinic, setClinic] = useState("");
   const [sessionHours, setSessionHours] = useState("8");
+  const [room, setRoom] = useState<TheatreRoom | null>(null);
+  const [surgeon, setSurgeon] = useState<CareProvider | null>(null);
   const filters = {
     date_from: dateFrom,
     date_to: dateTo,
@@ -306,8 +275,14 @@ export function TheatreReportsPage() {
     session_hours: sessionHours || undefined,
   };
   const { data, isLoading, error } = useTheatreReportSummary(filters, {
-    enabled: Boolean(dateFrom && dateTo),
+    enabled: tab === "activity" && Boolean(dateFrom && dateTo),
   });
+  const planningFilters = {
+    date_from: dateFrom,
+    date_to: dateTo,
+    clinic: clinic || undefined,
+    surgeon: surgeon ? String(surgeon.id) : undefined,
+  };
 
   return (
     <div className="space-y-4 p-4" data-testid="theatre-reports-page">
@@ -315,7 +290,7 @@ export function TheatreReportsPage() {
         <div>
           <h1 className="text-xl font-semibold text-brand-navy">Theatre reports</h1>
           <p className="text-sm text-muted-foreground">
-            Cases, utilisation and cancellations for a date range.
+            Cases, utilisation against session time, on-time starts and waiting times.
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
@@ -337,22 +312,73 @@ export function TheatreReportsPage() {
               onChange={(event) => setDateTo(event.target.value)}
             />
           </div>
-          <div className="space-y-1">
-            <Label htmlFor="theatre-report-hours">Session hours / day</Label>
-            <Input
-              id="theatre-report-hours"
-              type="number"
-              min={1}
-              max={24}
-              className="w-24"
-              value={sessionHours}
-              onChange={(event) => setSessionHours(event.target.value)}
-            />
-          </div>
+          {tab === "activity" ? (
+            <div className="space-y-1">
+              <Label htmlFor="theatre-report-hours">Session hours / day</Label>
+              <Input
+                id="theatre-report-hours"
+                type="number"
+                min={1}
+                max={24}
+                className="w-24"
+                value={sessionHours}
+                onChange={(event) => setSessionHours(event.target.value)}
+              />
+            </div>
+          ) : null}
+          {tab === "performance" ? (
+            <div className="w-48">
+              <TheatreRoomSelect
+                label="Room"
+                clinicUuid={clinic || undefined}
+                value={room}
+                onChange={setRoom}
+              />
+            </div>
+          ) : null}
+          {tab !== "activity" ? (
+            <div className="w-56">
+              <CareProviderCombobox
+                id="theatre-report-surgeon"
+                label="Surgeon"
+                clinicUuid={clinic || undefined}
+                value={surgeon?.id ?? null}
+                displayName={surgeon?.name ?? null}
+                onSelect={setSurgeon}
+              />
+            </div>
+          ) : null}
           <TheatreClinicSelect value={clinic} onChange={setClinic} />
         </div>
       </div>
-      {isLoading ? (
+      <nav
+        aria-label="Theatre report"
+        className="inline-flex flex-wrap gap-1 rounded-lg bg-slate-100 p-1"
+      >
+        {REPORT_TABS.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            aria-pressed={tab === item.id}
+            onClick={() => setTab(item.id)}
+            className={cn(
+              "rounded-md px-3 py-1.5 text-sm font-medium",
+              tab === item.id
+                ? "bg-white text-brand-navy shadow-sm"
+                : "text-brand-muted hover:text-brand-navy",
+            )}
+          >
+            {item.label}
+          </button>
+        ))}
+      </nav>
+      {tab === "performance" ? (
+        <TheatrePerformanceReportSection
+          filters={{ ...planningFilters, room: room?.uuid }}
+        />
+      ) : tab === "waiting-list" ? (
+        <TheatreWaitingListReportSection filters={planningFilters} />
+      ) : isLoading ? (
         <p className="text-sm text-muted-foreground">Loading report…</p>
       ) : error ? (
         <p className="text-sm text-red-600">

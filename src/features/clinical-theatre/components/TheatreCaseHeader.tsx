@@ -9,6 +9,7 @@ import { useOpdEncounterWorkspace } from "@/features/clinical-opd/components/det
 import { TheatreCaseSetupCard } from "@/features/clinical-theatre/components/TheatreCaseSetupCard";
 import { TheatreCaseStepper } from "@/features/clinical-theatre/components/TheatreCaseStepper";
 import { TheatreCrashBanner } from "@/features/clinical-theatre/components/TheatreCrashBanner";
+import { TheatreTimingQuickCapture } from "@/features/clinical-theatre/components/TheatreTimingPanel";
 import { THEATRE_WORKSPACE_ROUTING } from "@/features/clinical-theatre/constants/theatre-workspace-routing";
 import {
   useTheatreCaseForEncounter,
@@ -72,6 +73,7 @@ export function TheatreCaseHeader({ visitUuid, encounterUuid }: ClinicalWorkspac
           visitUuid={visitUuid}
           encounterUuid={encounterUuid}
           canTransition={capabilities.includes("transition_theatre_case")}
+          canRecordTimings={capabilities.includes("record_theatre_timings")}
         />
       ) : (
         <TheatreCaseSetupCard
@@ -88,6 +90,7 @@ type HeaderCardProps = {
   visitUuid: string;
   encounterUuid: string;
   canTransition: boolean;
+  canRecordTimings?: boolean;
 };
 
 function TheatreCaseHeaderCard({
@@ -95,6 +98,7 @@ function TheatreCaseHeaderCard({
   visitUuid,
   encounterUuid,
   canTransition,
+  canRecordTimings = false,
 }: HeaderCardProps) {
   const { data: team = [] } = useTheatreTeam(theatreCase.uuid);
   const sectionHref = sectionHrefFor(visitUuid, encounterUuid);
@@ -170,6 +174,7 @@ function TheatreCaseHeaderCard({
               }
             />
           </dl>
+          <TheatreTimingQuickCapture theatreCase={theatreCase} canRecord={canRecordTimings} />
         </div>
         {canTransition ? (
           <TheatreNextAction theatreCase={theatreCase} sectionHref={sectionHref} />

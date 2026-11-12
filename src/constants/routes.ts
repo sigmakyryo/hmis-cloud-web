@@ -136,6 +136,8 @@ export const ROUTES = {
   clinicalTheatre: "/clinical/theatre",
   clinicalTheatreBoard: "/clinical/theatre/board",
   clinicalTheatreReports: "/clinical/theatre/reports",
+  clinicalTheatreWaitingList: "/clinical/theatre/waiting-list",
+  clinicalTheatrePreOpClinic: "/clinical/theatre/pre-op-clinic",
   clinicalTheatreEncounter: (visitUuid: string, encounterUuid: string) =>
     `/clinical/theatre/${visitUuid}/${encounterUuid}`,
   occupationalHealth: "/occupational-health",

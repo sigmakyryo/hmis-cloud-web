@@ -317,6 +317,22 @@ export const navigation: NavigationItem[] = [
     enabledInWebNew: true,
   },
   {
+    name: "Waiting list",
+    href: ROUTES.clinicalTheatreWaitingList,
+    icon: "calendarClock",
+    requiredGroup: "Theatre",
+    moduleName: "Theatre",
+    enabledInWebNew: true,
+  },
+  {
+    name: "Pre-op clinic",
+    href: ROUTES.clinicalTheatrePreOpClinic,
+    icon: "stethoscope",
+    requiredGroup: "Theatre",
+    moduleName: "Theatre",
+    enabledInWebNew: true,
+  },
+  {
     name: "Theatre reports",
     href: ROUTES.clinicalTheatreReports,
     icon: "activity",
