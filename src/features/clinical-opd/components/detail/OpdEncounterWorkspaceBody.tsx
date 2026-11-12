@@ -10,6 +10,7 @@ import { OpdEncounterVitalsStatsStrip } from "@/features/clinical-opd/components
 import { useOpdEncounterWorkspace } from "@/features/clinical-opd/components/detail/opd-encounter-workspace-context";
 import { useEncounterWorkspace } from "@/features/clinical-opd/hooks/use-clinical-opd";
 import { useWorkspaceRouting } from "@/features/clinical-opd/hooks/use-workspace-routing";
+import { useOptionalClinicalWorkspaceConfig } from "@/features/clinical-workspace/components/clinical-workspace-config-context";
 import { workspaceTabFromPathname } from "@/features/clinical-workspace/utils/workspace-tabs";
 
 type OpdEncounterWorkspaceBodyProps = {
@@ -21,6 +22,7 @@ export function OpdEncounterWorkspaceBody({
 }: OpdEncounterWorkspaceBodyProps) {
   const pathname = usePathname();
   const routing = useWorkspaceRouting();
+  const WorkspaceBanner = useOptionalClinicalWorkspaceConfig()?.workspaceBanner;
   const { visitUuid, encounterUuid, chartSummary } = useOpdEncounterWorkspace();
   const activeTab = workspaceTabFromPathname(
     routing,
@@ -51,6 +53,9 @@ export function OpdEncounterWorkspaceBody({
         encounterObservations={thisEncounterVitals}
         isLoading={observations.isLoading && !chartSummary}
       />
+      {WorkspaceBanner ? (
+        <WorkspaceBanner visitUuid={visitUuid} encounterUuid={encounterUuid} />
+      ) : null}
       <OpdEncounterTabs />
 
       {isFullWidthLayout ? (

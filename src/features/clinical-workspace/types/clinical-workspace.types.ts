@@ -108,10 +108,17 @@ export type ClinicalWorkspaceRouting<TabId extends string = string> = {
   fallbackTabId: TabId;
 };
 
+export type ClinicalWorkspaceBannerProps = {
+  visitUuid: string;
+  encounterUuid: string;
+};
+
 /** Everything a specialty supplies to run in the shared EMR workspace. */
 export type ClinicalWorkspaceConfig<TabId extends string = string> =
   ClinicalWorkspaceRouting<TabId> & {
     panels: Readonly<Record<TabId, ComponentType<ClinicalWorkspacePanelProps>>>;
+    /** Optional specialty header rendered above the section tabs. */
+    workspaceBanner?: ComponentType<ClinicalWorkspaceBannerProps>;
     historySections?: readonly ClinicalWorkspaceHistorySection[];
     /**
      * Built-in and specialty history section ids shown in the right pane.

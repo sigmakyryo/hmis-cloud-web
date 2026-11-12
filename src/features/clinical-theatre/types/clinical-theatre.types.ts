@@ -129,6 +129,12 @@ export type CreateTheatreCasePayload = {
   create_appointment?: boolean;
 };
 
+export type UpdateTheatreCaseDetailsPayload = {
+  procedure_description?: string;
+  urgency?: TheatreCaseUrgency;
+  notes?: string;
+};
+
 export type CreateTheatreRoomPayload = {
   clinic: string;
   department?: string;

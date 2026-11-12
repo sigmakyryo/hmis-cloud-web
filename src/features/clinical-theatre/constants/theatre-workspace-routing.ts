@@ -8,12 +8,8 @@ export type TheatreEncounterTabId =
   | "overview"
   | "case"
   | "pre-op"
-  | "checklist"
-  | "team"
-  | "anaesthesia"
-  | "op-note"
+  | "intra-op"
   | "recovery"
-  | "consumables"
   | "activity"
   | "complaint"
   | "notes"
@@ -34,7 +30,7 @@ export type TheatreEncounterTabId =
 export const THEATRE_ENCOUNTER_TABS: ClinicalWorkspaceTab<TheatreEncounterTabId>[] = [
   {
     id: "case",
-    label: "Case",
+    label: "Overview",
     segment: "case",
     group: "consult",
     surface: "tab",
@@ -49,34 +45,10 @@ export const THEATRE_ENCOUNTER_TABS: ClinicalWorkspaceTab<TheatreEncounterTabId>
     requiredCapability: "view_theatre_queue",
   },
   {
-    id: "checklist",
-    label: "WHO checklist",
-    segment: "checklist",
+    id: "intra-op",
+    label: "Intra-op",
+    segment: "intra-op",
     group: "consult",
-    surface: "tab",
-    requiredCapability: "view_theatre_queue",
-  },
-  {
-    id: "team",
-    label: "Team",
-    segment: "team",
-    group: "consult",
-    surface: "tab",
-    requiredCapability: "view_theatre_queue",
-  },
-  {
-    id: "anaesthesia",
-    label: "Anaesthesia",
-    segment: "anaesthesia",
-    group: "consult",
-    surface: "tab",
-    requiredCapability: "view_theatre_queue",
-  },
-  {
-    id: "op-note",
-    label: "Op note",
-    segment: "op-note",
-    group: "record",
     surface: "tab",
     requiredCapability: "view_theatre_queue",
   },
@@ -88,28 +60,14 @@ export const THEATRE_ENCOUNTER_TABS: ClinicalWorkspaceTab<TheatreEncounterTabId>
     surface: "tab",
     requiredCapability: "view_theatre_queue",
   },
-  {
-    id: "consumables",
-    label: "Consumables",
-    segment: "consumables",
-    group: "consult",
-    surface: "tab",
-    requiredCapability: "view_theatre_queue",
-  },
-  {
-    id: "activity",
-    label: "Activity",
-    segment: "activity",
-    group: "record",
-    surface: "tab",
-    requiredCapability: "view_activity_tab",
-  },
+  // General clinical sections live under "More" so the tab bar follows the
+  // theatre stages only.
   {
     id: "vital-signs",
     label: "Vital signs",
     segment: "vital-signs",
     group: "consult",
-    surface: "tab",
+    surface: "menu",
     requiredCapability: "view_vital_signs_tab",
   },
   {
@@ -117,7 +75,7 @@ export const THEATRE_ENCOUNTER_TABS: ClinicalWorkspaceTab<TheatreEncounterTabId>
     label: "Nursing",
     segment: "nursing",
     group: "consult",
-    surface: "tab",
+    surface: "menu",
     requiredCapability: "view_nursing_notes_tab",
   },
   {
@@ -125,7 +83,7 @@ export const THEATRE_ENCOUNTER_TABS: ClinicalWorkspaceTab<TheatreEncounterTabId>
     label: "Orders",
     segment: "orders",
     group: "consult",
-    surface: "tab",
+    surface: "menu",
     requiredCapability: "view_orders_tab",
   },
   {
@@ -133,7 +91,7 @@ export const THEATRE_ENCOUNTER_TABS: ClinicalWorkspaceTab<TheatreEncounterTabId>
     label: "Medications",
     segment: "medications",
     group: "consult",
-    surface: "tab",
+    surface: "menu",
     requiredCapability: "view_medications_tab",
   },
   {
@@ -141,7 +99,7 @@ export const THEATRE_ENCOUNTER_TABS: ClinicalWorkspaceTab<TheatreEncounterTabId>
     label: "Clinical notes",
     segment: "notes",
     group: "record",
-    surface: "tab",
+    surface: "menu",
     requiredCapability: "record_clinical_note",
   },
   {
@@ -177,6 +135,14 @@ export const THEATRE_ENCOUNTER_TABS: ClinicalWorkspaceTab<TheatreEncounterTabId>
     requiredCapability: "record_allergy",
   },
   {
+    id: "activity",
+    label: "Activity",
+    segment: "activity",
+    group: "record",
+    surface: "menu",
+    requiredCapability: "view_activity_tab",
+  },
+  {
     id: "client",
     label: "Client",
     segment: "client",
@@ -193,6 +159,20 @@ export const THEATRE_ENCOUNTER_TABS: ClinicalWorkspaceTab<TheatreEncounterTabId>
     requiredCapability: null,
   },
 ];
+
+/**
+ * Segments of the old one-tab-per-record layout, mapped to the section (and
+ * intra-op sub-section) that now holds them, so saved links keep working.
+ */
+export const THEATRE_LEGACY_SEGMENTS: Readonly<
+  Record<string, { tab: TheatreEncounterTabId; section?: string }>
+> = {
+  checklist: { tab: "pre-op" },
+  team: { tab: "case" },
+  anaesthesia: { tab: "intra-op", section: "anaesthesia" },
+  "op-note": { tab: "intra-op", section: "op-note" },
+  consumables: { tab: "intra-op", section: "consumables" },
+};
 
 export const THEATRE_WORKSPACE_ROUTING: ClinicalWorkspaceRouting<TheatreEncounterTabId> =
   {
@@ -212,16 +192,26 @@ export const THEATRE_WORKSPACE_ROUTING: ClinicalWorkspaceRouting<TheatreEncounte
       "activity",
       "case",
       "pre-op",
-      "checklist",
-      "team",
-      "anaesthesia",
-      "op-note",
+      "intra-op",
       "recovery",
-      "consumables",
     ]),
     preferredTabsByRole: {
-      nurse: ["case", "checklist", "recovery", "consumables"],
-      physician: ["case", "pre-op", "op-note", "anaesthesia"],
+      nurse: ["case", "pre-op", "recovery"],
+      physician: ["case", "pre-op", "intra-op"],
     },
     fallbackTabId: "case",
   };
+
+/** Where an old per-record theatre URL segment now lives. */
+export function theatreLegacySegmentHref(
+  visitUuid: string,
+  encounterUuid: string,
+  segment: keyof typeof THEATRE_LEGACY_SEGMENTS | string,
+): string {
+  const base = `${THEATRE_WORKSPACE_ROUTING.specialty.basePath}/${visitUuid}/${encounterUuid}`;
+  const target = THEATRE_LEGACY_SEGMENTS[segment];
+  if (!target) return base;
+  const tab = THEATRE_ENCOUNTER_TABS.find((item) => item.id === target.tab);
+  const href = `${base}/${tab?.segment ?? target.tab}`;
+  return target.section ? `${href}?section=${target.section}` : href;
+}

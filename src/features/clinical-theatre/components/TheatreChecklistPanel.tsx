@@ -40,7 +40,16 @@ function isChecked(stage: TheatreChecklistStage, key: string, drafts: Drafts) {
 }
 
 /** WHO Surgical Safety Checklist: sign in, time out, sign out. */
-export function TheatreChecklistPanel({ theatreCase }: { theatreCase: TheatreCase }) {
+export function TheatreChecklistPanel({
+  theatreCase,
+  stages: onlyStages,
+  title = "WHO surgical safety checklist",
+}: {
+  theatreCase: TheatreCase;
+  /** Limit to these WHO stages (order kept from the API); all when omitted. */
+  stages?: readonly TheatreChecklistStageId[];
+  title?: string;
+}) {
   const { data: stages = [], isLoading, error } = useTheatreChecklist(theatreCase.uuid);
   const record = useRecordTheatreChecklistStage();
   const [drafts, setDrafts] = useState<Drafts>({});
@@ -98,10 +107,9 @@ export function TheatreChecklistPanel({ theatreCase }: { theatreCase: TheatreCas
 
   return (
     <section className="space-y-4" data-testid="theatre-checklist-panel">
-      <h3 className="text-base font-semibold text-brand-navy">
-        WHO surgical safety checklist
-      </h3>
+      <h3 className="text-base font-semibold text-brand-navy">{title}</h3>
       {stages.map((stage, index) => {
+        if (onlyStages && !onlyStages.includes(stage.stage)) return null;
         const previousDone = index === 0 || stages[index - 1]?.is_complete;
         const editable =
           !stage.is_complete &&
