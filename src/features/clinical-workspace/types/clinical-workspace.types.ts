@@ -53,7 +53,8 @@ export type ClinicalCapabilityKey =
   | "record_theatre_recovery"
   | "record_theatre_consumables"
   | "issue_theatre_consumables"
-  | "view_theatre_reports";
+  | "view_theatre_reports"
+  | "start_theatre_crash_case";
 
 export type ClinicalWorkspaceTabGroup = "nurse" | "consult" | "record";
 

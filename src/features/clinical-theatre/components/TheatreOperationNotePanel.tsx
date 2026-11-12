@@ -16,6 +16,10 @@ import type {
   UpdateTheatreOperationNotePayload,
 } from "@/features/clinical-theatre/types/clinical-theatre.types";
 import {
+  procedureDetailLine,
+  procedurePerformedText,
+} from "@/features/clinical-theatre/utils/theatre-advanced-display";
+import {
   errorMessage,
   isOperationNoteEditable,
   parseOptionalNumber,
@@ -87,6 +91,41 @@ export function TheatreOperationNotePanel({ theatreCase }: { theatreCase: Theatr
         <p className="text-xs text-muted-foreground">
           The operation note opens once the patient is in theatre.
         </p>
+      ) : null}
+      {theatreCase.procedures?.length ? (
+        <div
+          className="rounded-md border bg-slate-50 px-3 py-2"
+          data-testid="theatre-op-note-procedures"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs font-semibold uppercase text-muted-foreground">
+              Case procedures
+            </p>
+            {editable ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() =>
+                  set("procedure_performed", procedurePerformedText(theatreCase.procedures))
+                }
+              >
+                Copy into “Procedure performed”
+              </Button>
+            ) : null}
+          </div>
+          <ol className="mt-1 list-decimal space-y-0.5 pl-5 text-sm">
+            {theatreCase.procedures.map((procedure) => (
+              <li key={procedure.uuid}>
+                {procedureDetailLine(procedure)}
+                {procedure.is_primary ? (
+                  <span className="ml-1 text-xs text-muted-foreground">(primary)</span>
+                ) : null}
+              </li>
+            ))}
+          </ol>
+        </div>
       ) : null}
       <div className="grid gap-4 md:grid-cols-2">
         {SHORT_FIELDS.map((field) => (

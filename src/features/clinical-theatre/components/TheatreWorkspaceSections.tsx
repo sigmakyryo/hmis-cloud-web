@@ -14,7 +14,9 @@ import { TheatreChecklistPanel } from "@/features/clinical-theatre/components/Th
 import { TheatreConsumablesPanel } from "@/features/clinical-theatre/components/TheatreConsumablesPanel";
 import { TheatreOperationNotePanel } from "@/features/clinical-theatre/components/TheatreOperationNotePanel";
 import { TheatrePreOpPanel } from "@/features/clinical-theatre/components/TheatrePreOpPanel";
+import { TheatreProceduresPanel } from "@/features/clinical-theatre/components/TheatreProceduresPanel";
 import { TheatreRecoveryPanel } from "@/features/clinical-theatre/components/TheatreRecoveryPanel";
+import { TheatreReturnLinkPanel } from "@/features/clinical-theatre/components/TheatreReturnLinkPanel";
 import { TheatreSafetyBadges } from "@/features/clinical-theatre/components/TheatreSafetyBadges";
 import { TheatreTeamPanel } from "@/features/clinical-theatre/components/TheatreTeamPanel";
 import type { TheatreCase } from "@/features/clinical-theatre/types/clinical-theatre.types";
@@ -90,6 +92,20 @@ export function TheatreOverviewSection({ encounterUuid }: ClinicalWorkspacePanel
                   change it.
                 </p>
               )}
+            </SectionCard>
+            <SectionCard title="Procedures">
+              <TheatreProceduresPanel
+                theatreCase={theatreCase}
+                canEdit={
+                  can("book_theatre_case") || can("record_theatre_operation_note")
+                }
+              />
+            </SectionCard>
+            <SectionCard title="Return to theatre">
+              <TheatreReturnLinkPanel
+                theatreCase={theatreCase}
+                canEdit={can("book_theatre_case")}
+              />
             </SectionCard>
             <div className="lg:col-span-2">
               <SectionCard>

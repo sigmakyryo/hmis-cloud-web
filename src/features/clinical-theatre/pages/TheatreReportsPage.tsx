@@ -134,6 +134,59 @@ export function TheatreReportBody({ report }: { report: TheatreReportSummary }) 
           row.reason || "—",
         ])}
       />
+      {report.returns ? (
+        <section className="space-y-3" data-testid="theatre-report-returns">
+          <div className="grid gap-3 sm:grid-cols-4">
+            <Stat
+              label={`Unplanned return rate (≤${report.returns.window_days} d)`}
+              value={
+                report.returns.unplanned_return_rate_percent === null
+                  ? "—"
+                  : `${report.returns.unplanned_return_rate_percent}%`
+              }
+            />
+            <Stat label="Returns to theatre" value={report.returns.total} />
+            <Stat label="Unplanned" value={report.returns.unplanned} />
+            <Stat label="Planned (staged)" value={report.returns.planned} />
+          </div>
+          <ReportTable
+            title="Returns to theatre"
+            headers={["Procedure", "Type", "Days after", "Surgeon", "Reason"]}
+            empty="No returns to theatre in this period."
+            rows={report.returns.cases.map((row) => [
+              row.procedure_description || "—",
+              row.planned ? "Planned" : row.planned === false ? "Unplanned" : "—",
+              row.days_after ?? "—",
+              row.surgeon_name || "—",
+              row.reason || "—",
+            ])}
+          />
+        </section>
+      ) : null}
+      <div className="grid gap-6 md:grid-cols-2">
+        {report.crash ? (
+          <ReportTable
+            title={`Emergency timing (crash cases: ${report.crash.total}, paperwork open: ${report.crash.paperwork_outstanding})`}
+            headers={["NCEPOD", "Cases", "Median decision → incision"]}
+            empty="No NCEPOD-classified cases."
+            rows={report.crash.by_ncepod.map((row) => [
+              row.label,
+              row.cases,
+              row.median_decision_to_incision_minutes === null
+                ? "—"
+                : formatMinutes(row.median_decision_to_incision_minutes),
+            ])}
+          />
+        ) : null}
+        {report.by_procedure ? (
+          <ReportTable
+            title="Top procedures"
+            headers={["Procedure", "Done", "As primary"]}
+            empty="No procedures recorded."
+            rows={report.by_procedure.map((row) => [row.procedure, row.count, row.as_primary])}
+          />
+        ) : null}
+      </div>
     </div>
   );
 }

@@ -99,7 +99,9 @@ export type TheatreNextAction =
 
 /** The single primary action for the case header. */
 export function theatreNextAction(
-  theatreCase: Pick<TheatreCase, "status" | "allowed_transitions" | "safety" | "urgency">,
+  theatreCase: Pick<TheatreCase, "status" | "allowed_transitions" | "safety" | "urgency"> & {
+    is_crash?: boolean;
+  },
 ): TheatreNextAction {
   if (theatreCase.status === "recovery") {
     return { kind: "recovery-discharge" };
@@ -108,12 +110,10 @@ export function theatreNextAction(
     theatreCase.allowed_transitions.includes(status),
   );
   if (!next) return { kind: "none" };
-  const blocker = safetyGateBlocker(
-    theatreCase.status,
-    next,
-    theatreCase.safety,
-    theatreCase.urgency,
-  );
+  // Crash cases bypass the WHO gates; their paperwork is chased by the banner.
+  const blocker = theatreCase.is_crash
+    ? null
+    : safetyGateBlocker(theatreCase.status, next, theatreCase.safety, theatreCase.urgency);
   const stage = blocker ? requiredChecklistStage(theatreCase.status, next) : null;
   return {
     kind: "transition",
