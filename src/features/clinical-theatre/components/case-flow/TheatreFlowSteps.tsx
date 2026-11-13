@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import {
   Activity,
@@ -7,21 +8,24 @@ import {
   Baby,
   BedDouble,
   BookmarkCheck,
-  CalendarClock,
-  ClipboardList,
-  DoorOpen,
   ListChecks,
   Package,
-  Scissors,
-  Stethoscope,
   Syringe,
   Timer,
   Undo2,
-  Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { StatusDotBadge } from "@/components/ui/status-dot-badge";
+import type { StatusDotBadgeTone } from "@/components/ui/status-dot-badge";
 import { useOpdEncounterWorkspace } from "@/features/clinical-opd/components/detail/opd-encounter-workspace-context";
 import { TheatreAnaesthesiaPanel } from "@/features/clinical-theatre/components/TheatreAnaesthesiaPanel";
 import { TheatreCaseActions } from "@/features/clinical-theatre/components/TheatreCaseActions";
@@ -35,23 +39,27 @@ import { TheatreOperationNotePanel } from "@/features/clinical-theatre/component
 import { TheatrePreOpPanel } from "@/features/clinical-theatre/components/TheatrePreOpPanel";
 import { TheatreProceduresPanel } from "@/features/clinical-theatre/components/TheatreProceduresPanel";
 import { TheatreRecoveryPanel } from "@/features/clinical-theatre/components/TheatreRecoveryPanel";
-import { TheatreSafetyBadges } from "@/features/clinical-theatre/components/TheatreSafetyBadges";
 import { TheatreTeamPanel } from "@/features/clinical-theatre/components/TheatreTeamPanel";
 import { TheatreTimingPanel } from "@/features/clinical-theatre/components/TheatreTimingPanel";
 import {
   FactList,
   FlowBlock,
   FlowCallout,
+  FlowTabs,
   personInitials,
 } from "@/features/clinical-theatre/components/case-flow/theatre-flow-ui";
 import {
   useTheatreRecovery,
   useTheatreTeam,
 } from "@/features/clinical-theatre/hooks/use-clinical-theatre";
-import type { TheatreCase } from "@/features/clinical-theatre/types/clinical-theatre.types";
+import type {
+  TheatreCase,
+  TheatreTeamMember,
+} from "@/features/clinical-theatre/types/clinical-theatre.types";
 import {
   THEATRE_STATUS_LABELS,
   formatTheatreSlot,
+  theatreStatusTone,
 } from "@/features/clinical-theatre/utils/theatre-case-display";
 import type {
   TheatreFlowStep,
@@ -94,22 +102,280 @@ const SOURCE_LABELS = {
 
 // --- Booking & team ---------------------------------------------------------
 
+function urgencyTone(urgency: TheatreCase["urgency"]): StatusDotBadgeTone {
+  if (urgency === "emergency") return "danger";
+  if (urgency === "urgent") return "warning";
+  return "neutral";
+}
+
+function teamIsReady(team: TheatreTeamMember[]): boolean {
+  return (
+    team.some((member) => member.role === "surgeon") &&
+    team.some((member) => member.role === "anaesthetist")
+  );
+}
+
+function linkedRecordsCount(theatreCase: TheatreCase): number {
+  return [
+    Boolean(theatreCase.preference_card_applied_at),
+    Boolean(theatreCase.return_of) || (theatreCase.returns?.length ?? 0) > 0,
+    Boolean(theatreCase.stay_uuid),
+  ].filter(Boolean).length;
+}
+
+/** Gaps on the booking step, each pointing at the tab that fills it. */
+export type BookingGlanceGap = {
+  label: string;
+  tab: "procedures" | "overview" | "team" | "slot";
+};
+
+export function bookingGlanceGaps(
+  theatreCase: TheatreCase,
+  team: TheatreTeamMember[],
+  teamLoaded: boolean,
+): BookingGlanceGap[] {
+  const gaps: BookingGlanceGap[] = [];
+  if ((theatreCase.procedures?.length ?? 0) === 0 && !theatreCase.procedure_description?.trim()) {
+    gaps.push({ label: "No procedure listed", tab: "procedures" });
+  }
+  if (!theatreCase.scheduled_start) {
+    gaps.push({ label: "No slot scheduled", tab: "slot" });
+  }
+  if (!theatreCase.room) {
+    gaps.push({ label: "No room", tab: "slot" });
+  }
+  if (teamLoaded) {
+    if (team.length === 0) {
+      gaps.push({ label: "No one on the team", tab: "team" });
+    } else {
+      if (!team.some((member) => member.role === "surgeon")) {
+        gaps.push({ label: "Surgeon not assigned", tab: "team" });
+      }
+      if (!team.some((member) => member.role === "anaesthetist")) {
+        gaps.push({ label: "Anaesthetist not assigned", tab: "team" });
+      }
+    }
+  }
+  if (!theatreCase.ncepod_category && !theatreCase.ncepod_category_label) {
+    gaps.push({ label: "NCEPOD not classified", tab: "overview" });
+  }
+  return gaps;
+}
+
+function glanceValueClass(missing: boolean): string {
+  return missing ? "font-medium text-amber-800" : "text-brand-navy";
+}
+
+function SafetyChecks({ safety }: { safety?: TheatreCase["safety"] }) {
+  const items = [
+    { key: "pre_op_ready" as const, label: "Pre-op" },
+    { key: "sign_in" as const, label: "Sign in" },
+    { key: "time_out" as const, label: "Time out" },
+    { key: "sign_out" as const, label: "Sign out" },
+  ];
+  const done = items.filter((item) => safety?.[item.key]).length;
+  return (
+    <div
+      className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] leading-4"
+      data-testid="theatre-overview-safety"
+    >
+      <span className="font-semibold tabular-nums text-brand-muted">{done}/4 checks</span>
+      {items.map((item) => {
+        const on = Boolean(safety?.[item.key]);
+        return (
+          <span key={item.key} className="inline-flex items-center gap-1">
+            <span
+              className={`size-1.5 rounded-full ${on ? "bg-emerald-500" : "bg-dash-muted"}`}
+              aria-hidden
+            />
+            <span className={on ? "text-brand-navy" : "text-brand-muted"}>{item.label}</span>
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+function OverviewGroup({
+  title,
+  rows,
+}: {
+  title: string;
+  rows: { label: string; value: string; missing?: boolean }[];
+}) {
+  return (
+    <section>
+      <h4 className="border-b border-dash-border/70 pb-1 text-[11px] font-semibold uppercase tracking-wider text-brand-muted">
+        {title}
+      </h4>
+      <dl>
+        {rows.map((row) => (
+          <div
+            key={row.label}
+            className="flex items-baseline justify-between gap-4 py-1.5 text-[12px] leading-5"
+          >
+            <dt className="shrink-0 text-brand-muted">{row.label}</dt>
+            <dd className={`min-w-0 break-words text-right ${glanceValueClass(Boolean(row.missing))}`}>
+              {row.value}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
+function caseProcedureTitle(theatreCase: TheatreCase): string {
+  const primary =
+    theatreCase.procedures?.find((procedure) => procedure.is_primary) ?? theatreCase.procedures?.[0];
+  return primary?.name?.trim() || theatreCase.procedure_description?.trim() || "No procedure yet";
+}
+
+function BookingOverview({
+  theatreCase,
+  team,
+  teamLoaded,
+  canEdit,
+  onJump,
+}: {
+  theatreCase: TheatreCase;
+  team: TheatreTeamMember[];
+  teamLoaded: boolean;
+  canEdit: boolean;
+  onJump: (tab: BookingGlanceGap["tab"]) => void;
+}) {
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const gaps = bookingGlanceGaps(theatreCase, team, teamLoaded);
+  const title = caseProcedureTitle(theatreCase);
+  const ncepod = theatreCase.ncepod_category_label || "Not classified";
+  const notes = theatreCase.notes?.trim() || "—";
+  const slot = formatTheatreSlot(theatreCase);
+  const room = theatreCase.room?.name ?? "No room yet";
+  const department =
+    [theatreCase.department_name, theatreCase.clinic_name].filter(Boolean).join(" · ") || "—";
+  const source = SOURCE_LABELS[theatreCase.source] ?? theatreCase.source ?? "—";
+
+  function onGap(tab: BookingGlanceGap["tab"]) {
+    if (tab === "overview") {
+      setDetailsOpen(true);
+      return;
+    }
+    onJump(tab);
+  }
+
+  return (
+    <div data-testid="theatre-case-glance">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h3
+            className={`text-[15px] font-semibold leading-6 ${
+              title === "No procedure yet" ? "text-brand-muted" : "text-brand-navy"
+            }`}
+          >
+            {title}
+          </h3>
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            <StatusDotBadge tone={theatreStatusTone(theatreCase.status)}>
+              {THEATRE_STATUS_LABELS[theatreCase.status]}
+            </StatusDotBadge>
+            <StatusDotBadge tone={urgencyTone(theatreCase.urgency)}>
+              {URGENCY_LABELS[theatreCase.urgency]}
+            </StatusDotBadge>
+          </div>
+        </div>
+        {canEdit ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => setDetailsOpen(true)}
+          >
+            Edit
+          </Button>
+        ) : null}
+      </div>
+      <SafetyChecks safety={theatreCase.safety} />
+      <div className="mt-5 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <OverviewGroup
+          title="Case"
+          rows={[
+            { label: "NCEPOD", value: ncepod, missing: ncepod === "Not classified" },
+            { label: "Urgency", value: URGENCY_LABELS[theatreCase.urgency] },
+            { label: "Notes", value: notes },
+          ]}
+        />
+        <OverviewGroup
+          title="Schedule"
+          rows={[
+            { label: "Slot", value: slot, missing: !theatreCase.scheduled_start },
+            { label: "Room", value: room, missing: !theatreCase.room },
+          ]}
+        />
+        <OverviewGroup
+          title="Booking"
+          rows={[
+            { label: "Source", value: source },
+            { label: "Department", value: department },
+            { label: "Booked by", value: theatreCase.booked_by_name || "—" },
+          ]}
+        />
+      </div>
+      {gaps.length > 0 ? (
+        <div
+          className="mt-4 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 text-[12px] leading-5"
+          data-testid="theatre-case-glance-missing"
+        >
+          <span className="font-medium text-amber-800">Needs attention</span>
+          {gaps.map((gap) => (
+            <button
+              key={gap.label}
+              type="button"
+              onClick={() => onGap(gap.tab)}
+              className="text-amber-950 underline decoration-amber-300 underline-offset-2 outline-none hover:decoration-amber-600 focus-visible:ring-2 focus-visible:ring-brand-primary/40"
+            >
+              {gap.label}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-4" data-testid="theatre-case-glance-ready">
+          <StatusDotBadge tone="success">Ready</StatusDotBadge>
+        </div>
+      )}
+      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <DialogContent className="max-w-xl" data-testid="theatre-case-details-dialog">
+          <DialogHeader>
+            <DialogTitle>Case details</DialogTitle>
+            <DialogDescription>
+              Urgency, NCEPOD category, procedure description and notes.
+            </DialogDescription>
+          </DialogHeader>
+          <TheatreCaseDetailsForm
+            key={`${theatreCase.uuid}-${theatreCase.updated_at}-${String(detailsOpen)}`}
+            theatreCase={theatreCase}
+            canEdit={canEdit}
+            onSaved={() => setDetailsOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 function TeamLine({ theatreCase, sheetHref }: Pick<TheatreStepProps, "theatreCase" | "sheetHref">) {
   const { data: team = [], isLoading } = useTheatreTeam(theatreCase.uuid);
   return (
-    <FlowBlock
-      title="Surgical team"
-      icon={Users}
-      description="Who is scrubbed, anaesthetising and circulating."
-      actions={
+    <div data-testid="theatre-flow-team">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <p className="text-[13px] text-muted-foreground">
+          Who is scrubbed, anaesthetising and circulating.
+        </p>
         <Button asChild size="sm" variant="outline">
           <Link href={sheetHref("team")} scroll={false}>
             Manage team
           </Link>
         </Button>
-      }
-      data-testid="theatre-flow-team"
-    >
+      </div>
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading team…</p>
       ) : team.length === 0 ? (
@@ -138,7 +404,7 @@ function TeamLine({ theatreCase, sheetHref }: Pick<TheatreStepProps, "theatreCas
           ))}
         </ul>
       )}
-    </FlowBlock>
+    </div>
   );
 }
 
@@ -177,103 +443,122 @@ function ToolLink({
 
 export function TheatreBookingStep({ theatreCase, sheetHref }: TheatreStepProps) {
   const can = useTheatreCan();
+  const { data: team = [], isLoading: teamLoading } = useTheatreTeam(theatreCase.uuid);
+  const [tab, setTab] = useState("overview");
+  const procedureCount = theatreCase.procedures?.length ?? 0;
+  const hasProcedure = procedureCount > 0 || Boolean(theatreCase.procedure_description?.trim());
+  const linkedCount = linkedRecordsCount(theatreCase);
+  const slotMissing = !theatreCase.scheduled_start || !theatreCase.room;
+  const gaps = bookingGlanceGaps(theatreCase, team, !teamLoading);
+  const canEditDetails = can("book_theatre_case");
+
   return (
-    <>
-      <FlowBlock title="Case at a glance" icon={ClipboardList}>
-        <FactList
-          items={[
-            { label: "Urgency", value: URGENCY_LABELS[theatreCase.urgency] },
-            {
-              label: "NCEPOD",
-              value: theatreCase.ncepod_category_label || "Not classified",
-            },
-            { label: "Source", value: SOURCE_LABELS[theatreCase.source] ?? theatreCase.source },
-            { label: "Slot", value: formatTheatreSlot(theatreCase), icon: CalendarClock },
-            { label: "Room", value: theatreCase.room?.name ?? "No room yet", icon: DoorOpen },
-            {
-              label: "Department",
-              value:
-                [theatreCase.department_name, theatreCase.clinic_name]
-                  .filter(Boolean)
-                  .join(" · ") || "—",
-            },
-            { label: "Booked by", value: theatreCase.booked_by_name || "—" },
-            { label: "Status", value: THEATRE_STATUS_LABELS[theatreCase.status] },
-            { label: "Safety", value: <TheatreSafetyBadges safety={theatreCase.safety} /> },
-          ]}
-        />
-      </FlowBlock>
-      <FlowBlock
-        title="Procedures"
-        icon={Scissors}
-        description="Picked from the procedure catalogue; the first is the primary procedure."
-      >
-        <TheatreProceduresPanel
-          theatreCase={theatreCase}
-          canEdit={can("book_theatre_case") || can("record_theatre_operation_note")}
-          canBill={can("record_theatre_consumables")}
-        />
-      </FlowBlock>
-      <FlowBlock title="Case details" icon={Stethoscope} description="Urgency, surgeon and notes.">
-        <TheatreCaseDetailsForm
-          key={`${theatreCase.uuid}-${theatreCase.updated_at}`}
-          theatreCase={theatreCase}
-          canEdit={can("book_theatre_case")}
-        />
-      </FlowBlock>
-      <TeamLine theatreCase={theatreCase} sheetHref={sheetHref} />
-      <FlowBlock
-        title="Slot, room & changes of plan"
-        icon={CalendarClock}
-        description="Reschedule, move rooms, or postpone / cancel with a reason."
-      >
-        {can("transition_theatre_case") ? (
-          <TheatreCaseActions theatreCase={theatreCase} transitions="secondary" />
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Ask a theatre coordinator to change the slot or room.
-          </p>
-        )}
-      </FlowBlock>
-      <FlowBlock title="Linked records" icon={BookmarkCheck}>
-        <div className="divide-y divide-dash-border/70 border-y border-dash-border/70">
-          <ToolLink
-            href={sheetHref("preference-card")}
-            icon={BookmarkCheck}
-            label="Surgeon preference card"
-            detail={
-              theatreCase.preference_card_applied_at
-                ? `Applied ${new Date(theatreCase.preference_card_applied_at).toLocaleString()}`
-                : "Load the surgeon's usual setup and items"
-            }
-          />
-          <ToolLink
-            href={sheetHref("return")}
-            icon={Undo2}
-            label="Return to theatre"
-            detail={
-              theatreCase.return_of
-                ? `Return of ${theatreCase.return_of.procedure_description || "an earlier case"}`
-                : theatreCase.returns?.length
-                  ? `${theatreCase.returns.length} later return${theatreCase.returns.length === 1 ? "" : "s"}`
-                  : "Link this case to the original operation"
-            }
-          />
-          <ToolLink
-            href={sheetHref("inpatient")}
-            icon={BedDouble}
-            label="Inpatient stay"
-            detail={
-              theatreCase.stay_uuid
-                ? theatreCase.converted_to_ipd_at
-                  ? "Converted from a day case"
-                  : "Admitted patient"
-                : "Day case — convert to an admission if needed"
-            }
-          />
-        </div>
-      </FlowBlock>
-    </>
+    <FlowTabs
+      aria-label="Booking"
+      data-testid="theatre-booking-tabs"
+      value={tab}
+      onValueChange={setTab}
+      defaultTab="overview"
+      tabs={[
+        {
+          id: "overview",
+          label: "Overview",
+          badge: gaps.length > 0 ? gaps.length : undefined,
+          attention: gaps.length > 0,
+          panel: (
+            <BookingOverview
+              theatreCase={theatreCase}
+              team={team}
+              teamLoaded={!teamLoading}
+              canEdit={canEditDetails}
+              onJump={setTab}
+            />
+          ),
+        },
+        {
+          id: "procedures",
+          label: "Procedures",
+          badge: procedureCount,
+          attention: !hasProcedure,
+          panel: (
+            <TheatreProceduresPanel
+              theatreCase={theatreCase}
+              canEdit={canEditDetails || can("record_theatre_operation_note")}
+              canBill={can("record_theatre_consumables")}
+            />
+          ),
+        },
+        {
+          id: "team",
+          label: "Team",
+          badge: teamLoading ? undefined : team.length,
+          attention: !teamLoading && !teamIsReady(team),
+          panel: <TeamLine theatreCase={theatreCase} sheetHref={sheetHref} />,
+        },
+        {
+          id: "slot",
+          label: "Slot & room",
+          attention: slotMissing,
+          panel: (
+            <>
+              <p className="mb-4 text-[13px] text-muted-foreground">
+                Reschedule, move rooms, or postpone / cancel with a reason.
+              </p>
+              {can("transition_theatre_case") ? (
+                <TheatreCaseActions theatreCase={theatreCase} transitions="secondary" />
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Ask a theatre coordinator to change the slot or room.
+                </p>
+              )}
+            </>
+          ),
+        },
+        {
+          id: "records",
+          label: "Records",
+          badge: linkedCount,
+          panel: (
+            <div className="divide-y divide-dash-border/70 border-y border-dash-border/70">
+              <ToolLink
+                href={sheetHref("preference-card")}
+                icon={BookmarkCheck}
+                label="Surgeon preference card"
+                detail={
+                  theatreCase.preference_card_applied_at
+                    ? `Applied ${new Date(theatreCase.preference_card_applied_at).toLocaleString()}`
+                    : "Load the surgeon's usual setup and items"
+                }
+              />
+              <ToolLink
+                href={sheetHref("return")}
+                icon={Undo2}
+                label="Return to theatre"
+                detail={
+                  theatreCase.return_of
+                    ? `Return of ${theatreCase.return_of.procedure_description || "an earlier case"}`
+                    : theatreCase.returns?.length
+                      ? `${theatreCase.returns.length} later return${theatreCase.returns.length === 1 ? "" : "s"}`
+                      : "Link this case to the original operation"
+                }
+              />
+              <ToolLink
+                href={sheetHref("inpatient")}
+                icon={BedDouble}
+                label="Inpatient stay"
+                detail={
+                  theatreCase.stay_uuid
+                    ? theatreCase.converted_to_ipd_at
+                      ? "Converted from a day case"
+                      : "Admitted patient"
+                    : "Day case — convert to an admission if needed"
+                }
+              />
+            </div>
+          ),
+        },
+      ]}
+    />
   );
 }
 

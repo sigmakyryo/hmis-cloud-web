@@ -221,8 +221,9 @@ describe("theatre advanced A components", () => {
   it("adds a free-text (legacy) procedure with side and approach", async () => {
     wrap(<TheatreProceduresPanel theatreCase={makeCase()} canEdit />);
     expect(screen.getByText("Primary")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Add procedure" }));
     fireEvent.click(screen.getByRole("button", { name: /Not in the catalogue/ }));
-    fireEvent.change(screen.getByLabelText("Add procedure"), {
+    fireEvent.change(screen.getByLabelText("Procedure"), {
       target: { value: "Appendicectomy" },
     });
     fireEvent.change(screen.getByLabelText("Side"), { target: { value: "right" } });
@@ -236,7 +237,27 @@ describe("theatre advanced A components", () => {
     );
   });
 
-  it("promotes and removes secondary procedures", async () => {
+  it("edits a procedure in a dialog", async () => {
+    wrap(<TheatreProceduresPanel theatreCase={makeCase()} canEdit />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit Laparotomy" }));
+    expect(screen.getByRole("dialog", { name: /Edit procedure/ })).toBeTruthy();
+    expect(screen.getByLabelText("Procedure")).toHaveProperty("value", "Laparotomy");
+    fireEvent.change(screen.getByLabelText("Procedure"), {
+      target: { value: "Laparotomy revised" },
+    });
+    fireEvent.change(screen.getByLabelText("Side"), { target: { value: "left" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(updateTheatreCaseProcedure).toHaveBeenCalledWith("case-1", "p1", {
+        name: "Laparotomy revised",
+        laterality: "left",
+        approach: "open",
+        notes: "",
+      }),
+    );
+  });
+
+  it("asks for confirmation before removing a procedure, including the last one", async () => {
     const theatreCase = makeCase({
       procedures: [procedure(), procedure({ uuid: "p2", name: "Splenectomy", is_primary: false })],
     });
@@ -248,7 +269,27 @@ describe("theatre advanced A components", () => {
       }),
     );
     fireEvent.click(screen.getByRole("button", { name: "Remove Splenectomy" }));
+    expect(removeTheatreCaseProcedure).not.toHaveBeenCalled();
+    expect(screen.getByTestId("theatre-procedure-remove-confirm")).toHaveTextContent(
+      "Remove Splenectomy from this case?",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Remove" }));
     await waitFor(() => expect(removeTheatreCaseProcedure).toHaveBeenCalledWith("case-1", "p2"));
+  });
+
+  it("shows an empty state with a button that opens the add dialog", () => {
+    wrap(
+      <TheatreProceduresPanel
+        theatreCase={makeCase({ procedures: [], procedure_description: "" })}
+        canEdit
+      />,
+    );
+    expect(screen.getByTestId("theatre-procedures-empty")).toHaveTextContent(
+      "No procedure recorded",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Add procedure" }));
+    expect(screen.getByRole("dialog", { name: /Add procedure/ })).toBeTruthy();
+    expect(screen.getByLabelText("Procedure")).toBeTruthy();
   });
 
   it("shows the return link both ways", () => {

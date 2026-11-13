@@ -32,6 +32,25 @@ export type CofTemplateAiChatResponse = {
 export type CofTemplateAiApplyResponse = {
   applied: { type: string; client_key?: string; reused?: boolean; result: unknown }[];
   errors: string[];
+  dropped?: unknown[];
+};
+
+export type TemplateFormReviewFinding = {
+  id: string;
+  target: "section" | "item" | "field";
+  status?: string;
+  kind?: "dedicated_page" | "quality" | string;
+  record_type?: string | null;
+  label: string;
+  reason: string;
+  suggestion?: string;
+  href?: string;
+  page_label?: string;
+  pageLabel?: string;
+};
+
+export type TemplateFormReviewResponse = {
+  findings: TemplateFormReviewFinding[];
 };
 
 export async function chatCofTemplateAi(
@@ -54,13 +73,25 @@ export async function applyCofTemplateAiOperations(
   );
 }
 
-export function templateAiRoute(kind: TemplateKind, uuid: string, action: "stream" | "chat" | "apply") {
+export function templateAiRoute(kind: TemplateKind, uuid: string, action: "stream" | "chat" | "apply" | "review") {
   const routes = {
-    exam: { stream: BFF_OCCUPATIONAL_HEALTH_ROUTES.examTemplateAiStream, chat: BFF_OCCUPATIONAL_HEALTH_ROUTES.examTemplateAiChat, apply: BFF_OCCUPATIONAL_HEALTH_ROUTES.examTemplateAiApply },
-    employee: { stream: BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormTemplateAiStream, chat: BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormTemplateAiChat, apply: BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormTemplateAiApply },
-    certificate: { stream: BFF_OCCUPATIONAL_HEALTH_ROUTES.cofTemplateAiStream, chat: BFF_OCCUPATIONAL_HEALTH_ROUTES.cofTemplateAiChat, apply: BFF_OCCUPATIONAL_HEALTH_ROUTES.cofTemplateAiApply },
+    exam: { stream: BFF_OCCUPATIONAL_HEALTH_ROUTES.examTemplateAiStream, chat: BFF_OCCUPATIONAL_HEALTH_ROUTES.examTemplateAiChat, apply: BFF_OCCUPATIONAL_HEALTH_ROUTES.examTemplateAiApply, review: BFF_OCCUPATIONAL_HEALTH_ROUTES.examTemplateAiReview },
+    employee: { stream: BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormTemplateAiStream, chat: BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormTemplateAiChat, apply: BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormTemplateAiApply, review: BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormTemplateAiReview },
+    certificate: { stream: BFF_OCCUPATIONAL_HEALTH_ROUTES.cofTemplateAiStream, chat: BFF_OCCUPATIONAL_HEALTH_ROUTES.cofTemplateAiChat, apply: BFF_OCCUPATIONAL_HEALTH_ROUTES.cofTemplateAiApply, review: BFF_OCCUPATIONAL_HEALTH_ROUTES.cofTemplateAiReview },
   }[kind];
   return routes[action](uuid);
+}
+
+export async function reviewTemplateForm(
+  kind: TemplateKind,
+  templateUuid: string,
+  snapshot: unknown,
+  includeQuality = true,
+) {
+  return bffRequest<TemplateFormReviewResponse>(templateAiRoute(kind, templateUuid, "review"), {
+    method: "POST",
+    body: { snapshot, include_quality: includeQuality },
+  });
 }
 
 export async function applyEmployeeFormTemplateAiOperations(templateUuid: string, payload: { operations: CofTemplateAiOperation[] }) {

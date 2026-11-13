@@ -32,10 +32,15 @@ const URGENCY_OPTIONS: { value: TheatreCaseUrgency; label: string }[] = [
 type TheatreCaseDetailsFormProps = {
   theatreCase: TheatreCase;
   canEdit: boolean;
+  onSaved?: () => void;
 };
 
 /** Procedure, urgency and notes of a case. */
-export function TheatreCaseDetailsForm({ theatreCase, canEdit }: TheatreCaseDetailsFormProps) {
+export function TheatreCaseDetailsForm({
+  theatreCase,
+  canEdit,
+  onSaved,
+}: TheatreCaseDetailsFormProps) {
   const update = useUpdateTheatreCaseDetails();
   const [procedure, setProcedure] = useState(theatreCase.procedure_description);
   const [urgency, setUrgency] = useState<TheatreCaseUrgency>(theatreCase.urgency);
@@ -54,26 +59,30 @@ export function TheatreCaseDetailsForm({ theatreCase, canEdit }: TheatreCaseDeta
 
   return (
     <form
-      className="space-y-3"
+      className="space-y-4"
       data-testid="theatre-case-details-form"
       onSubmit={(event) => {
         event.preventDefault();
-        update.mutate({
-          uuid: theatreCase.uuid,
-          payload: {
-            ...(procedureFromList ? {} : { procedure_description: procedure.trim() }),
-            urgency,
-            notes: notes.trim(),
-            ncepod_category: ncepod,
+        update.mutate(
+          {
+            uuid: theatreCase.uuid,
+            payload: {
+              ...(procedureFromList ? {} : { procedure_description: procedure.trim() }),
+              urgency,
+              notes: notes.trim(),
+              ncepod_category: ncepod,
+            },
           },
-        });
+          { onSuccess: () => onSaved?.() },
+        );
       }}
     >
-      <div className="grid gap-3 sm:grid-cols-[1fr_180px]">
-        <div className="space-y-1.5">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor={`procedure-${theatreCase.uuid}`}>Procedure</Label>
           <Input
             id={`procedure-${theatreCase.uuid}`}
+            className="w-full"
             value={procedure}
             placeholder="e.g. Laparoscopic cholecystectomy"
             disabled={!editable || procedureFromList}
@@ -88,7 +97,7 @@ export function TheatreCaseDetailsForm({ theatreCase, canEdit }: TheatreCaseDeta
             value={urgency}
             onValueChange={(value) => setUrgency(value as TheatreCaseUrgency)}
           >
-            <SelectTrigger aria-label="Urgency">
+            <SelectTrigger aria-label="Urgency" className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -100,33 +109,34 @@ export function TheatreCaseDetailsForm({ theatreCase, canEdit }: TheatreCaseDeta
             </SelectContent>
           </Select>
         </div>
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor={`ncepod-${theatreCase.uuid}`}>NCEPOD category</Label>
-        <select
-          id={`ncepod-${theatreCase.uuid}`}
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm disabled:opacity-60"
-          value={ncepod}
-          disabled={!editable}
-          onChange={(event) => setNcepod(event.target.value as TheatreNcepodCategory | "")}
-        >
-          <option value="">Not classified</option>
-          {NCEPOD_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label} — {option.hint}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor={`notes-${theatreCase.uuid}`}>Notes</Label>
-        <Textarea
-          id={`notes-${theatreCase.uuid}`}
-          value={notes}
-          rows={2}
-          disabled={!editable}
-          onChange={(event) => setNotes(event.target.value)}
-        />
+        <div className="space-y-1.5">
+          <Label htmlFor={`ncepod-${theatreCase.uuid}`}>NCEPOD category</Label>
+          <select
+            id={`ncepod-${theatreCase.uuid}`}
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm disabled:opacity-60"
+            value={ncepod}
+            disabled={!editable}
+            onChange={(event) => setNcepod(event.target.value as TheatreNcepodCategory | "")}
+          >
+            <option value="">Not classified</option>
+            {NCEPOD_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label} — {option.hint}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label htmlFor={`notes-${theatreCase.uuid}`}>Notes</Label>
+          <Textarea
+            id={`notes-${theatreCase.uuid}`}
+            className="w-full"
+            value={notes}
+            rows={4}
+            disabled={!editable}
+            onChange={(event) => setNotes(event.target.value)}
+          />
+        </div>
       </div>
       {editable ? (
         <Button type="submit" size="sm" disabled={!dirty || update.isPending}>

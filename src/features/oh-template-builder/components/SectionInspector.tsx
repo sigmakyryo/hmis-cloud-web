@@ -29,7 +29,10 @@ import {
   interactionFromSection,
   sectionModesFromInteraction,
 } from "@/features/oh-template-builder/components/SelectionModeToggle";
+import { FormFieldReviewFlag } from "@/features/oh-template-builder/components/FormFieldReviewFlag";
 import { ResponseFieldsList } from "@/features/oh-template-builder/components/ResponseFieldsList";
+import { findingFromMatch, matchDedicatedOhRecord } from "@/features/oh-template-builder/lib/dedicatedOhRecordPages";
+import { useFormReview } from "@/features/oh-template-builder/hooks/useTemplateFormReview";
 import { useInspectorAutosave } from "@/features/oh-template-builder/hooks/useInspectorAutosave";
 import { useTemplateBuilder } from "@/features/oh-template-builder/hooks/useTemplateBuilder";
 import {
@@ -53,6 +56,7 @@ type SectionInspectorProps = {
 export function SectionInspector({ attachment, section }: SectionInspectorProps) {
   const { updateSection, detachSection, archiveSection, isPending } =
     useTemplateBuilder();
+  const review = useFormReview();
   const form = useForm<SectionFormValues>({
     resolver: zodResolver(sectionFormSchema),
     values: {
@@ -63,10 +67,14 @@ export function SectionInspector({ attachment, section }: SectionInspectorProps)
       defaultResponseFields: normalizeResponseFields(section.defaultResponseFields),
     },
   });
-  const [contentMode, selectionMode] = useWatch({
+  const [contentMode, selectionMode, sectionName] = useWatch({
     control: form.control,
-    name: ["contentMode", "selectionMode"],
+    name: ["contentMode", "selectionMode", "name"],
   });
+  const dedicated = matchDedicatedOhRecord(sectionName ?? section.name, section.code);
+  const sectionFinding = dedicated
+    ? findingFromMatch("section", attachment.uuid, sectionName || section.name, dedicated)
+    : review.findingFor("section", attachment.uuid);
   const isSaving = isPending(`section:update:${section.uuid}`);
   const isRemoving =
     isPending(`section:detach:${attachment.uuid}`) ||
@@ -110,6 +118,18 @@ export function SectionInspector({ attachment, section }: SectionInspectorProps)
                           <Input {...field} />
                         </FormControl>
                         <FormMessage />
+                        {sectionFinding ? (
+                          <FormFieldReviewFlag
+                            finding={sectionFinding}
+                            onRemove={
+                              section.isSystem
+                                ? undefined
+                                : () => {
+                                    void archiveSection(attachment);
+                                  }
+                            }
+                          />
+                        ) : null}
                       </FormItem>
                     )}
                   />

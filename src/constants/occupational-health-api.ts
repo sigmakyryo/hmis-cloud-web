@@ -71,6 +71,7 @@ export const OCCUPATIONAL_HEALTH_API_PATHS = {
   ohCofTemplateAiChat: (uuid: string) => `/oh-cof-templates/${uuid}/ai/chat/`,
   ohCofTemplateAiStream: (uuid: string) => `/oh-cof-templates/${uuid}/ai/stream/`,
   ohCofTemplateAiApply: (uuid: string) => `/oh-cof-templates/${uuid}/ai/apply/`,
+  ohCofTemplateAiReview: (uuid: string) => `/oh-cof-templates/${uuid}/ai/review/`,
   ohCofTemplateVersions: (uuid: string) => `/oh-cof-templates/${uuid}/versions/`,
   ohCofTemplateSections: "/oh-cof-template-sections/",
   ohCofTemplateSection: (uuid: string) =>
@@ -85,6 +86,7 @@ export const OCCUPATIONAL_HEALTH_API_PATHS = {
   ohExamTemplateAiChat: (uuid: string) => `/oh-exam-templates/${encodeURIComponent(uuid)}/ai/chat/`,
   ohExamTemplateAiStream: (uuid: string) => `/oh-exam-templates/${encodeURIComponent(uuid)}/ai/stream/`,
   ohExamTemplateAiApply: (uuid: string) => `/oh-exam-templates/${encodeURIComponent(uuid)}/ai/apply/`,
+  ohExamTemplateAiReview: (uuid: string) => `/oh-exam-templates/${encodeURIComponent(uuid)}/ai/review/`,
   ohExamTemplatePublish: (uuid: string) => `/oh-exam-templates/${uuid}/publish/`,
   ohExamTemplateVersions: (uuid: string) =>
     `/oh-exam-templates/${uuid}/versions/`,
@@ -96,6 +98,7 @@ export const OCCUPATIONAL_HEALTH_API_PATHS = {
   ohEmployeeFormTemplateAiChat: (uuid: string) => `/oh-employee-form-templates/${encodeURIComponent(uuid)}/ai/chat/`,
   ohEmployeeFormTemplateAiStream: (uuid: string) => `/oh-employee-form-templates/${encodeURIComponent(uuid)}/ai/stream/`,
   ohEmployeeFormTemplateAiApply: (uuid: string) => `/oh-employee-form-templates/${encodeURIComponent(uuid)}/ai/apply/`,
+  ohEmployeeFormTemplateAiReview: (uuid: string) => `/oh-employee-form-templates/${encodeURIComponent(uuid)}/ai/review/`,
   ohEmployeeFormTemplatePublish: (uuid: string) => `/oh-employee-form-templates/${uuid}/publish/`,
   ohEmployeeFormTemplateVersions: (uuid: string) => `/oh-employee-form-templates/${uuid}/versions/`,
   ohEmployeeFormTemplateSections: "/oh-employee-form-template-sections/",

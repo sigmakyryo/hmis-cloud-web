@@ -6,6 +6,7 @@ import { SecondaryButton } from "@/components/ui/app-buttons";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CertificateStudio } from "@/features/oh-template-builder/components/CertificateStudio";
 import type { BuilderMode } from "@/features/oh-template-builder/components/TemplateBuilderTopBar";
+import { TemplateFormReviewProvider } from "@/features/oh-template-builder/hooks/useTemplateFormReview";
 import { TemplateBuilderProvider } from "@/features/oh-template-builder/hooks/useTemplateBuilder";
 import { templateGalleryHref } from "@/features/oh-template-builder/lib/templateKinds";
 import type { TemplateKind } from "@/features/oh-template-builder/template-builder.types";
@@ -31,7 +32,9 @@ export function TemplateBuilderPage({ kind, templateUuid, view }: TemplateBuilde
 
   return (
     <TemplateBuilderProvider kind={kind} templateUuid={templateUuid}>
-      <CertificateStudio view={view} />
+      <TemplateFormReviewProvider>
+        <CertificateStudio view={view} />
+      </TemplateFormReviewProvider>
     </TemplateBuilderProvider>
   );
 }

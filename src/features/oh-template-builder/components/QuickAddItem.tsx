@@ -3,7 +3,9 @@
 import { CornerDownLeft, Loader2, Plus } from "lucide-react";
 import { useState } from "react";
 
+import { FormFieldReviewFlag } from "@/features/oh-template-builder/components/FormFieldReviewFlag";
 import { useTemplateBuilder } from "@/features/oh-template-builder/hooks/useTemplateBuilder";
+import { findingFromMatch, matchDedicatedOhRecord } from "@/features/oh-template-builder/lib/dedicatedOhRecordPages";
 import { toUpperCode } from "@/features/oh-template-builder/lib/templateCodes";
 
 type QuickAddItemProps = {
@@ -18,6 +20,8 @@ export function QuickAddItem({ sectionUuid, attachmentUuid }: QuickAddItemProps)
   const [name, setName] = useState("");
   const isSaving = isPending(`item:create:${sectionUuid}`);
   const code = toUpperCode(name);
+  const dedicated = matchDedicatedOhRecord(name, code);
+  const finding = dedicated ? findingFromMatch("item", "quick-add", name.trim() || code, dedicated) : null;
 
   async function submit() {
     if (!code || isSaving) {
@@ -87,6 +91,7 @@ export function QuickAddItem({ sectionUuid, attachmentUuid }: QuickAddItemProps)
           </kbd>
         )}
       </div>
+      {finding ? <FormFieldReviewFlag finding={finding} className="px-1" /> : null}
       <div className="flex items-center justify-between px-1 text-[11px] text-dash-muted">
         <span>
           {code ? (

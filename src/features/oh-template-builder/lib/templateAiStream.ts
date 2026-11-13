@@ -1,4 +1,5 @@
 import type { CofTemplateAiOperation } from "@/features/oh-template-builder/lib/templateAi";
+import { droppedAiMessage, filterAiOperations } from "@/features/oh-template-builder/lib/dedicatedOhRecordPages";
 import { parseSseChunk, type AiStreamEvent } from "@/features/oh-template-builder/lib/parseAiStream";
 
 /** Public status messages only: never forward provider/debug HTML, credentials or stack traces. */
@@ -84,7 +85,17 @@ export function validateCertificateAiDraft(raw: string): { assistant_message: st
       throw new Error("Invalid draft shape");
     }
     if ("refused" in draft && draft.refused === true) return { assistant_message: "Can't help with that.", operations: [], refused: true };
-    return draft as { assistant_message: string; operations: CofTemplateAiOperation[]; refused?: boolean };
+    const parsed = draft as { assistant_message: string; operations: CofTemplateAiOperation[]; refused?: boolean };
+    const filtered = filterAiOperations(parsed.operations);
+    if (filtered.dropped.length === 0) return parsed;
+    const notice = droppedAiMessage(filtered.dropped);
+    return {
+      ...parsed,
+      operations: filtered.operations,
+      assistant_message: notice
+        ? `${parsed.assistant_message.trim()}\n\n${notice}`.trim()
+        : parsed.assistant_message,
+    };
   } catch {
     throw new Error("The certificate assistant returned an invalid draft. Review any partial changes and try again.");
   }

@@ -2,7 +2,7 @@
 
 import type { LucideIcon } from "lucide-react";
 import { CircleAlert, Info, TriangleAlert } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type KeyboardEvent, type ReactNode } from "react";
 
 import {
   Sheet,
@@ -171,6 +171,147 @@ export function FlowSheet({
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">{children}</div>
       </SheetContent>
     </Sheet>
+  );
+}
+
+export type FlowTab = {
+  id: string;
+  label: string;
+  /** Small count or status shown beside the label. */
+  badge?: ReactNode;
+  /** Amber dot when something on the tab still needs attention. */
+  attention?: boolean;
+  panel: ReactNode;
+};
+
+/**
+ * Underline tabs for grouping blocks on a case-flow step. Inactive panels stay
+ * mounted (and hidden) so form state is not lost when switching.
+ */
+export function FlowTabs({
+  "aria-label": ariaLabel,
+  tabs,
+  defaultTab,
+  value,
+  onValueChange,
+  "data-testid": testId,
+}: {
+  "aria-label": string;
+  tabs: FlowTab[];
+  defaultTab?: string;
+  /** Controlled selected tab; omit for internal state. */
+  value?: string;
+  onValueChange?: (id: string) => void;
+  "data-testid"?: string;
+}) {
+  const initial = defaultTab && tabs.some((tab) => tab.id === defaultTab) ? defaultTab : tabs[0]?.id;
+  const [uncontrolled, setUncontrolled] = useState(initial);
+  const active = value ?? uncontrolled;
+  const selected = tabs.some((tab) => tab.id === active) ? active : tabs[0]?.id;
+  const prefix = testId ?? "flow-tabs";
+
+  function select(id: string, focus = false) {
+    if (value === undefined) setUncontrolled(id);
+    onValueChange?.(id);
+    if (focus) {
+      requestAnimationFrame(() => {
+        document.getElementById(`${prefix}-tab-${id}`)?.focus();
+      });
+    }
+  }
+
+  function activate(id: string) {
+    select(id, true);
+  }
+
+  function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    const ids = tabs.map((tab) => tab.id);
+    const index = ids.indexOf(selected ?? "");
+    if (index < 0) return;
+    if (event.key === "ArrowRight") {
+      event.preventDefault();
+      activate(ids[(index + 1) % ids.length] ?? ids[0]);
+    } else if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      activate(ids[(index - 1 + ids.length) % ids.length] ?? ids[0]);
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      activate(ids[0]);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      activate(ids[ids.length - 1] ?? ids[0]);
+    }
+  }
+
+  return (
+    <section
+      className="border-t border-dash-border/70 py-6 first:border-t-0 first:pt-0"
+      data-testid={testId}
+    >
+      <div
+        role="tablist"
+        aria-label={ariaLabel}
+        className="flex flex-wrap gap-x-0.5 border-b border-dash-border/70"
+        onKeyDown={onKeyDown}
+      >
+        {tabs.map((tab) => {
+          const isActive = tab.id === selected;
+          const tabId = `${prefix}-tab-${tab.id}`;
+          const panelId = `${prefix}-panel-${tab.id}`;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              id={tabId}
+              aria-selected={isActive}
+              aria-controls={panelId}
+              tabIndex={isActive ? 0 : -1}
+              data-testid={tabId}
+              onClick={() => select(tab.id)}
+              className={cn(
+                "relative -mb-px inline-flex items-center gap-1.5 whitespace-nowrap px-3 py-2 text-[13px] font-medium outline-none",
+                "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-primary/40",
+                isActive
+                  ? "border-b-2 border-brand-primary text-brand-navy"
+                  : "border-b-2 border-transparent text-brand-muted hover:text-brand-navy",
+              )}
+            >
+              {tab.label}
+              {tab.badge != null && tab.badge !== false ? (
+                <span className="inline-flex min-w-4 items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-semibold tabular-nums leading-4 text-brand-navy">
+                  {tab.badge}
+                </span>
+              ) : null}
+              {tab.attention ? (
+                <span
+                  className="size-1.5 rounded-full bg-amber-500"
+                  aria-label="needs attention"
+                />
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+      {tabs.map((tab) => {
+        const isActive = tab.id === selected;
+        const tabId = `${prefix}-tab-${tab.id}`;
+        const panelId = `${prefix}-panel-${tab.id}`;
+        return (
+          <div
+            key={tab.id}
+            role="tabpanel"
+            id={panelId}
+            aria-labelledby={tabId}
+            hidden={!isActive}
+            data-testid={panelId}
+            className="pt-5"
+          >
+            {tab.panel}
+          </div>
+        );
+      })}
+    </section>
   );
 }
 

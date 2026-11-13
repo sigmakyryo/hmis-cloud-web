@@ -539,6 +539,8 @@ export const BFF_OCCUPATIONAL_HEALTH_ROUTES = {
     `/api/occupational-health/cof-templates/${uuid}/ai/stream`,
   cofTemplateAiApply: (uuid: string) =>
     `/api/occupational-health/cof-templates/${uuid}/ai/apply`,
+  cofTemplateAiReview: (uuid: string) =>
+    `/api/occupational-health/cof-templates/${uuid}/ai/review`,
   cofTemplateVersions: (uuid: string) =>
     `/api/occupational-health/cof-templates/${uuid}/versions`,
   cofTemplateSections: "/api/occupational-health/cof-template-sections",
@@ -558,6 +560,7 @@ export const BFF_OCCUPATIONAL_HEALTH_ROUTES = {
   examTemplateAiChat: (uuid: string) => `/api/occupational-health/exam-templates/${encodeURIComponent(uuid)}/ai/chat`,
   examTemplateAiStream: (uuid: string) => `/api/occupational-health/exam-templates/${encodeURIComponent(uuid)}/ai/stream`,
   examTemplateAiApply: (uuid: string) => `/api/occupational-health/exam-templates/${encodeURIComponent(uuid)}/ai/apply`,
+  examTemplateAiReview: (uuid: string) => `/api/occupational-health/exam-templates/${encodeURIComponent(uuid)}/ai/review`,
   examTemplatePublish: (uuid: string) =>
     `/api/occupational-health/exam-templates/${uuid}/publish`,
   examTemplateVersions: (uuid: string) =>
@@ -574,6 +577,8 @@ export const BFF_OCCUPATIONAL_HEALTH_ROUTES = {
     `/api/occupational-health/employee-form-templates/${encodeURIComponent(uuid)}/ai/stream`,
   employeeFormTemplateAiApply: (uuid: string) =>
     `/api/occupational-health/employee-form-templates/${encodeURIComponent(uuid)}/ai/apply`,
+  employeeFormTemplateAiReview: (uuid: string) =>
+    `/api/occupational-health/employee-form-templates/${encodeURIComponent(uuid)}/ai/review`,
   employeeFormTemplatePublish: (uuid: string) =>
     `/api/occupational-health/employee-form-templates/${uuid}/publish`,
   employeeFormTemplateVersions: (uuid: string) =>

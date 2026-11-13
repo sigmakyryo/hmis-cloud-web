@@ -232,7 +232,8 @@ describe("theatre pro P1 helpers", () => {
 describe("theatre pro P1 components", () => {
   it("adds a procedure picked from the catalogue", async () => {
     wrap(<TheatreProceduresPanel theatreCase={makeCase({ status: "booked" })} canEdit />);
-    fireEvent.change(screen.getByLabelText("Add procedure"), {
+    fireEvent.click(screen.getByRole("button", { name: "Add procedure" }));
+    fireEvent.change(screen.getByLabelText("Procedure"), {
       target: { value: "appendic" },
     });
     fireEvent.click(await screen.findByRole("button", { name: /Laparoscopic appendicectomy/ }));

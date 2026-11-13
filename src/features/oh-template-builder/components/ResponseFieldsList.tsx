@@ -21,7 +21,9 @@ import {
   SheetDescription,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { FormFieldReviewFlag } from "@/features/oh-template-builder/components/FormFieldReviewFlag";
 import { FormsIllustration } from "@/features/oh-template-builder/components/UndrawIllustrations";
+import { findingFromMatch, matchDedicatedOhRecord } from "@/features/oh-template-builder/lib/dedicatedOhRecordPages";
 import { toSectionCode } from "@/features/oh-template-builder/lib/templateCodes";
 import type { OhResponseField } from "@/features/occupational-health/types";
 import { ResponseConfigFields } from "@/features/settings/components/modules/occupational-health/template-library/ResponseConfigFields";
@@ -125,31 +127,43 @@ export function ResponseFieldsList({ title, value, onChange, emptyHint }: Respon
           <ul className="mt-2">
             {value.map((field, index) => {
               const TypeIcon = FIELD_TYPE_ICONS[field.response_type] ?? Type;
+              const match = matchDedicatedOhRecord(field.label, field.code);
+              const finding = match
+                ? findingFromMatch("field", field.code || `${index}`, field.label, match)
+                : null;
               return (
-                <li key={`${field.code}-${index}`} className="group flex items-center">
-                  <button
-                    type="button"
-                    onClick={() => setDraft({ index, field, codeTouched: true })}
-                    className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md py-1.5 pr-1 text-left hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
-                  >
-                    <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-brand-tint text-brand-primary">
-                      <TypeIcon className="size-3.5" aria-hidden />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[13px] text-brand-navy">{field.label}</span>
-                      <span className="block truncate text-[11.5px] capitalize text-dash-muted">
-                        {responseTypeLabel(field.response_type)}
+                <li key={`${field.code}-${index}`} className="group">
+                  <div className="flex items-center">
+                    <button
+                      type="button"
+                      onClick={() => setDraft({ index, field, codeTouched: true })}
+                      className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md py-1.5 pr-1 text-left hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
+                    >
+                      <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-brand-tint text-brand-primary">
+                        <TypeIcon className="size-3.5" aria-hidden />
                       </span>
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={`Remove ${field.label}`}
-                    onClick={() => removeAt(index)}
-                    className="flex size-7 shrink-0 items-center justify-center rounded text-slate-300 opacity-0 transition-opacity hover:text-red-600 focus-visible:opacity-100 focus-visible:outline-none group-hover:opacity-100"
-                  >
-                    <Trash2 className="size-3.5" aria-hidden />
-                  </button>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[13px] text-brand-navy">{field.label}</span>
+                        <span className="block truncate text-[11.5px] capitalize text-dash-muted">
+                          {responseTypeLabel(field.response_type)}
+                          {finding ? (
+                            <span className="ml-1.5 rounded-sm bg-amber-500/15 px-1 py-px text-[10px] font-medium uppercase tracking-wide text-amber-800">
+                              Issue
+                            </span>
+                          ) : null}
+                        </span>
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Remove ${field.label}`}
+                      onClick={() => removeAt(index)}
+                      className="flex size-7 shrink-0 items-center justify-center rounded text-slate-300 opacity-0 transition-opacity hover:text-red-600 focus-visible:opacity-100 focus-visible:outline-none group-hover:opacity-100"
+                    >
+                      <Trash2 className="size-3.5" aria-hidden />
+                    </button>
+                  </div>
+                  {finding ? <FormFieldReviewFlag finding={finding} onRemove={() => removeAt(index)} /> : null}
                 </li>
               );
             })}
@@ -252,6 +266,15 @@ function FieldSheet({
                 Code <span className="font-mono text-brand-slate">{draft.field.code || "auto"}</span>
               </p>
             )}
+            {(() => {
+              const match = matchDedicatedOhRecord(draft.field.label, draft.field.code);
+              return match ? (
+                <FormFieldReviewFlag
+                  finding={findingFromMatch("field", draft.field.code || "draft", draft.field.label, match)}
+                  onRemove={onRemove ?? undefined}
+                />
+              ) : null;
+            })()}
           </div>
 
           <ResponseConfigFields

@@ -5,7 +5,9 @@ import { useEffect, useState, type ReactNode } from "react";
 
 import { RequiredFieldMarker } from "@/components/ui/required-field-marker";
 import { formatCatalogScheduleSummary } from "@/features/occupational-health/services/oh.service";
+import { FormFieldReviewFlag } from "@/features/oh-template-builder/components/FormFieldReviewFlag";
 import { QuickAddItem } from "@/features/oh-template-builder/components/QuickAddItem";
+import { findingFromMatch, matchDedicatedOhRecord } from "@/features/oh-template-builder/lib/dedicatedOhRecordPages";
 import { SelectionGlyph } from "@/features/oh-template-builder/components/SelectionGlyph";
 import {
   useSectionItems,
@@ -39,6 +41,10 @@ export function CanvasSection({ attachment, isFirst, isLast }: CanvasSectionProp
   const isDirect = section?.contentMode === "direct";
   const mode = section?.selectionMode ?? "inclusive";
   const name = section?.name ?? "Untitled section";
+  const sectionMatch = matchDedicatedOhRecord(name, section?.code ?? "");
+  const sectionFinding = sectionMatch
+    ? findingFromMatch("section", attachment.uuid, name, sectionMatch)
+    : null;
   const chooseLabel = isDirect
     ? "Enter values"
     : mode === "exclusive"
@@ -121,6 +127,11 @@ export function CanvasSection({ attachment, isFirst, isLast }: CanvasSectionProp
             {section?.isSystem ? (
               <Lock className="size-3 text-dash-muted" aria-label="System section" />
             ) : null}
+            {sectionFinding ? (
+              <span className="rounded-sm bg-amber-500/15 px-1.5 py-px text-[10px] font-medium uppercase tracking-wide text-amber-800">
+                Issue
+              </span>
+            ) : null}
           </span>
         </button>
 
@@ -155,6 +166,11 @@ export function CanvasSection({ attachment, isFirst, isLast }: CanvasSectionProp
           </IconButton>
         </div>
       </div>
+      {sectionFinding ? (
+        <div className="pl-[26px]">
+          <FormFieldReviewFlag finding={sectionFinding} />
+        </div>
+      ) : null}
 
       {isOpen ? (
         <div id={bodyId} className="relative mt-0.5">
@@ -311,6 +327,11 @@ function CanvasItemRow({
           {item.isMandatory ? (
             <span className="ml-0.5">
               <RequiredFieldMarker />
+            </span>
+          ) : null}
+          {matchDedicatedOhRecord(item.name, item.code) ? (
+            <span className="ml-1.5 rounded-sm bg-amber-500/15 px-1 py-px text-[10px] font-medium uppercase tracking-wide text-amber-800">
+              Issue
             </span>
           ) : null}
         </span>

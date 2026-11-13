@@ -25,7 +25,10 @@ import {
   InspectorToggleRow,
 } from "@/features/oh-template-builder/components/InspectorShell";
 import { ItemScheduleEditor } from "@/features/oh-template-builder/components/ItemListEditors";
+import { FormFieldReviewFlag } from "@/features/oh-template-builder/components/FormFieldReviewFlag";
 import { ResponseFieldsList } from "@/features/oh-template-builder/components/ResponseFieldsList";
+import { findingFromMatch, matchDedicatedOhRecord } from "@/features/oh-template-builder/lib/dedicatedOhRecordPages";
+import { useFormReview } from "@/features/oh-template-builder/hooks/useTemplateFormReview";
 import { normalizeResponseFields } from "@/features/settings/components/modules/occupational-health/template-library/responseConfig";
 import { useInspectorAutosave } from "@/features/oh-template-builder/hooks/useInspectorAutosave";
 import { useTemplateBuilder } from "@/features/oh-template-builder/hooks/useTemplateBuilder";
@@ -47,6 +50,7 @@ type ItemInspectorProps = {
 
 export function ItemInspector({ attachment, item }: ItemInspectorProps) {
   const { updateItem, archiveItem, isPending, select, template } = useTemplateBuilder();
+  const review = useFormReview();
   const form = useForm<ItemFormInput, unknown, ItemFormValues>({
     resolver: zodResolver(itemFormSchema),
     values: {
@@ -71,6 +75,12 @@ export function ItemInspector({ attachment, item }: ItemInspectorProps) {
     },
   });
   const inheritsFields = useWatch({ control: form.control, name: "inheritsResponseFields" });
+  const itemName = useWatch({ control: form.control, name: "name" });
+  const itemCode = useWatch({ control: form.control, name: "code" });
+  const dedicated = matchDedicatedOhRecord(itemName || item.name, itemCode || item.code);
+  const itemFinding = dedicated
+    ? findingFromMatch("item", item.uuid, itemName || item.name, dedicated)
+    : review.findingFor("item", item.uuid);
   const isSaving = isPending(`item:update:${item.uuid}`);
   const isArchiving = isPending(`item:archive:${item.uuid}`);
   const sectionName = attachment.section?.name ?? "Section";
@@ -126,6 +136,14 @@ export function ItemInspector({ attachment, item }: ItemInspectorProps) {
                           <Input {...field} placeholder="Shown to clinicians" />
                         </FormControl>
                         <FormMessage />
+                        {itemFinding ? (
+                          <FormFieldReviewFlag
+                            finding={itemFinding}
+                            onRemove={() => {
+                              void onArchive();
+                            }}
+                          />
+                        ) : null}
                       </FormItem>
                     )}
                   />
