@@ -18,9 +18,11 @@ type Props = {
   errors?: ExamErrors;
   setupHref?: string;
   billingCharges?: OhVisitBillingCharge[];
+  /** Field keys (`owner:code`) filled from an AI draft, shown with a Suggested badge. */
+  suggestedFieldKeys?: string[];
 };
 
-export function OhExamTemplateCaptureForm({ snapshot, value, onChange, disabled, errors = {}, billingCharges = [] }: Props) {
+export function OhExamTemplateCaptureForm({ snapshot, value, onChange, disabled, errors = {}, billingCharges = [], suggestedFieldKeys = [] }: Props) {
   const answers = value ?? emptyExamTemplateAnswers();
   function setField(owner: string, code: string, next: string) {
     onChange({ ...answers, fields: { ...answers.fields, [owner]: { ...answers.fields[owner], [code]: next } } });
@@ -38,7 +40,7 @@ export function OhExamTemplateCaptureForm({ snapshot, value, onChange, disabled,
         <div className="min-w-0">
           <div className="flex flex-wrap items-baseline justify-between gap-2"><h3 id={headingId} tabIndex={-1} data-exam-error-key={direct && section.response_definitions_missing ? sectionErrorKey(section.code) : undefined} className="text-[14.5px] font-semibold text-brand-navy">{section.name}{section.is_mandatory ? <RequiredFieldMarker /> : null}</h3><span className="text-xs text-dash-muted">{direct ? "Enter responses" : exclusive ? "Choose one" : "Choose all that apply"}</span></div>
           {sectionError ? <p id={errorId} className="mt-2 text-xs text-red-700">{sectionError}</p> : null}
-          {direct ? <div className="mt-4 space-y-4">{(section.response_fields ?? []).map((field) => <ResponseField key={field.code} field={field} owner={section.code} value={answers.fields[section.code]?.[field.code] ?? ""} disabled={disabled} errors={errors} onChange={(next) => setField(section.code, field.code, next)} />)}</div>
+          {direct ? <div className="mt-4 space-y-4">{(section.response_fields ?? []).map((field) => <ResponseField key={field.code} field={field} owner={section.code} value={answers.fields[section.code]?.[field.code] ?? ""} disabled={disabled} errors={errors} suggested={suggestedFieldKeys.includes(`${section.code}:${field.code}`)} onChange={(next) => setField(section.code, field.code, next)} />)}</div>
             : section.items.length === 0 ? <p className="mt-3 text-sm text-dash-muted">No items in this section.</p>
               : <ul role={exclusive ? "radiogroup" : "group"} aria-labelledby={headingId} aria-invalid={Boolean(sectionError)} aria-describedby={sectionError ? errorId : undefined} className="mt-3 grid gap-2 sm:grid-cols-2">
                 {section.items.map((item) => {
@@ -63,7 +65,7 @@ export function OhExamTemplateCaptureForm({ snapshot, value, onChange, disabled,
                       </span>
                     </button>
                     {checked ? <div id={panelId} className="mb-4 ml-8 space-y-4 pt-1">
-                      {fields.map((field) => <ResponseField key={field.code} field={field} owner={owner} value={answers.fields[owner]?.[field.code] ?? ""} disabled={disabled} errors={errors} onChange={(next) => setField(owner, field.code, next)} />)}
+                      {fields.map((field) => <ResponseField key={field.code} field={field} owner={owner} value={answers.fields[owner]?.[field.code] ?? ""} disabled={disabled} errors={errors} suggested={suggestedFieldKeys.includes(`${owner}:${field.code}`)} onChange={(next) => setField(owner, field.code, next)} />)}
                       {fields.length === 0 && !item.response_definitions_missing ? <p className="text-xs text-dash-muted">No additional response needed.</p> : null}
                     </div> : null}
                   </li>;
@@ -75,19 +77,31 @@ export function OhExamTemplateCaptureForm({ snapshot, value, onChange, disabled,
   </div>;
 }
 
-function ResponseField({ field, owner, value, disabled, errors, onChange }: { field: OhResponseField; owner: string; value: string; disabled?: boolean; errors: ExamErrors; onChange: (next: string) => void }) {
+function isOutcomeField(field: OhResponseField): boolean {
+  const label = field.label.toLowerCase();
+  if (/outcome|fit for work|fitness result|certificate result|fitness outcome/.test(label)) return true;
+  const codes = (field.options ?? []).map((option) => option.code.toLowerCase());
+  if (codes.length < 2) return false;
+  const hasFit = codes.some((code) => code === "fit" || code === "fit_with_restrictions");
+  const hasUnfit = codes.some((code) => code.includes("unfit") || code === "not_fit");
+  return hasFit && hasUnfit;
+}
+
+function ResponseField({ field, owner, value, disabled, errors, suggested, onChange }: { field: OhResponseField; owner: string; value: string; disabled?: boolean; errors: ExamErrors; suggested?: boolean; onChange: (next: string) => void }) {
   const key = fieldErrorKey(owner, field.code);
   const id = `exam-field-${owner}-${field.code}`;
   const error = errors[key];
-  const label = <>{field.label}{isRequiredField(field) ? <RequiredFieldMarker /> : null}</>;
+  const suggestedBadge = suggested ? <span data-testid="oh-field-suggested" className="ml-2 inline-flex align-middle text-[10px] font-medium uppercase tracking-wide text-violet-800">Suggested</span> : null;
+  const label = <>{field.label}{isRequiredField(field) ? <RequiredFieldMarker /> : null}{suggestedBadge}</>;
   const props = { id, disabled, "aria-invalid": Boolean(error), "aria-describedby": error ? `${id}-error` : undefined, "data-exam-error-key": key, "aria-required": isRequiredField(field) };
   const multi = field.response_type === "multi_select";
   const options = field.options?.length ? field.options : field.response_type === "boolean" ? [{ code: "true", label: "Yes" }, { code: "false", label: "No" }] : [];
   const selected = multi ? value.split(",").filter(Boolean) : [value];
-  return <div className="space-y-2">
+  const outcome = !multi && isOutcomeField(field);
+  return <div className={cn("space-y-2", suggested && "rounded-md border-l-2 border-violet-300 bg-violet-50/40 py-2 pl-3")}>
     {options.length ? <fieldset disabled={disabled} aria-describedby={props["aria-describedby"]}>
       <legend className="mb-2 text-xs font-medium text-brand-slate">{label}</legend>
-      <div role={multi ? "group" : "radiogroup"} aria-label={field.label} className="flex flex-wrap gap-2">{options.map((option) => <button {...props} id={`${id}-${option.code}`} key={option.code} type="button" role={multi ? "checkbox" : "radio"} aria-checked={selected.includes(option.code)} onClick={() => onChange(multi ? (selected.includes(option.code) ? selected.filter((code) => code !== option.code) : [...selected, option.code]).join(",") : option.code)} className={cn("rounded-md border px-3 py-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 disabled:opacity-60", selected.includes(option.code) ? "border-brand-primary bg-brand-primary text-white" : "border-brand-primary/20 bg-white text-brand-navy")}>{option.label}</button>)}</div>
+      <div role={multi ? "group" : "radiogroup"} aria-label={field.label} data-outcome={outcome || undefined} className={cn("flex flex-wrap gap-2", outcome && "grid grid-cols-1 sm:grid-cols-3")}>{options.map((option) => <button {...props} id={`${id}-${option.code}`} key={option.code} type="button" role={multi ? "checkbox" : "radio"} aria-checked={selected.includes(option.code)} onClick={() => onChange(multi ? (selected.includes(option.code) ? selected.filter((code) => code !== option.code) : [...selected, option.code]).join(",") : option.code)} className={cn("rounded-md border px-3 py-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 disabled:opacity-60", outcome && "px-3 py-2.5 text-[13px] font-medium", selected.includes(option.code) ? "border-brand-primary bg-brand-primary text-white" : "border-brand-primary/20 bg-white text-brand-navy")}>{option.label}</button>)}</div>
     </fieldset> : <>
       <label htmlFor={id} className="block text-xs font-medium text-brand-slate">{label}</label>
       {field.response_type === "file" ? <p {...props} tabIndex={-1} className="text-xs text-dash-muted">File responses are not available in this workspace. Ask an administrator to review this template requirement.</p>

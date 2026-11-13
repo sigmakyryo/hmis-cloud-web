@@ -86,6 +86,7 @@ export function OhVisitTemplateStep({
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
   const [immWarnings, setImmWarnings] = useState<string[]>([]);
   const [immBlocked, setImmBlocked] = useState<string | null>(null);
+  const [suggestedKeys, setSuggestedKeys] = useState<string[]>([]);
   const formRef = useRef<HTMLDivElement>(null);
   const answersRef = useRef(answers);
   const currentRef = useRef(current);
@@ -340,10 +341,22 @@ export function OhVisitTemplateStep({
           onChange={(next) => {
             setAnswers(next);
             if (showErrors) setShowErrors(false);
+            if (suggestedKeys.length && draftTargets) {
+              const still: string[] = [];
+              for (const target of [draftTargets.wording, draftTargets.restrictions]) {
+                if (!target) continue;
+                const key = `${target.owner}:${target.code}`;
+                const prev = answers.fields[target.owner]?.[target.code] ?? "";
+                const value = next.fields[target.owner]?.[target.code] ?? "";
+                if (suggestedKeys.includes(key) && value === prev) still.push(key);
+              }
+              if (still.length !== suggestedKeys.length) setSuggestedKeys(still);
+            }
           }}
           disabled={encounter.is_active === false || saving || (isCof && Boolean(displayBlocked))}
           errors={errors}
           billingCharges={current?.billing_charges ?? []}
+          suggestedFieldKeys={suggestedKeys}
         />
       ) : (
         <p className="py-6 text-sm text-dash-muted">Opening the published form.</p>
@@ -351,45 +364,65 @@ export function OhVisitTemplateStep({
     </>
   );
 
+  function applyDraft(draft: { wording?: string; restrictions?: string[] }) {
+    if (!draftTargets) return;
+    setAnswers((previous) => applyCofDraft(previous, draftTargets, draft));
+    if (showErrors) setShowErrors(false);
+    const keys: string[] = [];
+    if (draftTargets.wording) keys.push(`${draftTargets.wording.owner}:${draftTargets.wording.code}`);
+    if (draftTargets.restrictions) keys.push(`${draftTargets.restrictions.owner}:${draftTargets.restrictions.code}`);
+    setSuggestedKeys(keys);
+  }
+
+  const saveButton = (
+    <PrimaryButton
+      type="button"
+      disabled={saving || encounter.is_active === false || !snapshot || Boolean(displayBlocked)}
+      onClick={() => void persist(answers, false)}
+    >
+      {saving ? "Saving…" : "Save"}
+    </PrimaryButton>
+  );
+  const loadFieldsButton =
+    definitionsMissing && encounter.is_active !== false && !hasEnteredResponses && (canConfigure || readyReplacement) ? (
+      <SecondaryButton
+        type="button"
+        disabled={recovering || saving}
+        onClick={() => {
+          setRecoveryError(null);
+          setRecoveryOpen(true);
+        }}
+      >
+        Load configured fields
+      </SecondaryButton>
+    ) : null;
+  const progress =
+    isCof && sectionCount > 0 ? (
+      <div className="flex items-center gap-2" data-testid="oh-cof-progress">
+        <div className="h-1 w-28 overflow-hidden rounded-full bg-dash-border" aria-hidden>
+          <div
+            className="h-full rounded-full bg-brand-primary transition-[width]"
+            style={{ width: `${Math.round((answeredCount / sectionCount) * 100)}%` }}
+          />
+        </div>
+        <span className="text-[12px] tabular-nums text-dash-muted">
+          {answeredCount} of {sectionCount} sections
+        </span>
+      </div>
+    ) : null;
+
   const inNavRow = Boolean(headerSlot);
   const header = (
     <>
       <div className={cn("min-w-0", inNavRow && "flex items-center gap-3")}>
         <h2 className="text-sm font-semibold text-brand-navy">{title}</h2>
-        {isCof && sectionCount > 0 ? (
-          <div className={cn("flex items-center gap-2", !inNavRow && "mt-1")} data-testid="oh-cof-progress">
-            <div className="h-1 w-28 overflow-hidden rounded-full bg-dash-border" aria-hidden>
-              <div
-                className="h-full rounded-full bg-brand-primary transition-[width]"
-                style={{ width: `${Math.round((answeredCount / sectionCount) * 100)}%` }}
-              />
-            </div>
-            <span className="text-[12px] tabular-nums text-dash-muted">
-              {answeredCount} of {sectionCount} sections
-            </span>
-          </div>
+        {!isCof && sectionCount > 0 ? (
+          <div className={cn("flex items-center gap-2", !inNavRow && "mt-1")}>{progress}</div>
         ) : null}
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        {definitionsMissing && encounter.is_active !== false && !hasEnteredResponses && (canConfigure || readyReplacement) ? (
-          <SecondaryButton
-            type="button"
-            disabled={recovering || saving}
-            onClick={() => {
-              setRecoveryError(null);
-              setRecoveryOpen(true);
-            }}
-          >
-            Load configured fields
-          </SecondaryButton>
-        ) : null}
-        <PrimaryButton
-          type="button"
-          disabled={saving || encounter.is_active === false || !snapshot || Boolean(displayBlocked)}
-          onClick={() => void persist(answers, false)}
-        >
-          {saving ? "Saving…" : "Save"}
-        </PrimaryButton>
+        {loadFieldsButton}
+        {!isCof ? saveButton : null}
       </div>
     </>
   );
@@ -402,24 +435,28 @@ export function OhVisitTemplateStep({
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-dash-border px-5 py-3">{header}</div>
       )}
       {isCof ? (
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:overflow-hidden">
-          <div ref={formRef} className={cn("px-5 lg:min-h-0 lg:overflow-y-auto", displayBlocked && "opacity-60")}>
-            {formBody}
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <div ref={formRef} className={cn("min-h-0 flex-1 overflow-y-auto px-5", displayBlocked && "opacity-60")}>
+              <p className="sr-only">Clinician-entered certificate</p>
+              {formBody}
+            </div>
+            <div
+              className="sticky bottom-0 z-10 flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-dash-border bg-white px-5 py-2.5"
+              data-testid="oh-cof-footer"
+            >
+              {progress ?? <span />}
+              {saveButton}
+            </div>
           </div>
           <OhCertificateReadiness
             visitUuid={encounter.uuid}
             gateBlocked={displayBlocked}
             gateWarnings={displayWarnings}
             onOpenPanel={onOpenPanel}
-            onUseDraft={
-              canUseDraft && draftTargets
-                ? (draft) => {
-                    setAnswers((previous) => applyCofDraft(previous, draftTargets, draft));
-                    if (showErrors) setShowErrors(false);
-                  }
-                : undefined
-            }
-            className="order-first border-b border-dash-border lg:order-none lg:border-b-0 lg:border-l"
+            onUseDraft={canUseDraft && draftTargets ? applyDraft : undefined}
+            collapsible
+            className="max-lg:border-t lg:border-l"
           />
         </div>
       ) : (

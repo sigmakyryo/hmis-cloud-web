@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Check, Lock } from "lucide-react";
 
 import { OhCertificateForm } from "@/features/occupational-health/components/OhCertificateTabPanel";
@@ -8,10 +9,6 @@ import { OhCertificateRecords } from "@/features/occupational-health/components/
 import { OhMedicalExaminationsPanel } from "@/features/occupational-health/components/OhMedicalExaminationsPanel";
 import { OhSessionEmployeeForm } from "@/features/occupational-health/components/OhSessionEmployeeForm";
 import { OhVisitTemplateStep } from "@/features/occupational-health/components/OhVisitTemplateStep";
-import {
-  OhColumnPanel,
-  OhEncounterColumns,
-} from "@/features/occupational-health/components/OhEncounterColumns";
 import type { useOhEncounterWorkspaceData } from "@/features/occupational-health/hooks/use-occupational-health";
 import { COF_TEMPLATE_RESPONSE_KEY, type OhEncounterPanelId } from "@/features/occupational-health/lib/oh-encounter-modules";
 import {
@@ -145,6 +142,11 @@ export function OhSessionForms({
   const showCof = step?.kind === "certificate";
   const showAttached = step?.kind === "attached";
   const examReady = isExaminationStepReady(workspace.examinations);
+  const [certificateDraft, setCertificateDraft] = useState<{
+    wording?: string;
+    restrictions?: string[];
+  } | null>(null);
+  const [certificateDraftSeq, setCertificateDraftSeq] = useState(0);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-testid="oh-session-forms">
@@ -200,39 +202,49 @@ export function OhSessionForms({
           />
         </section>
       ) : showCof ? (
-        <section aria-label="Certificate of fitness" className="min-h-0 flex-1 overflow-y-auto">
-          <OhCertificateReadiness
-            visitUuid={encounter.uuid}
-            onOpenPanel={onOpenPanel}
-            showDraft={false}
-            className="border-b border-dash-border"
-          />
-          <OhEncounterColumns
-            sectionKey="certificate"
-            form={
-              <OhColumnPanel eyebrow="Record" title="Certificate of fitness" className="bg-white">
+        <section
+          aria-label="Certificate of fitness"
+          className="flex min-h-0 flex-1 flex-col overflow-hidden"
+          data-testid="oh-session-certificate-step"
+        >
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
+              <div className="px-5 pt-4">
                 <OhCertificateForm
                   assessments={workspace.fitness}
                   visitUuid={encounter.uuid}
+                  appliedDraft={certificateDraft}
+                  appliedDraftSeq={certificateDraftSeq}
+                  hideInlineSuggestion
                   onCreated={workspace.refetchAll}
                 />
-              </OhColumnPanel>
-            }
-            records={
-              <OhColumnPanel
-                eyebrow="This encounter"
-                title="Certificates"
-                count={workspace.fitnessCertificates.length}
-                className="bg-white"
-              >
+              </div>
+              <div className="border-t border-dash-border px-5 py-4">
+                <div className="mb-3 flex items-baseline justify-between gap-2">
+                  <h3 className="text-sm font-semibold text-brand-navy">Certificates</h3>
+                  <span className="text-[12px] text-dash-muted">
+                    {workspace.fitnessCertificates.length} on this encounter
+                  </span>
+                </div>
                 <OhCertificateRecords
                   assessments={workspace.fitness}
                   certificates={workspace.fitnessCertificates}
                   onChanged={workspace.refetchAll}
                 />
-              </OhColumnPanel>
-            }
-          />
+              </div>
+            </div>
+            <OhCertificateReadiness
+              visitUuid={encounter.uuid}
+              onOpenPanel={onOpenPanel}
+              showDraft
+              collapsible
+              onUseDraft={(draft) => {
+                setCertificateDraft(draft);
+                setCertificateDraftSeq((current) => current + 1);
+              }}
+              className="max-lg:border-t lg:border-l"
+            />
+          </div>
         </section>
       ) : null}
 

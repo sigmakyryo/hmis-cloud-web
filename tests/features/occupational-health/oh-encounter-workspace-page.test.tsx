@@ -1203,7 +1203,16 @@ describe("OhEncounterWorkspacePage", () => {
       },
     ]);
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "Bill" }));
+    const bill = await screen.findByRole("button", { name: "Bill" });
+    expect(screen.queryByTestId("oh-toolbar-facts")).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId("oh-workspace-toolbar-rail"),
+    ).not.toHaveTextContent("Employer");
+    expect(
+      screen.getByTestId("oh-workspace-toolbar-rail"),
+    ).not.toHaveTextContent("Risk profile");
+    expect(screen.getByTestId("oh-toolbar-badge-bill")).toHaveTextContent("1");
+    fireEvent.click(bill);
     expect(await screen.findByTestId("oh-billing-list")).toHaveTextContent(
       "SPIRO",
     );

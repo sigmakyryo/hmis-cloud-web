@@ -107,8 +107,9 @@ it("checks the visit on open and marks each record area in the readiness rail", 
   fireEvent.click(screen.getByRole("button", { name: "Open Fitness" }));
   expect(onOpenPanel).toHaveBeenCalledWith("fitness");
 
-  fireEvent.click(screen.getByRole("button", { name: "Use in form" }));
+  fireEvent.click(screen.getByRole("button", { name: "Accept" }));
   expect(onUseDraft).toHaveBeenCalledWith({ wording: "Not ready to certify.", restrictions: ["No night shift"] });
+  expect(screen.getByTestId("oh-cof-use-draft").textContent).toBe("Accepted");
 });
 
 it("marks vaccines blocked when the immunisation gate blocks the certificate", async () => {
@@ -166,4 +167,74 @@ it("issues a certificate with the accepted wording and restrictions", async () =
       }),
     );
   });
+});
+
+it("lets the clinician edit a suggestion before accepting and dismiss it", async () => {
+  vi.mocked(fetchVisitBrief).mockResolvedValue({
+    refused: false,
+    message: "",
+    points: [],
+    draft: { wording: "Not ready to certify.", restrictions: ["No night shift"] },
+  });
+
+  const onUseDraft = vi.fn();
+  renderWithQuery(<OhCertificateReadiness visitUuid="visit-3" onUseDraft={onUseDraft} />);
+
+  expect(await screen.findByText("Not ready to certify.")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+  const wording = screen.getByTestId("oh-cof-draft-edit-wording");
+  fireEvent.change(wording, { target: { value: "Fit with limits." } });
+  fireEvent.click(screen.getByRole("button", { name: "Accept" }));
+  expect(onUseDraft).toHaveBeenCalledWith({ wording: "Fit with limits.", restrictions: ["No night shift"] });
+
+  // Remount to test dismiss independently.
+  cleanup();
+  const onUseDraftAgain = vi.fn();
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={client}>
+      <OhCertificateReadiness visitUuid="visit-3" onUseDraft={onUseDraftAgain} />
+    </QueryClientProvider>,
+  );
+  expect(await screen.findByRole("button", { name: "Dismiss" })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+  expect(screen.queryByTestId("oh-cof-draft")).toBeNull();
+  expect(onUseDraftAgain).not.toHaveBeenCalled();
+});
+
+it("shows the assessment outcome as a readable group and does not auto-fill AI wording", async () => {
+  vi.mocked(fetchVisitBrief).mockResolvedValue({
+    refused: false,
+    message: "",
+    points: [],
+    draft: { wording: "Auto wording.", restrictions: ["Auto limit"] },
+  });
+
+  renderWithQuery(
+    <OhCertificateForm
+      visitUuid="visit-4"
+      onCreated={() => undefined}
+      assessments={[
+        {
+          id: 4,
+          uuid: "assessment-1",
+          examination: 1,
+          outcome: "fit_with_restrictions",
+          assessed_at: "2026-11-01T00:00:00Z",
+          review_date: null,
+          clinician: 7,
+        },
+      ]}
+    />,
+  );
+
+  const outcome = await screen.findByTestId("oh-cert-outcome");
+  expect(outcome.textContent).toContain("Fit with restrictions");
+  expect(outcome.querySelector('[data-selected="true"]')?.textContent).toBe("Fit with restrictions");
+  expect(screen.getByLabelText("Certificate wording")).toHaveValue("");
+  expect(screen.getByLabelText("Restrictions, one per line")).toHaveValue("");
+  expect(await screen.findByText("Auto wording.")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Accept" }));
+  expect(screen.getByLabelText("Certificate wording")).toHaveValue("Auto wording.");
+  expect(screen.getByLabelText("Restrictions, one per line")).toHaveValue("Auto limit");
 });

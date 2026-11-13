@@ -17,6 +17,12 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { OhClinicalHistoryPanel } from "@/features/occupational-health/components/OhClinicalHistoryPanel";
 import {
   OhEncounterSummaryRail,
@@ -30,7 +36,6 @@ import type {
   OhVisitBillingCharge,
   OhVisitEncounter,
 } from "@/features/occupational-health/types";
-import { formatVisitElapsed } from "@/features/customers/utils/format-visit-elapsed";
 import { appFont } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
 
@@ -39,6 +44,7 @@ type EdgePanel = "info" | "history" | "examinations" | "bill";
 type OhEncounterEdgeRailProps = {
   visitUuid: string;
   encounterUuid: string;
+  /** Kept so callers can pass the encounter; facts now live on the Info sheet and patient chip. */
   encounter?: OhVisitEncounter | null;
   examinations: OhExamination[];
   activeExamUuid?: string | null;
@@ -61,31 +67,8 @@ function openChargeCount(charges: OhVisitBillingCharge[]): number {
   return charges.filter((charge) => charge.status !== "removed").length;
 }
 
-function Fact({ label, value }: { label: string; value: string }) {
-  return (
-    <div
-      className="min-w-0"
-      data-testid={`oh-toolbar-fact-${label.toLowerCase().replaceAll(" ", "-")}`}
-    >
-      <dt className="text-[10px] font-medium uppercase tracking-wide text-dash-muted">
-        {label}
-      </dt>
-      <dd className="truncate text-[13px] font-medium leading-tight text-brand-navy">
-        {value || "—"}
-      </dd>
-    </div>
-  );
-}
-
-function startedLabel(startedAt: string | null | undefined): string {
-  if (!startedAt) {
-    return "—";
-  }
-  const elapsed = formatVisitElapsed(startedAt);
-  if (!elapsed) {
-    return "—";
-  }
-  return elapsed === "Just now" ? "Just now" : `${elapsed} ago`;
+function failedChargeCount(charges: OhVisitBillingCharge[]): number {
+  return charges.filter((charge) => charge.status === "failed").length;
 }
 
 function panelTitle(panel: EdgePanel | null): string {
@@ -109,17 +92,55 @@ function panelDescription(
       : `${examinations.length} on this encounter`;
   }
   if (panel === "bill") {
+    const failed = failedChargeCount(charges);
+    if (failed > 0) {
+      return `${failed} failed to send`;
+    }
     const open = openChargeCount(charges);
     return open === 0 ? "No items on the bill yet" : `${open} on this visit`;
   }
   return "This encounter and employment";
 }
 
-/** Right-hand visit tools: facts, info, history, examinations, and the bill. */
+type ActionBadge = {
+  count: number;
+  tone: "default" | "danger";
+  hint: string;
+};
+
+function actionBadge(
+  id: EdgePanel,
+  examinations: OhExamination[],
+  charges: OhVisitBillingCharge[],
+): ActionBadge | null {
+  if (id === "examinations" && examinations.length > 0) {
+    return {
+      count: examinations.length,
+      tone: "default",
+      hint: `${examinations.length} on this encounter`,
+    };
+  }
+  if (id === "bill") {
+    const failed = failedChargeCount(charges);
+    if (failed > 0) {
+      return {
+        count: failed,
+        tone: "danger",
+        hint: `${failed} failed to send`,
+      };
+    }
+    const open = openChargeCount(charges);
+    if (open > 0) {
+      return { count: open, tone: "default", hint: `${open} on this visit` };
+    }
+  }
+  return null;
+}
+
+/** Right-hand visit tools as a slim icon rail: info, history, examinations, and the bill. */
 export function OhEncounterEdgeRail({
   visitUuid,
   encounterUuid,
-  encounter = null,
   examinations,
   activeExamUuid = null,
   findingCount,
@@ -131,72 +152,62 @@ export function OhEncounterEdgeRail({
 }: OhEncounterEdgeRailProps) {
   const desktop = useOhDesktopWorkspace();
   const [panel, setPanel] = useState<EdgePanel | null>(null);
-  const [mobileOpen, setMobileOpen] = useState(false);
 
   function toggle(next: EdgePanel) {
     setPanel((current) => (current === next ? null : next));
   }
 
-  const facts = (
-    <dl
-      className={cn(
-        "grid grid-cols-1 gap-2",
-        desktop ? "px-3 py-3" : "flex gap-3 px-3 py-2",
-      )}
-      data-testid="oh-toolbar-facts"
-    >
-      <Fact label="Employer" value={encounter?.employer_name?.trim() || "—"} />
-      <Fact
-        label="Risk profile"
-        value={encounter?.hazard_profile_name?.trim() || "—"}
-      />
-      <Fact label="Started" value={startedLabel(encounter?.started_at)} />
-    </dl>
-  );
-
   const actionList = (
     <div
-      className="flex flex-col gap-0.5 px-1.5 py-2"
+      className={cn(
+        "flex",
+        desktop
+          ? "flex-col items-center gap-1 px-1.5 py-2"
+          : "flex-row items-center justify-end gap-1 px-2 py-1.5",
+      )}
       data-testid="oh-encounter-edge-rail"
     >
       {ACTIONS.map((action) => {
         const selected = panel === action.id;
-        const badge =
-          action.id === "examinations"
-            ? examinations.length
-            : action.id === "bill"
-              ? openChargeCount(billingCharges)
-              : 0;
+        const badge = actionBadge(action.id, examinations, billingCharges);
+        const tooltip = badge ? `${action.label} · ${badge.hint}` : action.label;
         return (
-          <button
-            key={action.id}
-            type="button"
-            aria-label={action.label}
-            aria-pressed={selected}
-            data-testid={`oh-toolbar-action-${action.id}`}
-            onClick={() => {
-              toggle(action.id);
-              setMobileOpen(false);
-            }}
-            className={cn(
-              "relative flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px]",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30",
-              selected
-                ? "bg-brand-tint font-medium text-brand-primary"
-                : "text-brand-navy hover:bg-slate-50",
-            )}
-          >
-            <HugeiconsIcon icon={action.icon} size={16} strokeWidth={1.8} />
-            <span className="min-w-0 flex-1 truncate">{action.label}</span>
-            {badge > 0 ? (
-              <span
-                aria-hidden
-                className="flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-primary px-1 text-[9px] font-semibold leading-none text-white"
+          <Tooltip key={action.id}>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                aria-label={action.label}
+                aria-pressed={selected}
+                data-testid={`oh-toolbar-action-${action.id}`}
+                onClick={() => toggle(action.id)}
+                className={cn(
+                  "relative flex size-9 items-center justify-center rounded-md",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30",
+                  selected
+                    ? "bg-brand-tint text-brand-primary"
+                    : "text-brand-navy hover:bg-slate-50",
+                )}
               >
-                {badge > 9 ? "9+" : badge}
-              </span>
-            ) : null}
-          </button>
+                <HugeiconsIcon icon={action.icon} size={18} strokeWidth={1.8} />
+                {badge ? (
+                  <span
+                    aria-hidden
+                    data-testid={`oh-toolbar-badge-${action.id}`}
+                    data-tone={badge.tone}
+                    className={cn(
+                      "absolute -top-0.5 -right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-0.5 text-[8px] font-semibold leading-none text-white",
+                      badge.tone === "danger" ? "bg-red-600" : "bg-brand-primary",
+                    )}
+                  >
+                    {badge.count > 9 ? "9+" : badge.count}
+                  </span>
+                ) : null}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side={desktop ? "left" : "bottom"}>
+              {tooltip}
+            </TooltipContent>
+          </Tooltip>
         );
       })}
     </div>
@@ -267,61 +278,24 @@ export function OhEncounterEdgeRail({
     </Sheet>
   );
 
-  if (!desktop) {
-    return (
-      <>
+  return (
+    <TooltipProvider delayDuration={200}>
+      {desktop ? (
+        <aside
+          className="hidden min-h-0 w-14 shrink-0 flex-col overflow-y-auto border-l border-dash-border bg-white lg:flex lg:order-last"
+          data-testid="oh-workspace-toolbar-rail"
+        >
+          {actionList}
+        </aside>
+      ) : (
         <div
           className="order-2 shrink-0 border-b border-dash-border bg-white lg:hidden"
           data-testid="oh-workspace-toolbar-strip"
         >
-          <div className="flex items-stretch">
-            <div className="min-w-0 flex-1 overflow-x-auto">{facts}</div>
-            <button
-              type="button"
-              onClick={() => setMobileOpen(true)}
-              className="flex shrink-0 items-center gap-1 border-l border-dash-border px-3 text-xs font-medium text-brand-navy hover:bg-slate-50"
-              data-testid="oh-toolbar-tools-trigger"
-            >
-              Tools
-            </button>
-          </div>
+          {actionList}
         </div>
-        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-          <SheetContent
-            side="right"
-            className={cn(
-              appFont.className,
-              "flex w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-md",
-            )}
-          >
-            <SheetHeader className="space-y-1 border-b border-dash-border px-5 py-4 pr-12 text-left">
-              <SheetTitle className="text-[16px] font-semibold tracking-tight text-brand-navy">
-                Tools
-              </SheetTitle>
-              <SheetDescription className="text-[13px] text-dash-muted">
-                Info, history, examinations and the bill
-              </SheetDescription>
-            </SheetHeader>
-            <div className="min-h-0 flex-1 overflow-y-auto py-2">
-              {actionList}
-            </div>
-          </SheetContent>
-        </Sheet>
-        {sheet}
-      </>
-    );
-  }
-
-  return (
-    <>
-      <aside
-        className="hidden min-h-0 w-52 shrink-0 flex-col overflow-y-auto border-l border-dash-border bg-white lg:flex lg:order-last"
-        data-testid="oh-workspace-toolbar-rail"
-      >
-        {facts}
-        <div className="border-t border-dash-border">{actionList}</div>
-      </aside>
+      )}
       {sheet}
-    </>
+    </TooltipProvider>
   );
 }

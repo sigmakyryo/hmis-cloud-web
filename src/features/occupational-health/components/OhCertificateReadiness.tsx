@@ -2,7 +2,18 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowUp, Check, ChevronRight, CircleDashed, Loader2, OctagonX, TriangleAlert } from "lucide-react";
+import {
+  ArrowUp,
+  Check,
+  ChevronRight,
+  CircleDashed,
+  Loader2,
+  OctagonX,
+  PanelRightClose,
+  PanelRightOpen,
+  Sparkles,
+  TriangleAlert,
+} from "lucide-react";
 
 import { OhCopilotResult, citedPoints } from "@/features/occupational-health/components/OhCopilotResult";
 import { useVisitBrief } from "@/features/occupational-health/hooks/use-visit-brief";
@@ -38,6 +49,8 @@ const STATE_STYLE: Record<CheckState, { label: string; text: string; bar: string
 
 type ReadinessRow = (typeof CHECKS)[number] & { cited: CopilotPoint[]; state: CheckState };
 
+export type CofDraftPayload = { wording?: string; restrictions?: string[] };
+
 export type OhCertificateReadinessProps = {
   visitUuid: string;
   /** Immunisation gate message when the certificate cannot be signed. */
@@ -45,9 +58,11 @@ export type OhCertificateReadinessProps = {
   gateWarnings?: string[];
   onOpenPanel?: (panel: OhEncounterPanelId) => void;
   /** Present when the open form has fields the drafted write-up can fill. */
-  onUseDraft?: (draft: { wording?: string; restrictions?: string[] }) => void;
+  onUseDraft?: (draft: CofDraftPayload) => void;
   showDraft?: boolean;
   className?: string;
+  /** When true, the assistant can collapse to a slim strip. Open by default. */
+  collapsible?: boolean;
 };
 
 /** Certificate readiness: the visit is checked when it opens; each record area shows what is still open. */
@@ -59,9 +74,11 @@ export function OhCertificateReadiness({
   onUseDraft,
   showDraft = true,
   className,
+  collapsible = false,
 }: OhCertificateReadinessProps) {
   const brief = useVisitBrief(visitUuid);
   const [answer, setAnswer] = useState<CopilotResponse | null>(null);
+  const [open, setOpen] = useState(true);
   const points = brief.data ? citedPoints(brief.data.points) : [];
   const rows: ReadinessRow[] = CHECKS.map((check) => {
     const cited = points.filter((point) => point.source === check.source);
@@ -81,56 +98,120 @@ export function OhCertificateReadiness({
   const sortedRows = rows.toSorted((a, b) => STATE_ORDER[a.state] - STATE_ORDER[b.state]);
   const openCount = rows.filter((row) => row.state === "review" || row.state === "blocked").length;
   const blocked = rows.some((row) => row.state === "blocked");
+  const collapsed = collapsible && !open;
 
   return (
     <aside
       aria-label="Certificate readiness"
       data-testid="oh-cof-readiness"
-      className={cn("flex min-h-0 flex-col bg-white", className)}
+      data-collapsed={collapsed || undefined}
+      className={cn(
+        "flex min-h-0 flex-col bg-white",
+        collapsed ? "lg:w-10" : "lg:w-[18.5rem]",
+        className,
+      )}
     >
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="px-4 pt-4 pb-3">
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="text-[13px] font-semibold text-brand-navy">Readiness</h3>
-            <ReadinessSummary loading={brief.isLoading} blocked={blocked} openCount={openCount} />
+      {collapsed ? (
+        <button
+          type="button"
+          aria-expanded={false}
+          aria-controls="oh-cof-assistant-body"
+          data-testid="oh-cof-assistant-toggle"
+          onClick={() => setOpen(true)}
+          className="flex min-h-0 flex-1 flex-col items-center gap-3 px-1.5 py-3 text-brand-navy hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-primary/30"
+          title="Show assistant"
+        >
+          <PanelRightOpen className="size-4 shrink-0 text-dash-muted" aria-hidden />
+          <Sparkles className="size-3.5 shrink-0 text-brand-primary" aria-hidden />
+          <span className="mt-1 [writing-mode:vertical-rl] rotate-180 text-[11px] font-medium tracking-wide">
+            Assistant
+          </span>
+          <span className="sr-only">Show assistant</span>
+        </button>
+      ) : (
+        <>
+          <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-2">
+            <div className="flex min-w-0 items-center gap-2">
+              <Sparkles className="size-3.5 shrink-0 text-brand-primary" aria-hidden />
+              <h3 className="text-[13px] font-semibold text-brand-navy">Assistant</h3>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <ReadinessSummary loading={brief.isLoading} blocked={blocked} openCount={openCount} />
+              {collapsible ? (
+                <button
+                  type="button"
+                  aria-expanded={true}
+                  aria-controls="oh-cof-assistant-body"
+                  data-testid="oh-cof-assistant-toggle"
+                  onClick={() => setOpen(false)}
+                  className="rounded-md p-1 text-dash-muted hover:bg-muted hover:text-brand-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
+                  title="Hide assistant"
+                >
+                  <PanelRightClose className="size-3.5" aria-hidden />
+                  <span className="sr-only">Hide assistant</span>
+                </button>
+              ) : null}
+            </div>
           </div>
-          <div className="mt-2.5 flex gap-1" aria-hidden>
-            {rows.map((row) => (
-              <span key={row.source} className={cn("h-1 flex-1 rounded-full", STATE_STYLE[row.state].bar)} />
-            ))}
-          </div>
-          {brief.data?.message ? <ExpandableText text={brief.data.message} lines={2} className="mt-2.5 text-[12.5px] text-dash-muted" /> : null}
-          {brief.isError ? (
-            <p className="mt-2.5 text-[12px] text-dash-muted">
-              {brief.error instanceof Error ? brief.error.message : "Records could not be checked."}{" "}
-              <button type="button" className="font-medium text-brand-primary hover:underline" onClick={() => void brief.refetch()}>
-                Check again
-              </button>
-            </p>
-          ) : null}
-        </div>
 
-        <ol className="border-y border-dash-border">
-          {sortedRows.map((row) => (
-            <ReadinessCheck
-              key={row.source}
-              row={row}
-              gateBlocked={row.source === "vaccine" ? gateBlocked : null}
-              gateWarnings={row.source === "vaccine" ? gateWarnings : []}
-              onOpenPanel={onOpenPanel}
-            />
-          ))}
-        </ol>
+          <div id="oh-cof-assistant-body" className="flex min-h-0 flex-1 flex-col">
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <div className="px-4 pb-3">
+                <div className="flex gap-1" aria-hidden>
+                  {rows.map((row) => (
+                    <span key={row.source} className={cn("h-1 flex-1 rounded-full", STATE_STYLE[row.state].bar)} />
+                  ))}
+                </div>
+                {brief.data?.message ? (
+                  <ExpandableText text={brief.data.message} lines={2} className="mt-2.5 text-[12.5px] text-dash-muted" />
+                ) : null}
+                {brief.isError ? (
+                  <p className="mt-2.5 text-[12px] text-dash-muted">
+                    {brief.error instanceof Error ? brief.error.message : "Records could not be checked."}{" "}
+                    <button type="button" className="font-medium text-brand-primary hover:underline" onClick={() => void brief.refetch()}>
+                      Check again
+                    </button>
+                  </p>
+                ) : null}
+              </div>
 
-        {showDraft ? <DraftWriteUp result={brief.data} loading={brief.isLoading} onUseDraft={onUseDraft} /> : null}
-        {answer ? (
-          <div className="border-b border-dash-border px-4 py-3">
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-dash-muted">Answer</p>
-            <OhCopilotResult result={answer} onOpenPanel={onOpenPanel} />
+              {showDraft ? (
+                <OhCofDraftSuggestion
+                  wording={brief.data?.draft.wording?.trim() ?? ""}
+                  restrictions={(brief.data?.draft.restrictions ?? []).filter((line) => line.trim() !== "")}
+                  loading={brief.isLoading}
+                  onAccept={onUseDraft}
+                />
+              ) : null}
+
+              <div className="border-y border-dash-border">
+                <p className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-dash-muted">
+                  Visit checks
+                </p>
+                <ol>
+                  {sortedRows.map((row) => (
+                    <ReadinessCheck
+                      key={row.source}
+                      row={row}
+                      gateBlocked={row.source === "vaccine" ? gateBlocked : null}
+                      gateWarnings={row.source === "vaccine" ? gateWarnings : []}
+                      onOpenPanel={onOpenPanel}
+                    />
+                  ))}
+                </ol>
+              </div>
+
+              {answer ? (
+                <div className="border-b border-dash-border px-4 py-3">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-dash-muted">Answer</p>
+                  <OhCopilotResult result={answer} onOpenPanel={onOpenPanel} />
+                </div>
+              ) : null}
+            </div>
+            <AskVisit visitUuid={visitUuid} onAnswer={setAnswer} />
           </div>
-        ) : null}
-      </div>
-      <AskVisit visitUuid={visitUuid} onAnswer={setAnswer} />
+        </>
+      )}
     </aside>
   );
 }
@@ -180,12 +261,12 @@ function ReadinessCheck({
           type="button"
           aria-label={`Open ${row.label}`}
           onClick={() => onOpenPanel(panelFor(row.cited[0], row.panel))}
-          className="group flex w-full items-start gap-3 px-4 py-2.5 text-left hover:bg-dash-canvas/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-primary/30"
+          className="group flex w-full items-start gap-3 px-4 py-2 text-left hover:bg-dash-canvas/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-primary/30"
         >
           {summary}
         </button>
       ) : (
-        <div className="flex items-start gap-3 px-4 py-2.5">{summary}</div>
+        <div className="flex items-start gap-3 px-4 py-2">{summary}</div>
       )}
       {gateBlocked ? (
         <div role="alert" data-testid="oh-imm-fitness-blocked" className="mx-4 mb-2.5 ml-[44px] space-y-1 rounded-md bg-red-50 px-2.5 py-2 text-[12px] text-red-800">
@@ -267,39 +348,56 @@ function StateIcon({ state }: { state: CheckState }) {
   }
 }
 
-function DraftWriteUp({
-  result,
-  loading,
-  onUseDraft,
+/** Inline AI suggestion with Accept, Edit, and Dismiss. */
+export function OhCofDraftSuggestion({
+  wording,
+  restrictions,
+  loading = false,
+  onAccept,
+  className,
 }: {
-  result: CopilotResponse | undefined;
-  loading: boolean;
-  onUseDraft?: OhCertificateReadinessProps["onUseDraft"];
+  wording: string;
+  restrictions: string[];
+  loading?: boolean;
+  onAccept?: (draft: CofDraftPayload) => void;
+  className?: string;
 }) {
   const [used, setUsed] = useState(false);
-  const wording = result?.draft.wording?.trim() ?? "";
-  const restrictions = (result?.draft.restrictions ?? []).filter((line) => line.trim() !== "");
+  const [dismissed, setDismissed] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [wordingEdit, setWordingEdit] = useState(wording);
+  const [restrictionsEdit, setRestrictionsEdit] = useState(restrictions.join("\n"));
+
+  if (dismissed) return null;
   if (!loading && !wording && restrictions.length === 0) return null;
 
+  const currentWording = editing ? wordingEdit : wording;
+  const currentRestrictions = editing
+    ? restrictionsEdit.split("\n").map((line) => line.trim()).filter(Boolean)
+    : restrictions;
+
+  function accept() {
+    onAccept?.({ wording: currentWording, restrictions: currentRestrictions });
+    setUsed(true);
+    setEditing(false);
+  }
+
   return (
-    <section aria-label="Drafted write-up" className="border-b border-dash-border px-4 py-3" data-testid="oh-cof-draft">
+    <section
+      aria-label="Drafted write-up"
+      className={cn("border-b border-dash-border px-4 py-3", className)}
+      data-testid="oh-cof-draft"
+    >
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-[13px] font-semibold text-brand-navy">Drafted write-up</h3>
-        {onUseDraft && (wording || restrictions.length > 0) ? (
-          <button
-            type="button"
-            className={cn(
-              "inline-flex items-center gap-1 rounded-md px-2 py-1 text-[12px] font-medium ring-1 ring-inset transition-colors",
-              used ? "text-emerald-700 ring-emerald-200" : "text-brand-primary ring-brand-primary/25 hover:bg-brand-tint/50",
-            )}
-            onClick={() => {
-              onUseDraft({ wording, restrictions });
-              setUsed(true);
-            }}
-          >
-            {used ? <Check className="size-3" aria-hidden /> : null}
-            {used ? "Used in form" : "Use in form"}
-          </button>
+        <div className="flex items-center gap-1.5">
+          <Sparkles className="size-3 text-brand-primary" aria-hidden />
+          <h3 className="text-[13px] font-semibold text-brand-navy">AI suggestion</h3>
+        </div>
+        {used && !editing ? (
+          <span className="inline-flex items-center gap-1 text-[11.5px] font-medium text-emerald-700">
+            <Check className="size-3" aria-hidden />
+            In the form
+          </span>
         ) : null}
       </div>
       {loading ? (
@@ -309,17 +407,89 @@ function DraftWriteUp({
           <div className="h-3 w-5/6 animate-pulse rounded bg-dash-border/70" />
         </div>
       ) : (
-        <div className="mt-2.5 border-l-2 border-brand-primary/30 pl-3 text-[12.5px] text-brand-navy">
-          {wording ? <ExpandableText text={wording} lines={4} /> : null}
-          {restrictions.length > 0 ? (
-            <ul className={cn("list-disc space-y-0.5 pl-4", wording && "mt-2")}>
-              {restrictions.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-          ) : null}
+        <div className="mt-2.5 border-l-2 border-violet-300 bg-violet-50/50 py-2 pr-2 pl-3 text-[12.5px] text-brand-navy">
+          <p className="mb-1.5 text-[10.5px] font-medium uppercase tracking-wide text-violet-800">
+            {used && !editing ? "Accepted into the form — review and edit there" : "Suggested — not yet in the form"}
+          </p>
+          {editing ? (
+            <div className="space-y-2">
+              {wording || wordingEdit ? (
+                <label className="block">
+                  <span className="mb-1 block text-[11px] font-medium text-dash-muted">Certificate wording</span>
+                  <textarea
+                    value={wordingEdit}
+                    onChange={(event) => setWordingEdit(event.target.value)}
+                    rows={4}
+                    className="w-full resize-y rounded-md border border-dash-border bg-white px-2 py-1.5 text-[12.5px] text-brand-navy outline-none focus:border-brand-primary/40 focus:ring-2 focus:ring-brand-primary/20"
+                    data-testid="oh-cof-draft-edit-wording"
+                  />
+                </label>
+              ) : null}
+              {restrictions.length > 0 || restrictionsEdit ? (
+                <label className="block">
+                  <span className="mb-1 block text-[11px] font-medium text-dash-muted">Restrictions</span>
+                  <textarea
+                    value={restrictionsEdit}
+                    onChange={(event) => setRestrictionsEdit(event.target.value)}
+                    rows={3}
+                    className="w-full resize-y rounded-md border border-dash-border bg-white px-2 py-1.5 text-[12.5px] text-brand-navy outline-none focus:border-brand-primary/40 focus:ring-2 focus:ring-brand-primary/20"
+                    data-testid="oh-cof-draft-edit-restrictions"
+                  />
+                </label>
+              ) : null}
+            </div>
+          ) : (
+            <>
+              {wording ? <ExpandableText text={wording} lines={4} /> : null}
+              {restrictions.length > 0 ? (
+                <ul className={cn("list-disc space-y-0.5 pl-4", wording && "mt-2")}>
+                  {restrictions.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </>
+          )}
         </div>
       )}
+      {onAccept && !loading && (wording || restrictions.length > 0) ? (
+        <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            data-testid="oh-cof-use-draft"
+            className={cn(
+              "inline-flex items-center gap-1 rounded-md px-2 py-1 text-[12px] font-medium ring-1 ring-inset transition-colors",
+              used && !editing
+                ? "text-emerald-700 ring-emerald-200"
+                : "bg-brand-primary text-white ring-brand-primary hover:bg-brand-primary/90",
+            )}
+            onClick={accept}
+          >
+            {used && !editing ? "Accepted" : "Accept"}
+          </button>
+          <button
+            type="button"
+            data-testid="oh-cof-edit-draft"
+            className="inline-flex items-center rounded-md px-2 py-1 text-[12px] font-medium text-brand-navy ring-1 ring-inset ring-dash-border hover:bg-muted"
+            onClick={() => {
+              setWordingEdit(wording);
+              setRestrictionsEdit(restrictions.join("\n"));
+              setEditing(true);
+              setUsed(false);
+            }}
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            data-testid="oh-cof-dismiss-draft"
+            className="inline-flex items-center rounded-md px-2 py-1 text-[12px] font-medium text-dash-muted hover:bg-muted hover:text-brand-navy"
+            onClick={() => setDismissed(true)}
+          >
+            Dismiss
+          </button>
+        </div>
+      ) : null}
       <p className="mt-2 text-[11px] text-dash-muted">Drafted from this visit&apos;s records. Review before signing.</p>
     </section>
   );
