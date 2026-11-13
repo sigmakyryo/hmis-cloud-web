@@ -176,6 +176,9 @@ describe("examAnswerSections", () => {
     expect(history.Laterality).toBe("Left, Right");
     expect(history["Consent form"]).toBe("consent.pdf");
     expect(history.Signature).toBe("Signed");
+    expect(sectionAnswerRows(sections[0]!).find((row) => row.label === "Signature")?.previewSrc).toBe(
+      "data:image/png;base64,xx",
+    );
     expect(history.Notes).toBe("Not recorded");
     expect(sectionAnswerRows(sections[0]!).find((row) => row.label === "Notes")?.empty).toBe(true);
     const findings = sections[1]!;
@@ -254,6 +257,33 @@ describe("examAnswerSummary", () => {
     expect(summary.highlights.filter((item) => item.role === "finding").map((item) => item.value)).toEqual([
       "Heart",
     ]);
+  });
+
+  it("flags a numeric vital only when it sits outside the field's own min or max", () => {
+    const ranged = parseExamTemplateSnapshot({
+      schema_version: 3,
+      sections: [
+        {
+          code: "vitals",
+          name: "Vitals",
+          content_mode: "direct",
+          response_fields: [
+            {
+              code: "temp",
+              label: "Temperature",
+              response_type: "number",
+              unit: "°C",
+              validation: { min: 35, max: 38 },
+            },
+          ],
+          items: [],
+        },
+      ],
+    });
+    const high = examAnswerSummary(ranged, { picks: {}, fields: { vitals: { temp: "39.5" } } }, "exam");
+    expect(high.highlights[0]).toMatchObject({ value: "39.5 °C", role: "vital", flagged: true });
+    const ok = examAnswerSummary(ranged, { picks: {}, fields: { vitals: { temp: "36.8" } } }, "exam");
+    expect(ok.highlights[0]?.flagged).toBeUndefined();
   });
 });
 

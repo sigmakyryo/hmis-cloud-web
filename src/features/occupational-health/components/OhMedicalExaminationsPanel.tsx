@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { MedicalExamStartType } from "@/features/occupational-health/components/OhExamTypeDialog";
-import { OhExamAnswersView } from "@/features/occupational-health/components/OhExamAnswersView";
+import { OhExamAnswersView, visitAnswerSubject } from "@/features/occupational-health/components/OhExamAnswersView";
 import { OhExamTemplateCaptureForm } from "@/features/occupational-health/components/OhExamTemplateCaptureForm";
 import { OhProcedureChecklistPanel } from "@/features/occupational-health/components/OhProcedureChecklistPanel";
 import type { useOhEncounterWorkspaceData } from "@/features/occupational-health/hooks/use-occupational-health";
@@ -652,10 +652,12 @@ export function OhMedicalExaminationsPanel({
         showTemplate ? (
           <div ref={formRef} className="space-y-4 px-5 py-4">
             <header className="space-y-1.5">
+              {answersView ? null : (
               <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
                 <h2 className="text-[15px] font-semibold text-brand-navy">{historicalEnvelope?.template_name ?? riskProfile?.exam_template_name ?? "Examination"}</h2>
-                <div className="flex flex-wrap items-center gap-3">{answersView ? null : <span className="text-xs text-dash-muted" aria-live="polite">{saveLabel}</span>}{answersView ? null : definitionsMissing && encounter.is_active !== false && !hasEnteredResponses && (canConfigure || readyReplacement) ? <SecondaryButton type="button" disabled={recovering || completing} onClick={() => { setRecoveryError(null); setRecoveryOpen(true); }}>Load configured fields</SecondaryButton> : null}{answersView || typeFromVisit ? null : <button type="button" disabled={encounter.is_active === false || completing} onClick={() => setEditingDetails(true)} data-testid="oh-exam-change-type" className="text-[13px] font-medium text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30 disabled:opacity-50">Change type</button>}</div>
+                <div className="flex flex-wrap items-center gap-3"><span className="text-xs text-dash-muted" aria-live="polite">{saveLabel}</span>{definitionsMissing && encounter.is_active !== false && !hasEnteredResponses && (canConfigure || readyReplacement) ? <SecondaryButton type="button" disabled={recovering || completing} onClick={() => { setRecoveryError(null); setRecoveryOpen(true); }}>Load configured fields</SecondaryButton> : null}{typeFromVisit ? null : <button type="button" disabled={encounter.is_active === false || completing} onClick={() => setEditingDetails(true)} data-testid="oh-exam-change-type" className="text-[13px] font-medium text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30 disabled:opacity-50">Change type</button>}</div>
               </div>
+              )}
               <p className="text-xs text-dash-muted"><span>{formatExamTypeLabel(selectedExamType!)}</span><span aria-hidden> · </span><span>{riskProfile?.name ?? "Examination"}</span>{examination?.template_version_number || captureVersion?.number ? ` · Version ${examination?.template_version_number ?? captureVersion?.number}` : ""}</p>
             </header>
 
@@ -663,6 +665,8 @@ export function OhMedicalExaminationsPanel({
             {validationMessage || (!answersView && Object.keys(validationErrors).length) ? <div role="alert" className="border-l-2 border-red-500 px-3 py-1 text-sm text-red-800">{!answersView && Object.keys(validationErrors).length ? "Review the highlighted responses before completing this visit." : validationMessage}</div> : null}
             {answersView && examination ? (
               <OhExamAnswersView
+                heading={historicalEnvelope?.template_name ?? riskProfile?.exam_template_name ?? "Examination"}
+                subject={visitAnswerSubject(encounter, episode)}
                 sections={examAnswerSections(snapshot, answers)}
                 summary={examAnswerSummary(snapshot, answers, "exam")}
                 completedAt={examination.examined_at ?? examination.updated_at}

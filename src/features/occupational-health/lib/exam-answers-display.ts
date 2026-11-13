@@ -10,6 +10,7 @@ export type ExamAnswerFieldDisplay = {
   unit?: string;
   label?: string;
   code?: string;
+  validation?: { min?: number; max?: number };
 };
 
 export type ExamAnswerFieldKind =
@@ -28,6 +29,10 @@ export type ExamAnswerRow = {
   empty: boolean;
   kind: ExamAnswerFieldKind;
   compact: boolean;
+  /** Data-URL image for a signature (or image file), when the raw answer is renderable. */
+  previewSrc?: string;
+  /** True when a numeric value sits outside the field's own min/max, if those were set. */
+  flagged?: boolean;
 };
 
 /** A sub-group under a section (an item with its own fields), or an unnamed block of direct fields. */
@@ -50,6 +55,7 @@ export type ExamAnswerHighlight = {
   label: string;
   value: string;
   role: "outcome" | "validity" | "restriction" | "vital" | "finding";
+  flagged?: boolean;
 };
 
 export type ExamAnswerSummary = {
@@ -164,6 +170,27 @@ function fieldUnit(field: { unit?: unknown }): string | undefined {
   return typeof field.unit === "string" && field.unit.trim() ? field.unit.trim() : undefined;
 }
 
+function isOutsideRange(raw: string, validation: { min?: number; max?: number } | undefined): boolean {
+  if (!validation) {
+    return false;
+  }
+  const trimmed = raw.trim();
+  if (!/^-?\d+(\.\d+)?$/.test(trimmed)) {
+    return false;
+  }
+  const amount = Number(trimmed);
+  if (!Number.isFinite(amount)) {
+    return false;
+  }
+  if (typeof validation.min === "number" && amount < validation.min) {
+    return true;
+  }
+  if (typeof validation.max === "number" && amount > validation.max) {
+    return true;
+  }
+  return false;
+}
+
 function describeRow(field: ExamAnswerFieldDisplay, raw: string): Omit<ExamAnswerRow, "key" | "label"> {
   const empty = raw.trim() === "";
   const value = formatExamFieldValue({ ...field, unit: fieldUnit(field) }, raw);
@@ -190,7 +217,19 @@ function describeRow(field: ExamAnswerFieldDisplay, raw: string): Omit<ExamAnswe
       kind === "attachment" ||
       (kind === "choice" && value.length < 36) ||
       (kind === "text" && value.length < 28));
-  return { value, empty, kind, compact };
+  const previewSrc =
+    !empty && (type === "signature" || type === "file") && raw.trim().startsWith("data:image")
+      ? raw.trim()
+      : undefined;
+  const flagged = !empty && isOutsideRange(raw, field.validation);
+  return {
+    value,
+    empty,
+    kind,
+    compact,
+    ...(previewSrc ? { previewSrc } : {}),
+    ...(flagged ? { flagged: true } : {}),
+  };
 }
 
 function itemHasFields(fields: ExamAnswerFieldDisplay[] | undefined): boolean {
@@ -367,7 +406,13 @@ export function examAnswerSummary(
   walkFilledRows(sections, (row) => {
     const codeKey = row.key.split(":").pop() ?? "";
     if (VITAL_CODE.test(codeKey) || VITAL_LABEL.test(row.label)) {
-      summary.highlights.push({ key: row.key, label: row.label, value: row.value, role: "vital" });
+      summary.highlights.push({
+        key: row.key,
+        label: row.label,
+        value: row.value,
+        role: "vital",
+        ...(row.flagged ? { flagged: true } : {}),
+      });
     }
   });
   for (const section of sections) {

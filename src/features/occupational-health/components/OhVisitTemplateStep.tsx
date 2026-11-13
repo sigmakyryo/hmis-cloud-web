@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { OhExamAnswersView } from "@/features/occupational-health/components/OhExamAnswersView";
+import { OhExamAnswersView, visitAnswerSubject } from "@/features/occupational-health/components/OhExamAnswersView";
 import { OhExamTemplateCaptureForm } from "@/features/occupational-health/components/OhExamTemplateCaptureForm";
 import {
   emptyExamTemplateAnswers,
@@ -370,6 +370,8 @@ export function OhVisitTemplateStep({
   const answersBody =
     isCof && answersView && snapshot ? (
       <OhExamAnswersView
+        heading={title}
+        subject={visitAnswerSubject(encounter)}
         sections={examAnswerSections(snapshot, answers)}
         summary={examAnswerSummary(snapshot, answers, "cof")}
         completedAt={current?.submitted_at ?? current?.updated_at ?? current?.created_at}
