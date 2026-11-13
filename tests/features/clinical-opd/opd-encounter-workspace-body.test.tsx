@@ -2,6 +2,8 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { OpdEncounterWorkspaceBody } from "@/features/clinical-opd/components/detail/OpdEncounterWorkspaceBody";
+import { OPD_WORKSPACE_CONFIG } from "@/features/clinical-opd/config/opd-workspace.config";
+import { ClinicalWorkspaceConfigProvider } from "@/features/clinical-workspace/components/clinical-workspace-config-context";
 
 const route = vi.hoisted(() => ({ pathname: "/clinical/opd/visit-1/enc-1" }));
 
@@ -124,5 +126,36 @@ describe("OpdEncounterWorkspaceBody", () => {
 
     expect(screen.getByText("Activity content")).toBeInTheDocument();
     expect(screen.getByText("Activity content").closest("main")).toBeNull();
+  });
+
+  it("gives workspace nav and main independent scroll panes", () => {
+    function Nav() {
+      return <aside data-testid="dummy-workspace-nav">Nav</aside>;
+    }
+
+    render(
+      <ClinicalWorkspaceConfigProvider
+        config={{
+          ...OPD_WORKSPACE_CONFIG,
+          workspaceNav: Nav,
+          hideSectionTabBar: true,
+        }}
+      >
+        <OpdEncounterWorkspaceBody>
+          <p>Main content</p>
+        </OpdEncounterWorkspaceBody>
+      </ClinicalWorkspaceConfigProvider>,
+    );
+
+    const split = screen.getByTestId("workspace-nav-split");
+    expect(split).toHaveClass("overflow-hidden", "flex-1", "min-h-0");
+    expect(screen.getByTestId("workspace-nav-main")).toHaveClass(
+      "overflow-y-auto",
+    );
+    expect(screen.getByTestId("dummy-workspace-nav")).toBeInTheDocument();
+    expect(screen.getByText("Main content")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("opd-encounter-workspace-grid"),
+    ).toHaveClass("overflow-hidden");
   });
 });

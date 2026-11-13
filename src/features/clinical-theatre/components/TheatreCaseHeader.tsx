@@ -10,6 +10,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { StatusDotBadge } from "@/components/ui/status-dot-badge";
 import { useOpdEncounterWorkspace } from "@/features/clinical-opd/components/detail/opd-encounter-workspace-context";
@@ -55,17 +56,21 @@ const URGENCY_TONE = {
 
 const KEY_ROLES = ["surgeon", "anaesthetist", "scrub_nurse"];
 
-/** Sticky case chrome: compact patient chip and procedure identity. */
-export function TheatreCaseHeader({ visitUuid, encounterUuid }: ClinicalWorkspaceBannerProps) {
+/** Case summary: patient identity, procedure and status badges, facts and actions. */
+export function TheatreCaseHeader({
+  visitUuid,
+  encounterUuid,
+}: ClinicalWorkspaceBannerProps) {
   const { capabilities } = useOpdEncounterWorkspace();
-  const { theatreCase, isLoading, error } = useTheatreCaseForEncounter(encounterUuid);
+  const { theatreCase, isLoading, error } =
+    useTheatreCaseForEncounter(encounterUuid);
 
   if (isLoading) {
     return (
       <TheatreCaseChrome>
-        <div className="px-4 py-3 sm:px-6">
+        <div className="flex flex-wrap items-center gap-3 px-4 py-2 sm:px-6">
+          <TheatrePatientChip />
           <div className="h-4 w-56 animate-pulse rounded bg-muted/70" />
-          <div className="mt-2 h-3 w-72 max-w-full animate-pulse rounded bg-muted/50" />
         </div>
       </TheatreCaseChrome>
     );
@@ -73,16 +78,22 @@ export function TheatreCaseHeader({ visitUuid, encounterUuid }: ClinicalWorkspac
   if (error) {
     return (
       <TheatreCaseChrome>
-        <p className="px-4 py-3 text-sm text-red-600 sm:px-6">
-          {error instanceof Error ? error.message : "Could not load the theatre case."}
-        </p>
+        <div className="space-y-2 px-4 py-2 sm:px-6">
+          <TheatrePatientChip />
+          <p className="text-sm text-red-600">
+            {error instanceof Error
+              ? error.message
+              : "Could not load the theatre case."}
+          </p>
+        </div>
       </TheatreCaseChrome>
     );
   }
   if (!theatreCase) {
     return (
       <TheatreCaseChrome>
-        <div className="px-4 py-3 sm:px-6">
+        <div className="space-y-3 px-4 py-2 sm:px-6">
+          <TheatrePatientChip />
           <TheatreCaseSetupCard
             encounterUuid={encounterUuid}
             canBook={capabilities.includes("book_theatre_case")}
@@ -92,7 +103,7 @@ export function TheatreCaseHeader({ visitUuid, encounterUuid }: ClinicalWorkspac
     );
   }
   return (
-    <TheatreCaseChrome fallbackName={theatreCase.customer_name}>
+    <TheatreCaseChrome>
       <TheatreCaseHeaderBar
         theatreCase={theatreCase}
         visitUuid={visitUuid}
@@ -104,21 +115,12 @@ export function TheatreCaseHeader({ visitUuid, encounterUuid }: ClinicalWorkspac
   );
 }
 
-function TheatreCaseChrome({
-  children,
-  fallbackName,
-}: {
-  children: ReactNode;
-  fallbackName?: string | null;
-}) {
+function TheatreCaseChrome({ children }: { children: ReactNode }) {
   return (
     <header
-      className="sticky top-0 z-30 border-b border-dash-border/70 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85"
+      className="shrink-0 border-b border-dash-border/70 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85"
       data-testid="theatre-case-header"
     >
-      <div className="px-4 py-1.5 sm:px-6">
-        <TheatrePatientChip fallbackName={fallbackName} />
-      </div>
       {children}
     </header>
   );
@@ -149,7 +151,9 @@ function TheatreCaseHeaderBar({
     theatreFlowStepHref(caseHref, step, part);
   const extras = useTheatreFlowExtras(theatreCase);
   const steps = buildTheatreFlow(theatreCase, extras);
-  const blocked = steps.find((step) => step.state === "blocked" && step.issues.length > 0);
+  const blocked = steps.find(
+    (step) => step.state === "blocked" && step.issues.length > 0,
+  );
   const currentStep = currentTheatreFlowStep(theatreCase);
   const viewedStep = onCase
     ? resolveTheatreFlowLocation(
@@ -161,64 +165,87 @@ function TheatreCaseHeaderBar({
   const showJumpToCurrent =
     !isTheatreCaseStopped(theatreCase.status) && viewedStep !== currentStep;
   const currentStepLabel =
-    THEATRE_FLOW_STEPS.find((step) => step.id === currentStep)?.label ?? currentStep;
+    THEATRE_FLOW_STEPS.find((step) => step.id === currentStep)?.label ??
+    currentStep;
   const primary =
     theatreCase.procedures?.find((procedure) => procedure.is_primary) ??
     theatreCase.procedures?.[0];
-  const title = primary?.name || theatreCase.procedure_description || "Procedure not set";
-  const extraProcedures = Math.max((theatreCase.procedures?.length ?? 0) - 1, 0);
-  const stopped = theatreCase.status === "cancelled" || theatreCase.status === "postponed";
+  const title =
+    primary?.name || theatreCase.procedure_description || "Procedure not set";
+  const extraProcedures = Math.max(
+    (theatreCase.procedures?.length ?? 0) - 1,
+    0,
+  );
+  const stopped =
+    theatreCase.status === "cancelled" || theatreCase.status === "postponed";
   // Opening the team drawer keeps the step the user is on.
   const teamParams = new URLSearchParams(searchParams.toString());
   teamParams.set("sheet", "team");
 
   return (
-    <div className="space-y-2 px-4 pb-2 pt-0.5 sm:px-6">
+    <div className="space-y-2 px-4 py-2 sm:px-6">
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <div className="min-w-0 space-y-1">
-          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-            <h2 className="truncate text-sm font-semibold tracking-tight text-brand-navy">
-              {title}
-            </h2>
-            {extraProcedures > 0 ? (
-              <span
-                className="rounded-full bg-muted px-1.5 py-px text-[10px] font-medium text-brand-muted"
-                title={theatreCase.procedures.map((procedure) => procedure.name).join(", ")}
+        <div className="min-w-0 space-y-1.5">
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+            <TheatrePatientChip fallbackName={theatreCase.customer_name} />
+            <div className="flex flex-wrap items-center gap-1">
+              <Badge
+                variant="secondary"
+                className={`${BADGE_CLASS} max-w-[18rem] truncate font-medium`}
+                data-testid="theatre-procedure-badge"
               >
-                +{extraProcedures} more
-              </span>
-            ) : null}
-            <StatusDotBadge tone={theatreStatusTone(theatreCase.status)} className={BADGE_CLASS}>
-              {THEATRE_STATUS_LABELS[theatreCase.status]}
-            </StatusDotBadge>
-            {theatreCase.is_crash ? (
-              <StatusDotBadge tone="danger" className={BADGE_CLASS}>
-                Crash
-              </StatusDotBadge>
-            ) : null}
-            {theatreCase.urgency !== "elective" ? (
-              <StatusDotBadge tone={URGENCY_TONE[theatreCase.urgency]} className={BADGE_CLASS}>
-                {theatreCase.urgency === "emergency" ? "Emergency" : "Urgent"}
-              </StatusDotBadge>
-            ) : null}
-            {theatreCase.ncepod_category ? (
-              <StatusDotBadge tone="neutral" className={BADGE_CLASS}>
-                {ncepodShortLabel(theatreCase.ncepod_category)}
-              </StatusDotBadge>
-            ) : null}
-            {theatreCase.return_of ? (
+                {title}
+              </Badge>
+              {extraProcedures > 0 ? (
+                <span
+                  className="rounded-full bg-muted px-1.5 py-px text-[10px] font-medium text-brand-muted"
+                  title={theatreCase.procedures
+                    .map((procedure) => procedure.name)
+                    .join(", ")}
+                >
+                  +{extraProcedures} more
+                </span>
+              ) : null}
               <StatusDotBadge
-                tone={theatreCase.return_planned ? "info" : "danger"}
+                tone={theatreStatusTone(theatreCase.status)}
                 className={BADGE_CLASS}
               >
-                {theatreCase.return_planned ? "Planned return" : "Return to theatre"}
+                {THEATRE_STATUS_LABELS[theatreCase.status]}
               </StatusDotBadge>
-            ) : null}
-            {theatreCase.cancelled_on_the_day && stopped ? (
-              <StatusDotBadge tone="danger" className={BADGE_CLASS}>
-                On-the-day
-              </StatusDotBadge>
-            ) : null}
+              {theatreCase.is_crash ? (
+                <StatusDotBadge tone="danger" className={BADGE_CLASS}>
+                  Crash
+                </StatusDotBadge>
+              ) : null}
+              {theatreCase.urgency !== "elective" ? (
+                <StatusDotBadge
+                  tone={URGENCY_TONE[theatreCase.urgency]}
+                  className={BADGE_CLASS}
+                >
+                  {theatreCase.urgency === "emergency" ? "Emergency" : "Urgent"}
+                </StatusDotBadge>
+              ) : null}
+              {theatreCase.ncepod_category ? (
+                <StatusDotBadge tone="neutral" className={BADGE_CLASS}>
+                  {ncepodShortLabel(theatreCase.ncepod_category)}
+                </StatusDotBadge>
+              ) : null}
+              {theatreCase.return_of ? (
+                <StatusDotBadge
+                  tone={theatreCase.return_planned ? "info" : "danger"}
+                  className={BADGE_CLASS}
+                >
+                  {theatreCase.return_planned
+                    ? "Planned return"
+                    : "Return to theatre"}
+                </StatusDotBadge>
+              ) : null}
+              {theatreCase.cancelled_on_the_day && stopped ? (
+                <StatusDotBadge tone="danger" className={BADGE_CLASS}>
+                  On-the-day
+                </StatusDotBadge>
+              ) : null}
+            </div>
           </div>
           {theatreCase.cancellation_reason && stopped ? (
             <p
@@ -227,7 +254,9 @@ function TheatreCaseHeaderBar({
             >
               {theatreCase.cancellation_reason.category_label}:{" "}
               {theatreCase.cancellation_reason.label}
-              {theatreCase.cancellation_note ? ` — ${theatreCase.cancellation_note}` : ""}
+              {theatreCase.cancellation_note
+                ? ` — ${theatreCase.cancellation_note}`
+                : ""}
             </p>
           ) : null}
           <dl className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
@@ -252,7 +281,10 @@ function TheatreCaseHeaderBar({
           className="flex shrink-0 flex-wrap items-center gap-2"
           data-testid="theatre-header-actions"
         >
-          <TheatreTimingQuickCapture theatreCase={theatreCase} canRecord={canRecordTimings} />
+          <TheatreTimingQuickCapture
+            theatreCase={theatreCase}
+            canRecord={canRecordTimings}
+          />
           {showJumpToCurrent ? (
             <Button asChild size="sm" variant="outline">
               <Link
@@ -274,7 +306,10 @@ function TheatreCaseHeaderBar({
         </div>
       </div>
 
-      <TheatreCrashBanner theatreCase={theatreCase} stepHref={(step) => stepHref(step)} />
+      <TheatreCrashBanner
+        theatreCase={theatreCase}
+        stepHref={(step) => stepHref(step)}
+      />
     </div>
   );
 }
@@ -297,7 +332,13 @@ function HeaderFact({
   );
 }
 
-function HeaderTeam({ theatreCase, href }: { theatreCase: TheatreCase; href: string }) {
+function HeaderTeam({
+  theatreCase,
+  href,
+}: {
+  theatreCase: TheatreCase;
+  href: string;
+}) {
   const { data: team = [] } = useTheatreTeam(theatreCase.uuid);
   const keyTeam = team.filter((member) => KEY_ROLES.includes(member.role));
   const shown = keyTeam.length > 0 ? keyTeam : team.slice(0, 3);
@@ -325,7 +366,10 @@ function HeaderTeam({ theatreCase, href }: { theatreCase: TheatreCase; href: str
               </span>
               <span className="truncate group-hover:text-brand-navy">
                 {shown
-                  .map((member) => `${THEATRE_TEAM_ROLE_LABELS[member.role]}: ${member.user_name}`)
+                  .map(
+                    (member) =>
+                      `${THEATRE_TEAM_ROLE_LABELS[member.role]}: ${member.user_name}`,
+                  )
                   .join(" · ")}
               </span>
             </>
@@ -380,7 +424,9 @@ function TheatreNextAction({
         type="button"
         size="sm"
         disabled={transition.isPending || Boolean(action.blocker)}
-        onClick={() => transition.mutate({ uuid: theatreCase.uuid, status: action.status })}
+        onClick={() =>
+          transition.mutate({ uuid: theatreCase.uuid, status: action.status })
+        }
         data-testid="theatre-next-action"
       >
         {THEATRE_TRANSITION_ACTION_LABELS[action.status]}
@@ -396,7 +442,10 @@ function TheatreNextAction({
             {fixStep && !viewingFix ? (
               <Link
                 className="font-medium underline underline-offset-2"
-                href={stepHref(fixStep, fixStep === "intra-op" ? "counts" : null)}
+                href={stepHref(
+                  fixStep,
+                  fixStep === "intra-op" ? "counts" : null,
+                )}
                 scroll={false}
               >
                 Go to step

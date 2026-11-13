@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 
 import { DetailPageMainSection } from "@/features/app-shell/components/page-layout";
+import { cn } from "@/lib/utils";
 import { OpdEncounterAllergyBanner } from "@/features/clinical-opd/components/detail/OpdEncounterAllergyBanner";
 import { OpdEncounterTabs } from "@/features/clinical-opd/components/detail/OpdEncounterTabs";
 import { OpdEncounterVitalsStatsStrip } from "@/features/clinical-opd/components/detail/OpdEncounterVitalsStatsStrip";
@@ -46,7 +47,10 @@ export function OpdEncounterWorkspaceBody({
 
   return (
     <div
-      className="flex min-w-0 flex-1 flex-col"
+      className={cn(
+        "flex min-w-0 flex-1 flex-col",
+        WorkspaceNav && "h-full min-h-0 overflow-hidden",
+      )}
       data-testid="opd-encounter-workspace-grid"
     >
       <OpdEncounterAllergyBanner allergies={chartSummary?.allergies ?? []} />
@@ -61,18 +65,30 @@ export function OpdEncounterWorkspaceBody({
       {routing.hideSectionTabBar ? null : <OpdEncounterTabs />}
 
       {WorkspaceNav ? (
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col lg:flex-row">
+        <div
+          className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:flex-row"
+          data-testid="workspace-nav-split"
+        >
           <WorkspaceNav visitUuid={visitUuid} encounterUuid={encounterUuid} />
-          {isFullWidthLayout ? (
-            <div className="min-w-0 flex-1">{children}</div>
-          ) : (
-            <DetailPageMainSection className="max-w-3xl">{children}</DetailPageMainSection>
-          )}
+          <div
+            className="min-h-0 min-w-0 flex-1 overflow-y-auto pb-20 xl:pb-0"
+            data-testid="workspace-nav-main"
+          >
+            {isFullWidthLayout ? (
+              children
+            ) : (
+              <DetailPageMainSection className="max-w-3xl">
+                {children}
+              </DetailPageMainSection>
+            )}
+          </div>
         </div>
       ) : isFullWidthLayout ? (
         children
       ) : (
-        <DetailPageMainSection className="max-w-3xl">{children}</DetailPageMainSection>
+        <DetailPageMainSection className="max-w-3xl">
+          {children}
+        </DetailPageMainSection>
       )}
     </div>
   );

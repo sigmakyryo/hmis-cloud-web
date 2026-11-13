@@ -99,7 +99,8 @@ describe("TheatrePatientChip", () => {
     expect(chip).toHaveTextContent("SIGMA-000015");
     expect(chip).toHaveTextContent(/36y/);
     expect(chip).toHaveTextContent("F");
-    expect(chip).toHaveTextContent("Waiting");
+    // Case status lives on the header as a badge, not on the identity control.
+    expect(chip).not.toHaveTextContent("Waiting");
 
     // Visit meta stays out of the permanent chrome.
     expect(screen.queryByTestId("opd-encounter-fact-department")).toBeNull();
@@ -114,6 +115,9 @@ describe("TheatrePatientChip", () => {
     fireEvent.click(screen.getByTestId("theatre-patient-chip"));
 
     expect(screen.getByTestId("theatre-patient-sheet")).toBeTruthy();
+    expect(screen.getByTestId("theatre-patient-sheet")).toHaveTextContent(
+      "Waiting",
+    );
     expect(
       screen.getByTestId("opd-encounter-fact-department"),
     ).toHaveTextContent("Theatre");

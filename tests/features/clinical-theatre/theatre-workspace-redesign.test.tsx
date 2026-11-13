@@ -204,8 +204,17 @@ describe("theatre case header", () => {
     capabilities = ["view_theatre_queue", "transition_theatre_case"];
     fetchTheatreCases.mockResolvedValue([makeCase()]);
     wrap(<TheatreCaseHeader visitUuid="v1" encounterUuid="e1" />);
-    expect(await screen.findByText("Lap chole")).toBeTruthy();
-    expect(screen.getByText("Ada Patient")).toBeTruthy();
+    const procedure = await screen.findByTestId("theatre-procedure-badge");
+    const header = screen.getByTestId("theatre-case-header");
+    const chip = screen.getByTestId("theatre-patient-chip");
+    expect(procedure).toHaveTextContent("Lap chole");
+    expect(screen.queryByRole("heading", { name: "Lap chole" })).toBeNull();
+    expect(chip).toHaveTextContent("Ada Patient");
+    expect(chip).not.toHaveTextContent("Waiting");
+    expect(chip).not.toHaveTextContent("Booked");
+    expect(header).toContainElement(chip);
+    expect(header).toContainElement(procedure);
+    expect(header).toHaveTextContent("Booked");
     expect(screen.getByText("OT 1")).toBeTruthy();
     expect(await screen.findByText(/Surgeon: Dr Banda/)).toBeTruthy();
     expect(screen.queryByTestId("theatre-case-stepper")).toBeNull();
@@ -289,12 +298,21 @@ describe("theatre workspace nav", () => {
       expect(rail.querySelector('[data-flow-step="booking"]')).toBeTruthy();
     });
     expect(rail.querySelector('[data-flow-step="sign-in"]')).toBeTruthy();
+    expect(screen.queryByText("Patient records")).toBeNull();
     expect(
-      screen.getByTestId("theatre-record-tab-vital-signs"),
-    ).toHaveTextContent("Vital signs");
+      screen.getByRole("navigation", { name: "Perioperative journey" }),
+    ).toBeTruthy();
+    const vitalSigns = screen.getByTestId("theatre-record-tab-vital-signs");
+    expect(vitalSigns).toHaveTextContent("Vital signs");
+    expect(vitalSigns.closest("nav")?.getAttribute("aria-label")).toBe(
+      "Perioperative journey",
+    );
+    expect(vitalSigns.className).toContain("justify-between");
     expect(screen.getByTestId("theatre-record-tab-nursing")).toHaveTextContent(
       "Nursing",
     );
+    expect(screen.getByTestId("theatre-flow-step-action-booking")).toBeTruthy();
+    expect(rail).toHaveClass("overflow-y-auto");
     expect(screen.queryByTestId("theatre-records-menu")).toBeNull();
   });
 });

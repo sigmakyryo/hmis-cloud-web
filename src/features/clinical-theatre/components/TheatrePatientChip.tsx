@@ -155,8 +155,9 @@ function resolveIdentity(
 }
 
 /**
- * Compact, sticky patient identity. Visit meta and the Schedule action live
- * in a side sheet so they do not occupy a permanent header.
+ * Compact patient identity for the case header. Clicking opens a side sheet
+ * with visit meta and the Schedule action. Status is shown once, as a case
+ * badge in the header — not on this control.
  */
 export function TheatrePatientChip({ fallbackName }: TheatrePatientChipProps) {
   const { customer, encounter } = useOpdEncounterWorkspace();
@@ -187,9 +188,6 @@ export function TheatrePatientChip({ fallbackName }: TheatrePatientChipProps) {
     .filter(Boolean)
     .join(" · ");
   const facts = buildVisitFacts(encounter);
-  const statusLabel = identity.status
-    ? identity.status.replaceAll("_", " ")
-    : null;
 
   const openSchedule = () => {
     setDetailsOpen(false);
@@ -203,19 +201,14 @@ export function TheatrePatientChip({ fallbackName }: TheatrePatientChipProps) {
           <button
             type="button"
             className={cn(
-              "group inline-flex max-w-full items-center gap-1.5 rounded-full border border-dash-border/80 bg-background py-px pl-px pr-1.5",
-              "text-left shadow-sm transition-colors",
-              "hover:border-brand-primary/40 hover:bg-muted/40",
+              "group inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-md py-0.5 pr-1",
+              "text-left transition-colors",
+              "hover:bg-muted/50",
               "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary",
-              "dark:border-border dark:bg-background dark:hover:bg-muted/30",
             )}
             aria-haspopup="dialog"
             aria-expanded={detailsOpen}
-            aria-label={
-              statusLabel
-                ? `${fullName}, ${chipMeta || "patient"}, ${statusLabel}. Open visit details.`
-                : `${fullName}, ${chipMeta || "patient"}. Open visit details.`
-            }
+            aria-label={`${fullName}, ${chipMeta || "patient"}. Open visit details.`}
             data-testid="theatre-patient-chip"
           >
             <UserIdenticon
@@ -236,16 +229,6 @@ export function TheatrePatientChip({ fallbackName }: TheatrePatientChipProps) {
                 </span>
               ) : null}
             </span>
-            {identity.status ? (
-              <OpdEncounterStatusBadge
-                status={identity.status}
-                className={cn(
-                  "h-4 shrink-0 px-1 text-[10px]",
-                  STATUS_BADGE_DARK[identity.status] ??
-                    "dark:border-border dark:bg-transparent dark:text-muted-foreground",
-                )}
-              />
-            ) : null}
             <ChevronDown
               className={cn(
                 "size-3 shrink-0 text-muted-foreground transition-transform duration-200",

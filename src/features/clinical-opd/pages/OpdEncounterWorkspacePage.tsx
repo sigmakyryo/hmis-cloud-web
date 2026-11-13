@@ -252,14 +252,21 @@ export function OpdEncounterWorkspacePage({
           isChartLocked,
         }}
       >
-        <DetailPageLayout data-testid="opd-encounter-workspace">
+        <DetailPageLayout
+          data-testid="opd-encounter-workspace"
+          lockScroll={Boolean(config.workspaceNav)}
+        >
           {config.hideEncounterHeader ? null : (
             <OpdEncounterHeader
               customer={customer}
               actions={<OpdEncounterScheduleButton customer={customer} />}
             />
           )}
-          <DetailPageTabsSection>
+          <DetailPageTabsSection
+            className={
+              config.workspaceNav ? "min-h-0 overflow-hidden" : undefined
+            }
+          >
             <OpdEncounterWorkspaceBody>
               {isCustomerLoading && !customer ? (
                 <OpdEncounterTabSkeleton rows={4} />

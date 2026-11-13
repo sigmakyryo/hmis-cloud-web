@@ -4,7 +4,10 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
 import { useOpdEncounterWorkspace } from "@/features/clinical-opd/components/detail/opd-encounter-workspace-context";
-import { TheatreFlowRail } from "@/features/clinical-theatre/components/case-flow/TheatreFlowRail";
+import {
+  onTheatreRailKeyDown,
+  TheatreFlowRail,
+} from "@/features/clinical-theatre/components/case-flow/TheatreFlowRail";
 import {
   THEATRE_WORKSPACE_ROUTING,
   theatreCaseHref,
@@ -42,7 +45,9 @@ type NavModel = {
 
 /**
  * Vertical section rail (desktop) and a horizontal strip (mobile): case-flow
- * steps, then patient-record sections. Shown on every theatre encounter page.
+ * steps and patient-record sections in one "Perioperative journey" list.
+ * Shown on every theatre encounter page. The rail scrolls independently of
+ * the page body.
  */
 export function TheatreWorkspaceTabs({
   visitUuid,
@@ -108,7 +113,7 @@ function TheatreWorkspaceStrip({ model }: { model: NavModel }) {
   return (
     <nav
       aria-label="Theatre case sections"
-      className="scrollbar-hide border-b border-dash-border/60 lg:hidden"
+      className="scrollbar-hide shrink-0 border-b border-dash-border/60 lg:hidden"
       data-testid="theatre-workspace-strip"
     >
       <div className="overflow-x-auto px-4 py-2 sm:px-6">
@@ -182,28 +187,31 @@ function TheatreWorkspaceRail({ model }: { model: NavModel }) {
   } = model;
   return (
     <aside
-      className="hidden w-[17rem] shrink-0 border-r border-dash-border/70 lg:block"
+      className="hidden min-h-0 w-[17rem] shrink-0 overflow-y-auto border-r border-dash-border/70 lg:block"
       data-testid="theatre-workspace-rail"
     >
-      <div className="sticky top-24 space-y-6 px-3 py-4">
-        {steps.length > 0 ? (
-          <div>
-            <p className="mb-3 px-2 text-xs font-semibold uppercase tracking-wider text-brand-muted">
-              Perioperative journey
-            </p>
+      <div className="px-3 py-4">
+        <nav
+          aria-label="Perioperative journey"
+          onKeyDown={onTheatreRailKeyDown}
+        >
+          <p className="mb-3 px-2 text-xs font-semibold uppercase tracking-wider text-brand-muted">
+            Perioperative journey
+          </p>
+          {steps.length > 0 ? (
             <TheatreFlowRail
               steps={steps}
               activeStep={activeStep}
               hrefFor={stepHref}
             />
-          </div>
-        ) : null}
-        {recordSections.length > 0 ? (
-          <nav aria-label="Patient records">
-            <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-brand-muted">
-              Patient records
-            </p>
-            <div className="flex flex-col">
+          ) : null}
+          {recordSections.length > 0 ? (
+            <div
+              className={cn(
+                "flex flex-col",
+                steps.length > 0 && "mt-1 border-t border-dash-border/60 pt-1",
+              )}
+            >
               {recordSections.map((section) => {
                 const active = activeRecordId === section.id;
                 return (
@@ -211,22 +219,23 @@ function TheatreWorkspaceRail({ model }: { model: NavModel }) {
                     key={section.id}
                     href={recordHref(section.id)}
                     aria-current={active ? "page" : undefined}
+                    data-theatre-record={section.id}
                     data-testid={`theatre-record-tab-${section.id}`}
                     className={cn(
-                      "flex items-center rounded-lg px-2 py-2 text-sm outline-none transition-colors",
+                      "flex items-center justify-between gap-2 rounded-lg px-2 py-2 text-sm outline-none transition-colors",
                       "focus-visible:ring-2 focus-visible:ring-brand-primary/40",
                       active
                         ? "bg-brand-primary/[0.06] font-semibold text-brand-navy"
                         : "font-medium text-brand-navy/80 hover:bg-muted/60",
                     )}
                   >
-                    {section.label}
+                    <span className="truncate">{section.label}</span>
                   </Link>
                 );
               })}
             </div>
-          </nav>
-        ) : null}
+          ) : null}
+        </nav>
       </div>
     </aside>
   );

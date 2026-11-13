@@ -24,7 +24,13 @@ export function theatreFlowStateLabel(state: TheatreFlowStepState): string {
   return STATE_LABELS[state];
 }
 
-function StepMarker({ state, index }: { state: TheatreFlowStepState; index: number }) {
+function StepMarker({
+  state,
+  index,
+}: {
+  state: TheatreFlowStepState;
+  index: number;
+}) {
   const base =
     "relative z-10 inline-flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums transition-colors";
   switch (state) {
@@ -36,19 +42,34 @@ function StepMarker({ state, index }: { state: TheatreFlowStepState; index: numb
       );
     case "current":
       return (
-        <span className={cn(base, "bg-brand-primary text-white ring-4 ring-brand-primary/15")}>
+        <span
+          className={cn(
+            base,
+            "bg-brand-primary text-white ring-4 ring-brand-primary/15",
+          )}
+        >
           {index + 1}
         </span>
       );
     case "blocked":
       return (
-        <span className={cn(base, "bg-amber-500 text-white ring-4 ring-amber-500/15")}>
+        <span
+          className={cn(
+            base,
+            "bg-amber-500 text-white ring-4 ring-amber-500/15",
+          )}
+        >
           <TriangleAlert className="size-3.5" aria-hidden />
         </span>
       );
     case "attention":
       return (
-        <span className={cn(base, "bg-amber-50 text-amber-700 ring-1 ring-amber-300")}>
+        <span
+          className={cn(
+            base,
+            "bg-amber-50 text-amber-700 ring-1 ring-amber-300",
+          )}
+        >
           <CircleAlert className="size-3.5" aria-hidden />
         </span>
       );
@@ -60,19 +81,33 @@ function StepMarker({ state, index }: { state: TheatreFlowStepState; index: numb
       );
     default:
       return (
-        <span className={cn(base, "bg-background text-brand-muted ring-1 ring-dash-border")}>
+        <span
+          className={cn(
+            base,
+            "bg-background text-brand-muted ring-1 ring-dash-border",
+          )}
+        >
           {index + 1}
         </span>
       );
   }
 }
 
-/** Arrow keys move focus between steps (Home / End jump to the ends). */
-function onRailKeyDown(event: KeyboardEvent<HTMLElement>) {
-  const keys = ["ArrowDown", "ArrowUp", "ArrowRight", "ArrowLeft", "Home", "End"];
+/** Arrow keys move focus between rail links (Home / End jump to the ends). */
+export function onTheatreRailKeyDown(event: KeyboardEvent<HTMLElement>) {
+  const keys = [
+    "ArrowDown",
+    "ArrowUp",
+    "ArrowRight",
+    "ArrowLeft",
+    "Home",
+    "End",
+  ];
   if (!keys.includes(event.key)) return;
   const links = Array.from(
-    event.currentTarget.querySelectorAll<HTMLAnchorElement>("a[data-flow-step]"),
+    event.currentTarget.querySelectorAll<HTMLAnchorElement>(
+      "a[data-flow-step], a[data-theatre-record]",
+    ),
   );
   const index = links.indexOf(document.activeElement as HTMLAnchorElement);
   if (index === -1) return;
@@ -97,7 +132,7 @@ type RailProps = {
 /** Vertical journey rail (large screens). */
 export function TheatreFlowRail({ steps, activeStep, hrefFor }: RailProps) {
   return (
-    <nav aria-label="Theatre case steps" onKeyDown={onRailKeyDown} data-testid="theatre-flow-rail">
+    <div data-testid="theatre-flow-rail">
       <ol className="relative">
         {steps.map((step, index) => {
           const active = step.id === activeStep;
@@ -108,7 +143,7 @@ export function TheatreFlowRail({ steps, activeStep, hrefFor }: RailProps) {
                 <span
                   aria-hidden
                   className={cn(
-                    "absolute left-[1.375rem] top-9 h-[calc(100%-1.75rem)] w-px",
+                    "absolute left-[1.375rem] top-8 h-[calc(100%-1.5rem)] w-px",
                     step.state === "done" ? "bg-emerald-300" : "bg-dash-border",
                   )}
                 />
@@ -120,43 +155,41 @@ export function TheatreFlowRail({ steps, activeStep, hrefFor }: RailProps) {
                 data-state={step.state}
                 aria-current={active ? "step" : undefined}
                 className={cn(
-                  "group flex items-start gap-3 rounded-lg px-2 py-2 outline-none transition-colors",
+                  "group flex items-center gap-3 rounded-lg px-2 py-2 outline-none transition-colors",
                   "focus-visible:ring-2 focus-visible:ring-brand-primary/40",
                   active ? "bg-brand-primary/[0.06]" : "hover:bg-muted/60",
                 )}
               >
                 <StepMarker state={step.state} index={index} />
-                <span className="min-w-0 flex-1 pt-0.5">
-                  <span className="flex items-center gap-2">
-                    <span
-                      className={cn(
-                        "truncate text-sm",
-                        active ? "font-semibold text-brand-navy" : "font-medium text-brand-navy/80",
-                        step.state === "stopped" && "text-muted-foreground",
-                      )}
-                    >
-                      {step.label}
-                    </span>
-                    {step.state === "current" || step.state === "blocked" ? (
-                      <span
-                        className={cn(
-                          "rounded-full px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide",
-                          step.state === "blocked"
-                            ? "bg-amber-100 text-amber-800"
-                            : "bg-brand-primary/10 text-brand-primary",
-                        )}
-                      >
-                        Now
-                      </span>
-                    ) : null}
+                <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                  <span
+                    className={cn(
+                      "truncate text-sm",
+                      active
+                        ? "font-semibold text-brand-navy"
+                        : "font-medium text-brand-navy/80",
+                      step.state === "stopped" && "text-muted-foreground",
+                    )}
+                  >
+                    {step.label}
                   </span>
                   <span
                     className={cn(
-                      "mt-0.5 block text-xs leading-4",
+                      "max-w-[7.5rem] shrink-0 truncate text-right text-[10px] font-semibold uppercase tracking-wide",
                       step.issues.length > 0 && step.state !== "upcoming"
                         ? "text-amber-700"
-                        : "text-muted-foreground",
+                        : step.state === "current"
+                          ? "text-brand-primary"
+                          : step.state === "done"
+                            ? "text-emerald-700"
+                            : "text-muted-foreground",
                     )}
+                    title={
+                      step.issues.length > 0 && step.state !== "upcoming"
+                        ? step.issues[0]
+                        : theatreFlowStateLabel(step.state)
+                    }
+                    data-testid={`theatre-flow-step-action-${step.id}`}
                   >
                     {step.issues.length > 0 && step.state !== "upcoming"
                       ? step.issues[0]
@@ -168,7 +201,7 @@ export function TheatreFlowRail({ steps, activeStep, hrefFor }: RailProps) {
           );
         })}
       </ol>
-    </nav>
+    </div>
   );
 }
 
@@ -177,7 +210,7 @@ export function TheatreFlowStrip({ steps, activeStep, hrefFor }: RailProps) {
   return (
     <nav
       aria-label="Theatre case steps"
-      onKeyDown={onRailKeyDown}
+      onKeyDown={onTheatreRailKeyDown}
       className="scrollbar-hide -mx-4 overflow-x-auto px-4 sm:-mx-6 sm:px-6"
       data-testid="theatre-flow-strip"
     >
