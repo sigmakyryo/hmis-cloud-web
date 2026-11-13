@@ -306,9 +306,14 @@ export function OhVisitTemplateStep({
 
   if (locked) {
     return (
-      <div className="flex flex-1 flex-col items-start justify-center gap-2 px-5 py-10" data-testid={`oh-${family}-step-locked`}>
+      <div className="flex flex-1 flex-col items-start justify-center gap-3 px-5 py-10" data-testid={`oh-${family}-step-locked`}>
         <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-brand-primary">{title}</p>
         <p className="max-w-md text-sm text-dash-muted">{lockReason}</p>
+        {onOpenPanel ? (
+          <SecondaryButton type="button" onClick={() => onOpenPanel("medical-examinations")}>
+            Go to examination
+          </SecondaryButton>
+        ) : null}
       </div>
     );
   }

@@ -91,6 +91,7 @@ type OhRecordsEmptyProps = {
   icon: LucideIcon;
   title: string;
   description: string;
+  action?: ReactNode;
   "data-testid"?: string;
 };
 
@@ -99,6 +100,7 @@ export function OhRecordsEmpty({
   icon: Icon,
   title,
   description,
+  action,
   "data-testid": dataTestId,
 }: OhRecordsEmptyProps) {
   return (
@@ -113,6 +115,7 @@ export function OhRecordsEmpty({
       <p className="mt-1 max-w-xs text-[13px] leading-relaxed text-dash-muted">
         {description}
       </p>
+      {action ? <div className="mt-4">{action}</div> : null}
     </div>
   );
 }

@@ -485,8 +485,9 @@ export function mergeReviewFindings(
   return merged;
 }
 
+/** Same section, item, or field is listed once; a dedicated-page finding wins over a quality finding. */
 function findingKey(finding: FormReviewFinding): string {
-  return `${finding.target}:${finding.id}:${finding.label}:${finding.recordType ?? finding.kind}`;
+  return `${finding.target}:${finding.id}`;
 }
 
 export function normalizeQualityFinding(raw: {

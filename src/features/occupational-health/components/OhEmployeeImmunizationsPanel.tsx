@@ -4,9 +4,15 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 
+import Link from "next/link";
+import { Syringe } from "lucide-react";
+
 import { PrimaryButton, SecondaryButton } from "@/components/ui/app-buttons";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ROUTES } from "@/constants/routes";
+import { OhVisitPanelEmptyState } from "@/features/occupational-health/components/OhVisitPanelEmptyState";
 import {
   administerOhImmDose,
   createOhImmAefi,
@@ -373,12 +379,22 @@ export function OhEmployeeImmunizationsPanel({
       ) : null}
 
       {statuses.length === 0 && doses.length === 0 ? (
-        <div className="rounded-md border border-dashed border-dash-border px-4 py-6 text-center">
-          <p className="text-[13px] font-medium text-brand-navy">No immunization record yet</p>
-          <p className="mt-1 text-[13px] text-dash-muted">
-            Record a dose or an exemption to start this employee&apos;s history.
-          </p>
-        </div>
+        <OhVisitPanelEmptyState
+          icon={Syringe}
+          title="No immunization record yet"
+          description="Record a dose or an exemption to start this employee's history, or open Immunizations to set up programmes."
+          action={
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button type="button" onClick={() => setRecordOpen(true)}>
+                Record a dose
+              </Button>
+              <Button asChild variant="outline">
+                <Link href={ROUTES.occupationalHealthImmunizations}>Open immunizations</Link>
+              </Button>
+            </div>
+          }
+          data-testid="oh-imm-visit-empty"
+        />
       ) : (
         <>
           {statuses.length > 0 ? (

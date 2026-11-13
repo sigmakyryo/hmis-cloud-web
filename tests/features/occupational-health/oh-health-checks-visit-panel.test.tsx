@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { healthProgramsProxy } from "@/lib/server/health-programs-bff";
 import { healthCheckDeviceSource } from "@/features/occupational-health/lib/health-check-device";
 import { healthCheckStatus } from "@/features/occupational-health/components/OhHealthChecksVisitPanel";
+import { healthCheckSummaryLine } from "@/features/occupational-health/lib/health-check-status";
 import type { HpResult } from "@/features/occupational-health/services/health-programs.service";
 
 const mocks = vi.hoisted(() => ({
@@ -89,7 +90,7 @@ describe("health checks visit panel", () => {
       expect(within(row).getByRole("button", { name: "Pull from device" })).toBeTruthy();
     }
     expect(screen.getByRole("button", { name: "Pull from devices" })).toBeTruthy();
-    expect(screen.getByText(/0 of 5 recorded/)).toBeTruthy();
+    expect(screen.getByText(/0 of 5 done/)).toBeTruthy();
   });
 
   it("enters a result manually and posts a new record", async () => {
@@ -164,7 +165,8 @@ describe("health checks visit panel", () => {
     const vision = screen.getByTestId("oh-health-check-row-vision");
     expect(vision.getAttribute("data-status")).toBe("flagged");
     expect(within(vision).getByText("Flagged")).toBeTruthy();
-    expect(within(vision).getByText("Acuity below standard")).toBeTruthy();
+    expect(within(vision).getByText(/Acuity below standard/)).toBeTruthy();
+    expect(screen.getByTestId("oh-health-check-summary")).toHaveTextContent("2 of 5 done, 1 flagged");
   });
 
   it("shows a non-error empty state when pulling from a device and offers manual entry", async () => {
@@ -207,6 +209,26 @@ describe("health checks visit panel", () => {
     expect(healthCheckStatus(result({ outcome: "fit", referral: false, computed: { flags: [] }, restrictions: [] }))).toBe("recorded");
     expect(healthCheckStatus(result({ outcome: "fit", referral: false, computed: { flags: ["sts"] }, restrictions: [] }))).toBe("flagged");
     expect(healthCheckStatus(result({ outcome: "unfit" }))).toBe("abnormal");
+  });
+
+  it("summary line counts completed and flagged tests", () => {
+    expect(healthCheckSummaryLine([])).toBe("0 of 5 done");
+    const clean = result({
+      program: "lung",
+      outcome: "fit",
+      referral: false,
+      restrictions: [],
+      computed: { flags: [] },
+    });
+    expect(healthCheckSummaryLine([clean])).toBe("1 of 5 done");
+    const flagged = result({
+      program: "vision",
+      outcome: "fit",
+      referral: false,
+      restrictions: [],
+      computed: { flags: ["acuity_below_standard"] },
+    });
+    expect(healthCheckSummaryLine([clean, flagged])).toBe("2 of 5 done, 1 flagged");
   });
 
   it("BFF allows PATCH on a result id only", () => {

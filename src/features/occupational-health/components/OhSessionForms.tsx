@@ -217,6 +217,7 @@ export function OhSessionForms({
                   appliedDraftSeq={certificateDraftSeq}
                   hideInlineSuggestion
                   onCreated={workspace.refetchAll}
+                  onOpenPanel={onOpenPanel}
                 />
               </div>
               <div className="border-t border-dash-border px-5 py-4">

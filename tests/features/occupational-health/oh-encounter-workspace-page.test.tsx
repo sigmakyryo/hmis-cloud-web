@@ -81,6 +81,23 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(window.location.search),
 }));
 
+vi.mock("@/features/occupational-health/services/immunisation.service", async (orig) => {
+  const actual = await orig<typeof import("@/features/occupational-health/services/immunisation.service")>();
+  return { ...actual, fetchOhImmPatient: vi.fn(async () => ({ statuses: [], doses: [] })) };
+});
+vi.mock("@/features/occupational-health/services/drug-alcohol.service", async (orig) => {
+  const actual = await orig<typeof import("@/features/occupational-health/services/drug-alcohol.service")>();
+  return { ...actual, fetchDaVisitPanel: vi.fn(async () => ({ policy: null, tests: [] })) };
+});
+vi.mock("@/features/occupational-health/services/health-programs.service", async (orig) => {
+  const actual = await orig<typeof import("@/features/occupational-health/services/health-programs.service")>();
+  return { ...actual, fetchHpResults: vi.fn(async () => []) };
+});
+vi.mock("@/features/occupational-health/services/fitness.service", async (orig) => {
+  const actual = await orig<typeof import("@/features/occupational-health/services/fitness.service")>();
+  return { ...actual, fetchFitWorker: vi.fn(async () => ({ overall: "unknown" })) };
+});
+
 const ENCOUNTER = {
   id: 7,
   uuid: "enc-1",

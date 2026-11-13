@@ -212,3 +212,25 @@ it("visit panel shows the breath alcohol wait countdown", async () => {
   expect(screen.getByText(/Confirm in/)).toBeVisible();
   expect(screen.getByRole("button", { name: "Save confirmation" })).toBeDisabled();
 });
+
+it("visit panel empty state links to drug and alcohol policies", async () => {
+  mocks.panel.mockResolvedValue({
+    visit_uuid: "visit-1234",
+    customer_uuid: "cust-1234",
+    policy: null,
+    status: null,
+    tests: [],
+    open: { random_selections: [], followups: [], rtd_cases: [] },
+    refusal_reasons: [],
+    can_view_results: false,
+  });
+  renderPage(<OhDrugAlcoholVisitPanel customerUuid="cust-1234" encounterUuid="enc-1234" />);
+  const empty = await screen.findByTestId("oh-da-visit-empty");
+  expect(empty).toBeVisible();
+  expect(screen.getByText("No policy set up yet")).toBeVisible();
+  expect(screen.getByRole("link", { name: "Set up policies" })).toHaveAttribute(
+    "href",
+    "/drug-alcohol/policies",
+  );
+  expect(screen.queryByRole("alert")).toBeNull();
+});

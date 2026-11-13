@@ -1,9 +1,14 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
+import { FlaskConical } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { PageActionButton, SecondaryButton } from "@/components/ui/app-buttons";
+import { Button } from "@/components/ui/button";
+import { ROUTES } from "@/constants/routes";
+import { OhVisitPanelEmptyState } from "@/features/occupational-health/components/OhVisitPanelEmptyState";
 import { downloadBlob } from "@/app/(app)/immunizations/_components/shared/download-blob";
 import { CheckField, Field, SelectField } from "@/app/(app)/immunizations/_components/shared/Field";
 import { ImmStatusBadge } from "@/app/(app)/immunizations/_components/shared/ImmRecordTable";
@@ -83,15 +88,50 @@ export function OhDrugAlcoholVisitPanel({
   if (query.isLoading) return <QuietLoading />;
   if (query.isError || !panel) return <LoadError>{errorText(query.error, "Could not load drug & alcohol testing.")}</LoadError>;
 
+  const earlier = past.length > 0 ? (
+    <Step title="Earlier tests">
+      <ul className="space-y-1">
+        {past.slice(0, 8).map((t) => (
+          <li key={t.uuid} className="flex flex-wrap items-center justify-between gap-2">
+            <span>
+              {t.reference} · {label(REASON_LABEL, t.reason)} · {fmtDateTime(t.created_at)}
+            </span>
+            <span className="flex items-center gap-2">
+              <ImmStatusBadge status={t.status} label={label(TEST_STATUS_LABEL, t.status)} />
+              <span className="text-dash-muted">{label(FITNESS_LABEL, t.fitness_outcome)}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </Step>
+  ) : null;
+
+  if (!panel.policy) {
+    return (
+      <div className="space-y-1 text-[13px]" data-testid="oh-da-visit-panel">
+        <OhVisitPanelEmptyState
+          icon={FlaskConical}
+          title="No policy set up yet"
+          description="Load or create a testing policy so you can start a drug and alcohol test on this visit."
+          action={
+            <Button asChild>
+              <Link href={ROUTES.drugAlcoholPolicies}>Set up policies</Link>
+            </Button>
+          }
+          data-testid="oh-da-visit-empty"
+        />
+        {earlier}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-1 text-[13px]" data-testid="oh-da-visit-panel">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-dash-border/70 pb-2">
         <div>
           <p className="font-semibold text-brand-navy">Drug & alcohol testing</p>
           <p className="text-[12px] text-dash-muted">
-            {panel.policy
-              ? `${panel.policy.name} v${panel.policy.version}${panel.policy.is_example ? " (example policy)" : ""}`
-              : "No policy set up yet - load one under Drug & Alcohol > Policies."}
+            {`${panel.policy.name} v${panel.policy.version}${panel.policy.is_example ? " (example policy)" : ""}`}
           </p>
         </div>
         {panel.status ? (
@@ -103,26 +143,10 @@ export function OhDrugAlcoholVisitPanel({
       </div>
       {active ? (
         <ActiveTest panel={panel} test={active} queryKey={daVisitPanelKey(encounterUuid, customerUuid)} />
-      ) : panel.policy ? (
+      ) : (
         <StartTest panel={panel} encounterUuid={encounterUuid} queryKey={daVisitPanelKey(encounterUuid, customerUuid)} />
-      ) : null}
-      {past.length > 0 ? (
-        <Step title="Earlier tests">
-          <ul className="space-y-1">
-            {past.slice(0, 8).map((t) => (
-              <li key={t.uuid} className="flex flex-wrap items-center justify-between gap-2">
-                <span>
-                  {t.reference} · {label(REASON_LABEL, t.reason)} · {fmtDateTime(t.created_at)}
-                </span>
-                <span className="flex items-center gap-2">
-                  <ImmStatusBadge status={t.status} label={label(TEST_STATUS_LABEL, t.status)} />
-                  <span className="text-dash-muted">{label(FITNESS_LABEL, t.fitness_outcome)}</span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </Step>
-      ) : null}
+      )}
+      {earlier}
     </div>
   );
 }

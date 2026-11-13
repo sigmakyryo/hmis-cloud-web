@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 
+import { ClipboardList } from "lucide-react";
+
 import { PrimaryButton } from "@/components/ui/app-buttons";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -15,13 +18,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  OhColumnMessage,
   OhFormFooter,
   OhPanelSection,
   submitOnModEnter,
 } from "@/features/occupational-health/components/OhEncounterColumns";
 import { OhCofDraftSuggestion } from "@/features/occupational-health/components/OhCertificateReadiness";
+import { OhVisitPanelEmptyState } from "@/features/occupational-health/components/OhVisitPanelEmptyState";
 import { useVisitBrief } from "@/features/occupational-health/hooks/use-visit-brief";
+import type { OhEncounterPanelId } from "@/features/occupational-health/lib/oh-encounter-modules";
 import { createFitnessCertificate } from "@/features/occupational-health/services/oh.service";
 import type { FitnessAssessment } from "@/features/occupational-health/types";
 import {
@@ -48,6 +52,7 @@ type OhCertificateFormProps = {
   appliedDraftSeq?: number;
   /** Hide inline suggestions when a neighbouring assistant already shows them. */
   hideInlineSuggestion?: boolean;
+  onOpenPanel?: (panel: OhEncounterPanelId) => void;
 };
 
 export function OhCertificateForm({
@@ -57,6 +62,7 @@ export function OhCertificateForm({
   appliedDraft = null,
   appliedDraftSeq,
   hideInlineSuggestion = false,
+  onOpenPanel,
 }: OhCertificateFormProps) {
   const { userData } = useUser();
   const { toast } = useToast();
@@ -94,11 +100,19 @@ export function OhCertificateForm({
 
   if (!latest) {
     return (
-      <OhPanelSection>
-        <OhColumnMessage data-testid="oh-certificate-locked">
-          Record a fitness assessment before issuing a certificate.
-        </OhColumnMessage>
-      </OhPanelSection>
+      <OhVisitPanelEmptyState
+        icon={ClipboardList}
+        title="No fitness assessment yet"
+        description="Record a fitness assessment on the examination before issuing a certificate."
+        action={
+          onOpenPanel ? (
+            <Button type="button" onClick={() => onOpenPanel("medical-examinations")}>
+              Go to examination
+            </Button>
+          ) : undefined
+        }
+        data-testid="oh-certificate-locked"
+      />
     );
   }
 

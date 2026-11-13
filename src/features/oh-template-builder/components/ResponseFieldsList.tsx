@@ -21,7 +21,7 @@ import {
   SheetDescription,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { FormFieldReviewFlag } from "@/features/oh-template-builder/components/FormFieldReviewFlag";
+import { FormFieldIssueIcon, FormFieldReviewFlag } from "@/features/oh-template-builder/components/FormFieldReviewFlag";
 import { FormsIllustration } from "@/features/oh-template-builder/components/UndrawIllustrations";
 import { findingFromMatch, matchDedicatedOhRecord } from "@/features/oh-template-builder/lib/dedicatedOhRecordPages";
 import { toSectionCode } from "@/features/oh-template-builder/lib/templateCodes";
@@ -143,14 +143,12 @@ export function ResponseFieldsList({ title, value, onChange, emptyHint }: Respon
                         <TypeIcon className="size-3.5" aria-hidden />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[13px] text-brand-navy">{field.label}</span>
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          <span className="truncate text-[13px] text-brand-navy">{field.label}</span>
+                          {finding ? <FormFieldIssueIcon /> : null}
+                        </span>
                         <span className="block truncate text-[11.5px] capitalize text-dash-muted">
                           {responseTypeLabel(field.response_type)}
-                          {finding ? (
-                            <span className="ml-1.5 rounded-sm bg-amber-500/15 px-1 py-px text-[10px] font-medium uppercase tracking-wide text-amber-800">
-                              Issue
-                            </span>
-                          ) : null}
                         </span>
                       </span>
                     </button>

@@ -25,6 +25,10 @@ import {
 } from "@/features/occupational-health/lib/oh-visit-workspace";
 import type { OhEncounterPanelId } from "@/features/occupational-health/lib/oh-encounter-modules";
 import { useOhDesktopWorkspace } from "@/features/occupational-health/hooks/use-oh-desktop-workspace";
+import {
+  useVisitRecordSummaries,
+  type VisitRecordBadge,
+} from "@/features/occupational-health/hooks/use-visit-record-summaries";
 import { cn } from "@/lib/utils";
 
 const MODULE_ICONS: Record<OhClinicalModuleId, LucideIcon> = {
@@ -42,16 +46,29 @@ type OhVisitJourneyRailProps = {
   statuses: Record<string, SessionStepStatus>;
   activePanel: OhEncounterPanelId;
   needsEmployment?: boolean;
+  customerUuid?: string | null;
+  encounterUuid?: string | null;
+  episodeCount?: number;
   onSelectStep: (step: string) => void;
   onSelectModule: (panel: OhClinicalModuleId) => void;
 };
 
 export function OhVisitJourneyRail(props: OhVisitJourneyRailProps) {
   const desktop = useOhDesktopWorkspace();
+  const summaries = useVisitRecordSummaries({
+    customerUuid: props.customerUuid,
+    encounterUuid: props.encounterUuid,
+    needsEmployment: props.needsEmployment,
+    episodeCount: props.episodeCount,
+  });
 
   return (
     <div data-testid="oh-visit-journey" className="contents">
-      {desktop ? <JourneyRail {...props} /> : <JourneyStrip {...props} />}
+      {desktop ? (
+        <JourneyRail {...props} summaries={summaries} />
+      ) : (
+        <JourneyStrip {...props} summaries={summaries} />
+      )}
     </div>
   );
 }
@@ -62,10 +79,12 @@ function JourneyRail({
   liveStep,
   statuses,
   activePanel,
-  needsEmployment = false,
   onSelectStep,
   onSelectModule,
-}: OhVisitJourneyRailProps) {
+  summaries,
+}: OhVisitJourneyRailProps & {
+  summaries: Record<OhClinicalModuleId, VisitRecordBadge | null>;
+}) {
   return (
     <aside
       className="hidden min-h-0 w-56 shrink-0 overflow-y-auto border-r border-dash-border/70 bg-white lg:block lg:order-1"
@@ -113,11 +132,11 @@ function JourneyRail({
           <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-brand-muted">
             Records
           </p>
-          <ul className="flex flex-col gap-0.5">
+          <ul className="flex flex-col gap-px">
             {OH_CLINICAL_MODULES.map((module) => {
               const active = activePanel === module.id;
-              const needed = module.id === "employment" && needsEmployment;
               const Icon = MODULE_ICONS[module.id];
+              const badge = summaries[module.id];
               return (
                 <li key={module.id}>
                   <button
@@ -141,15 +160,7 @@ function JourneyRail({
                       aria-hidden
                     />
                     <span className="min-w-0 flex-1 truncate">{module.label}</span>
-                    {needed ? (
-                      <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-medium text-amber-800">
-                        <span
-                          aria-hidden
-                          className="size-1.5 rounded-full bg-amber-500"
-                        />
-                        Needed
-                      </span>
-                    ) : null}
+                    <RecordBadge badge={badge} />
                   </button>
                 </li>
               );
@@ -167,10 +178,12 @@ function JourneyStrip({
   liveStep,
   statuses,
   activePanel,
-  needsEmployment = false,
   onSelectStep,
   onSelectModule,
-}: OhVisitJourneyRailProps) {
+  summaries,
+}: OhVisitJourneyRailProps & {
+  summaries: Record<OhClinicalModuleId, VisitRecordBadge | null>;
+}) {
   return (
     <nav
       aria-label="Consult"
@@ -203,8 +216,8 @@ function JourneyStrip({
           <span aria-hidden className="mx-1 h-4 w-px bg-dash-border" />
           {OH_CLINICAL_MODULES.map((module) => {
             const active = activePanel === module.id;
-            const needed = module.id === "employment" && needsEmployment;
             const Icon = MODULE_ICONS[module.id];
+            const badge = summaries[module.id];
             return (
               <button
                 key={module.id}
@@ -222,15 +235,7 @@ function JourneyStrip({
               >
                 <Icon className="size-3 shrink-0" aria-hidden />
                 {module.label}
-                {needed ? (
-                  <span className="inline-flex items-center gap-1 text-amber-800">
-                    <span
-                      aria-hidden
-                      className="size-1.5 rounded-full bg-amber-500"
-                    />
-                    Needed
-                  </span>
-                ) : null}
+                <RecordBadge badge={badge} />
               </button>
             );
           })}
@@ -240,7 +245,29 @@ function JourneyStrip({
   );
 }
 
+function RecordBadge({ badge }: { badge: VisitRecordBadge | null }) {
+  if (!badge) return null;
+  return (
+    <span
+      data-testid="oh-journey-record-badge"
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1 text-[10px] font-medium tabular-nums",
+        badge.tone === "needed" && "text-amber-800",
+        badge.tone === "attention" && "text-amber-800",
+        badge.tone === "ok" && "text-emerald-700",
+        badge.tone === "muted" && "text-dash-muted",
+      )}
+    >
+      {badge.tone === "needed" ? (
+        <span aria-hidden className="size-1.5 rounded-full bg-amber-500" />
+      ) : null}
+      {badge.label}
+    </span>
+  );
+}
+
 function StepButton({
+
   step,
   index,
   active,

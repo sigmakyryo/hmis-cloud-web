@@ -383,6 +383,9 @@ export function OhEncounterWorkspacePage({
             statuses={statuses}
             activePanel={activePanel}
             needsEmployment={needsEmployment}
+            customerUuid={customer?.uuid}
+            encounterUuid={encounter.uuid}
+            episodeCount={episodes.length}
             onSelectStep={handleSelectStep}
             onSelectModule={handleSelectModule}
           />

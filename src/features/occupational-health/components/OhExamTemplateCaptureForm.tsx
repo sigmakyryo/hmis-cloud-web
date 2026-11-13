@@ -7,7 +7,7 @@ import { RequiredFieldMarker } from "@/components/ui/required-field-marker";
 import type { OhResponseField, OhVisitBillingCharge } from "../types";
 import { emptyExamTemplateAnswers, fieldOwnerKey, type ExamTemplateAnswers, type ExamTemplateSnapshot } from "../lib/exam-template-snapshot";
 import { fieldErrorKey, isRequiredField, sectionErrorKey, type ExamErrors } from "../lib/exam-template-validation";
-import { FormFieldReviewFlag } from "@/features/oh-template-builder/components/FormFieldReviewFlag";
+import { FormFieldIssueIcon, FormFieldReviewFlag } from "@/features/oh-template-builder/components/FormFieldReviewFlag";
 import { findingFromMatch, matchDedicatedOhRecord } from "@/features/oh-template-builder/lib/dedicatedOhRecordPages";
 import { cn } from "@/lib/utils";
 
@@ -40,7 +40,7 @@ export function OhExamTemplateCaptureForm({ snapshot, value, onChange, disabled,
       return <li key={section.code} className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-x-3 border-t border-dash-border py-5">
         <span aria-hidden className={cn("mt-0.5 flex size-6 items-center justify-center rounded-full border text-[11px] font-semibold", picks.length || direct ? "border-brand-primary bg-brand-primary text-white" : "border-dash-border text-dash-muted")}>{index + 1}</span>
         <div className="min-w-0">
-          <div className="flex flex-wrap items-baseline justify-between gap-2"><h3 id={headingId} tabIndex={-1} data-exam-error-key={direct && section.response_definitions_missing ? sectionErrorKey(section.code) : undefined} className="text-[14.5px] font-semibold text-brand-navy">{section.name}{section.is_mandatory ? <RequiredFieldMarker /> : null}{matchDedicatedOhRecord(section.name, section.code) ? <span className="ml-2 align-middle rounded-sm bg-amber-500/15 px-1.5 py-px text-[10px] font-medium uppercase tracking-wide text-amber-800">Issue</span> : null}</h3><span className="text-xs text-dash-muted">{direct ? "Enter responses" : exclusive ? "Choose one" : "Choose all that apply"}</span></div>
+          <div className="flex flex-wrap items-baseline justify-between gap-2"><h3 id={headingId} tabIndex={-1} data-exam-error-key={direct && section.response_definitions_missing ? sectionErrorKey(section.code) : undefined} className="text-[14.5px] font-semibold text-brand-navy">{section.name}{section.is_mandatory ? <RequiredFieldMarker /> : null}{matchDedicatedOhRecord(section.name, section.code) ? <FormFieldIssueIcon className="ml-2" /> : null}</h3><span className="text-xs text-dash-muted">{direct ? "Enter responses" : exclusive ? "Choose one" : "Choose all that apply"}</span></div>
           {(() => { const match = matchDedicatedOhRecord(section.name, section.code); return match ? <FormFieldReviewFlag finding={findingFromMatch("section", section.code, section.name, match)} /> : null; })()}
           {sectionError ? <p id={errorId} className="mt-2 text-xs text-red-700">{sectionError}</p> : null}
           {direct ? <div className="mt-4 space-y-4">{(section.response_fields ?? []).map((field) => <ResponseField key={field.code} field={field} owner={section.code} value={answers.fields[section.code]?.[field.code] ?? ""} disabled={disabled} errors={errors} suggested={suggestedFieldKeys.includes(`${section.code}:${field.code}`)} onChange={(next) => setField(section.code, field.code, next)} />)}</div>
@@ -59,7 +59,7 @@ export function OhExamTemplateCaptureForm({ snapshot, value, onChange, disabled,
                     <button type="button" role={exclusive ? "radio" : "checkbox"} aria-checked={checked} aria-expanded={checked} aria-controls={panelId} aria-invalid={Boolean(sectionError)} aria-describedby={sectionError ? errorId : undefined} data-exam-error-key={sectionErrorKey(section.code)} disabled={disabled} onClick={toggle} className="flex w-full items-center gap-3 px-1 py-3 text-left text-[13.5px] font-medium text-brand-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 disabled:opacity-60">
                       <span aria-hidden className={cn("flex size-[18px] shrink-0 items-center justify-center border", exclusive ? "rounded-full" : "rounded", checked ? "border-brand-primary bg-brand-primary text-white" : "border-slate-300 bg-white")}>{checked ? <Check className="size-3" /> : null}</span>
                       <span className="min-w-0 flex-1">
-                        <span className="block">{item.name}{matchDedicatedOhRecord(item.name, item.code) ? <span className="ml-1.5 rounded-sm bg-amber-500/15 px-1 py-px text-[10px] font-medium uppercase tracking-wide text-amber-800">Issue</span> : null}</span>
+                        <span className="flex min-w-0 items-center gap-1.5">{item.name}{matchDedicatedOhRecord(item.name, item.code) ? <FormFieldIssueIcon /> : null}</span>
                         {(() => { const match = matchDedicatedOhRecord(item.name, item.code); return match ? <FormFieldReviewFlag finding={findingFromMatch("item", item.code, item.name, match)} /> : null; })()}
                         {checked ? (() => {
                           const charge = billingCharges.find((row) => row.item_code === item.code && row.status !== "removed");
@@ -96,7 +96,8 @@ function ResponseField({ field, owner, value, disabled, errors, suggested, onCha
   const id = `exam-field-${owner}-${field.code}`;
   const error = errors[key];
   const suggestedBadge = suggested ? <span data-testid="oh-field-suggested" className="ml-2 inline-flex align-middle text-[10px] font-medium uppercase tracking-wide text-violet-800">Suggested</span> : null;
-  const label = <>{field.label}{isRequiredField(field) ? <RequiredFieldMarker /> : null}{suggestedBadge}</>;
+  const dedicated = matchDedicatedOhRecord(field.label, field.code);
+  const label = <>{field.label}{isRequiredField(field) ? <RequiredFieldMarker /> : null}{suggestedBadge}{dedicated ? <FormFieldIssueIcon className="ml-1.5" /> : null}</>;
   const props = { id, disabled, "aria-invalid": Boolean(error), "aria-describedby": error ? `${id}-error` : undefined, "data-exam-error-key": key, "aria-required": isRequiredField(field) };
   const multi = field.response_type === "multi_select";
   const options = field.options?.length ? field.options : field.response_type === "boolean" ? [{ code: "true", label: "Yes" }, { code: "false", label: "No" }] : [];

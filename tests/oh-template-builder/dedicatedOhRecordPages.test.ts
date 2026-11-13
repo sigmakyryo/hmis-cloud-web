@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
   droppedAiMessage,
   filterAiOperations,
+  findingFromMatch,
   matchDedicatedOhRecord,
+  mergeReviewFindings,
+  normalizeQualityFinding,
   reviewFormSnapshot,
 } from "@/features/oh-template-builder/lib/dedicatedOhRecordPages";
 import { validateCertificateAiDraft } from "@/features/oh-template-builder/lib/templateAiStream";
@@ -108,5 +111,25 @@ describe("dedicatedOhRecordPages", () => {
     ]);
     expect(draft.assistant_message).toContain("Immunizations");
     expect(draft.assistant_message).toContain("/occupational-health/immunizations");
+  });
+
+  it("keeps one finding when dedicated and quality flags target the same field", () => {
+    const match = matchDedicatedOhRecord("Employment History");
+    expect(match).not.toBeNull();
+    const dedicated = [findingFromMatch("field", "f-emp", "Employment History", match!)];
+    const quality = [
+      normalizeQualityFinding({
+        id: "f-emp",
+        target: "field",
+        label: "Employment History",
+        reason: "Employment is already captured on a dedicated page.",
+        suggestion: "Remove this field.",
+      })!,
+    ];
+    const merged = mergeReviewFindings(dedicated, quality);
+    expect(merged).toHaveLength(1);
+    expect(merged[0]?.kind).toBe("dedicated_page");
+    expect(merged[0]?.reason).toContain("Employment is recorded on the Employment page");
+    expect(mergeReviewFindings(dedicated, dedicated)).toHaveLength(1);
   });
 });

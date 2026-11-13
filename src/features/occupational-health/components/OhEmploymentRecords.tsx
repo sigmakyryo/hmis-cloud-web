@@ -1,7 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { Briefcase } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
+import { ROUTES } from "@/constants/routes";
 import type { Customer } from "@/features/customers/types/customer.types";
 import {
   OhColumnMessage,
@@ -62,7 +65,12 @@ export function OhEmploymentRecords({ customer }: OhEmploymentRecordsProps) {
       <OhRecordsEmpty
         icon={Briefcase}
         title="No employment episode"
-        description="Add the employer and job on the left so this encounter is tied to the worker’s role."
+        description="Add the employer and job so this encounter is tied to the worker’s role."
+        action={
+          <Button asChild>
+            <Link href={ROUTES.occupationalHealthEmployment(customer.uuid)}>Add employment</Link>
+          </Button>
+        }
         data-testid="oh-employment-records-empty"
       />
     );

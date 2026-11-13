@@ -5,9 +5,10 @@ import { useEffect, useState, type ReactNode } from "react";
 
 import { RequiredFieldMarker } from "@/components/ui/required-field-marker";
 import { formatCatalogScheduleSummary } from "@/features/occupational-health/services/oh.service";
-import { FormFieldReviewFlag } from "@/features/oh-template-builder/components/FormFieldReviewFlag";
+import { FormFieldIssueIcon, FormFieldReviewFlag } from "@/features/oh-template-builder/components/FormFieldReviewFlag";
 import { QuickAddItem } from "@/features/oh-template-builder/components/QuickAddItem";
 import { findingFromMatch, matchDedicatedOhRecord } from "@/features/oh-template-builder/lib/dedicatedOhRecordPages";
+import { useFormReview } from "@/features/oh-template-builder/hooks/useTemplateFormReview";
 import { SelectionGlyph } from "@/features/oh-template-builder/components/SelectionGlyph";
 import {
   useSectionItems,
@@ -35,6 +36,7 @@ type CanvasSectionProps = {
 
 export function CanvasSection({ attachment, isFirst, isLast }: CanvasSectionProps) {
   const { selection, select, moveSection, reorderItems, isBusy } = useTemplateBuilder();
+  const review = useFormReview();
   const [disclosure, setDisclosure] = useState({ selection, open: true });
   const itemsQuery = useSectionItems(attachment.sectionUuid);
   const section = attachment.section;
@@ -42,9 +44,9 @@ export function CanvasSection({ attachment, isFirst, isLast }: CanvasSectionProp
   const mode = section?.selectionMode ?? "inclusive";
   const name = section?.name ?? "Untitled section";
   const sectionMatch = matchDedicatedOhRecord(name, section?.code ?? "");
-  const sectionFinding = sectionMatch
-    ? findingFromMatch("section", attachment.uuid, name, sectionMatch)
-    : null;
+  const sectionFinding =
+    review.findingFor("section", attachment.uuid) ??
+    (sectionMatch ? findingFromMatch("section", attachment.uuid, name, sectionMatch) : null);
   const chooseLabel = isDirect
     ? "Enter values"
     : mode === "exclusive"
@@ -104,13 +106,16 @@ export function CanvasSection({ attachment, isFirst, isLast }: CanvasSectionProp
           aria-pressed={isSectionSelected}
           className="flex min-w-0 flex-1 items-center gap-2 self-stretch rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
         >
-          <span
-            className={cn(
-              "truncate text-[14px] font-semibold",
-              isSectionSelected ? "text-brand-primary" : "text-brand-navy",
-            )}
-          >
-            {name}
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span
+              className={cn(
+                "truncate text-[14px] font-semibold",
+                isSectionSelected ? "text-brand-primary" : "text-brand-navy",
+              )}
+            >
+              {name}
+            </span>
+            {sectionFinding ? <FormFieldIssueIcon /> : null}
           </span>
           {total != null ? (
             <span className="shrink-0 text-[12px] tabular-nums text-dash-muted">{total}</span>
@@ -126,11 +131,6 @@ export function CanvasSection({ attachment, isFirst, isLast }: CanvasSectionProp
             </span>
             {section?.isSystem ? (
               <Lock className="size-3 text-dash-muted" aria-label="System section" />
-            ) : null}
-            {sectionFinding ? (
-              <span className="rounded-sm bg-amber-500/15 px-1.5 py-px text-[10px] font-medium uppercase tracking-wide text-amber-800">
-                Issue
-              </span>
             ) : null}
           </span>
         </button>
@@ -319,21 +319,13 @@ function CanvasItemRow({
         />
         <span
           className={cn(
-            "truncate text-[13.5px]",
+            "flex min-w-0 items-center gap-1.5 text-[13.5px]",
             isSelected ? "font-medium text-brand-primary" : "text-brand-navy",
           )}
         >
-          {item.name}
-          {item.isMandatory ? (
-            <span className="ml-0.5">
-              <RequiredFieldMarker />
-            </span>
-          ) : null}
-          {matchDedicatedOhRecord(item.name, item.code) ? (
-            <span className="ml-1.5 rounded-sm bg-amber-500/15 px-1 py-px text-[10px] font-medium uppercase tracking-wide text-amber-800">
-              Issue
-            </span>
-          ) : null}
+          <span className="truncate">{item.name}</span>
+          {item.isMandatory ? <RequiredFieldMarker /> : null}
+          {matchDedicatedOhRecord(item.name, item.code) ? <FormFieldIssueIcon /> : null}
         </span>
         <span className="hidden truncate text-[12.5px] text-dash-muted sm:block">
           {responseHint}

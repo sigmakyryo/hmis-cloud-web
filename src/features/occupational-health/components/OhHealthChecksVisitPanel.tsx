@@ -11,21 +11,20 @@ import { HpResultForm } from "@/app/(app)/health-programs/_components/shared/HpR
 import { OUTCOME_LABEL, PROGRAM_LABEL, flagText, headline, trendValue } from "@/app/(app)/health-programs/_components/shared/hp-format";
 import { useHealthCheckDevice } from "@/features/occupational-health/lib/health-check-device";
 import {
+  healthCheckStatus,
+  healthCheckSummaryLine,
+  summarizeHealthChecks,
+  type HealthCheckStatus,
+} from "@/features/occupational-health/lib/health-check-status";
+import {
   HP_PROGRAMS,
   fetchHpResults,
   type HpProgram,
   type HpResult,
 } from "@/features/occupational-health/services/health-programs.service";
 
-export type HealthCheckStatus = "not_done" | "recorded" | "flagged" | "abnormal";
-
-export function healthCheckStatus(result: HpResult | undefined): HealthCheckStatus {
-  if (!result) return "not_done";
-  if (result.outcome === "restricted" || result.outcome === "unfit") return "abnormal";
-  const flags = result.computed?.flags ?? [];
-  if (flags.length > 0 || result.referral) return "flagged";
-  return "recorded";
-}
+export type { HealthCheckStatus };
+export { healthCheckStatus };
 
 const STATUS_LABEL: Record<HealthCheckStatus, string> = {
   not_done: "Not done",
@@ -42,15 +41,6 @@ const STATUS_TONE: Record<HealthCheckStatus, string> = {
   abnormal: "not_cleared",
 };
 
-function latestByProgram(results: HpResult[]): Map<HpProgram, HpResult> {
-  const map = new Map<HpProgram, HpResult>();
-  const sorted = [...results].sort((a, b) => (b.performed_at ?? "").localeCompare(a.performed_at ?? ""));
-  for (const row of sorted) {
-    if (!map.has(row.program)) map.set(row.program, row);
-  }
-  return map;
-}
-
 function interpretation(result: HpResult): string {
   const parts: string[] = [];
   if (result.outcome !== "fit") {
@@ -62,11 +52,11 @@ function interpretation(result: HpResult): string {
   if (result.restrictions.length) parts.push(result.restrictions.join("; "));
   if (result.referral) parts.push("Referral");
   if (result.is_baseline) parts.push("Baseline");
-  return parts.join(" · ") || "—";
+  return parts.join(" · ");
 }
 
 function unitOf(result: HpResult): string {
-  return trendValue(result).unit || "—";
+  return trendValue(result).unit;
 }
 
 function RowAction({
@@ -83,7 +73,7 @@ function RowAction({
       type="button"
       data-testid={testId}
       onClick={onClick}
-      className="rounded px-1.5 py-0.5 text-[12px] font-medium text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
+      className="rounded px-1 py-0.5 text-[12px] font-medium text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
     >
       {children}
     </button>
@@ -100,8 +90,8 @@ export function OhHealthChecksVisitPanel({ customerUuid, encounterUuid }: { cust
     queryKey: ["oh-hp", "results", "visit", encounterUuid],
     queryFn: () => fetchHpResults({ visit_uuid: encounterUuid }),
   });
-  const latest = latestByProgram(query.data ?? []);
-  const recorded = HP_PROGRAMS.filter((program) => latest.has(program)).length;
+  const summary = summarizeHealthChecks(query.data ?? []);
+  const latest = summary.latest;
 
   const openManual = (program: HpProgram, existing?: HpResult) => {
     device.dismiss();
@@ -109,12 +99,12 @@ export function OhHealthChecksVisitPanel({ customerUuid, encounterUuid }: { cust
   };
 
   return (
-    <div className="space-y-3" data-testid="oh-health-checks-visit-panel">
-      <div className="flex flex-wrap items-end justify-between gap-2">
+    <div className="space-y-1" data-testid="oh-health-checks-visit-panel">
+      <div className="flex flex-wrap items-end justify-between gap-2 border-b border-dash-border pb-3">
         <div className="min-w-0">
           <h2 className="text-[13px] font-semibold text-brand-navy">Health checks</h2>
-          <p className="text-[12px] text-dash-muted">
-            {`${recorded} of ${HP_PROGRAMS.length} recorded. Pull from a connected device or enter a result manually.`}
+          <p className="text-[12px] text-dash-muted" data-testid="oh-health-check-summary">
+            {healthCheckSummaryLine(query.data ?? [])}
           </p>
         </div>
         <SecondaryButton
@@ -132,7 +122,7 @@ export function OhHealthChecksVisitPanel({ customerUuid, encounterUuid }: { cust
         <div
           role="status"
           data-testid="oh-health-check-no-device"
-          className="flex flex-wrap items-center gap-x-3 gap-y-2 border-y border-dash-border py-3"
+          className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-dash-border py-3"
         >
           <div className="min-w-0 flex-1">
             <p className="text-[13px] font-medium text-brand-navy">No device connected yet</p>
@@ -163,70 +153,68 @@ export function OhHealthChecksVisitPanel({ customerUuid, encounterUuid }: { cust
       {query.isError ? <LoadError>{errorText(query.error, "Could not load this visit's checks.")}</LoadError> : null}
 
       {!query.isLoading && !query.isError ? (
-        <table className="w-full border-collapse text-left text-[13px] text-brand-navy">
-          <thead>
-            <tr className="border-b border-dash-border text-[11px] font-medium uppercase tracking-wide text-dash-muted">
-              <th className="py-2 pr-3 font-medium">Test</th>
-              <th className="py-2 pr-3 font-medium">Status</th>
-              <th className="py-2 pr-3 font-medium">Result</th>
-              <th className="py-2 pr-3 font-medium">Unit</th>
-              <th className="py-2 pr-3 font-medium">Interpretation</th>
-              <th className="py-2 pr-3 font-medium">Recorded</th>
-              <th className="py-2 text-right font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {HP_PROGRAMS.map((program) => {
-              const result = latest.get(program);
-              const status = healthCheckStatus(result);
-              return (
-                <tr
-                  key={program}
-                  data-testid={`oh-health-check-row-${program}`}
-                  data-status={status}
-                  className="border-b border-dash-border/80 align-top"
-                >
-                  <td className="py-2.5 pr-3 font-medium">{PROGRAM_LABEL[program]}</td>
-                  <td className="py-2.5 pr-3">
+        <ul className="divide-y divide-dash-border">
+          {HP_PROGRAMS.map((program) => {
+            const result = latest.get(program);
+            const status = healthCheckStatus(result);
+            const unit = result ? unitOf(result) : "";
+            const note = result ? interpretation(result) : "";
+            const recorded = result
+              ? [result.recorded_by_initials || null, result.performed_at ? fmtDateTime(result.performed_at) : null]
+                  .filter(Boolean)
+                  .join(" · ")
+              : "";
+            return (
+              <li
+                key={program}
+                data-testid={`oh-health-check-row-${program}`}
+                data-status={status}
+                className="flex items-start justify-between gap-3 py-3"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-[13px] font-semibold text-brand-navy">{PROGRAM_LABEL[program]}</h3>
                     <ImmStatusBadge status={STATUS_TONE[status]} label={STATUS_LABEL[status]} />
-                  </td>
-                  <td className="py-2.5 pr-3">{result ? headline(result) : "—"}</td>
-                  <td className="py-2.5 pr-3 text-dash-muted">{result ? unitOf(result) : "—"}</td>
-                  <td className="py-2.5 pr-3 text-[12px] text-dash-muted">{result ? interpretation(result) : "—"}</td>
-                  <td className="py-2.5 pr-3 text-[12px] whitespace-nowrap text-dash-muted">
-                    {result ? (
-                      <>
-                        <span>{result.recorded_by_initials || "—"}</span>
-                        {result.performed_at ? <span>{` · ${fmtDateTime(result.performed_at)}`}</span> : null}
-                      </>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td className="py-2.5 text-right whitespace-nowrap">
-                    {result ? (
-                      <RowAction testId={`oh-health-check-edit-${program}`} onClick={() => openManual(program, result)}>
-                        Edit
-                      </RowAction>
-                    ) : (
-                      <RowAction testId={`oh-health-check-manual-${program}`} onClick={() => openManual(program)}>
-                        Enter manually
-                      </RowAction>
-                    )}
-                    <RowAction
-                      testId={`oh-health-check-device-${program}`}
-                      onClick={() => {
-                        void device.pullFromDevice("test", program);
-                      }}
-                    >
-                      Pull from device
+                  </div>
+                  {result ? (
+                    <>
+                      <p className="mt-1 text-[13px] leading-snug text-brand-navy">
+                        {headline(result)}
+                        {unit ? <span className="ml-1.5 text-dash-muted">{unit}</span> : null}
+                      </p>
+                      {note || recorded ? (
+                        <p className="mt-0.5 text-[12px] leading-snug text-dash-muted">
+                          {[note, recorded].filter(Boolean).join(" · ")}
+                        </p>
+                      ) : null}
+                    </>
+                  ) : (
+                    <p className="mt-1 text-[12px] text-dash-muted">Not recorded on this visit.</p>
+                  )}
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-0.5 pt-0.5">
+                  {result ? (
+                    <RowAction testId={`oh-health-check-edit-${program}`} onClick={() => openManual(program, result)}>
+                      Edit
                     </RowAction>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                  ) : (
+                    <RowAction testId={`oh-health-check-manual-${program}`} onClick={() => openManual(program)}>
+                      Enter manually
+                    </RowAction>
+                  )}
+                  <RowAction
+                    testId={`oh-health-check-device-${program}`}
+                    onClick={() => {
+                      void device.pullFromDevice("test", program);
+                    }}
+                  >
+                    Pull from device
+                  </RowAction>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       ) : null}
 
       {form ? (
