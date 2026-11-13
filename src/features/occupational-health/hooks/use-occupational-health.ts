@@ -24,27 +24,20 @@ import {
   fetchSickLeaveCertificates,
   fetchSurveillanceRequirements,
 } from "@/features/occupational-health/services/oh.service";
+import { encounterMatchesQueue } from "@/features/occupational-health/lib/oh-visit-workspace";
 import { newestFirst } from "@/features/occupational-health/utils/oh-format";
 
-export function useOhEncounters(search?: string) {
+export function useOhEncounters(search?: string, status?: string) {
   return useQuery({
-    queryKey: ["oh-encounters", search ?? ""],
+    queryKey: ["oh-encounters", search ?? "", status ?? ""],
     queryFn: async () => {
       const results = await fetchOhEncounters({ pageSize: 100 });
       const ordered = newestFirst(
         results,
         (row) => row.started_at || row.created_at,
       );
-      if (!search?.trim()) {
-        return ordered;
-      }
-      const normalized = search.trim().toLowerCase();
-      return ordered.filter(
-        (row) =>
-          row.department_name.toLowerCase().includes(normalized) ||
-          row.status.toLowerCase().includes(normalized) ||
-          row.uuid.toLowerCase().includes(normalized) ||
-          (row.clinician_name ?? "").toLowerCase().includes(normalized),
+      return ordered.filter((row) =>
+        encounterMatchesQueue(row, search, status),
       );
     },
   });
@@ -157,7 +150,9 @@ export function useOhRecallsData(customerId?: number) {
     queryFn: fetchSickLeaveCertificates,
   });
 
-  function filterByCustomer<T extends { customer: number }>(rows: T[] | undefined) {
+  function filterByCustomer<T extends { customer: number }>(
+    rows: T[] | undefined,
+  ) {
     if (!customerId || !rows) {
       return rows ?? [];
     }
@@ -196,11 +191,7 @@ export function useOhVisitHistory(
       historyEncounterUuid ?? "",
     ],
     queryFn: () =>
-      fetchOhVisitHistory(
-        visitUuid!,
-        encounterUuid!,
-        historyEncounterUuid,
-      ),
+      fetchOhVisitHistory(visitUuid!, encounterUuid!, historyEncounterUuid),
     enabled: Boolean(visitUuid && encounterUuid),
   });
 }
@@ -240,15 +231,24 @@ export function useOhEncounterWorkspaceData(encounterId: number | null) {
   });
 
   const examinations = useMemo(
-    () => examinationsQuery.data?.filter((item) => item.encounter === encounterId) ?? [],
+    () =>
+      examinationsQuery.data?.filter(
+        (item) => item.encounter === encounterId,
+      ) ?? [],
     [examinationsQuery.data, encounterId],
   );
   const employeeForms = useMemo(
-    () => employeeFormsQuery.data?.filter((item) => item.encounter === encounterId && item.is_active !== false) ?? [],
+    () =>
+      employeeFormsQuery.data?.filter(
+        (item) => item.encounter === encounterId && item.is_active !== false,
+      ) ?? [],
     [employeeFormsQuery.data, encounterId],
   );
   const cofResponses = useMemo(
-    () => cofResponsesQuery.data?.filter((item) => item.encounter === encounterId && item.is_active !== false) ?? [],
+    () =>
+      cofResponsesQuery.data?.filter(
+        (item) => item.encounter === encounterId && item.is_active !== false,
+      ) ?? [],
     [cofResponsesQuery.data, encounterId],
   );
   const examinationIds = new Set(examinations.map((item) => item.id));
@@ -259,9 +259,8 @@ export function useOhEncounterWorkspaceData(encounterId: number | null) {
     ) ?? [];
 
   const fitness =
-    fitnessQuery.data?.filter((item) =>
-      examinationIds.has(item.examination),
-    ) ?? [];
+    fitnessQuery.data?.filter((item) => examinationIds.has(item.examination)) ??
+    [];
 
   const assessmentIds = new Set(fitness.map((item) => item.id));
   const fitnessCertificates =

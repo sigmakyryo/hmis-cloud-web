@@ -16,6 +16,7 @@ import {
   fetchOhEmployeeSummary,
   fetchOhEmployees,
 } from "@/features/occupational-health/services/oh.service";
+import { AddEmploymentEpisodeDialog } from "@/features/occupational-health/components/AddEmploymentEpisodeDialog";
 import { OhEmployeesEmptyState } from "@/features/occupational-health/components/OhEmployeesEmptyState";
 import { OhEmployeesPageHeader } from "@/features/occupational-health/components/OhEmployeesPageHeader";
 import { OhEmployeesTable } from "@/features/occupational-health/components/OhEmployeesTable";
@@ -54,13 +55,20 @@ export function OhEmployeesListPage() {
 
   const urlSearch = searchParams.get(OH_EMPLOYEE_SEARCH_PARAM) ?? "";
   const page = parseListPage(searchParams.get(OH_EMPLOYEE_PAGE_PARAM));
-  const gender = parseCustomerGender(searchParams.get(OH_EMPLOYEE_GENDER_PARAM));
+  const gender = parseCustomerGender(
+    searchParams.get(OH_EMPLOYEE_GENDER_PARAM),
+  );
   const activeStatus = parseCustomerStatus(
     searchParams.get(OH_EMPLOYEE_STATUS_PARAM),
   );
-  const ordering = parseCustomerOrdering(searchParams.get(OH_EMPLOYEE_ORDER_PARAM));
+  const ordering = parseCustomerOrdering(
+    searchParams.get(OH_EMPLOYEE_ORDER_PARAM),
+  );
 
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [employmentCustomer, setEmploymentCustomer] = useState<Customer | null>(
+    null,
+  );
   const [totalCount, setTotalCount] = useState(0);
   const [hasNext, setHasNext] = useState(false);
   const [hasPrevious, setHasPrevious] = useState(false);
@@ -271,21 +279,21 @@ export function OhEmployeesListPage() {
     return (
       <ListPageLayout data-testid="oh-employees-page">
         <ListPageBlankState
-  compact
-  icon="shield"
-  title="Access denied"
-  description="You do not have access to occupational health. Ask an administrator to add you to the OccupationalHealth group."
-  action={
-    <Button
-      type="button"
-      variant="outline"
-      className="h-8 rounded-lg text-[13px]"
-      onClick={() => router.push(ROUTES.auth)}
-    >
-      Go to sign in
-    </Button>
-  }
-/>
+          compact
+          icon="shield"
+          title="Access denied"
+          description="You do not have access to occupational health. Ask an administrator to add you to the OccupationalHealth group."
+          action={
+            <Button
+              type="button"
+              variant="outline"
+              className="h-8 rounded-lg text-[13px]"
+              onClick={() => router.push(ROUTES.auth)}
+            >
+              Go to sign in
+            </Button>
+          }
+        />
       </ListPageLayout>
     );
   }
@@ -363,6 +371,7 @@ export function OhEmployeesListPage() {
                 <OhEmployeesTable
                   customers={customers}
                   onRowClick={handleRowClick}
+                  onAddEmployment={setEmploymentCustomer}
                 />
                 <ListPagePagination
                   page={page}
@@ -382,6 +391,21 @@ export function OhEmployeesListPage() {
           <OhEmployeesEmptyState />
         </ListPageTableSection>
       )}
+      {employmentCustomer ? (
+        <AddEmploymentEpisodeDialog
+          customer={employmentCustomer}
+          open={Boolean(employmentCustomer)}
+          onOpenChange={(open) => {
+            if (!open) {
+              setEmploymentCustomer(null);
+            }
+          }}
+          onCreated={() => {
+            setEmploymentCustomer(null);
+            void reloadCustomers();
+          }}
+        />
+      ) : null}
     </ListPageLayout>
   );
 }

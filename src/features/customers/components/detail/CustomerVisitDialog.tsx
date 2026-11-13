@@ -1,9 +1,11 @@
 "use client";
 
 import { createNativeOhVisit } from "@/features/occupational-health/services/native-visit.service";
+import { ROUTES } from "@/constants/routes";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Building2, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 
@@ -57,9 +59,7 @@ import {
 import { OhRiskProfileRequiredNotice } from "@/features/occupational-health/components/OhRiskProfileRequiredNotice";
 import { fetchOhVisitTypes } from "@/features/occupational-health/services/oh.service";
 import { fetchOhVisitEligibility } from "@/features/occupational-health/services/visit-eligibility.service";
-import {
-  OH_RISK_PROFILE_REQUIRED_MESSAGE,
-} from "@/features/occupational-health/utils/customer-has-risk-profile";
+import { OH_RISK_PROFILE_REQUIRED_MESSAGE } from "@/features/occupational-health/utils/customer-has-risk-profile";
 import {
   StartVisitFormFields,
   type StartVisitStep,
@@ -74,7 +74,10 @@ import { fetchDepartmentConsultationServices } from "@/features/visits/services/
 import type { ConsultationServiceCatalogItem } from "@/features/visits/types/visit.types";
 import { useUser } from "@/providers/user-provider";
 import { BffError } from "@/lib/bff-client";
-import { formatBffErrorMessage, mapBffErrorsToForm } from "@/lib/bff-field-errors";
+import {
+  formatBffErrorMessage,
+  mapBffErrorsToForm,
+} from "@/lib/bff-field-errors";
 import { appFont } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/providers/toast-provider";
@@ -95,6 +98,7 @@ export function CustomerVisitDialog({
   onVisitChanged,
 }: CustomerVisitDialogProps) {
   const { toast } = useToast();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const nativeSubmissionKey = useRef<string | null>(null);
   const { userData } = useUser();
@@ -102,15 +106,19 @@ export function CustomerVisitDialog({
     departmentUuid: string;
     items: ConsultationServiceCatalogItem[];
   } | null>(null);
-  const [insuranceSchemes, setInsuranceSchemes] = useState<CustomerInsurance[]>([]);
+  const [insuranceSchemes, setInsuranceSchemes] = useState<CustomerInsurance[]>(
+    [],
+  );
   const [clinics, setClinics] = useState<ClinicalClinic[]>([]);
   const [departments, setDepartments] = useState<ClinicalDepartment[]>([]);
   const [activeVisit, setActiveVisit] = useState<CustomerVisit | null>(null);
-  const [activeVisitDetail, setActiveVisitDetail] = useState<VisitDetail | null>(null);
+  const [activeVisitDetail, setActiveVisitDetail] =
+    useState<VisitDetail | null>(null);
   const [isLoadingContext, setIsLoadingContext] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [closeError, setCloseError] = useState<string | null>(null);
-  const [consultationServiceSearch, setConsultationServiceSearch] = useState("");
+  const [consultationServiceSearch, setConsultationServiceSearch] =
+    useState("");
   const [startStep, setStartStep] = useState<StartVisitStep>("visit");
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const contextGeneration = useRef(0);
@@ -126,7 +134,10 @@ export function CustomerVisitDialog({
   const modeOfPayment = form.watch("mode_of_payment");
   const requiresPreAuth = form.watch("requires_pre_authorization");
   const customerName = useMemo(() => formatCustomerName(customer), [customer]);
-  const ageLabel = useMemo(() => formatAdaptiveAge(customer.dob), [customer.dob]);
+  const ageLabel = useMemo(
+    () => formatAdaptiveAge(customer.dob),
+    [customer.dob],
+  );
   const defaultClinic = userData?.primary_clinic ?? null;
 
   const clinicIdByUuid = useMemo(
@@ -139,9 +150,7 @@ export function CustomerVisitDialog({
       return "";
     }
 
-    return (
-      clinics.find((clinic) => clinic.id === defaultClinic.id)?.uuid ?? ""
-    );
+    return clinics.find((clinic) => clinic.id === defaultClinic.id)?.uuid ?? "";
   }, [clinics, defaultClinic]);
 
   const selectedClinicId = useMemo(() => {
@@ -157,18 +166,20 @@ export function CustomerVisitDialog({
       : [];
   const isLoadingConsultationServices = Boolean(
     selectedDepartmentUuid &&
-      loadedConsultationServices?.departmentUuid !== selectedDepartmentUuid,
+    loadedConsultationServices?.departmentUuid !== selectedDepartmentUuid,
   );
 
   const hasDefaultClinic = Boolean(defaultClinic && defaultClinicUuid);
 
   const selectedDepartment = useMemo(
     () =>
-      departments.find((department) => department.uuid === selectedDepartmentUuid) ??
-      null,
+      departments.find(
+        (department) => department.uuid === selectedDepartmentUuid,
+      ) ?? null,
     [departments, selectedDepartmentUuid],
   );
-  const isOhDepartment = selectedDepartment?.department_type === OH_DEPARTMENT_TYPE;
+  const isOhDepartment =
+    selectedDepartment?.department_type === OH_DEPARTMENT_TYPE;
   const visitTypes = useQuery({
     queryKey: ["oh-visit-types"],
     queryFn: fetchOhVisitTypes,
@@ -182,10 +193,13 @@ export function CustomerVisitDialog({
     retry: false,
   });
   const showRiskProfileNotice = Boolean(
-    isOhDepartment && !eligibility.isError && !eligibility.isFetching &&
-      eligibility.data?.eligible === false,
+    isOhDepartment &&
+    !eligibility.isError &&
+    !eligibility.isFetching &&
+    eligibility.data?.eligible === false,
   );
-  const eligibilityUnavailable = isOhDepartment &&
+  const eligibilityUnavailable =
+    isOhDepartment &&
     (eligibility.isPending || eligibility.isFetching || eligibility.isError);
 
   useEffect(() => {
@@ -215,7 +229,9 @@ export function CustomerVisitDialog({
     try {
       const [visits, insurance, clinicList] = await Promise.all([
         fetchCustomerVisits(customer.uuid, { limit: 100 }),
-        fetchCustomerInsurance(customer.uuid).catch(() => [] as CustomerInsurance[]),
+        fetchCustomerInsurance(customer.uuid).catch(
+          () => [] as CustomerInsurance[],
+        ),
         fetchClinicalClinics(),
       ]);
 
@@ -276,7 +292,9 @@ export function CustomerVisitDialog({
     }
 
     void loadDialogContext();
-    return () => { contextGeneration.current += 1; };
+    return () => {
+      contextGeneration.current += 1;
+    };
   }, [loadDialogContext, open]);
 
   useEffect(() => {
@@ -288,8 +306,9 @@ export function CustomerVisitDialog({
 
     async function loadDepartmentServices() {
       try {
-        const services =
-          await fetchDepartmentConsultationServices(selectedDepartmentUuid);
+        const services = await fetchDepartmentConsultationServices(
+          selectedDepartmentUuid,
+        );
         if (cancelled) {
           return;
         }
@@ -353,7 +372,11 @@ export function CustomerVisitDialog({
     try {
       if (department?.department_type === OH_DEPARTMENT_TYPE) {
         const check = await eligibility.refetch({ throwOnError: true });
-        if (generation !== contextGeneration.current || form.getValues("department") !== values.department) return;
+        if (
+          generation !== contextGeneration.current ||
+          form.getValues("department") !== values.department
+        )
+          return;
         if (!check.data?.eligible) {
           setStartStep("visit");
           return;
@@ -361,12 +384,15 @@ export function CustomerVisitDialog({
       }
       if (department?.department_type === OH_DEPARTMENT_TYPE) {
         if (!values.visit_type) {
-          form.setError("visit_type", { type: "manual", message: "Select a visit type" });
+          form.setError("visit_type", {
+            type: "manual",
+            message: "Select a visit type",
+          });
           setStartStep("visit");
           return;
         }
         nativeSubmissionKey.current ??= crypto.randomUUID();
-        await createNativeOhVisit({
+        const created = await createNativeOhVisit({
           customer_uuid: customer.uuid,
           department_uuid: values.department,
           clinic_uuid: values.clinic,
@@ -398,6 +424,11 @@ export function CustomerVisitDialog({
           title: "OH visit started",
           description: `Successfully started visit for ${customerName}.`,
         });
+        if (created.visit && created.uuid) {
+          router.push(
+            ROUTES.occupationalHealthEncounter(created.visit, created.uuid),
+          );
+        }
         return;
       }
       const visit = await createCustomerVisit(
@@ -434,8 +465,10 @@ export function CustomerVisitDialog({
       });
     } catch (error) {
       if (generation !== contextGeneration.current) return;
-      const fieldErrors = error instanceof BffError ? mapBffErrorsToForm(error.errors) : {};
-      const legacyReferralError = department?.department_type === OH_DEPARTMENT_TYPE &&
+      const fieldErrors =
+        error instanceof BffError ? mapBffErrorsToForm(error.errors) : {};
+      const legacyReferralError =
+        department?.department_type === OH_DEPARTMENT_TYPE &&
         fieldErrors.department === OH_RISK_PROFILE_REQUIRED_MESSAGE;
       for (const [field, message] of Object.entries(fieldErrors)) {
         if (field === "department" && legacyReferralError) continue;
@@ -450,7 +483,9 @@ export function CustomerVisitDialog({
           ? "The core visit service could not complete the OH referral and did not return the underlying reason. Your form has been kept. No automatic retry was made."
           : error instanceof BffError
             ? formatBffErrorMessage(error.message, error.errors)
-            : error instanceof Error ? error.message : "Try again in a moment.",
+            : error instanceof Error
+              ? error.message
+              : "Try again in a moment.",
       });
     } finally {
       submittingVisit.current = false;
@@ -500,8 +535,8 @@ export function CustomerVisitDialog({
     Boolean(activeVisit) ||
     (isLoadingContext && isCustomerVisitActive(customer.visit_status));
   const headerClinicName = showingCloseVisit
-    ? activeVisit?.clinic_name ?? defaultClinic?.name ?? null
-    : defaultClinic?.name ?? null;
+    ? (activeVisit?.clinic_name ?? defaultClinic?.name ?? null)
+    : (defaultClinic?.name ?? null);
   const footerRecap = activeVisit ? "This will end the current visit." : null;
 
   async function handleContinueToPayment() {
@@ -567,25 +602,36 @@ export function CustomerVisitDialog({
                 No default clinic assigned
               </h3>
               <p className="mt-2 max-w-sm text-sm text-dash-muted">
-                You don&apos;t have a default clinic set. Ask an administrator to
-                assign your primary clinic in Settings → User Management.
+                You don&apos;t have a default clinic set. Ask an administrator
+                to assign your primary clinic in Settings → User Management.
               </p>
             </div>
           ) : (
             <Form {...form}>
               <form className="space-y-4">
-                {isOhDepartment && (eligibility.isFetching || eligibility.isError) ? (
+                {isOhDepartment &&
+                (eligibility.isFetching || eligibility.isError) ? (
                   <div aria-live="polite" className="text-sm text-dash-muted">
                     {eligibility.isFetching ? (
                       <p role="status" className="flex items-center gap-2">
-                        <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                        <Loader2
+                          className="size-4 animate-spin"
+                          aria-hidden="true"
+                        />
                         Checking OH eligibility…
                       </p>
                     ) : eligibility.isError ? (
                       <>
-                        <p role="alert">OH eligibility could not be checked: {eligibility.error.message}</p>
-                        <SecondaryButton type="button" size="sm" disabled={isSubmitting}
-                          onClick={() => void eligibility.refetch()}>
+                        <p role="alert">
+                          OH eligibility could not be checked:{" "}
+                          {eligibility.error.message}
+                        </p>
+                        <SecondaryButton
+                          type="button"
+                          size="sm"
+                          disabled={isSubmitting}
+                          onClick={() => void eligibility.refetch()}
+                        >
                           Retry OH check
                         </SecondaryButton>
                       </>
@@ -597,12 +643,17 @@ export function CustomerVisitDialog({
                   nativeOh={isOhDepartment}
                   step={startStep}
                   onStepChange={(step) => {
-                    if (step !== "visit" && (showRiskProfileNotice || eligibilityUnavailable)) {
+                    if (
+                      step !== "visit" &&
+                      (showRiskProfileNotice || eligibilityUnavailable)
+                    ) {
                       return;
                     }
                     setStartStep(step);
                   }}
-                  lockLaterSteps={showRiskProfileNotice || eligibilityUnavailable}
+                  lockLaterSteps={
+                    showRiskProfileNotice || eligibilityUnavailable
+                  }
                   riskProfileNotice={
                     showRiskProfileNotice ? (
                       <OhRiskProfileRequiredNotice
@@ -620,7 +671,9 @@ export function CustomerVisitDialog({
                   customerUuid={customer.uuid}
                   onInsuranceHrefClick={() => onOpenChange(false)}
                   consultationServiceSearch={consultationServiceSearch}
-                  onConsultationServiceSearchChange={setConsultationServiceSearch}
+                  onConsultationServiceSearchChange={
+                    setConsultationServiceSearch
+                  }
                   selectedClinicId={selectedClinicId}
                   attachmentFile={attachmentFile}
                   onAttachmentFileChange={setAttachmentFile}
@@ -650,7 +703,9 @@ export function CustomerVisitDialog({
                         </DestructiveButton>
                       </span>
                     </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">{closeTooltip}</TooltipContent>
+                    <TooltipContent className="max-w-xs">
+                      {closeTooltip}
+                    </TooltipContent>
                   </Tooltip>
                 ) : (
                   <DestructiveButton
@@ -660,7 +715,10 @@ export function CustomerVisitDialog({
                   >
                     {isSubmitting ? (
                       <>
-                        <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                        <Loader2
+                          className="size-4 animate-spin"
+                          aria-hidden="true"
+                        />
                         Closing...
                       </>
                     ) : (
@@ -669,22 +727,34 @@ export function CustomerVisitDialog({
                   </DestructiveButton>
                 )}
               </>
-            ) : hasDefaultClinic && isOhDepartment && startStep === "payment" ? (
+            ) : hasDefaultClinic &&
+              isOhDepartment &&
+              startStep === "payment" ? (
               <>
-                <SecondaryButton type="button" disabled={isSubmitting} onClick={() => setStartStep("visit")}>
+                <SecondaryButton
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={() => setStartStep("visit")}
+                >
                   Back
                 </SecondaryButton>
                 <PrimaryButton
                   type="button"
                   disabled={
-                    isSubmitting || eligibilityUnavailable || showRiskProfileNotice ||
-                    (modeOfPayment === "insurance" && insuranceSchemes.length === 0)
+                    isSubmitting ||
+                    eligibilityUnavailable ||
+                    showRiskProfileNotice ||
+                    (modeOfPayment === "insurance" &&
+                      insuranceSchemes.length === 0)
                   }
                   onClick={() => void handleStartVisit()}
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                      <Loader2
+                        className="size-4 animate-spin"
+                        aria-hidden="true"
+                      />
                       Starting…
                     </>
                   ) : (
@@ -694,10 +764,20 @@ export function CustomerVisitDialog({
               </>
             ) : hasDefaultClinic && isOhDepartment ? (
               <>
-                <SecondaryButton type="button" onClick={() => onOpenChange(false)} disabled={isSubmitting}>Cancel</SecondaryButton>
+                <SecondaryButton
+                  type="button"
+                  onClick={() => onOpenChange(false)}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </SecondaryButton>
                 <PrimaryButton
                   type="button"
-                  disabled={isSubmitting || eligibilityUnavailable || showRiskProfileNotice}
+                  disabled={
+                    isSubmitting ||
+                    eligibilityUnavailable ||
+                    showRiskProfileNotice
+                  }
                   onClick={() => void handleContinueToPayment()}
                 >
                   Continue
@@ -715,14 +795,20 @@ export function CustomerVisitDialog({
                 <PrimaryButton
                   type="button"
                   disabled={
-                    isSubmitting || eligibilityUnavailable || showRiskProfileNotice ||
-                    (modeOfPayment === "insurance" && insuranceSchemes.length === 0)
+                    isSubmitting ||
+                    eligibilityUnavailable ||
+                    showRiskProfileNotice ||
+                    (modeOfPayment === "insurance" &&
+                      insuranceSchemes.length === 0)
                   }
                   onClick={() => void handleStartVisit()}
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                      <Loader2
+                        className="size-4 animate-spin"
+                        aria-hidden="true"
+                      />
                       Starting...
                     </>
                   ) : (
@@ -749,14 +835,20 @@ export function CustomerVisitDialog({
                 <PrimaryButton
                   type="button"
                   disabled={
-                    isSubmitting || eligibilityUnavailable || showRiskProfileNotice ||
-                    (modeOfPayment === "insurance" && insuranceSchemes.length === 0)
+                    isSubmitting ||
+                    eligibilityUnavailable ||
+                    showRiskProfileNotice ||
+                    (modeOfPayment === "insurance" &&
+                      insuranceSchemes.length === 0)
                   }
                   onClick={() => void handleStartVisit()}
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                      <Loader2
+                        className="size-4 animate-spin"
+                        aria-hidden="true"
+                      />
                       Starting...
                     </>
                   ) : (

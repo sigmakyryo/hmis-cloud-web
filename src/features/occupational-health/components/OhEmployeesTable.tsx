@@ -28,11 +28,13 @@ import {
   formatCustomerName,
   formatDisplayDate,
 } from "@/features/customers/utils/format-customer";
+import { OhStartVisitEntry } from "@/features/occupational-health/components/OhStartVisitEntry";
 import { useToast } from "@/providers/toast-provider";
 
 type OhEmployeesTableProps = {
   customers: Customer[];
   onRowClick?: (customer: Customer) => void;
+  onAddEmployment?: (customer: Customer) => void;
   className?: string;
 };
 
@@ -43,11 +45,13 @@ const columns = [
   { key: "risk_profile", label: "Risk profile" },
   { key: "demographics", label: "Demographics" },
   { key: "created", label: "Registered" },
+  { key: "work", label: "" },
 ] as const;
 
 export function OhEmployeesTable({
   customers,
   onRowClick,
+  onAddEmployment,
   className,
 }: OhEmployeesTableProps) {
   const { toast } = useToast();
@@ -114,7 +118,9 @@ export function OhEmployeesTable({
                         ) : customer.email ? (
                           <span className="truncate">{customer.email}</span>
                         ) : (
-                          <span className="text-dash-muted">No phone / email</span>
+                          <span className="text-dash-muted">
+                            No phone / email
+                          </span>
                         )}
                       </div>
                     </div>
@@ -162,13 +168,33 @@ export function OhEmployeesTable({
                 </ListPageDataTableCell>
                 <ListPageDataTableCell>
                   <span className="text-[13px] text-brand-navy">
-                    {[customer.gender, listAge].filter(Boolean).join(" · ") || "—"}
+                    {[customer.gender, listAge].filter(Boolean).join(" · ") ||
+                      "—"}
                   </span>
                 </ListPageDataTableCell>
                 <ListPageDataTableCell>
                   <span className="text-[13px] text-brand-muted">
                     {formatDisplayDate(customer.created_at) || "—"}
                   </span>
+                </ListPageDataTableCell>
+                <ListPageDataTableCell>
+                  <div
+                    className="flex flex-wrap items-center justify-end gap-2"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <OhStartVisitEntry customer={customer} variant="inline" />
+                    {onAddEmployment ? (
+                      <button
+                        type="button"
+                        onClick={() => onAddEmployment(customer)}
+                        className="text-[13px] font-medium text-brand-primary hover:underline"
+                        data-testid="oh-employee-add-employment"
+                        title="Add an employment episode for this client"
+                      >
+                        Add employment
+                      </button>
+                    ) : null}
+                  </div>
                 </ListPageDataTableCell>
               </ListPageDataTableRow>
             );

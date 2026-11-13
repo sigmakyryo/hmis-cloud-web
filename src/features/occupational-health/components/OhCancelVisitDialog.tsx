@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 
-import { DestructiveButton, SecondaryButton } from "@/components/ui/app-buttons";
+import {
+  DestructiveButton,
+  SecondaryButton,
+} from "@/components/ui/app-buttons";
 import {
   Dialog,
   DialogContent,
@@ -29,7 +32,10 @@ type OhCancelVisitDialogProps = {
   onCancelled: () => void;
 };
 
-const OUTCOMES: { value: CancelNativeOhVisitPayload["outcome"]; label: string }[] = [
+const OUTCOMES: {
+  value: CancelNativeOhVisitPayload["outcome"];
+  label: string;
+}[] = [
   { value: "cancelled", label: "Cancel visit" },
   { value: "no_show", label: "Did not attend" },
 ];
@@ -42,7 +48,8 @@ export function OhCancelVisitDialog({
 }: OhCancelVisitDialogProps) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
-  const [outcome, setOutcome] = useState<CancelNativeOhVisitPayload["outcome"]>("cancelled");
+  const [outcome, setOutcome] =
+    useState<CancelNativeOhVisitPayload["outcome"]>("cancelled");
   const [reason, setReason] = useState("");
   const [reasonCode, setReasonCode] = useState<OhCancelReasonCode | "">("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -62,7 +69,10 @@ export function OhCancelVisitDialog({
       const openLines = result.open_billing_lines ?? 0;
       toast({
         variant: "success",
-        title: outcome === "no_show" ? "Visit marked did not attend" : "Visit cancelled",
+        title:
+          outcome === "no_show"
+            ? "Visit marked did not attend"
+            : "Visit cancelled",
         description:
           openLines > 0
             ? `${openLines} billing line${openLines === 1 ? "" : "s"} still on the bill. Ask billing to review.`
@@ -90,15 +100,19 @@ export function OhCancelVisitDialog({
         disabled={disabled}
         onClick={() => setOpen(true)}
         data-testid="oh-cancel-visit"
+        aria-label="Cancel visit"
+        title="Cancel this visit"
+        className="h-8 px-2.5 text-[12px]"
       >
-        Cancel visit
+        Cancel
       </SecondaryButton>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Cancel this visit?</DialogTitle>
             <DialogDescription>
-              The worker leaves the OHS Queue and can be booked again. Saved answers are kept.
+              The worker leaves the OHS Queue and can be booked again. Saved
+              answers are kept.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -109,7 +123,11 @@ export function OhCancelVisitDialog({
                   type="button"
                   size="sm"
                   aria-pressed={outcome === item.value}
-                  className={outcome === item.value ? "border-brand-primary text-brand-primary" : undefined}
+                  className={
+                    outcome === item.value
+                      ? "border-brand-primary text-brand-primary"
+                      : undefined
+                  }
                   onClick={() => setOutcome(item.value)}
                 >
                   {item.label}
@@ -117,15 +135,23 @@ export function OhCancelVisitDialog({
               ))}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="oh-cancel-visit-reason-code">Reason category</Label>
+              <Label htmlFor="oh-cancel-visit-reason-code">
+                Reason category
+              </Label>
               <select
                 id="oh-cancel-visit-reason-code"
                 className="h-9 w-full rounded-md border border-dash-border bg-white px-2 text-sm"
                 value={reasonCode}
                 disabled={isSubmitting}
-                onChange={(event) => setReasonCode(event.target.value as OhCancelReasonCode | "")}
+                onChange={(event) =>
+                  setReasonCode(event.target.value as OhCancelReasonCode | "")
+                }
               >
-                <option value="">{outcome === "no_show" ? "Did not attend (default)" : "Other (default)"}</option>
+                <option value="">
+                  {outcome === "no_show"
+                    ? "Did not attend (default)"
+                    : "Other (default)"}
+                </option>
                 {OH_CANCEL_REASON_CODES.map((item) => (
                   <option key={item.code} value={item.code}>
                     {item.label}
@@ -145,7 +171,11 @@ export function OhCancelVisitDialog({
             </div>
           </div>
           <DialogFooter>
-            <SecondaryButton type="button" onClick={() => setOpen(false)} disabled={isSubmitting}>
+            <SecondaryButton
+              type="button"
+              onClick={() => setOpen(false)}
+              disabled={isSubmitting}
+            >
               Keep visit
             </SecondaryButton>
             <DestructiveButton

@@ -8,6 +8,7 @@ import { ROUTES } from "@/constants/routes";
 import { OpdEncounterStatusBadge } from "@/features/clinical-opd/components/OpdEncounterStatusBadge";
 import { formatWaitingMinutes } from "@/features/clinical-opd/utils/opd-queue-stage";
 import { OhHomePageRow } from "@/features/occupational-health/components/oh-home/OhHomePageRow";
+import { OhStartVisitEntry } from "@/features/occupational-health/components/OhStartVisitEntry";
 import {
   useOhComplianceDashboard,
   useOhEncounters,
@@ -18,7 +19,11 @@ import type { OhVisitEncounter } from "@/features/occupational-health/types";
 const QUEUE_PREVIEW = 8;
 
 function clientLabel(encounter: OhVisitEncounter): string {
-  return encounter.customer_name?.trim() || encounter.customer_identifier?.trim() || "Unknown client";
+  return (
+    encounter.customer_name?.trim() ||
+    encounter.customer_identifier?.trim() ||
+    "Unknown client"
+  );
 }
 
 function waitingMinutes(encounter: OhVisitEncounter): number | null {
@@ -35,20 +40,39 @@ function waitingMinutes(encounter: OhVisitEncounter): number | null {
 
 function QueueRow({ encounter }: { encounter: OhVisitEncounter }) {
   const name = clientLabel(encounter);
-  const href = ROUTES.occupationalHealthEncounter(encounter.visit, encounter.uuid);
+  const href = ROUTES.occupationalHealthEncounter(
+    encounter.visit,
+    encounter.uuid,
+  );
   const context = [encounter.employer_name, encounter.department_name]
     .flatMap((value) => (value?.trim() ? [value.trim()] : []))
     .join(" · ");
 
   return (
     <li className="border-b border-dash-border/70">
-      <Link href={href} data-testid="oh-home-queue-row" className="flex items-center gap-3 py-2.5">
-        <UserIdenticon seed={encounter.customer_uuid || name} name={name} className="size-7 shrink-0 rounded-md" />
+      <Link
+        href={href}
+        data-testid="oh-home-queue-row"
+        className="flex items-center gap-3 py-2.5"
+      >
+        <UserIdenticon
+          seed={encounter.customer_uuid || name}
+          name={name}
+          className="size-7 shrink-0 rounded-md"
+        />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[14px] font-medium text-brand-navy">{name}</span>
-          {context ? <span className="block truncate text-[12.5px] text-dash-muted">{context}</span> : null}
+          <span className="block truncate text-[14px] font-medium text-brand-navy">
+            {name}
+          </span>
+          {context ? (
+            <span className="block truncate text-[12.5px] text-dash-muted">
+              {context}
+            </span>
+          ) : null}
         </span>
-        <span className="shrink-0 text-[12.5px] text-dash-muted tabular-nums">{formatWaitingMinutes(waitingMinutes(encounter))}</span>
+        <span className="shrink-0 text-[12.5px] text-dash-muted tabular-nums">
+          {formatWaitingMinutes(waitingMinutes(encounter))}
+        </span>
         <OpdEncounterStatusBadge status={encounter.status} />
       </Link>
     </li>
@@ -63,7 +87,9 @@ export function OhClinicHome({ ohModule }: { ohModule: OhModule }) {
   const shown = encounters.slice(0, QUEUE_PREVIEW);
   const remaining = encounters.length - shown.length;
   const counts = compliance.data;
-  const pages = ohModule.pages.filter((page) => page.href !== ROUTES.occupationalHealth);
+  const pages = ohModule.pages.filter(
+    (page) => page.href !== ROUTES.occupationalHealth,
+  );
 
   return (
     <section
@@ -72,15 +98,59 @@ export function OhClinicHome({ ohModule }: { ohModule: OhModule }) {
       className="grid items-start gap-x-12 gap-y-8 @4xl:grid-cols-[minmax(0,1fr)_18rem]"
     >
       <h2 className="sr-only">{ohModule.label}</h2>
+      <div
+        className="flex flex-wrap items-center justify-between gap-3 @4xl:col-span-2"
+        data-testid="oh-home-quick-actions"
+      >
+        <div
+          className="flex flex-wrap items-baseline gap-x-5 gap-y-1"
+          data-testid="oh-home-compliance-stats"
+        >
+          {counts ? (
+            <>
+              <p className="text-[13px] text-brand-navy">
+                <span className="text-[18px] font-semibold tabular-nums">
+                  {counts.overdue}
+                </span>
+                <span className="ml-1.5 text-dash-muted">overdue</span>
+              </p>
+              <p className="text-[13px] text-brand-navy">
+                <span className="text-[18px] font-semibold tabular-nums">
+                  {counts.due}
+                </span>
+                <span className="ml-1.5 text-dash-muted">due</span>
+              </p>
+              {counts.due_within_30_days != null ? (
+                <p className="text-[13px] text-dash-muted">
+                  <span className="font-semibold tabular-nums text-brand-navy">
+                    {counts.due_within_30_days}
+                  </span>{" "}
+                  within 30 days
+                </p>
+              ) : null}
+            </>
+          ) : (
+            <p className="text-[13px] text-dash-muted">
+              Compliance counts appear here when available.
+            </p>
+          )}
+        </div>
+        <OhStartVisitEntry />
+      </div>
       <div data-testid="oh-home-queue" className="min-w-0">
         <div className="flex items-baseline justify-between border-b border-dash-border pb-2">
           <h3 className="text-[15px] font-semibold text-brand-navy">
             Queue
             {queue.isSuccess ? (
-              <span className="ml-2 font-normal text-dash-muted tabular-nums">{encounters.length}</span>
+              <span className="ml-2 font-normal text-dash-muted tabular-nums">
+                {encounters.length}
+              </span>
             ) : null}
           </h3>
-          <Link href={ROUTES.occupationalHealth} className="text-[13px] font-medium text-brand-primary hover:underline">
+          <Link
+            href={ROUTES.occupationalHealth}
+            className="text-[13px] font-medium text-brand-primary hover:underline"
+          >
             Open queue
           </Link>
         </div>
@@ -93,12 +163,18 @@ export function OhClinicHome({ ohModule }: { ohModule: OhModule }) {
         ) : queue.isError ? (
           <p className="py-4 text-[13.5px] text-dash-muted">
             Could not load the queue.{" "}
-            <button type="button" className="font-medium text-brand-primary hover:underline" onClick={() => void queue.refetch()}>
+            <button
+              type="button"
+              className="font-medium text-brand-primary hover:underline"
+              onClick={() => void queue.refetch()}
+            >
               Try again
             </button>
           </p>
         ) : encounters.length === 0 ? (
-          <p className="py-4 text-[13.5px] text-dash-muted">No visits in the queue.</p>
+          <p className="py-4 text-[13.5px] text-dash-muted">
+            No visits in the queue.
+          </p>
         ) : (
           <>
             <ul>
@@ -109,7 +185,10 @@ export function OhClinicHome({ ohModule }: { ohModule: OhModule }) {
             {remaining > 0 ? (
               <p className="pt-2 text-[13px] text-dash-muted">
                 {remaining} more in the{" "}
-                <Link href={ROUTES.occupationalHealth} className="font-medium text-brand-primary hover:underline">
+                <Link
+                  href={ROUTES.occupationalHealth}
+                  className="font-medium text-brand-primary hover:underline"
+                >
                   queue
                 </Link>
                 .

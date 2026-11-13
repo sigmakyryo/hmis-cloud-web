@@ -1,108 +1,160 @@
 "use client";
 
 import type { ReactNode } from "react";
+import Link from "next/link";
 
-import { UserIdenticon } from "@/components/UserIdenticon";
-import { OpdEncounterStatusBadge } from "@/features/clinical-opd/components/OpdEncounterStatusBadge";
-import type { OhVisitEncounter } from "@/features/occupational-health/types";
+import { Badge } from "@/components/ui/badge";
+import { PrimaryButton, SecondaryButton } from "@/components/ui/app-buttons";
+import { StatusDotBadge } from "@/components/ui/status-dot-badge";
+import { ROUTES } from "@/constants/routes";
+import { OhVisitPatientChip } from "@/features/occupational-health/components/workspace/OhVisitPatientChip";
 import type { Customer } from "@/features/customers/types/customer.types";
-import { formatVisitElapsed } from "@/features/customers/utils/format-visit-elapsed";
-import { formatCustomerName } from "@/features/customers/utils/format-customer";
-import { formatAge } from "@/lib/age";
+import {
+  OH_HEADER_ACTIONS,
+  OH_REFERRED_VISIT_MESSAGE,
+  isNativeOhVisit,
+  isReferredOhVisit,
+  ohVisitStatusLabel,
+  ohVisitStatusTone,
+} from "@/features/occupational-health/lib/oh-visit-workspace";
+import type { OhVisitEncounter } from "@/features/occupational-health/types";
+
+export type OhEncounterHeaderAction = {
+  visible: string;
+  aria: string;
+  title: string;
+  pending?: boolean;
+  onClick: () => void;
+};
+
+export type OhEncounterHeaderJump = {
+  label: string;
+  description: string;
+  onClick: () => void;
+};
 
 type OhEncounterHeaderProps = {
   customer: Customer | null;
   encounter: OhVisitEncounter;
   visitTypeName?: string | null;
+  /** @deprecated Prefer structured primary / jump / cancel props. Still rendered at the end when provided. */
   actions?: ReactNode;
+  jump?: OhEncounterHeaderJump | null;
+  primary?: OhEncounterHeaderAction | null;
+  cancel?: ReactNode;
 };
-
-function formatStartedLabel(startedAt: string | null | undefined): string {
-  if (!startedAt) {
-    return "Not started";
-  }
-  const elapsed = formatVisitElapsed(startedAt);
-  if (!elapsed) {
-    return "Not started";
-  }
-  return elapsed === "Just now" ? "Started just now" : `Started ${elapsed} ago`;
-}
 
 export function OhEncounterHeader({
   customer,
   encounter,
   visitTypeName,
   actions,
+  jump = null,
+  primary = null,
+  cancel = null,
 }: OhEncounterHeaderProps) {
-  const fullName = customer ? formatCustomerName(customer) : "OH encounter";
-  const identiconSeed = customer?.uuid || customer?.customer_identifier || fullName;
   const visitLabel = visitTypeName?.trim() || null;
-
-  const facts = [
-    customer?.customer_identifier,
-    customer ? formatAge(customer.dob, { empty: "" }) || null : null,
-    customer?.gender,
-    encounter.department_name,
-    encounter.location_name,
-    encounter.clinician_name,
-    formatStartedLabel(encounter.started_at),
-  ].filter((value): value is string => Boolean(value));
+  const referred = isReferredOhVisit(encounter) && encounter.is_active;
+  const closedLabel = !encounter.is_active
+    ? encounter.status === "no_show"
+      ? "This visit is marked as did not attend."
+      : encounter.status === "cancelled"
+        ? "This visit was cancelled."
+        : encounter.status === "completed"
+          ? "This visit is completed."
+          : null
+    : null;
 
   return (
     <header
-      className="flex min-h-14 shrink-0 items-center justify-between gap-3 border-b border-dash-border bg-white px-5 py-2.5"
+      className="flex shrink-0 flex-col border-b border-dash-border bg-white"
       data-testid="oh-encounter-header"
     >
-      <div className="flex min-w-0 flex-1 items-center gap-3">
-        <UserIdenticon
-          seed={identiconSeed}
-          name={fullName}
-          className="size-8 shrink-0 rounded-full"
-          fallbackClassName="rounded-full text-xs font-semibold"
-        />
-        <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-            <h1 className="truncate text-[15px] font-semibold tracking-tight text-brand-navy">
-              {fullName}
-            </h1>
-            <OpdEncounterStatusBadge status={encounter.status} />
+      <div className="flex min-h-12 items-center justify-between gap-3 px-4 py-1.5 sm:px-5">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <OhVisitPatientChip
+            customer={customer}
+            encounter={encounter}
+            visitTypeName={visitLabel}
+          />
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
             {visitLabel ? (
-              <span
-                className="truncate text-[12px] font-semibold text-brand-primary"
+              <Badge
+                variant="outline"
+                className="h-5 px-1.5 text-[11px] font-medium text-brand-navy"
                 data-testid="oh-encounter-visit-type"
                 title={visitLabel}
               >
                 {visitLabel}
-              </span>
+              </Badge>
             ) : null}
+            <StatusDotBadge
+              tone={ohVisitStatusTone(encounter.status)}
+              className="h-5 px-1.5 text-[11px]"
+            >
+              {ohVisitStatusLabel(encounter.status)}
+            </StatusDotBadge>
           </div>
-          {facts.length > 0 ? (
-            <p className="mt-0.5 truncate text-[12px] text-dash-muted">
-              {facts.map((fact, index) => (
-                <span key={`${fact}-${index}`}>
-                  {index > 0 ? <span aria-hidden> · </span> : null}
-                  <span
-                    data-testid={
-                      fact === encounter.department_name
-                        ? "oh-encounter-fact-department"
-                        : fact === encounter.location_name
-                          ? "oh-encounter-fact-location"
-                          : fact === encounter.clinician_name
-                            ? "oh-encounter-fact-clinician"
-                            : fact === formatStartedLabel(encounter.started_at)
-                              ? "oh-encounter-fact-started"
-                              : undefined
-                    }
-                  >
-                    {fact}
-                  </span>
-                </span>
-              ))}
-            </p>
+        </div>
+        <div
+          className="flex shrink-0 flex-wrap items-center justify-end gap-2"
+          data-testid="oh-header-actions"
+        >
+          <Link
+            href={ROUTES.occupationalHealth}
+            className="text-[12px] font-medium text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
+          >
+            OHS Queue
+          </Link>
+          {jump ? (
+            <SecondaryButton
+              type="button"
+              onClick={jump.onClick}
+              aria-label={jump.description}
+              title={jump.description}
+              data-testid="oh-go-to-current-step"
+              className="h-8 px-2.5 text-[12px]"
+            >
+              {jump.label}
+            </SecondaryButton>
           ) : null}
+          {cancel}
+          {primary ? (
+            <PrimaryButton
+              type="button"
+              disabled={Boolean(primary.pending)}
+              onClick={primary.onClick}
+              aria-label={primary.aria}
+              title={primary.title}
+              data-testid="oh-visit-primary-action"
+              className="h-8 px-3 text-[12px]"
+            >
+              {primary.visible}
+            </PrimaryButton>
+          ) : null}
+          {actions}
         </div>
       </div>
-      {actions ? <div className="shrink-0 self-center">{actions}</div> : null}
+      {referred ? (
+        <p
+          role="status"
+          data-testid="oh-visit-readonly-banner"
+          className="border-t border-dash-border bg-amber-50/80 px-4 py-2 text-[12.5px] text-amber-950 sm:px-5"
+        >
+          {OH_REFERRED_VISIT_MESSAGE}
+        </p>
+      ) : null}
+      {closedLabel && isNativeOhVisit(encounter) ? (
+        <p
+          role="status"
+          data-testid="oh-visit-closed-banner"
+          className="border-t border-dash-border bg-slate-50 px-4 py-2 text-[12.5px] text-dash-muted sm:px-5"
+        >
+          {closedLabel}
+        </p>
+      ) : null}
     </header>
   );
 }
+
+export { OH_HEADER_ACTIONS };

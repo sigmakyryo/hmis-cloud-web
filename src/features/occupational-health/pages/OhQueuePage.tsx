@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import type { OhQueueStatusFilter } from "@/features/occupational-health/lib/oh-visit-workspace";
+
 import { Button } from "@/components/ui/button";
 import {
   ListPageBlankState,
@@ -25,11 +27,16 @@ export function OhQueuePage() {
   const { userData, isLoading: isUserLoading } = useUser();
   const [search, setSearch] = useState("");
   const [activeSearch, setActiveSearch] = useState("");
+  const [status, setStatus] = useState<OhQueueStatusFilter>("all");
   const [page, setPage] = useState(1);
 
-  const { data = [], isLoading, isFetching, error, refetch } = useOhEncounters(
-    activeSearch,
-  );
+  const {
+    data = [],
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useOhEncounters(activeSearch, status);
 
   const hasAccess = canAccessOccupationalHealth(userData);
 
@@ -39,8 +46,9 @@ export function OhQueuePage() {
   const pageStart = (currentPage - 1) * DEFAULT_PAGE_SIZE;
   const paginated = data.slice(pageStart, pageStart + DEFAULT_PAGE_SIZE);
 
-  const hasActiveQuery = activeSearch.length > 0;
-  const hasNoRecords = !isLoading && !error && data.length === 0 && !hasActiveQuery;
+  const hasActiveQuery = activeSearch.length > 0 || status !== "all";
+  const hasNoRecords =
+    !isLoading && !error && data.length === 0 && !hasActiveQuery;
   const isFilteredEmpty =
     !isLoading && !error && data.length === 0 && hasActiveQuery;
 
@@ -52,6 +60,7 @@ export function OhQueuePage() {
   function handleClearSearch() {
     setSearch("");
     setActiveSearch("");
+    setStatus("all");
     setPage(1);
   }
 
@@ -67,10 +76,15 @@ export function OhQueuePage() {
     <ListPageLayout data-testid="oh-queue-page">
       <OhQueuePageHeader
         search={search}
+        status={status}
         isLoading={isFetching}
         onSearchChange={setSearch}
         onSearchSubmit={handleSearchSubmit}
         onClearSearch={handleClearSearch}
+        onStatusChange={(next) => {
+          setStatus(next);
+          setPage(1);
+        }}
         onRefresh={() => void refetch()}
       />
 
@@ -79,41 +93,41 @@ export function OhQueuePage() {
           <OhQueueTableSkeleton rows={8} />
         ) : error ? (
           <ListPageBlankState
-  compact
-  tone="error"
-  icon="file"
-  title="Could not load OHS Queue"
-  description="Failed to load occupational health encounters."
-  action={
-    <Button
-      type="button"
-      variant="outline"
-      className="h-8 rounded-lg text-[13px]"
-      onClick={() => void refetch()}
-    >
-      Try again
-    </Button>
-  }
-/>
+            compact
+            tone="error"
+            icon="file"
+            title="Could not load OHS Queue"
+            description="Failed to load occupational health encounters."
+            action={
+              <Button
+                type="button"
+                variant="outline"
+                className="h-8 rounded-lg text-[13px]"
+                onClick={() => void refetch()}
+              >
+                Try again
+              </Button>
+            }
+          />
         ) : hasNoRecords ? (
           <OhQueueEmptyState onRefresh={() => void refetch()} />
         ) : isFilteredEmpty ? (
           <ListPageBlankState
-  compact
-  icon="search"
-  title="No matching encounters"
-  description="Adjust your search and try again."
-  action={
-    <Button
-      type="button"
-      variant="outline"
-      className="h-8 rounded-lg text-[13px]"
-      onClick={handleClearSearch}
-    >
-      Clear search
-    </Button>
-  }
-/>
+            compact
+            icon="search"
+            title="No matching encounters"
+            description="Adjust your search and try again."
+            action={
+              <Button
+                type="button"
+                variant="outline"
+                className="h-8 rounded-lg text-[13px]"
+                onClick={handleClearSearch}
+              >
+                Clear search
+              </Button>
+            }
+          />
         ) : (
           <>
             <OhQueueTable encounters={paginated} />
