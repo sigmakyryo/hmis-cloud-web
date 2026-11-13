@@ -101,7 +101,6 @@ it("leads an exam with vitals and answered fields, hiding empty ones until asked
   expect(screen.getByTestId("oh-exam-answers-status")).toHaveTextContent("Completed");
   expect(screen.getByRole("heading", { name: "Periodic medical" })).toBeVisible();
   expect(screen.getByTestId("oh-exam-answers-subject")).toHaveTextContent("Ada Lovelace · E-104 · Welder");
-  expect(screen.getByText("AL")).toBeVisible();
   expect(screen.getByText("Dr Ada · 13 Nov 2026, 08:30")).toBeVisible();
   expect(screen.getByText("Medical history")).toBeVisible();
   expect(screen.getByText("Presenting complaint")).toBeVisible();
@@ -213,9 +212,10 @@ it("leads a certificate with the outcome, keeps form answers collapsed, and has 
   const outcome = screen.getByTestId("oh-exam-answers-outcome");
   expect(outcome).toHaveTextContent("Fit with restrictions");
   expect(outcome).toHaveAttribute("data-tone", "restricted");
-  expect(outcome).toHaveTextContent("Valid 13 Nov 2026 → 13 Nov 2027 · 12 months");
+  expect(outcome).not.toHaveTextContent("Valid until");
+  expect(screen.getByTestId("oh-exam-answers-validity")).toHaveTextContent("Valid until 13 Nov 2027");
   expect(screen.getByTestId("oh-exam-answers-remaining")).toHaveTextContent("12 months left");
-  expect(screen.getByTestId("oh-exam-answers-validity-bar")).toBeVisible();
+  expect(screen.queryByTestId("oh-exam-answers-validity-bar")).toBeNull();
   expect(screen.getByTestId("oh-exam-answers-restrictions")).toHaveTextContent("No work at height");
   expect(screen.getByTestId("oh-exam-answers-signed")).toHaveTextContent(
     "Signed by Dr Ada · 13 Nov 2026, 08:30",
