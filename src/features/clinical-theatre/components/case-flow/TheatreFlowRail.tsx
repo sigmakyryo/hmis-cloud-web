@@ -90,7 +90,7 @@ function onRailKeyDown(event: KeyboardEvent<HTMLElement>) {
 
 type RailProps = {
   steps: TheatreFlowStep[];
-  activeStep: TheatreFlowStepId;
+  activeStep: TheatreFlowStepId | null;
   hrefFor: (step: TheatreFlowStepId) => string;
 };
 

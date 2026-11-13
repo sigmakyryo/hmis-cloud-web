@@ -151,6 +151,11 @@ export type ClinicalWorkspaceConfig<TabId extends string = string> =
     /** Optional specialty header rendered above the section tabs. */
     workspaceBanner?: ComponentType<ClinicalWorkspaceBannerProps>;
     /**
+     * Optional specialty navigation, rendered as a column beside the page
+     * content (theatre's vertical case-flow and records rail).
+     */
+    workspaceNav?: ComponentType<ClinicalWorkspaceBannerProps>;
+    /**
      * When true, the shared OPD-style patient header is omitted. The specialty
      * is responsible for showing patient identity (theatre uses a compact chip
      * on its workspace banner).

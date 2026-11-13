@@ -22,7 +22,9 @@ export function OpdEncounterWorkspaceBody({
 }: OpdEncounterWorkspaceBodyProps) {
   const pathname = usePathname();
   const routing = useWorkspaceRouting();
-  const WorkspaceBanner = useOptionalClinicalWorkspaceConfig()?.workspaceBanner;
+  const workspaceConfig = useOptionalClinicalWorkspaceConfig();
+  const WorkspaceBanner = workspaceConfig?.workspaceBanner;
+  const WorkspaceNav = workspaceConfig?.workspaceNav;
   const { visitUuid, encounterUuid, chartSummary } = useOpdEncounterWorkspace();
   const activeTab = workspaceTabFromPathname(
     routing,
@@ -58,7 +60,16 @@ export function OpdEncounterWorkspaceBody({
       ) : null}
       {routing.hideSectionTabBar ? null : <OpdEncounterTabs />}
 
-      {isFullWidthLayout ? (
+      {WorkspaceNav ? (
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col lg:flex-row">
+          <WorkspaceNav visitUuid={visitUuid} encounterUuid={encounterUuid} />
+          {isFullWidthLayout ? (
+            <div className="min-w-0 flex-1">{children}</div>
+          ) : (
+            <DetailPageMainSection className="max-w-3xl">{children}</DetailPageMainSection>
+          )}
+        </div>
+      ) : isFullWidthLayout ? (
         children
       ) : (
         <DetailPageMainSection className="max-w-3xl">{children}</DetailPageMainSection>

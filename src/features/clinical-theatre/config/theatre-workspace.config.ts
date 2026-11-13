@@ -1,5 +1,6 @@
 import { SHARED_CLINICAL_PANELS } from "@/features/clinical-opd/config/opd-workspace.config";
 import { TheatreCaseHeader } from "@/features/clinical-theatre/components/TheatreCaseHeader";
+import { TheatreWorkspaceTabs } from "@/features/clinical-theatre/components/TheatreWorkspaceTabs";
 import { TheatreCaseFlowSection } from "@/features/clinical-theatre/components/case-flow/TheatreCaseFlow";
 import {
   THEATRE_WORKSPACE_ROUTING,
@@ -10,6 +11,7 @@ import type { ClinicalWorkspaceConfig } from "@/features/clinical-workspace/type
 export const THEATRE_WORKSPACE_CONFIG: ClinicalWorkspaceConfig<TheatreEncounterTabId> = {
   ...THEATRE_WORKSPACE_ROUTING,
   workspaceBanner: TheatreCaseHeader,
+  workspaceNav: TheatreWorkspaceTabs,
   hideEncounterHeader: true,
   panels: {
     overview: SHARED_CLINICAL_PANELS.overview,

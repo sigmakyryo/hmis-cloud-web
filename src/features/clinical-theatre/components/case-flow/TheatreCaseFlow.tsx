@@ -10,11 +10,6 @@ import { TheatreIpdConversionPanel } from "@/features/clinical-theatre/component
 import { TheatrePreferenceCardPanel } from "@/features/clinical-theatre/components/TheatrePreferenceCardPanel";
 import { TheatreReturnLinkPanel } from "@/features/clinical-theatre/components/TheatreReturnLinkPanel";
 import {
-  TheatreFlowRail,
-  TheatreFlowStrip,
-  theatreFlowStateLabel,
-} from "@/features/clinical-theatre/components/case-flow/TheatreFlowRail";
-import {
   TheatreBookingStep,
   TheatreHandoverStep,
   TheatreOpNoteStep,
@@ -43,7 +38,6 @@ import {
   THEATRE_TRANSITION_ACTION_LABELS,
 } from "@/features/clinical-theatre/utils/theatre-case-display";
 import {
-  THEATRE_FLOW_STEPS,
   adjacentTheatreFlowSteps,
   buildTheatreFlow,
   currentTheatreFlowStep,
@@ -55,7 +49,6 @@ import {
 } from "@/features/clinical-theatre/utils/theatre-case-flow";
 import { theatreNextAction } from "@/features/clinical-theatre/utils/theatre-workflow";
 import type { ClinicalWorkspacePanelProps } from "@/features/clinical-workspace/types/clinical-workspace.types";
-import { cn } from "@/lib/utils";
 
 const SHEET_TITLES: Record<TheatreFlowSheet, { title: string; description: string }> = {
   team: {
@@ -82,16 +75,9 @@ export function TheatreCaseFlowSection({ encounterUuid }: ClinicalWorkspacePanel
 
   if (isLoading) {
     return (
-      <div className="grid gap-8 px-4 py-6 sm:px-6 lg:grid-cols-[17rem_1fr]" aria-busy>
-        <div className="hidden space-y-3 lg:block">
-          {THEATRE_FLOW_STEPS.map((step) => (
-            <div key={step.id} className="h-10 animate-pulse rounded-lg bg-muted/70" />
-          ))}
-        </div>
-        <div className="space-y-4">
-          <div className="h-8 w-64 animate-pulse rounded bg-muted/70" />
-          <div className="h-40 animate-pulse rounded bg-muted/50" />
-        </div>
+      <div className="space-y-4 px-4 py-6 sm:px-6" aria-busy>
+        <div className="h-8 w-64 animate-pulse rounded bg-muted/70" />
+        <div className="h-40 animate-pulse rounded bg-muted/50" />
       </div>
     );
   }
@@ -153,7 +139,6 @@ export function TheatreCaseFlow({ theatreCase }: { theatreCase: TheatreCase }) {
   };
 
   const active = steps.find((step) => step.id === activeStep) ?? steps[0];
-  const activeIndex = steps.findIndex((step) => step.id === active.id);
   const stepProps: TheatreStepProps = {
     theatreCase,
     steps,
@@ -164,57 +149,11 @@ export function TheatreCaseFlow({ theatreCase }: { theatreCase: TheatreCase }) {
 
   return (
     <div className="px-4 pb-10 pt-5 sm:px-6" data-testid="theatre-case-flow">
-      <div className="mb-5 lg:hidden">
-        <TheatreFlowStrip steps={steps} activeStep={active.id} hrefFor={(id) => stepHref(id)} />
-      </div>
-      <div className="grid gap-8 lg:grid-cols-[17rem_minmax(0,1fr)] xl:gap-12">
-        <aside className="hidden lg:block">
-          <div className="sticky top-48">
-            <p className="mb-3 px-2 text-xs font-semibold uppercase tracking-wider text-brand-muted">
-              Perioperative journey
-            </p>
-            <TheatreFlowRail steps={steps} activeStep={active.id} hrefFor={(id) => stepHref(id)} />
-          </div>
-        </aside>
-
         <section
           aria-label={active.label}
           className="min-w-0"
           data-testid={`theatre-flow-step-${active.id}`}
         >
-          <header className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-dash-border/70 pb-5">
-            <div className="min-w-0">
-              <p className="text-xs font-medium uppercase tracking-wider text-brand-muted">
-                Step {activeIndex + 1} of {steps.length}
-                <span aria-hidden> · </span>
-                <span
-                  className={cn(
-                    active.state === "done" && "text-emerald-700",
-                    (active.state === "blocked" || active.state === "attention") &&
-                      "text-amber-700",
-                    active.state === "current" && "text-brand-primary",
-                  )}
-                >
-                  {theatreFlowStateLabel(active.state)}
-                </span>
-              </p>
-              <h2 className="mt-1 text-2xl font-semibold tracking-tight text-brand-navy">
-                {active.label}
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {THEATRE_FLOW_STEPS[activeIndex]?.hint}
-              </p>
-            </div>
-            {active.id !== currentStep && !isTheatreCaseStopped(theatreCase.status) ? (
-              <Button asChild size="sm" variant="ghost" className="text-brand-primary">
-                <Link href={pathname} scroll={false}>
-                  Jump to where the case is now
-                  <ArrowRight className="ml-1 size-4" aria-hidden />
-                </Link>
-              </Button>
-            ) : null}
-          </header>
-
           {isTheatreCaseStopped(theatreCase.status) ? (
             <FlowCallout
               tone="danger"
@@ -249,7 +188,6 @@ export function TheatreCaseFlow({ theatreCase }: { theatreCase: TheatreCase }) {
             caseHref={pathname}
           />
         </section>
-      </div>
 
       <TheatreFlowSheets theatreCase={theatreCase} open={openSheet} onClose={closeSheet} />
     </div>

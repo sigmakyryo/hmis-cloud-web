@@ -233,7 +233,7 @@ describe("theatre case flow workspace", () => {
     search = new URLSearchParams();
   });
 
-  it("opens on the live step with a rail, one move and its blocker", async () => {
+  it("opens on the live step with one move and its blocker", async () => {
     capabilities = ["view_theatre_queue", "transition_theatre_case", "record_theatre_checklist"];
     wrap(
       <TheatreCaseFlow
@@ -245,11 +245,8 @@ describe("theatre case flow workspace", () => {
       />,
     );
     expect(screen.getByTestId("theatre-flow-step-sign-in")).toBeTruthy();
-    expect(screen.getByRole("heading", { level: 2, name: "Sign in" })).toBeTruthy();
-    const rail = screen.getByTestId("theatre-flow-rail");
-    const current = rail.querySelector('[aria-current="step"]');
-    expect(current?.getAttribute("data-flow-step")).toBe("sign-in");
-    expect(current?.getAttribute("data-state")).toBe("blocked");
+    expect(screen.queryByText(/Step \d+ of \d+/)).toBeNull();
+    expect(screen.queryByText("Jump to where the case is now")).toBeNull();
     expect(await screen.findByTestId("checklist-stage-sign_in")).toBeTruthy();
     expect(screen.queryByTestId("checklist-stage-time_out")).toBeNull();
     const move = screen.getByTestId("theatre-flow-move");

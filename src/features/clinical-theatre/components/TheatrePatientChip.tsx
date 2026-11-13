@@ -170,12 +170,12 @@ export function TheatrePatientChip({ fallbackName }: TheatrePatientChipProps) {
   if (!fullName) {
     return (
       <div
-        className="flex items-center gap-2 py-0.5"
+        className="flex items-center gap-1.5 py-0.5"
         data-testid="theatre-patient-chip-skeleton"
         aria-hidden
       >
-        <div className="size-7 animate-pulse rounded-full bg-muted" />
-        <div className="h-4 w-36 animate-pulse rounded bg-muted/70" />
+        <div className="size-6 animate-pulse rounded-full bg-muted" />
+        <div className="h-3 w-28 animate-pulse rounded bg-muted/70" />
       </div>
     );
   }
@@ -203,7 +203,7 @@ export function TheatrePatientChip({ fallbackName }: TheatrePatientChipProps) {
           <button
             type="button"
             className={cn(
-              "group inline-flex max-w-full items-center gap-2 rounded-full border border-dash-border/80 bg-background py-0.5 pl-0.5 pr-2",
+              "group inline-flex max-w-full items-center gap-1.5 rounded-full border border-dash-border/80 bg-background py-px pl-px pr-1.5",
               "text-left shadow-sm transition-colors",
               "hover:border-brand-primary/40 hover:bg-muted/40",
               "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary",
@@ -223,15 +223,15 @@ export function TheatrePatientChip({ fallbackName }: TheatrePatientChipProps) {
               name={fullName}
               imageUrl={identity.photoUrl}
               fallback="initials"
-              className="size-7 shrink-0 rounded-full"
-              fallbackClassName="rounded-full text-[11px] font-semibold"
+              className="size-6 shrink-0 rounded-full"
+              fallbackClassName="rounded-full text-[10px] font-semibold"
             />
             <span className="min-w-0 leading-tight">
-              <span className="block truncate text-sm font-semibold tracking-tight text-brand-navy">
+              <span className="block truncate text-xs font-semibold tracking-tight text-brand-navy">
                 {fullName}
               </span>
               {chipMeta ? (
-                <span className="block truncate font-mono text-[11px] text-muted-foreground">
+                <span className="block truncate font-mono text-[10px] text-muted-foreground">
                   {chipMeta}
                 </span>
               ) : null}
@@ -240,7 +240,7 @@ export function TheatrePatientChip({ fallbackName }: TheatrePatientChipProps) {
               <OpdEncounterStatusBadge
                 status={identity.status}
                 className={cn(
-                  "shrink-0",
+                  "h-4 shrink-0 px-1 text-[10px]",
                   STATUS_BADGE_DARK[identity.status] ??
                     "dark:border-border dark:bg-transparent dark:text-muted-foreground",
                 )}
@@ -248,7 +248,7 @@ export function TheatrePatientChip({ fallbackName }: TheatrePatientChipProps) {
             ) : null}
             <ChevronDown
               className={cn(
-                "size-3.5 shrink-0 text-muted-foreground transition-transform duration-200",
+                "size-3 shrink-0 text-muted-foreground transition-transform duration-200",
                 detailsOpen && "rotate-180",
               )}
               aria-hidden
