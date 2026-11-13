@@ -1,9 +1,12 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueries } from "@tanstack/react-query";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
-import { reviewTemplateForm, type TemplateFormReviewResponse } from "@/features/oh-template-builder/lib/templateAi";
+import {
+  reviewTemplateForm,
+  type TemplateFormReviewResponse,
+} from "@/features/oh-template-builder/lib/templateAi";
 import {
   mergeReviewFindings,
   normalizeQualityFinding,
@@ -13,7 +16,7 @@ import {
 } from "@/features/oh-template-builder/lib/dedicatedOhRecordPages";
 import { useTemplateBuilder } from "@/features/oh-template-builder/hooks/useTemplateBuilder";
 import { templateQueryKeys } from "@/features/oh-template-builder/lib/templateKinds";
-import type { BuilderAttachment, BuilderItem, TemplateKind } from "@/features/oh-template-builder/template-builder.types";
+import type { BuilderAttachment, BuilderItem } from "@/features/oh-template-builder/template-builder.types";
 
 type ItemsData = { items: BuilderItem[]; total: number };
 
@@ -26,17 +29,14 @@ type ReviewValue = {
 
 const ReviewContext = createContext<ReviewValue | null>(null);
 
-function snapshotFromAttachments(
-  kind: TemplateKind,
+function buildSnapshot(
   attachments: BuilderAttachment[],
-  queryClient: ReturnType<typeof useQueryClient>,
+  itemLists: Array<ItemsData | undefined>,
 ): FormReviewSnapshot {
   return {
-    sections: attachments.map((attachment) => {
+    sections: attachments.map((attachment, index) => {
       const section = attachment.section;
-      const itemsData = queryClient.getQueryData<ItemsData>(
-        templateQueryKeys.items(kind, attachment.sectionUuid),
-      );
+      const items = itemLists[index]?.items ?? [];
       return {
         id: attachment.uuid,
         name: section?.name ?? "",
@@ -46,7 +46,7 @@ function snapshotFromAttachments(
           label: field.label,
           code: field.code,
         })),
-        items: (itemsData?.items ?? []).map((item) => ({
+        items: items.map((item) => ({
           id: item.uuid,
           name: item.name,
           code: item.code,
@@ -63,23 +63,23 @@ function snapshotFromAttachments(
 
 function useTemplateFormReviewState(): ReviewValue {
   const { kind = "certificate", templateUuid, attachments } = useTemplateBuilder();
-  const queryClient = useQueryClient();
-  const snapshot = useMemo(
-    () => snapshotFromAttachments(kind, attachments, queryClient),
-    [kind, attachments, queryClient, attachments.map((row) => row.uuid).join(",")],
-  );
-  // Recompute dedicated findings whenever cached items change: read cache during render.
+  const itemQueries = useQueries({
+    queries: attachments.map((attachment) => ({
+      queryKey: templateQueryKeys.items(kind, attachment.sectionUuid),
+      enabled: Boolean(attachment.sectionUuid),
+    })),
+  });
+  const itemLists = itemQueries.map((query) => query.data as ItemsData | undefined);
+  const serialized = JSON.stringify(buildSnapshot(attachments, itemLists));
+  const snapshot = useMemo(() => JSON.parse(serialized) as FormReviewSnapshot, [serialized]);
   const dedicated = useMemo(() => reviewFormSnapshot(snapshot), [snapshot]);
   const [quality, setQuality] = useState<FormReviewFinding[]>([]);
   const [reviewing, setReviewing] = useState(false);
-
-  const serialized = useMemo(() => JSON.stringify(snapshot), [snapshot]);
 
   useEffect(() => {
     if (!templateUuid) return;
     const parsed = JSON.parse(serialized) as FormReviewSnapshot;
     if (parsed.sections.length === 0) {
-      setQuality([]);
       return;
     }
     const controller = new AbortController();
@@ -117,7 +117,10 @@ function useTemplateFormReviewState(): ReviewValue {
     };
   }, [kind, templateUuid, serialized]);
 
-  const findings = useMemo(() => mergeReviewFindings(dedicated, quality), [dedicated, quality]);
+  const findings = useMemo(
+    () => mergeReviewFindings(dedicated, snapshot.sections.length === 0 ? [] : quality),
+    [dedicated, quality, snapshot.sections.length],
+  );
   const byKey = useMemo(() => {
     const map = new Map<string, FormReviewFinding>();
     for (const finding of findings) {
