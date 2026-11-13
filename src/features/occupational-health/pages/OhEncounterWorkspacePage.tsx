@@ -385,6 +385,7 @@ export function OhEncounterWorkspacePage({
             needsEmployment={needsEmployment}
             customerUuid={customer?.uuid}
             encounterUuid={encounter.uuid}
+            encounterId={encounter.id}
             episodeCount={episodes.length}
             onSelectStep={handleSelectStep}
             onSelectModule={handleSelectModule}

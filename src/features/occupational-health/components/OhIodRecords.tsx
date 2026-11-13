@@ -23,6 +23,7 @@ import { useToast } from "@/providers/toast-provider";
 
 type OhIodRecordsProps = {
   iodCases: IodCase[];
+  onEdit?: (item: IodCase) => void;
 };
 
 function describeIodCase(item: IodCase): string {
@@ -35,7 +36,7 @@ function describeIodCase(item: IodCase): string {
     .join(" · ");
 }
 
-export function OhIodRecords({ iodCases }: OhIodRecordsProps) {
+export function OhIodRecords({ iodCases, onEdit }: OhIodRecordsProps) {
   const { toast } = useToast();
   const [downloadingUuid, setDownloadingUuid] = useState<string | null>(null);
 
@@ -94,6 +95,15 @@ export function OhIodRecords({ iodCases }: OhIodRecordsProps) {
               meta={describeIodCase(item)}
               action={
                 <div className="flex items-center gap-2">
+                  {onEdit ? (
+                    <button
+                      type="button"
+                      className="text-[13px] font-medium text-brand-primary"
+                      onClick={() => onEdit(item)}
+                    >
+                      Edit
+                    </button>
+                  ) : null}
                   <OhRecordLink kind="iod" uuid={item.uuid} />
                   <SecondaryButton
                     type="button"

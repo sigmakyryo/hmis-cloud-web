@@ -27,7 +27,7 @@ export function OhVisitTypesSettingsTab({ isActive }: OhVisitTypesSettingsTabPro
   });
   const forms = useQuery({
     queryKey: ["clinical-forms"],
-    queryFn: fetchClinicalForms,
+    queryFn: () => fetchClinicalForms(),
     enabled: isActive,
   });
   const [selectedId, setSelectedId] = useState<string | null>(null);

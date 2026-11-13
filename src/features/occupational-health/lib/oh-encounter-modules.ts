@@ -2,6 +2,7 @@ import {
   FileBadge2,
   FlaskConical,
   ShieldCheck,
+  HardHat,
   HeartPulse,
   Syringe,
   Stethoscope,
@@ -38,6 +39,12 @@ export const OH_ENCOUNTER_MODULES = [
     label: "Health checks",
     description: "Hearing, lung function, vision, ergonomics and fatigue results for this visit",
     icon: HeartPulse,
+  },
+  {
+    id: "injuries",
+    label: "Injuries on duty",
+    description: "Record a workplace injury or incident for this visit",
+    icon: HardHat,
   },
   {
     id: "fitness",

@@ -110,6 +110,7 @@ export const OCCUPATIONAL_HEALTH_API_PATHS = {
   ohEmployeeFormInvites: (uuid: string) => `/oh-employee-form-responses/${uuid}/invites/`,
   ohEmployeeFormDocument: (uuid: string) => `/oh-employee-form-responses/${uuid}/document/`,
   ohClinicalForms: "/clinical-forms/",
+  ohClinicalForm: (uuid: string) => `/clinical-forms/${uuid}/`,
   ohClinicalFormsAssertClear: "/clinical-forms/assert-clear/",
   ohClinicalFormResponses: (uuid: string) => `/clinical-forms/${uuid}/responses/`,
   ohFormGroups: "/form-groups/",

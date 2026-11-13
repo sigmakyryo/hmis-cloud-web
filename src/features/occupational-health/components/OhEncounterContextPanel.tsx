@@ -6,6 +6,7 @@ import { OhEmployeeImmunizationsPanel } from "@/features/occupational-health/com
 import { OhDrugAlcoholVisitPanel } from "@/features/occupational-health/components/OhDrugAlcoholVisitPanel";
 import { OhFitnessVisitPanel } from "@/features/occupational-health/components/OhFitnessVisitPanel";
 import { OhHealthChecksVisitPanel } from "@/features/occupational-health/components/OhHealthChecksVisitPanel";
+import { OhIodVisitPanel } from "@/features/occupational-health/components/OhIodVisitPanel";
 import { OhSessionForms } from "@/features/occupational-health/components/OhSessionForms";
 import {
   OhColumnPanel,
@@ -123,6 +124,21 @@ export function OhEncounterContextPanel({
         ) : (
           <p className="text-[13px] text-dash-muted">Customer is required to record drug and alcohol tests.</p>
         )}
+      </div>
+    );
+  }
+
+  if (activePanel === "injuries") {
+    return (
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+        <OhIodVisitPanel
+          customer={customer}
+          encounter={encounter}
+          iodCases={workspace.iodCases}
+          onRefresh={() => {
+            void workspace.refetchAll();
+          }}
+        />
       </div>
     );
   }

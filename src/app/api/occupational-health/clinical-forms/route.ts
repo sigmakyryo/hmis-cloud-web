@@ -3,13 +3,16 @@ import { bffError, bffSuccess } from "@/lib/server/bff-response";
 import { ohServiceRequest } from "@/lib/server/oh-service";
 import { requireAccessToken } from "@/lib/server/require-access-token";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const auth = await requireAccessToken();
     if ("error" in auth) return auth.error;
-    const data = await ohServiceRequest(OCCUPATIONAL_HEALTH_API_PATHS.ohClinicalForms, {
-      token: auth.accessToken,
-    });
+    const includeInactive = new URL(request.url).searchParams.get("include_inactive");
+    const query = includeInactive === "1" ? "?include_inactive=1" : "";
+    const data = await ohServiceRequest(
+      `${OCCUPATIONAL_HEALTH_API_PATHS.ohClinicalForms}${query}`,
+      { token: auth.accessToken },
+    );
     return bffSuccess(data);
   } catch (error) {
     return bffError(error);

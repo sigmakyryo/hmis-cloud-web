@@ -413,6 +413,14 @@ export const navigation: NavigationItem[] = [
     enabledInWebNew: true,
   },
   {
+    name: "Injuries on duty",
+    href: ROUTES.occupationalHealthInjuries,
+    icon: "clipboard",
+    requiredGroup: "OccupationalHealth",
+    moduleName: "OccupationalHealth",
+    enabledInWebNew: true,
+  },
+  {
     name: "Forms",
     href: ROUTES.occupationalHealthForms,
     icon: "file",

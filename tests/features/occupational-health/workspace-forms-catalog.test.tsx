@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { navigation } from "@/features/app-shell/constants/navigation-config";
@@ -20,6 +20,17 @@ vi.mock("@/features/occupational-health/services/oh.service", () => ({
   fetchFormGroups: vi.fn(async () => [{ uuid: "group-1", name: "Consent" }]),
   createClinicalForm: vi.fn(),
   createFormGroup: vi.fn(),
+  updateClinicalForm: vi.fn(),
+  archiveClinicalForm: vi.fn(),
+  updateOhExamTemplate: vi.fn(),
+  updateOhCofTemplate: vi.fn(),
+  updateOhEmployeeFormTemplate: vi.fn(),
+  archiveOhExamTemplate: vi.fn(),
+  archiveOhCofTemplate: vi.fn(),
+  archiveOhEmployeeFormTemplate: vi.fn(),
+  publishOhExamTemplate: vi.fn(),
+  publishOhCofTemplate: vi.fn(),
+  publishOhEmployeeFormTemplate: vi.fn(),
   fetchOhEmployeeFormTemplates: vi.fn(async () => [
     { uuid: "employee-template-1", name: "Warehouse employee form", code: "WEF", active: true },
   ]),
@@ -88,5 +99,24 @@ describe("workspace forms catalog", () => {
         expect.anything(),
       );
     });
+  });
+
+  it("shows type and status badges and an Edit link into the builder", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <OhFormsPage />
+      </QueryClientProvider>,
+    );
+    const name = await screen.findByText("Warehouse employee form");
+    const row = name.closest("tr");
+    expect(row).toBeTruthy();
+    expect(within(row as HTMLElement).getByText("Employee")).toBeTruthy();
+    expect(within(row as HTMLElement).getByText("Draft")).toBeTruthy();
+    const edit = within(row as HTMLElement).getByRole("link", { name: "Edit" });
+    expect(edit.getAttribute("href")).toBe("/templates/employee/employee-template-1");
+    expect(screen.getByRole("button", { name: "Rename" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Publish" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Archive" })).toBeTruthy();
   });
 });

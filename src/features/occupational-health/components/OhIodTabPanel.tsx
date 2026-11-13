@@ -19,7 +19,8 @@ import {
   OhPanelSection,
   submitOnModEnter,
 } from "@/features/occupational-health/components/OhEncounterColumns";
-import { createIodCase } from "@/features/occupational-health/services/oh.service";
+import { createIodCase, updateIodCase } from "@/features/occupational-health/services/oh.service";
+import type { IodCase } from "@/features/occupational-health/types";
 import { todayIsoDate } from "@/features/occupational-health/utils/oh-format";
 import { appFont } from "@/lib/fonts";
 import { useToast } from "@/providers/toast-provider";
@@ -39,12 +40,19 @@ const SAFETY_CLASSES = [
   { value: "fatality", label: "Fatality" },
 ] as const;
 
+const STATUSES = [
+  { value: "open", label: "Open" },
+  { value: "closed", label: "Closed" },
+] as const;
+
 type OhIodFormProps = {
-  encounterId: number;
+  encounterId?: number | null;
   customerId: number;
   customerUuid?: string;
   tenantId: number;
+  existing?: IodCase;
   onCreated: () => void;
+  onSaved?: () => void;
 };
 
 export function OhIodForm({
@@ -52,18 +60,23 @@ export function OhIodForm({
   customerId,
   customerUuid,
   tenantId,
+  existing,
   onCreated,
+  onSaved,
 }: OhIodFormProps) {
   const { toast } = useToast();
-  const [severity, setSeverity] = useState("minor");
-  const [onsetDate, setOnsetDate] = useState(todayIsoDate);
-  const [sheReference, setSheReference] = useState("");
-  const [mechanism, setMechanism] = useState("");
-  const [bodyPart, setBodyPart] = useState("");
-  const [incidentLocation, setIncidentLocation] = useState("");
-  const [safetyClassification, setSafetyClassification] = useState("first_aid");
-  const [description, setDescription] = useState("");
+  const [severity, setSeverity] = useState(existing?.severity || "minor");
+  const [onsetDate, setOnsetDate] = useState(existing?.onset_date || todayIsoDate);
+  const [sheReference, setSheReference] = useState(existing?.she_reference ?? "");
+  const [mechanism, setMechanism] = useState(existing?.mechanism ?? "");
+  const [bodyPart, setBodyPart] = useState(existing?.body_part ?? "");
+  const [incidentLocation, setIncidentLocation] = useState(existing?.incident_location ?? "");
+  const [safetyClassification, setSafetyClassification] = useState(existing?.safety_classification || "first_aid");
+  const [description, setDescription] = useState(existing?.description ?? "");
+  const [status, setStatus] = useState(existing?.status || "open");
+  const [lostDays, setLostDays] = useState(existing ? String(existing.lost_days ?? 0) : "0");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isEdit = Boolean(existing);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -71,34 +84,45 @@ export function OhIodForm({
       toast({ title: "Describe the incident", variant: "error" });
       return;
     }
+    const lost = Number.parseInt(lostDays, 10);
+    const payload: Record<string, unknown> = {
+      severity,
+      onset_date: onsetDate,
+      description: description.trim(),
+      she_reference: sheReference.trim(),
+      mechanism: mechanism.trim(),
+      body_part: bodyPart.trim(),
+      incident_location: incidentLocation.trim(),
+      safety_classification: safetyClassification,
+      work_related: true,
+      status,
+      lost_days: Number.isFinite(lost) && lost >= 0 ? lost : 0,
+    };
     setIsSubmitting(true);
     try {
-      await createIodCase({
-        tenant: tenantId,
-        customer: customerId,
-        customer_uuid: customerUuid,
-        encounter: encounterId,
-        severity,
-        onset_date: onsetDate,
-        description: description.trim(),
-        she_reference: sheReference.trim(),
-        mechanism: mechanism.trim(),
-        body_part: bodyPart.trim(),
-        incident_location: incidentLocation.trim(),
-        safety_classification: safetyClassification,
-        work_related: true,
-        status: "open",
-      });
-      setDescription("");
-      setSheReference("");
-      setMechanism("");
-      setBodyPart("");
-      setIncidentLocation("");
-      toast({ variant: "success", title: "IOD case opened" });
-      onCreated();
+      if (existing) {
+        await updateIodCase(existing.uuid, payload);
+        toast({ variant: "success", title: "IOD case updated" });
+        (onSaved ?? onCreated)();
+      } else {
+        await createIodCase({
+          ...payload,
+          tenant: tenantId,
+          customer: customerId,
+          customer_uuid: customerUuid,
+          ...(encounterId != null ? { encounter: encounterId } : {}),
+        });
+        setDescription("");
+        setSheReference("");
+        setMechanism("");
+        setBodyPart("");
+        setIncidentLocation("");
+        toast({ variant: "success", title: "IOD case opened" });
+        onCreated();
+      }
     } catch (error) {
       toast({
-        title: "Could not create IOD case",
+        title: existing ? "Could not update IOD case" : "Could not create IOD case",
         description: error instanceof Error ? error.message : undefined,
         variant: "error",
       });
@@ -108,7 +132,7 @@ export function OhIodForm({
   }
 
   return (
-    <OhPanelSection description="Open an injury-on-duty case linked to this encounter.">
+    <OhPanelSection description={isEdit ? "Update this injury-on-duty case." : "Open an injury-on-duty case linked to this visit."}>
       <form
         onSubmit={(event) => void handleSubmit(event)}
         onKeyDown={submitOnModEnter}
@@ -202,6 +226,34 @@ export function OhIodForm({
             placeholder="Employer / SHE case reference"
           />
         </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="oh-iod-status">Status</Label>
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger id="oh-iod-status" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className={appFont.className}>
+                {STATUSES.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="oh-iod-lost-days">Days off</Label>
+            <Input
+              id="oh-iod-lost-days"
+              type="number"
+              min={0}
+              step={1}
+              value={lostDays}
+              onChange={(event) => setLostDays(event.target.value)}
+            />
+          </div>
+        </div>
         <div className="space-y-1.5">
           <Label htmlFor="oh-iod-description">
             Description <RequiredFieldMarker />
@@ -216,7 +268,7 @@ export function OhIodForm({
         </div>
         <OhFormFooter>
           <PrimaryButton type="submit" className="w-full" disabled={isSubmitting}>
-            {isSubmitting ? "Saving…" : "Open IOD case"}
+            {isSubmitting ? "Saving…" : isEdit ? "Save" : "Open case"}
           </PrimaryButton>
         </OhFormFooter>
       </form>

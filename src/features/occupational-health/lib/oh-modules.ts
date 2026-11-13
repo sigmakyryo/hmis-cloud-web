@@ -88,6 +88,10 @@ const PAGE_META: Record<string, { description: string; group: OhPageGroup }> = {
     description: "Every worker on file with their employer and status.",
     group: "daily",
   },
+  [ROUTES.occupationalHealthInjuries]: {
+    description: "Workplace injuries and incidents on duty.",
+    group: "records",
+  },
   [ROUTES.occupationalHealthEmployerPortal]: {
     description: "What each employer sees in their portal.",
     group: "oversight",

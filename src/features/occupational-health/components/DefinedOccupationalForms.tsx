@@ -25,7 +25,7 @@ const SECTIONS: Array<{ kind: DefinedForm["kind"]; title: string }> = [
 ];
 
 export function useDefinedOccupationalForms() {
-  const clinical = useQuery({ queryKey: ["clinical-forms"], queryFn: fetchClinicalForms });
+  const clinical = useQuery({ queryKey: ["clinical-forms"], queryFn: () => fetchClinicalForms() });
   const employee = useQuery({
     queryKey: ["oh-employee-form-templates"],
     queryFn: fetchOhEmployeeFormTemplates,

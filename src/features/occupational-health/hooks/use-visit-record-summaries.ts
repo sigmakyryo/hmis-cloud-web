@@ -9,6 +9,7 @@ import { fetchDaVisitPanel } from "@/features/occupational-health/services/drug-
 import { fetchFitWorker } from "@/features/occupational-health/services/fitness.service";
 import { fetchHpResults } from "@/features/occupational-health/services/health-programs.service";
 import { fetchOhImmPatient } from "@/features/occupational-health/services/immunisation.service";
+import { fetchIodCases } from "@/features/occupational-health/services/oh.service";
 
 export type VisitRecordBadgeTone = "muted" | "ok" | "attention" | "needed";
 
@@ -20,6 +21,7 @@ export type VisitRecordBadge = {
 type Options = {
   customerUuid?: string | null;
   encounterUuid?: string | null;
+  encounterId?: number | null;
   needsEmployment?: boolean;
   episodeCount?: number;
 };
@@ -28,6 +30,7 @@ type Options = {
 export function useVisitRecordSummaries({
   customerUuid,
   encounterUuid,
+  encounterId,
   needsEmployment = false,
   episodeCount = 0,
 }: Options): Record<OhClinicalModuleId, VisitRecordBadge | null> {
@@ -56,6 +59,12 @@ export function useVisitRecordSummaries({
   const fitness = useQuery({
     queryKey: ["oh-fit", "worker", customer],
     queryFn: () => fetchFitWorker(customer),
+    enabled: ready,
+    retry: false,
+  });
+  const injuries = useQuery({
+    queryKey: ["oh-iod-cases"],
+    queryFn: fetchIodCases,
     enabled: ready,
     retry: false,
   });
@@ -115,10 +124,23 @@ export function useVisitRecordSummaries({
       ? { label: `${episodeCount}`, tone: "ok" }
       : null;
 
+  const injuriesBadge = ((): VisitRecordBadge | null => {
+    if (!injuries.data) return null;
+    const visitCases =
+      encounterId != null
+        ? injuries.data.filter((row) => row.encounter === encounterId)
+        : injuries.data;
+    if (visitCases.length === 0) return { label: "None", tone: "muted" };
+    const open = visitCases.filter((row) => row.status !== "closed");
+    if (open.length > 0) return { label: `${open.length} open`, tone: "attention" };
+    return { label: `${visitCases.length}`, tone: "ok" };
+  })();
+
   return {
     immunizations: immBadge,
     "drug-alcohol": daBadge,
     "health-checks": hcBadge,
+    injuries: injuriesBadge,
     fitness: fitnessBadge,
     employment: employmentBadge,
   };

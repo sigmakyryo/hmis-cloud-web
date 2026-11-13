@@ -32,6 +32,9 @@ export type ClinicalFormRecord = {
   group: { uuid: string; name: string } | null;
   template_kind: "employee" | "exam" | "certificate" | null;
   template_uuid: string | null;
+  active?: boolean;
+  published_version_number?: number | null;
+  published_version_status?: string | null;
 };
 
 export type OhVisitTypeRecord = {

@@ -5,6 +5,7 @@ import {
   Briefcase,
   Check,
   FlaskConical,
+  HardHat,
   HeartPulse,
   Lock,
   Syringe,
@@ -35,6 +36,7 @@ const MODULE_ICONS: Record<OhClinicalModuleId, LucideIcon> = {
   immunizations: Syringe,
   "drug-alcohol": FlaskConical,
   "health-checks": HeartPulse,
+  injuries: HardHat,
   fitness: Activity,
   employment: Briefcase,
 };
@@ -48,6 +50,7 @@ type OhVisitJourneyRailProps = {
   needsEmployment?: boolean;
   customerUuid?: string | null;
   encounterUuid?: string | null;
+  encounterId?: number | null;
   episodeCount?: number;
   onSelectStep: (step: string) => void;
   onSelectModule: (panel: OhClinicalModuleId) => void;
@@ -58,6 +61,7 @@ export function OhVisitJourneyRail(props: OhVisitJourneyRailProps) {
   const summaries = useVisitRecordSummaries({
     customerUuid: props.customerUuid,
     encounterUuid: props.encounterUuid,
+    encounterId: props.encounterId,
     needsEmployment: props.needsEmployment,
     episodeCount: props.episodeCount,
   });

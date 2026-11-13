@@ -593,6 +593,7 @@ export const BFF_OCCUPATIONAL_HEALTH_ROUTES = {
   employeeFormDocument: (uuid: string) =>
     `/api/occupational-health/employee-form-responses/${uuid}/document`,
   clinicalForms: "/api/occupational-health/clinical-forms",
+  clinicalForm: (uuid: string) => `/api/occupational-health/clinical-forms/${uuid}`,
   clinicalFormsAssertClear: "/api/occupational-health/clinical-forms/assert-clear",
   clinicalFormResponses: (uuid: string) =>
     `/api/occupational-health/clinical-forms/${uuid}/responses`,

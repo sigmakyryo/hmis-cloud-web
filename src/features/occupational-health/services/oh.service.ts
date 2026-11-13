@@ -509,16 +509,34 @@ export async function uploadOhEmployeeFormDocument(uuid: string, file: File) {
   });
 }
 
-export async function fetchClinicalForms() {
-  return bffRequest<ClinicalFormRecord[]>(
-    BFF_OCCUPATIONAL_HEALTH_ROUTES.clinicalForms,
-  );
+export async function fetchClinicalForms(options?: { includeInactive?: boolean }) {
+  const path = options?.includeInactive
+    ? `${BFF_OCCUPATIONAL_HEALTH_ROUTES.clinicalForms}?include_inactive=1`
+    : BFF_OCCUPATIONAL_HEALTH_ROUTES.clinicalForms;
+  return bffRequest<ClinicalFormRecord[]>(path);
 }
 
 export async function createClinicalForm(payload: Record<string, unknown>) {
   return bffRequest<ClinicalFormRecord>(
     BFF_OCCUPATIONAL_HEALTH_ROUTES.clinicalForms,
     { method: "POST", body: payload },
+  );
+}
+
+export async function updateClinicalForm(
+  uuid: string,
+  payload: { name?: string; form_group_uuid?: string | null; placement?: Record<string, unknown> | null; active?: boolean },
+) {
+  return bffRequest<ClinicalFormRecord>(
+    BFF_OCCUPATIONAL_HEALTH_ROUTES.clinicalForm(uuid),
+    { method: "PATCH", body: payload },
+  );
+}
+
+export async function archiveClinicalForm(uuid: string) {
+  return bffRequest<ClinicalFormRecord>(
+    BFF_OCCUPATIONAL_HEALTH_ROUTES.clinicalForm(uuid),
+    { method: "DELETE" },
   );
 }
 
@@ -698,6 +716,13 @@ export async function fetchIodCases() {
 export async function createIodCase(payload: Record<string, unknown>) {
   return bffRequest<IodCase>(BFF_OCCUPATIONAL_HEALTH_ROUTES.iodCases, {
     method: "POST",
+    body: payload,
+  });
+}
+
+export async function updateIodCase(uuid: string, payload: Record<string, unknown>) {
+  return bffRequest<IodCase>(BFF_OCCUPATIONAL_HEALTH_ROUTES.iodCase(uuid), {
+    method: "PATCH",
     body: payload,
   });
 }

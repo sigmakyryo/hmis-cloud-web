@@ -15,6 +15,7 @@ export const OH_CLINICAL_MODULES = [
   { id: "immunizations", label: "Immunizations" },
   { id: "drug-alcohol", label: "Drug & alcohol" },
   { id: "health-checks", label: "Health checks" },
+  { id: "injuries", label: "Injuries on duty" },
   { id: "fitness", label: "Fitness" },
   { id: "employment", label: "Employment" },
 ] as const satisfies ReadonlyArray<{ id: OhEncounterPanelId; label: string }>;

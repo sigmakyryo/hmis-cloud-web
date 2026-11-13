@@ -149,6 +149,7 @@ export const ROUTES = {
   occupationalHealthEmployees: "/occupational-health/employees",
   occupationalHealthEmployee: (customerUuid: string) =>
     `/occupational-health/employees/${customerUuid}`,
+  occupationalHealthInjuries: "/occupational-health/injuries",
   occupationalHealthForms: "/occupational-health/forms",
   occupationalHealthImmunizations: "/occupational-health/immunizations",
   immunizations: "/immunizations",

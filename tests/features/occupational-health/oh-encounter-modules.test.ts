@@ -3,10 +3,11 @@ import { describe, expect, it } from "vitest";
 import { OH_ENCOUNTER_MODULES } from "@/features/occupational-health/lib/oh-encounter-modules";
 
 describe("OH_ENCOUNTER_MODULES", () => {
-  it("keeps the certificate after the examination and leaves injury on duty off the visit", () => {
+  it("keeps the certificate after the examination and lists injuries on duty as a records module", () => {
     const ids = OH_ENCOUNTER_MODULES.map((module) => module.id);
     expect(ids.indexOf("medical-examinations")).toBeLessThan(ids.indexOf("certificate"));
     expect(ids).not.toContain("iod");
+    expect(ids).toContain("injuries");
     expect(ids).toContain("immunizations");
     expect(ids).toContain("drug-alcohol");
     expect(ids).toContain("fitness");
