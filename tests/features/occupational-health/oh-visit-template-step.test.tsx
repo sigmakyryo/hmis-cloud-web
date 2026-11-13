@@ -127,8 +127,8 @@ describe("OhVisitTemplateStep certificate answers", () => {
     expect(await screen.findByTestId("oh-cof-answers-view")).toBeVisible();
     expect(screen.getByTestId("oh-exam-answers-status")).toHaveTextContent("Completed");
     expect(screen.getByText("Fitness outcome")).toBeVisible();
-    expect(screen.getByText("Fit with restrictions")).toBeVisible();
-    expect(screen.getByText("No work at height")).toBeVisible();
+    expect(screen.getAllByText("Fit with restrictions").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("No work at height").length).toBeGreaterThan(0);
     const pdf = screen.getByRole("link", { name: "Export PDF" });
     expect(pdf).toHaveAttribute(
       "href",

@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 
+import { ASSISTANT_OPEN_KEY } from "@/features/occupational-health/components/OhCertificateReadiness";
 import { OhVisitTemplateStep } from "@/features/occupational-health/components/OhVisitTemplateStep";
 import type { OhVisitEncounter } from "@/features/occupational-health/types";
 
@@ -49,9 +50,15 @@ vi.mock("@/features/occupational-health/components/OhExamTemplateCaptureForm", (
 }));
 
 afterEach(() => {
+  window.localStorage.removeItem(ASSISTANT_OPEN_KEY);
   cleanup();
   fitness.mockReset();
 });
+
+/** The visit assistant is collapsed by default; gate banners live inside it. */
+function expandAssistant() {
+  fireEvent.click(screen.getByTestId("oh-cof-assistant-toggle"));
+}
 
 const encounter: OhVisitEncounter = {
   id: 1,
@@ -93,6 +100,7 @@ it("shows amber warnings and keeps Save enabled when gate warns only", async () 
       onSaved={() => undefined}
     />,
   );
+  expandAssistant();
   await waitFor(() => expect(screen.getByTestId("oh-imm-fitness-warnings")).toBeTruthy());
   expect(screen.getByText(/HepB booster due/i)).toBeTruthy();
   expect(screen.queryByTestId("oh-imm-fitness-blocked")).toBeNull();
@@ -117,6 +125,7 @@ it("shows red blocked banner and disables Save when gate blocks", async () => {
       onSaved={() => undefined}
     />,
   );
+  expandAssistant();
   await waitFor(() => expect(screen.getByTestId("oh-imm-fitness-blocked")).toBeTruthy());
   expect(screen.getByText(/Missing HepB series/i)).toBeTruthy();
   const save = screen.getByRole("button", { name: /^Save$/i });

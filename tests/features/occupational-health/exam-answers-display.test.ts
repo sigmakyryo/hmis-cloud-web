@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   examAnswerSections,
+  examAnswerSummary,
   examAnswersAreComplete,
+  emptyAnswerCount,
   formatCompletedAt,
   formatExamFieldValue,
+  sectionAnswerRows,
 } from "@/features/occupational-health/lib/exam-answers-display";
 import { parseExamTemplateSnapshot } from "@/features/occupational-health/lib/exam-template-snapshot";
 
@@ -52,6 +55,59 @@ const snapshot = parseExamTemplateSnapshot({
   ],
 });
 
+const cofSnapshot = parseExamTemplateSnapshot({
+  schema_version: 3,
+  sections: [
+    {
+      code: "certificate",
+      name: "Certificate of fitness",
+      content_mode: "items",
+      items: [
+        {
+          code: "review",
+          name: "Restrictions, Review and Clinician Certification",
+          response_fields: [
+            {
+              code: "role",
+              label: "Role and duties covered by this certificate",
+              response_type: "textarea",
+            },
+            {
+              code: "outcome",
+              label: "Fitness outcome",
+              response_type: "single_select",
+              options: [
+                { code: "fit", label: "Fit" },
+                { code: "fit_with_restrictions", label: "Fit with restrictions" },
+              ],
+            },
+            { code: "restrictions", label: "Restrictions", response_type: "textarea" },
+            { code: "valid_from", label: "Valid from", response_type: "date" },
+            { code: "valid_to", label: "Valid to", response_type: "date" },
+            { code: "clinical", label: "Clinical review complete", response_type: "boolean" },
+            { code: "notes", label: "Other notes", response_type: "textarea" },
+          ],
+        },
+      ],
+    },
+  ],
+});
+
+const cofAnswers = {
+  picks: { certificate: ["review"] },
+  fields: {
+    "certificate:review": {
+      role: "ferf",
+      outcome: "fit_with_restrictions",
+      restrictions: "No work at height",
+      valid_from: "2026-11-13",
+      valid_to: "2027-11-13",
+      clinical: "true",
+      notes: "",
+    },
+  },
+};
+
 describe("formatExamFieldValue", () => {
   it("formats choices, numbers with units, dates, files and signatures", () => {
     expect(formatExamFieldValue({ response_type: "boolean" }, "true")).toBe("Yes");
@@ -93,7 +149,7 @@ describe("formatExamFieldValue", () => {
 });
 
 describe("examAnswerSections", () => {
-  it("groups answers by section and keeps empty fields as Not recorded", () => {
+  it("groups answers by section with field labels only, and keeps empty fields marked", () => {
     const sections = examAnswerSections(snapshot, {
       picks: { findings: ["lungs"] },
       fields: {
@@ -112,7 +168,7 @@ describe("examAnswerSections", () => {
       },
     });
     expect(sections.map((section) => section.name)).toEqual(["Medical history", "Findings"]);
-    const history = Object.fromEntries(sections[0]!.rows.map((row) => [row.label, row.value]));
+    const history = Object.fromEntries(sectionAnswerRows(sections[0]!).map((row) => [row.label, row.value]));
     expect(history["Presenting complaint"]).toBe("Cough");
     expect(history["Blood pressure"]).toBe("120 mmHg");
     expect(history["Exam date"]).toBe("13 Nov 2026");
@@ -121,11 +177,44 @@ describe("examAnswerSections", () => {
     expect(history["Consent form"]).toBe("consent.pdf");
     expect(history.Signature).toBe("Signed");
     expect(history.Notes).toBe("Not recorded");
-    expect(sections[0]!.rows.find((row) => row.label === "Notes")?.empty).toBe(true);
-    expect(sections[1]!.rows.map((row) => [row.label, row.value])).toEqual([
-      ["Selected", "Lungs clear"],
-      ["Lungs clear · Note", "Clear"],
+    expect(sectionAnswerRows(sections[0]!).find((row) => row.label === "Notes")?.empty).toBe(true);
+    const findings = sections[1]!;
+    expect(findings.groups.map((group) => group.name)).toEqual(["Lungs clear"]);
+    expect(sectionAnswerRows(findings).map((row) => [row.label, row.value])).toEqual([["Note", "Clear"]]);
+    expect(sectionAnswerRows(findings).some((row) => row.label === "Selected")).toBe(false);
+    expect(emptyAnswerCount(sections)).toBe(1);
+  });
+
+  it("treats a picked item with fields as a sub-group, not a Selected meta row", () => {
+    const sections = examAnswerSections(cofSnapshot, cofAnswers);
+    const certificate = sections[0]!;
+    expect(certificate.name).toBe("Certificate of fitness");
+    expect(certificate.groups).toHaveLength(1);
+    expect(certificate.groups[0]!.name).toBe("Restrictions, Review and Clinician Certification");
+    const labels = sectionAnswerRows(certificate).map((row) => row.label);
+    expect(labels).toEqual([
+      "Role and duties covered by this certificate",
+      "Fitness outcome",
+      "Restrictions",
+      "Valid from",
+      "Valid to",
+      "Clinical review complete",
+      "Other notes",
     ]);
+    expect(labels.some((label) => label.includes("·"))).toBe(false);
+    expect(labels).not.toContain("Selected");
+    expect(sectionAnswerRows(certificate).map((row) => row.value)).not.toContain(
+      "Restrictions, Review and Clinician Certification",
+    );
+  });
+
+  it("shows picks without follow-up fields as chips, not a Selected row", () => {
+    const sections = examAnswerSections(snapshot, {
+      picks: { findings: ["heart"] },
+      fields: {},
+    });
+    expect(sections[1]!.groups[0]!.chips).toEqual(["Heart"]);
+    expect(sectionAnswerRows(sections[1]!).some((row) => row.label === "Selected")).toBe(false);
   });
 
   it("treats valid answers as complete for the session step", () => {
@@ -135,6 +224,36 @@ describe("examAnswerSections", () => {
         fields: { history: { complaint: "Cough" } },
       }),
     ).toBe(true);
+  });
+});
+
+describe("examAnswerSummary", () => {
+  it("picks the COF verdict, validity and restriction chips", () => {
+    const summary = examAnswerSummary(cofSnapshot, cofAnswers, "cof");
+    expect(summary.outcome).toBe("Fit with restrictions");
+    expect(summary.validFrom).toBe("13 Nov 2026");
+    expect(summary.validTo).toBe("13 Nov 2027");
+    expect(summary.restrictions).toEqual(["No work at height"]);
+    expect(summary.highlights.some((item) => item.role === "validity" && item.value.includes("13 Nov 2026"))).toBe(
+      true,
+    );
+  });
+
+  it("picks exam vitals and finding chips", () => {
+    const summary = examAnswerSummary(
+      snapshot,
+      {
+        picks: { findings: ["heart"] },
+        fields: { history: { bp: "120", complaint: "Cough" } },
+      },
+      "exam",
+    );
+    expect(summary.highlights.filter((item) => item.role === "vital").map((item) => item.value)).toEqual([
+      "120 mmHg",
+    ]);
+    expect(summary.highlights.filter((item) => item.role === "finding").map((item) => item.value)).toEqual([
+      "Heart",
+    ]);
   });
 });
 

@@ -61,6 +61,7 @@ import {
 } from "@/features/occupational-health/utils/oh-labels";
 import {
   examAnswerSections,
+  examAnswerSummary,
   examAnswersAreComplete,
 } from "@/features/occupational-health/lib/exam-answers-display";
 import { examinationPdfUrl } from "@/features/occupational-health/services/oh-ext.service";
@@ -663,6 +664,7 @@ export function OhMedicalExaminationsPanel({
             {answersView && examination ? (
               <OhExamAnswersView
                 sections={examAnswerSections(snapshot, answers)}
+                summary={examAnswerSummary(snapshot, answers, "exam")}
                 completedAt={examination.examined_at ?? examination.updated_at}
                 completedBy={encounter.clinician_name}
                 notes={examNotes}

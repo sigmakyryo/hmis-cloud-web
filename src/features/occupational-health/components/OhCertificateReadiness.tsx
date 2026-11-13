@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowUp,
@@ -47,6 +47,9 @@ const STATE_STYLE: Record<CheckState, { label: string; text: string; bar: string
   unchecked: { label: "Not checked", text: "text-dash-muted", bar: "bg-dash-border" },
 };
 
+/** Per-browser preference for the visit assistant rail. Collapsed unless set to "1". */
+export const ASSISTANT_OPEN_KEY = "oh-visit-assistant-open";
+
 type ReadinessRow = (typeof CHECKS)[number] & { cited: CopilotPoint[]; state: CheckState };
 
 export type CofDraftPayload = { wording?: string; restrictions?: string[] };
@@ -61,7 +64,7 @@ export type OhCertificateReadinessProps = {
   onUseDraft?: (draft: CofDraftPayload) => void;
   showDraft?: boolean;
   className?: string;
-  /** When true, the assistant can collapse to a slim strip. Open by default. */
+  /** When true, the assistant can collapse to a slim strip. Collapsed by default; preference is kept in localStorage. */
   collapsible?: boolean;
 };
 
@@ -78,7 +81,34 @@ export function OhCertificateReadiness({
 }: OhCertificateReadinessProps) {
   const brief = useVisitBrief(visitUuid);
   const [answer, setAnswer] = useState<CopilotResponse | null>(null);
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!collapsible) return;
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (cancelled) return;
+      try {
+        const raw = window.localStorage.getItem(ASSISTANT_OPEN_KEY);
+        if (raw === "1" || raw === "true") setOpen(true);
+      } catch {
+        // storage unavailable
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [collapsible]);
+
+  function setAssistantOpen(next: boolean) {
+    setOpen(next);
+    if (!collapsible) return;
+    try {
+      window.localStorage.setItem(ASSISTANT_OPEN_KEY, next ? "1" : "0");
+    } catch {
+      // storage unavailable
+    }
+  }
+
   const points = brief.data ? citedPoints(brief.data.points) : [];
   const rows: ReadinessRow[] = CHECKS.map((check) => {
     const cited = points.filter((point) => point.source === check.source);
@@ -117,16 +147,24 @@ export function OhCertificateReadiness({
           aria-expanded={false}
           aria-controls="oh-cof-assistant-body"
           data-testid="oh-cof-assistant-toggle"
-          onClick={() => setOpen(true)}
-          className="flex min-h-0 flex-1 flex-col items-center gap-3 px-1.5 py-3 text-brand-navy hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-primary/30"
+          onClick={() => setAssistantOpen(true)}
+          className="flex min-h-0 flex-1 flex-col items-center gap-3 px-1.5 py-3 text-brand-navy hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-primary/30 max-lg:flex-row max-lg:items-center max-lg:gap-2 max-lg:px-4 max-lg:py-2"
           title="Show assistant"
         >
           <PanelRightOpen className="size-4 shrink-0 text-dash-muted" aria-hidden />
           <Sparkles className="size-3.5 shrink-0 text-brand-primary" aria-hidden />
-          <span className="mt-1 [writing-mode:vertical-rl] rotate-180 text-[11px] font-medium tracking-wide">
+          <span className="mt-1 [writing-mode:vertical-rl] rotate-180 text-[11px] font-medium tracking-wide max-lg:mt-0 max-lg:rotate-0 max-lg:[writing-mode:horizontal-tb]">
             Assistant
           </span>
-          <span className="sr-only">Show assistant</span>
+          {openCount > 0 ? (
+            <span
+              className="inline-flex min-w-4 items-center justify-center rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900 ring-1 ring-inset ring-amber-200"
+              data-testid="oh-cof-assistant-review-count"
+            >
+              {openCount}
+            </span>
+          ) : null}
+          <span className="sr-only">{openCount > 0 ? `Show assistant, ${openCount} to review` : "Show assistant"}</span>
         </button>
       ) : (
         <>
@@ -143,7 +181,7 @@ export function OhCertificateReadiness({
                   aria-expanded={true}
                   aria-controls="oh-cof-assistant-body"
                   data-testid="oh-cof-assistant-toggle"
-                  onClick={() => setOpen(false)}
+                  onClick={() => setAssistantOpen(false)}
                   className="rounded-md p-1 text-dash-muted hover:bg-muted hover:text-brand-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
                   title="Hide assistant"
                 >

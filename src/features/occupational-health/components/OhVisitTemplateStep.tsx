@@ -41,6 +41,7 @@ import { OhCertificateReadiness } from "@/features/occupational-health/component
 import { applyCofDraft, findCofDraftTargets } from "@/features/occupational-health/lib/cof-draft-targets";
 import {
   examAnswerSections,
+  examAnswerSummary,
   examAnswersAreComplete,
 } from "@/features/occupational-health/lib/exam-answers-display";
 import { cofResponsePdfUrl } from "@/features/occupational-health/services/oh-ext.service";
@@ -370,6 +371,7 @@ export function OhVisitTemplateStep({
     isCof && answersView && snapshot ? (
       <OhExamAnswersView
         sections={examAnswerSections(snapshot, answers)}
+        summary={examAnswerSummary(snapshot, answers, "cof")}
         completedAt={current?.submitted_at ?? current?.updated_at ?? current?.created_at}
         completedBy={encounter.clinician_name}
         pdfUrl={current ? cofResponsePdfUrl(current.uuid) : null}
