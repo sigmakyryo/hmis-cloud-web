@@ -100,6 +100,8 @@ export type OhCertificateHistory = {
 };
 
 export const certificatePdfUrl = (uuid: string) => ohExtFileUrl(`fitness-certificates/${uuid}/pdf`);
+export const examinationPdfUrl = (uuid: string) => ohExtFileUrl(`oh-examinations/${uuid}/pdf`);
+export const cofResponsePdfUrl = (uuid: string) => ohExtFileUrl(`oh-cof-responses/${uuid}/pdf`);
 export const fetchCertificateHistory = (uuid: string) => ohExtGet<OhCertificateHistory>(`fitness-certificates/${uuid}/history`);
 export const fetchCertificateVerifyLink = (uuid: string) =>
   ohExtGet<{ verify_url: string }>(`fitness-certificates/${uuid}/verify-link`);

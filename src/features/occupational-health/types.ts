@@ -308,6 +308,8 @@ export type OhResponseField = OhResponseConfig & {
   is_required?: boolean;
   code: string;
   label: string;
+  /** Optional unit shown next to numeric answers (e.g. mmHg). */
+  unit?: string;
 };
 
 /** Reusable template library section (COF or exam). */

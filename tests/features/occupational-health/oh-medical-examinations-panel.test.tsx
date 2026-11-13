@@ -115,6 +115,8 @@ const PUBLISHED_VERSION = {
 function renderPanel(
   overrides: {
     examinations?: unknown[];
+    completionRef?: { current: (() => Promise<boolean>) | null };
+    encounter?: Partial<OhVisitEncounter>;
   } = {},
 ) {
   const queryClient = new QueryClient({
@@ -134,7 +136,8 @@ function renderPanel(
   return render(
     <QueryClientProvider client={queryClient}>
       <OhMedicalExaminationsPanel
-        encounter={ENCOUNTER}
+        encounter={{ ...ENCOUNTER, ...overrides.encounter }}
+        completionRef={overrides.completionRef}
         episodes={[EPISODE]}
         onManageEmployment={vi.fn()}
         workspace={workspace as never}
@@ -232,10 +235,24 @@ describe("OhMedicalExaminationsPanel", () => {
 
     expect(await screen.findByText("Periodic exam")).toBeInTheDocument();
     expect(screen.queryByTestId("oh-exam-details-step")).not.toBeInTheDocument();
+    expect(await screen.findByTestId("oh-exam-answers-view")).toBeVisible();
+    expect(screen.getByTestId("oh-exam-answers-status")).toHaveTextContent("Completed");
+    expect(screen.getByText("BP")).toBeVisible();
+    expect(screen.getByText("120/80")).toBeVisible();
+    const pdf = screen.getByRole("link", { name: "Export PDF" });
+    expect(pdf).toHaveAttribute(
+      "href",
+      "/api/occupational-health/oh-ext/oh-examinations/exam-1/pdf",
+    );
+    expect(pdf).toHaveAttribute("target", "_blank");
+    expect(screen.queryByTestId("oh-exam-template-capture")).not.toBeInTheDocument();
+    expect(ohService.createOhExamination).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    expect(await screen.findByTestId("oh-exam-template-capture")).toBeInTheDocument();
     await waitFor(() =>
       expect(screen.getByTestId("oh-exam-answer-bp")).toHaveTextContent("120/80"),
     );
-    expect(ohService.createOhExamination).not.toHaveBeenCalled();
   });
 
   it("autosaves the first answer change on an existing examination", async () => {
@@ -263,7 +280,8 @@ describe("OhMedicalExaminationsPanel", () => {
     });
 
     expect(await screen.findByText("Periodic exam")).toBeInTheDocument();
-    fireEvent.click(screen.getByTestId("oh-exam-toggle-item"));
+    fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
+    fireEvent.click(await screen.findByTestId("oh-exam-toggle-item"));
     await vi.advanceTimersByTimeAsync(650);
 
     await waitFor(() =>
@@ -290,7 +308,8 @@ describe("OhMedicalExaminationsPanel", () => {
     ]);
     renderPanel({ examinations: [{ id: 11, uuid: "exam-v1", exam_type: "periodic", template_version_uuid: "ver-1", template_snapshot: PUBLISHED_VERSION.snapshot_json,
       responses_json: { __exam_template__: { template_uuid: "tmpl-1", template_version_uuid: "ver-1", version_number: 1, answers: { picks: {}, fields: { vitals: { bp: "original v1 value" } } } } } }] });
-    expect(await screen.findByTestId("oh-exam-answer-bp")).toHaveTextContent("original v1 value");
+    expect(await screen.findByTestId("oh-exam-answers-view")).toBeVisible();
+    expect(screen.getByText("original v1 value")).toBeVisible();
     expect(screen.queryByText("Finish the examination template")).toBeNull();
     expect(ohService.createOhExamination).not.toHaveBeenCalled();
   });
@@ -300,7 +319,8 @@ describe("OhMedicalExaminationsPanel", () => {
     ohService.fetchOhExamTemplateVersions.mockResolvedValue([{ ...PUBLISHED_VERSION, template: "replacement-template", uuid: "replacement-version", snapshot_json: { sections: [] } }]);
     renderPanel({ examinations: [{ id: 11, uuid: "historical", exam_type: "periodic", template_uuid: "tmpl-1", template_version_uuid: "ver-1", template_snapshot: PUBLISHED_VERSION.snapshot_json,
       responses_json: { __exam_template__: { template_uuid: "tmpl-1", template_version_uuid: "ver-1", version_number: 1, answers: { picks: {}, fields: { vitals: { bp: "historic value" } } } } } }] });
-    expect(await screen.findByTestId("oh-exam-answer-bp")).toHaveTextContent("historic value");
+    expect(await screen.findByTestId("oh-exam-answers-view")).toBeVisible();
+    expect(screen.getByText("historic value")).toBeVisible();
     expect(ohService.patchOhExaminationResponses).not.toHaveBeenCalled();
   });
 
@@ -382,5 +402,88 @@ describe("OhMedicalExaminationsPanel", () => {
     renderPanel();
     expect(await screen.findByRole("heading", { name: "Finish the examination template" })).toBeVisible();
     expect(screen.getByRole("link", { name: /Edit exam template/ })).toHaveAttribute("href", "/templates/exam/tmpl-1");
+  });
+
+  it("switches to the answers view with Export PDF after the visit is completed", async () => {
+    const completionRef: { current: (() => Promise<boolean>) | null } = { current: null };
+    ohService.createOhExamination.mockResolvedValue({
+      id: 11,
+      uuid: "exam-new",
+      encounter: 7,
+      exam_type: "pre_employment",
+      employment_episode: 9,
+      template_uuid: "tmpl-1",
+      template_version_uuid: "ver-1",
+      template_version_number: 1,
+      template_snapshot: PUBLISHED_VERSION.snapshot_json,
+      responses_json: {},
+      row_version: 1,
+      examined_at: "2026-11-13T08:00:00Z",
+      created_at: "2026-11-13T08:00:00Z",
+    });
+    ohService.patchOhExaminationResponses.mockResolvedValue({
+      id: 11,
+      uuid: "exam-new",
+      encounter: 7,
+      exam_type: "pre_employment",
+      template_uuid: "tmpl-1",
+      template_version_uuid: "ver-1",
+      template_version_number: 1,
+      template_snapshot: PUBLISHED_VERSION.snapshot_json,
+      responses_json: {
+        __exam_template__: {
+          template_uuid: "tmpl-1",
+          template_version_uuid: "ver-1",
+          version_number: 1,
+          answers: { picks: {}, fields: { vitals: { bp: "118/76" } } },
+        },
+      },
+      row_version: 2,
+      examined_at: "2026-11-13T08:00:00Z",
+      updated_at: "2026-11-13T08:00:00Z",
+    });
+    renderPanel({ completionRef });
+
+    fireEvent.click(await screen.findByRole("combobox", { name: /Exam type/ }));
+    fireEvent.click(await screen.findByRole("option", { name: "Admission exam" }));
+    fireEvent.click(screen.getByTestId("oh-exam-details-continue"));
+    expect(await screen.findByTestId("oh-exam-template-capture")).toBeInTheDocument();
+
+    await waitFor(() => expect(completionRef.current).toBeTypeOf("function"));
+    await expect(completionRef.current!()).resolves.toBe(true);
+    expect(await screen.findByTestId("oh-exam-answers-view")).toBeVisible();
+    expect(screen.getByRole("link", { name: "Export PDF" })).toHaveAttribute(
+      "href",
+      "/api/occupational-health/oh-ext/oh-examinations/exam-new/pdf",
+    );
+    expect(screen.queryByTestId("oh-exam-template-capture")).not.toBeInTheDocument();
+  });
+
+  it("hides Edit on a completed exam when the encounter is inactive", async () => {
+    renderPanel({
+      encounter: { is_active: false },
+      examinations: [
+        {
+          id: 11,
+          uuid: "exam-1",
+          encounter: 7,
+          exam_type: "periodic",
+          employment_episode: 9,
+          responses_json: {
+            __exam_template__: {
+              template_uuid: "tmpl-1",
+              version_number: 1,
+              answers: { picks: {}, fields: { vitals: { bp: "120/80" } } },
+            },
+          },
+          row_version: 3,
+          examined_at: "2026-11-03T08:00:00Z",
+          created_at: "2026-11-03T08:00:00Z",
+        },
+      ],
+    });
+    expect(await screen.findByTestId("oh-exam-answers-view")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Export PDF" })).toBeVisible();
   });
 });

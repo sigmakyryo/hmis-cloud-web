@@ -54,6 +54,7 @@ function publishedFields(raw: unknown): OhResponseField[] {
       code: typeof original?.code === "string" && original.code ? original.code : field.code,
       label: typeof original?.label === "string" && original.label ? original.label : field.label,
       options: Array.isArray(original?.options) ? original.options.filter((option): option is Record<string, unknown> => Boolean(option) && typeof option === "object").map((option) => ({ code: String(option.code ?? ""), label: String(option.label ?? "") })) : field.options,
+      unit: typeof original?.unit === "string" && original.unit.trim() ? original.unit.trim() : field.unit,
     };
   });
 }

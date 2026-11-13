@@ -157,25 +157,135 @@ it("training courses tab offers example courses when empty", async () => {
   await waitFor(() => expect(mocks.seed).toHaveBeenCalled());
 });
 
-it("visit panel shows the fit-for-duty summary", async () => {
-  renderWith(<OhFitnessVisitPanel customerUuid={CU} />);
-  expect(await screen.findByText("Training missing: Working at height")).toBeTruthy();
+it("visit panel leads with the verdict and a merged readiness checklist", async () => {
+  const onOpenPanel = vi.fn();
+  renderWith(<OhFitnessVisitPanel customerUuid={CU} onOpenPanel={onOpenPanel} />);
+  expect(await screen.findByTestId("oh-fit-verdict")).toHaveTextContent("Not fit");
   expect(mocks.worker).toHaveBeenCalledWith(CU);
-  expect(screen.getByText("Not cleared until the items below are resolved.")).toBeTruthy();
-  expect(screen.getByTestId("oh-fit-source-medical").textContent).toContain("OK");
-  expect(screen.getByTestId("oh-fit-source-training").textContent).toContain("Not fit");
-  expect(screen.getByTestId("oh-fit-source-fit_test").textContent).toContain("Not on file");
-  expect(screen.getByText("Tom Miner")).toBeTruthy();
-  expect(screen.getByRole("img", { name: /1 of 6 checks clear/ })).toBeTruthy();
-  expect(screen.getByTestId("oh-fit-timeline").textContent).toContain("Medical");
-  expect(screen.getByText(/Training · Blocks clearance/)).toBeTruthy();
-  const blockers = screen.getByTestId("oh-fit-blockers");
-  const verdict = screen.getByText("Not cleared until the items below are resolved.");
-  expect(blockers.textContent).toContain("Holding this up");
-  expect(blockers.textContent).toContain("Checks on file");
-  expect(verdict.compareDocumentPosition(blockers) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(screen.getByText("Not cleared until the readiness items below are resolved.")).toBeTruthy();
+  expect(screen.queryByText("Holding this up")).toBeNull();
+  expect(screen.queryByText("Checks on file")).toBeNull();
+  expect(screen.queryByRole("img", { name: /checks clear/ })).toBeNull();
 
-  expect(screen.getByTestId("oh-fit-source-details").textContent).toContain("Medical: fit");
-  fireEvent.click(screen.getByTestId("oh-fit-source-training").querySelector("button") as HTMLButtonElement);
-  expect(screen.getByTestId("oh-fit-source-details").textContent).toContain("Working at height");
+  const hero = screen.getByTestId("oh-fit-hero");
+  const checklist = screen.getByTestId("oh-fit-checklist");
+  expect(hero.compareDocumentPosition(checklist) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(checklist.textContent).toContain("1 of 6 done");
+  expect(checklist.textContent).toContain("1 flagged");
+
+  const medical = screen.getByTestId("oh-fit-check-medical");
+  const training = screen.getByTestId("oh-fit-check-training");
+  const fitTest = screen.getByTestId("oh-fit-check-fit_test");
+  expect(medical.textContent).toContain("Done");
+  expect(medical.textContent).toContain("Medical: fit");
+  expect(training.textContent).toContain("Flagged");
+  expect(training.textContent).toContain("Training missing: Working at height");
+  expect(training.getAttribute("data-blocker")).toBe("true");
+  expect(fitTest.textContent).toContain("Missing");
+  expect(fitTest.textContent).toContain("Nothing recorded yet");
+
+  expect(screen.getByTestId("oh-fit-restrictions").textContent).toContain("No work at height");
+  expect(screen.getByTestId("oh-fit-areas").textContent).toContain("Laboratories");
+
+  const exam = screen.getByRole("button", { name: "Exam" });
+  fireEvent.click(exam);
+  expect(onOpenPanel).toHaveBeenCalledWith("medical-examinations");
+  fireEvent.click(screen.getByTestId("oh-fit-action-issue"));
+  expect(onOpenPanel).toHaveBeenCalledWith("certificate");
+  expect(screen.getByTestId("oh-fit-action-board")).toHaveAttribute("href", "/fitness/board");
+  expect(screen.getByRole("link", { name: /Training/ })).toHaveAttribute("href", "/fitness/training");
+});
+
+it("visit panel shows certificate history at the bottom and Renew when it is due", async () => {
+  mocks.worker.mockResolvedValue({
+    ...WORKER,
+    overall: "fit",
+    reasons: [],
+    restrictions: [],
+    items: [
+      { source: "medical", label: "Medical", status: "ok", message: "Medical: fit", expires_on: "2027-01-01", restriction: null },
+    ],
+    role_clearance: { job_title: "Rigger", status: "cleared" },
+  });
+  const onOpenPanel = vi.fn();
+  const certificates = [
+    {
+      id: 2,
+      uuid: "cert-2",
+      assessment: 10,
+      version: 2,
+      status: "issued",
+      valid_from: "2026-01-01",
+      valid_to: "2027-01-01",
+      signed_at: "2026-01-02T08:00:00Z",
+      signed_by: 7,
+      payload: {},
+      previous_certificate: 1,
+      created_at: "2026-01-02T08:00:00Z",
+      updated_at: "2026-01-02T08:00:00Z",
+    },
+    {
+      id: 1,
+      uuid: "cert-1",
+      assessment: 10,
+      version: 1,
+      status: "superseded",
+      valid_from: "2025-01-01",
+      valid_to: "2026-01-01",
+      signed_at: "2025-01-02T08:00:00Z",
+      signed_by: 7,
+      payload: {},
+      previous_certificate: null,
+      created_at: "2025-01-02T08:00:00Z",
+      updated_at: "2026-01-02T08:00:00Z",
+    },
+  ];
+  renderWith(
+    <OhFitnessVisitPanel
+      customerUuid={CU}
+      onOpenPanel={onOpenPanel}
+      certificates={certificates}
+      assessments={[{ id: 10, uuid: "a1", examination: 1, outcome: "fit", assessed_at: "2026-01-02T08:00:00Z", review_date: null, clinician: 7 }]}
+    />,
+  );
+  expect(await screen.findByTestId("oh-fit-verdict")).toHaveTextContent("Fit");
+  expect(screen.getByTestId("oh-fit-action-renew")).toHaveTextContent("Renew");
+  fireEvent.click(screen.getByTestId("oh-fit-action-renew"));
+  expect(onOpenPanel).toHaveBeenCalledWith("certificate");
+  const history = screen.getByTestId("oh-fit-cert-history");
+  const hero = screen.getByTestId("oh-fit-hero");
+  expect(hero.compareDocumentPosition(history) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(history.textContent).toContain("v2");
+  expect(history.textContent).toContain("v1");
+  expect(history.textContent).toMatch(/Superseded/i);
+  expect(screen.getByTestId("oh-fit-hero-meta").textContent).toMatch(/Issued/);
+  expect(screen.getByTestId("oh-fit-hero-meta").textContent).toMatch(/v2/);
+});
+
+it("visit panel shows a Go to exam action and empty checklist when nothing is on file", async () => {
+  mocks.worker.mockResolvedValue({
+    ...WORKER,
+    overall: "unknown",
+    reasons: [],
+    restrictions: [],
+    earliest_expiry: null,
+    items: [],
+    zones: [],
+    role_clearance: { job_title: "", status: "unknown" },
+  });
+  const onOpenPanel = vi.fn();
+  renderWith(<OhFitnessVisitPanel customerUuid={CU} onOpenPanel={onOpenPanel} />);
+  expect(await screen.findByTestId("oh-fit-verdict")).toHaveTextContent("Not yet known");
+  expect(screen.getByText("Not enough on file to decide yet.")).toBeTruthy();
+  expect(screen.getByTestId("oh-fit-checklist").textContent).toContain("0 of 6 done");
+  fireEvent.click(screen.getByTestId("oh-fit-action-exam"));
+  expect(onOpenPanel).toHaveBeenCalledWith("medical-examinations");
+  expect(screen.queryByTestId("oh-fit-restrictions")).toBeNull();
+  expect(screen.queryByTestId("oh-fit-cert-history")).toBeNull();
+});
+
+it("visit panel shows an error state when fitness cannot be loaded", async () => {
+  mocks.worker.mockRejectedValue(new Error("Fitness service down"));
+  renderWith(<OhFitnessVisitPanel customerUuid={CU} />);
+  expect(await screen.findByText("Fitness service down")).toBeTruthy();
 });

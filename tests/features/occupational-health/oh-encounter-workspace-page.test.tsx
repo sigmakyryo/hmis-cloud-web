@@ -451,8 +451,12 @@ describe("OhEncounterWorkspacePage", () => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
     expect(
-      await screen.findByTestId("oh-exam-template-capture"),
+      await screen.findByTestId("oh-exam-answers-view"),
     ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Export PDF" })).toHaveAttribute(
+      "href",
+      "/api/occupational-health/oh-ext/oh-examinations/exam-1/pdf",
+    );
     expect(
       screen.queryByTestId("oh-fitness-certificate-form"),
     ).not.toBeInTheDocument();

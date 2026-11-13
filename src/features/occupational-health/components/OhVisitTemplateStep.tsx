@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { OhExamAnswersView } from "@/features/occupational-health/components/OhExamAnswersView";
 import { OhExamTemplateCaptureForm } from "@/features/occupational-health/components/OhExamTemplateCaptureForm";
 import {
   emptyExamTemplateAnswers,
@@ -38,6 +39,11 @@ import type { OhTemplateCapture, OhVisitEncounter } from "@/features/occupationa
 import { fetchOhImmFitnessGate } from "@/features/occupational-health/services/immunisation.service";
 import { OhCertificateReadiness } from "@/features/occupational-health/components/OhCertificateReadiness";
 import { applyCofDraft, findCofDraftTargets } from "@/features/occupational-health/lib/cof-draft-targets";
+import {
+  examAnswerSections,
+  examAnswersAreComplete,
+} from "@/features/occupational-health/lib/exam-answers-display";
+import { cofResponsePdfUrl } from "@/features/occupational-health/services/oh-ext.service";
 import type { OhEncounterPanelId } from "@/features/occupational-health/lib/oh-encounter-modules";
 import { appFont } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
@@ -87,6 +93,9 @@ export function OhVisitTemplateStep({
   const [immWarnings, setImmWarnings] = useState<string[]>([]);
   const [immBlocked, setImmBlocked] = useState<string | null>(null);
   const [suggestedKeys, setSuggestedKeys] = useState<string[]>([]);
+  const [editingAnswers, setEditingAnswers] = useState(false);
+  const [completedThisSession, setCompletedThisSession] = useState(false);
+  const [createdResponseUuid, setCreatedResponseUuid] = useState<string | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
   const answersRef = useRef(answers);
   const currentRef = useRef(current);
@@ -171,6 +180,7 @@ export function OhVisitTemplateStep({
           ? await createOhEmployeeFormResponse({ encounter: encounter.id })
           : await createOhCofResponse({ encounter: encounter.id });
         if (cancelled) return;
+        setCreatedResponseUuid(created.uuid);
         setCurrent(created);
         const envelope = created.responses_json?.[responseKey] as ExamTemplateResponseEnvelope | undefined;
         setAnswers(envelope?.answers ?? emptyExamTemplateAnswers());
@@ -229,6 +239,11 @@ export function OhVisitTemplateStep({
         setImmWarnings(updated.immunisation_warnings);
       }
       onSavedRef.current();
+      if (family === "cof" && examAnswersAreComplete(snapshot, next)) {
+        setCreatedResponseUuid(null);
+        setEditingAnswers(false);
+        setCompletedThisSession(true);
+      }
       return true;
     } catch (error) {
       const msg = error instanceof Error ? error.message : "This form could not be saved.";
@@ -304,6 +319,24 @@ export function OhVisitTemplateStep({
     };
   });
 
+  const answersDecideKey = `${family}:${current?.uuid ?? ""}:${snapshot ? "ready" : "pending"}`;
+  const [answersSessionKey, setAnswersSessionKey] = useState(answersDecideKey);
+  if (answersSessionKey !== answersDecideKey) {
+    setAnswersSessionKey(answersDecideKey);
+    setEditingAnswers(false);
+    setCompletedThisSession(false);
+  }
+  const cofEnvelope = current?.responses_json?.[responseKey] as ExamTemplateResponseEnvelope | undefined;
+  const openedExistingComplete = Boolean(
+    family === "cof" &&
+      current &&
+      snapshot &&
+      createdResponseUuid !== current.uuid &&
+      cofEnvelope?.answers &&
+      examAnswersAreComplete(snapshot, cofEnvelope.answers),
+  );
+  const answersView = family === "cof" && !editingAnswers && (completedThisSession || openedExistingComplete);
+
   if (locked) {
     return (
       <div className="flex flex-1 flex-col items-start justify-center gap-3 px-5 py-10" data-testid={`oh-${family}-step-locked`}>
@@ -331,6 +364,20 @@ export function OhVisitTemplateStep({
   const canUseDraft =
     Boolean(draftTargets?.wording || draftTargets?.restrictions) && encounter.is_active !== false && !saving;
 
+  const canEditAnswers =
+    family === "cof" && encounter.is_active !== false && !displayBlocked;
+  const answersBody =
+    isCof && answersView && snapshot ? (
+      <OhExamAnswersView
+        sections={examAnswerSections(snapshot, answers)}
+        completedAt={current?.submitted_at ?? current?.updated_at ?? current?.created_at}
+        completedBy={encounter.clinician_name}
+        pdfUrl={current ? cofResponsePdfUrl(current.uuid) : null}
+        onEdit={canEditAnswers ? () => setEditingAnswers(true) : null}
+        testId="oh-cof-answers-view"
+      />
+    ) : null;
+  const showAnswers = Boolean(answersBody);
   const formBody = (
     <>
       {definitionsMissing && encounter.is_active !== false && !hasEnteredResponses && !(canConfigure || readyReplacement) ? (
@@ -426,7 +473,7 @@ export function OhVisitTemplateStep({
         ) : null}
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        {loadFieldsButton}
+        {showAnswers ? null : loadFieldsButton}
         {!isCof ? saveButton : null}
       </div>
     </>
@@ -442,10 +489,11 @@ export function OhVisitTemplateStep({
       {isCof ? (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <div ref={formRef} className={cn("min-h-0 flex-1 overflow-y-auto px-5", displayBlocked && "opacity-60")}>
+            <div ref={formRef} className={cn("min-h-0 flex-1 overflow-y-auto px-5", !showAnswers && displayBlocked && "opacity-60")}>
               <p className="sr-only">Clinician-entered certificate</p>
-              {formBody}
+              {showAnswers ? answersBody : formBody}
             </div>
+            {showAnswers ? null : (
             <div
               className="sticky bottom-0 z-10 flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-dash-border bg-white px-5 py-2.5"
               data-testid="oh-cof-footer"
@@ -453,6 +501,7 @@ export function OhVisitTemplateStep({
               {progress ?? <span />}
               {saveButton}
             </div>
+            )}
           </div>
           <OhCertificateReadiness
             visitUuid={encounter.uuid}

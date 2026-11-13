@@ -137,6 +137,14 @@ describe("record detail pages", () => {
     );
     expect(screen.queryByText("Save changes")).toBeNull();
     expect(ohExtProxy.resolve("GET", ["fitness-certificates", UUID, "pdf"])?.binary?.type).toBe("application/pdf");
+    expect(ohExtProxy.resolve("GET", ["oh-examinations", UUID, "pdf"])?.binary?.type).toBe("application/pdf");
+    expect(ohExtProxy.resolve("GET", ["oh-cof-responses", UUID, "pdf"])?.binary?.type).toBe("application/pdf");
+    expect(ohExtProxy.resolve("GET", ["oh-examinations", UUID, "pdf"])?.path).toBe(
+      `/oh-examinations/${UUID}/pdf`,
+    );
+    expect(ohExtProxy.resolve("GET", ["oh-cof-responses", UUID, "pdf"])?.path).toBe(
+      `/oh-cof-responses/${UUID}/pdf`,
+    );
   });
 });
 

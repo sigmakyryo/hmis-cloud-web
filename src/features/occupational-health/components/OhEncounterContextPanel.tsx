@@ -108,7 +108,12 @@ export function OhEncounterContextPanel({
     return (
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
         {customer?.uuid ? (
-          <OhFitnessVisitPanel customerUuid={customer.uuid} />
+          <OhFitnessVisitPanel
+            customerUuid={customer.uuid}
+            onOpenPanel={onOpenPanel}
+            certificates={workspace.fitnessCertificates}
+            assessments={workspace.fitness}
+          />
         ) : (
           <p className="text-[13px] text-dash-muted">Customer is required to show fitness for duty.</p>
         )}

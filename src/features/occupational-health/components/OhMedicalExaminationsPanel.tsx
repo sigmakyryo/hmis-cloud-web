@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { MedicalExamStartType } from "@/features/occupational-health/components/OhExamTypeDialog";
+import { OhExamAnswersView } from "@/features/occupational-health/components/OhExamAnswersView";
 import { OhExamTemplateCaptureForm } from "@/features/occupational-health/components/OhExamTemplateCaptureForm";
 import { OhProcedureChecklistPanel } from "@/features/occupational-health/components/OhProcedureChecklistPanel";
 import type { useOhEncounterWorkspaceData } from "@/features/occupational-health/hooks/use-occupational-health";
@@ -58,6 +59,11 @@ import {
   formatExamTypeLabel,
   MEDICAL_EXAM_START_TYPES,
 } from "@/features/occupational-health/utils/oh-labels";
+import {
+  examAnswerSections,
+  examAnswersAreComplete,
+} from "@/features/occupational-health/lib/exam-answers-display";
+import { examinationPdfUrl } from "@/features/occupational-health/services/oh-ext.service";
 import { useToast } from "@/providers/toast-provider";
 
 type OhMedicalExaminationsPanelProps = {
@@ -255,6 +261,9 @@ export function OhMedicalExaminationsPanel({
   const answersRef = useRef<ExamTemplateAnswers>(emptyExamTemplateAnswers());
   const saveQueue = useRef<Promise<boolean>>(Promise.resolve(true));
   const formRef = useRef<HTMLDivElement>(null);
+  const [editingAnswers, setEditingAnswers] = useState(false);
+  const [completedThisSession, setCompletedThisSession] = useState(false);
+  const [createdExamUuid, setCreatedExamUuid] = useState<string | null>(null);
   const validationErrors: ExamErrors = validationShown && snapshot ? validateExamAnswers(snapshot, answers) : {};
   useEffect(() => { answersRef.current = answers; }, [answers]);
   useEffect(() => {
@@ -279,10 +288,32 @@ export function OhMedicalExaminationsPanel({
       await saveQueue.current;
       const result = await persistAnswers(answersRef.current);
       if (!result) setValidationMessage("Your responses could not be saved. The visit has not been completed. Please try again.");
+      if (result) {
+        setCreatedExamUuid(null);
+        setEditingAnswers(false);
+        setCompletedThisSession(true);
+      }
       return result;
     };
     return () => { completionRef.current = null; };
   });
+
+  const answersDecideKey = `${selectedExamType ?? ""}:${examination?.uuid ?? ""}:${snapshot ? "ready" : "pending"}`;
+  const [answersSessionKey, setAnswersSessionKey] = useState(answersDecideKey);
+  if (answersSessionKey !== answersDecideKey) {
+    setAnswersSessionKey(answersDecideKey);
+    setEditingAnswers(false);
+    setCompletedThisSession(false);
+  }
+  const openedExistingComplete = Boolean(
+    examination &&
+      snapshot &&
+      createdExamUuid !== examination.uuid &&
+      readEnvelope(examination)?.answers &&
+      examAnswersAreComplete(snapshot, readEnvelope(examination)!.answers),
+  );
+  const answersView = !editingAnswers && (completedThisSession || openedExistingComplete);
+
   const focusedValidationRequest = useRef<number | null>(null);
   useEffect(() => {
     if (!validationShown || !snapshot || !focusedExamUuid || examination?.uuid !== focusedExamUuid || focusedValidationRequest.current === examFocusRequest) return;
@@ -411,6 +442,7 @@ export function OhMedicalExaminationsPanel({
       });
       setExamination(created);
       examinationRef.current = created;
+      setCreatedExamUuid(created.uuid);
       answersHydratedKeyRef.current = `${created.uuid}:${examTemplateUuid ?? ""}`;
       workspace.refetchAll();
       return created;
@@ -621,13 +653,24 @@ export function OhMedicalExaminationsPanel({
             <header className="space-y-1.5">
               <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
                 <h2 className="text-[15px] font-semibold text-brand-navy">{historicalEnvelope?.template_name ?? riskProfile?.exam_template_name ?? "Examination"}</h2>
-                <div className="flex flex-wrap items-center gap-3"><span className="text-xs text-dash-muted" aria-live="polite">{saveLabel}</span>{definitionsMissing && encounter.is_active !== false && !hasEnteredResponses && (canConfigure || readyReplacement) ? <SecondaryButton type="button" disabled={recovering || completing} onClick={() => { setRecoveryError(null); setRecoveryOpen(true); }}>Load configured fields</SecondaryButton> : null}{typeFromVisit ? null : <button type="button" disabled={encounter.is_active === false || completing} onClick={() => setEditingDetails(true)} data-testid="oh-exam-change-type" className="text-[13px] font-medium text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30 disabled:opacity-50">Change type</button>}</div>
+                <div className="flex flex-wrap items-center gap-3">{answersView ? null : <span className="text-xs text-dash-muted" aria-live="polite">{saveLabel}</span>}{answersView ? null : definitionsMissing && encounter.is_active !== false && !hasEnteredResponses && (canConfigure || readyReplacement) ? <SecondaryButton type="button" disabled={recovering || completing} onClick={() => { setRecoveryError(null); setRecoveryOpen(true); }}>Load configured fields</SecondaryButton> : null}{answersView || typeFromVisit ? null : <button type="button" disabled={encounter.is_active === false || completing} onClick={() => setEditingDetails(true)} data-testid="oh-exam-change-type" className="text-[13px] font-medium text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30 disabled:opacity-50">Change type</button>}</div>
               </div>
               <p className="text-xs text-dash-muted"><span>{formatExamTypeLabel(selectedExamType!)}</span><span aria-hidden> · </span><span>{riskProfile?.name ?? "Examination"}</span>{examination?.template_version_number || captureVersion?.number ? ` · Version ${examination?.template_version_number ?? captureVersion?.number}` : ""}</p>
             </header>
 
             <Dialog open={recoveryOpen} onOpenChange={(open) => { if (!recovering) setRecoveryOpen(open); }}><DialogContent className={appFont.className}><DialogHeader><DialogTitle>Use updated examination form?</DialogTitle><DialogDescription>{readyReplacement ? `Use published version ${readyReplacement.number} for this unanswered examination.` : "Publish the configured fields as a new version and use them for this unanswered examination."} Existing entered responses and completed examinations are not changed. Unchanged item selections are kept.</DialogDescription></DialogHeader>{recoveryError ? <p role="alert" className="text-sm text-red-700">{recoveryError}</p> : null}<DialogFooter><SecondaryButton type="button" disabled={recovering} onClick={() => setRecoveryOpen(false)}>Cancel</SecondaryButton><PrimaryButton type="button" disabled={recovering} onClick={() => void loadUpdatedForm()}>{recovering ? "Loading fields…" : readyReplacement ? "Use published version" : "Publish and load fields"}</PrimaryButton></DialogFooter></DialogContent></Dialog>
-            {validationMessage || Object.keys(validationErrors).length ? <div role="alert" className="border-l-2 border-red-500 px-3 py-1 text-sm text-red-800">{Object.keys(validationErrors).length ? "Review the highlighted responses before completing this visit." : validationMessage}</div> : null}
+            {validationMessage || (!answersView && Object.keys(validationErrors).length) ? <div role="alert" className="border-l-2 border-red-500 px-3 py-1 text-sm text-red-800">{!answersView && Object.keys(validationErrors).length ? "Review the highlighted responses before completing this visit." : validationMessage}</div> : null}
+            {answersView && examination ? (
+              <OhExamAnswersView
+                sections={examAnswerSections(snapshot, answers)}
+                completedAt={examination.examined_at ?? examination.updated_at}
+                completedBy={encounter.clinician_name}
+                notes={examNotes}
+                pdfUrl={examinationPdfUrl(examination.uuid)}
+                onEdit={encounter.is_active === false ? null : () => setEditingAnswers(true)}
+              />
+            ) : (
+              <>
             <OhExamTemplateCaptureForm
               disabled={encounter.is_active === false || completing || recovering}
               errors={validationErrors}
@@ -639,6 +682,8 @@ export function OhMedicalExaminationsPanel({
               billingCharges={examination?.billing_charges ?? []}
             />
             {examNotes.trim() ? <p className="text-sm text-dash-muted">{examNotes.trim()}</p> : null}
+              </>
+            )}
             <fieldset disabled={encounter.is_active === false || completing}><OhProcedureChecklistPanel
               examination={examination}
               onChanged={workspace.refetchAll}
