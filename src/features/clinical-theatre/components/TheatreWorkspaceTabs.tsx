@@ -3,15 +3,11 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
-import { useOpdEncounterWorkspace } from "@/features/clinical-opd/components/detail/opd-encounter-workspace-context";
 import {
   onTheatreRailKeyDown,
   TheatreFlowRail,
 } from "@/features/clinical-theatre/components/case-flow/TheatreFlowRail";
-import {
-  THEATRE_WORKSPACE_ROUTING,
-  theatreCaseHref,
-} from "@/features/clinical-theatre/constants/theatre-workspace-routing";
+import { theatreCaseHref } from "@/features/clinical-theatre/constants/theatre-workspace-routing";
 import { useTheatreCaseForEncounter } from "@/features/clinical-theatre/hooks/use-clinical-theatre";
 import { useTheatreFlowExtras } from "@/features/clinical-theatre/hooks/use-theatre-case-flow";
 import {
@@ -21,12 +17,6 @@ import {
   type TheatreFlowStep,
   type TheatreFlowStepId,
 } from "@/features/clinical-theatre/utils/theatre-case-flow";
-import {
-  getVisibleWorkspaceMenuSections,
-  workspaceTabFromPathname,
-  workspaceTabHref,
-} from "@/features/clinical-workspace/utils/workspace-tabs";
-import type { ClinicalWorkspaceTab } from "@/features/clinical-workspace/types/clinical-workspace.types";
 import { cn } from "@/lib/utils";
 
 type TheatreWorkspaceTabsProps = {
@@ -38,16 +28,12 @@ type NavModel = {
   steps: TheatreFlowStep[];
   activeStep: TheatreFlowStepId | null;
   stepHref: (id: TheatreFlowStepId) => string;
-  recordSections: ClinicalWorkspaceTab[];
-  recordHref: (id: string) => string;
-  activeRecordId: string | null;
 };
 
 /**
- * Vertical section rail (desktop) and a horizontal strip (mobile): case-flow
- * steps and patient-record sections in one "Perioperative journey" list.
- * Shown on every theatre encounter page. The rail scrolls independently of
- * the page body.
+ * Vertical case-flow rail (desktop) and a horizontal strip (mobile):
+ * perioperative steps only. Record sections live on the right-hand toolbar.
+ * The rail scrolls independently of the page body.
  */
 export function TheatreWorkspaceTabs({
   visitUuid,
@@ -55,7 +41,6 @@ export function TheatreWorkspaceTabs({
 }: TheatreWorkspaceTabsProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { capabilities = [] } = useOpdEncounterWorkspace();
   const { theatreCase } = useTheatreCaseForEncounter(encounterUuid);
   const extras = useTheatreFlowExtras(theatreCase ?? undefined);
   const steps = theatreCase ? buildTheatreFlow(theatreCase, extras) : [];
@@ -69,27 +54,13 @@ export function TheatreWorkspaceTabs({
           searchParams.get("section"),
         ).step
       : null;
-  const recordSections = getVisibleWorkspaceMenuSections(
-    THEATRE_WORKSPACE_ROUTING,
-    capabilities,
-  );
-  const activeRecord = workspaceTabFromPathname(
-    THEATRE_WORKSPACE_ROUTING,
-    pathname,
-    visitUuid,
-    encounterUuid,
-  );
   const model: NavModel = {
     steps,
     activeStep,
     stepHref: (id) => theatreFlowStepHref(caseHref, id),
-    recordSections,
-    recordHref: (id) =>
-      workspaceTabHref(THEATRE_WORKSPACE_ROUTING, visitUuid, encounterUuid, id),
-    activeRecordId: activeRecord !== "case" ? activeRecord : null,
   };
 
-  if (steps.length === 0 && recordSections.length === 0) {
+  if (steps.length === 0) {
     return null;
   }
 
@@ -102,18 +73,11 @@ export function TheatreWorkspaceTabs({
 }
 
 function TheatreWorkspaceStrip({ model }: { model: NavModel }) {
-  const {
-    steps,
-    activeStep,
-    stepHref,
-    recordSections,
-    recordHref,
-    activeRecordId,
-  } = model;
+  const { steps, activeStep, stepHref } = model;
   return (
     <nav
-      aria-label="Theatre case sections"
-      className="scrollbar-hide shrink-0 border-b border-dash-border/60 lg:hidden"
+      aria-label="Theatre case steps"
+      className="scrollbar-hide order-1 shrink-0 border-b border-dash-border/60 lg:hidden"
       data-testid="theatre-workspace-strip"
     >
       <div className="overflow-x-auto px-4 py-2 sm:px-6">
@@ -144,32 +108,6 @@ function TheatreWorkspaceStrip({ model }: { model: NavModel }) {
               </span>
             );
           })}
-          {steps.length > 0 && recordSections.length > 0 ? (
-            <span
-              role="presentation"
-              className="mx-1 h-4 w-px shrink-0 bg-dash-border/80"
-              aria-hidden
-            />
-          ) : null}
-          {recordSections.map((section) => {
-            const active = activeRecordId === section.id;
-            return (
-              <Link
-                key={section.id}
-                href={recordHref(section.id)}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "inline-flex items-center rounded-full px-3 py-1 text-xs font-medium outline-none",
-                  "focus-visible:ring-2 focus-visible:ring-brand-primary/40",
-                  active
-                    ? "bg-brand-primary/10 text-brand-navy"
-                    : "text-brand-muted hover:bg-muted",
-                )}
-              >
-                {section.label}
-              </Link>
-            );
-          })}
         </div>
       </div>
     </nav>
@@ -177,17 +115,10 @@ function TheatreWorkspaceStrip({ model }: { model: NavModel }) {
 }
 
 function TheatreWorkspaceRail({ model }: { model: NavModel }) {
-  const {
-    steps,
-    activeStep,
-    stepHref,
-    recordSections,
-    recordHref,
-    activeRecordId,
-  } = model;
+  const { steps, activeStep, stepHref } = model;
   return (
     <aside
-      className="hidden min-h-0 w-[17rem] shrink-0 overflow-y-auto border-r border-dash-border/70 lg:block"
+      className="hidden min-h-0 w-[17rem] shrink-0 overflow-y-auto border-r border-dash-border/70 lg:order-1 lg:block"
       data-testid="theatre-workspace-rail"
     >
       <div className="px-3 py-4">
@@ -198,43 +129,11 @@ function TheatreWorkspaceRail({ model }: { model: NavModel }) {
           <p className="mb-3 px-2 text-xs font-semibold uppercase tracking-wider text-brand-muted">
             Perioperative journey
           </p>
-          {steps.length > 0 ? (
-            <TheatreFlowRail
-              steps={steps}
-              activeStep={activeStep}
-              hrefFor={stepHref}
-            />
-          ) : null}
-          {recordSections.length > 0 ? (
-            <div
-              className={cn(
-                "flex flex-col",
-                steps.length > 0 && "mt-1 border-t border-dash-border/60 pt-1",
-              )}
-            >
-              {recordSections.map((section) => {
-                const active = activeRecordId === section.id;
-                return (
-                  <Link
-                    key={section.id}
-                    href={recordHref(section.id)}
-                    aria-current={active ? "page" : undefined}
-                    data-theatre-record={section.id}
-                    data-testid={`theatre-record-tab-${section.id}`}
-                    className={cn(
-                      "flex items-center justify-between gap-2 rounded-lg px-2 py-2 text-sm outline-none transition-colors",
-                      "focus-visible:ring-2 focus-visible:ring-brand-primary/40",
-                      active
-                        ? "bg-brand-primary/[0.06] font-semibold text-brand-navy"
-                        : "font-medium text-brand-navy/80 hover:bg-muted/60",
-                    )}
-                  >
-                    <span className="truncate">{section.label}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          ) : null}
+          <TheatreFlowRail
+            steps={steps}
+            activeStep={activeStep}
+            hrefFor={stepHref}
+          />
         </nav>
       </div>
     </aside>

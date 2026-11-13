@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -66,7 +67,14 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => search,
 }));
 
+vi.mock("@/features/clinical-opd/hooks/use-clinical-opd", () => ({
+  useEncounterWorkspace: () => ({
+    observations: { data: [], isLoading: false },
+  }),
+}));
+
 import { TheatreCaseHeader } from "@/features/clinical-theatre/components/TheatreCaseHeader";
+import { TheatreEncounterEdgeRail } from "@/features/clinical-theatre/components/TheatreEncounterEdgeRail";
 import { TheatreWorkspaceTabs } from "@/features/clinical-theatre/components/TheatreWorkspaceTabs";
 import { TheatreChecklistPanel } from "@/features/clinical-theatre/components/TheatreChecklistPanel";
 import type { TheatreCase } from "@/features/clinical-theatre/types/clinical-theatre.types";
@@ -242,6 +250,7 @@ describe("theatre case header", () => {
     ]);
     wrap(<TheatreCaseHeader visitUuid="v1" encounterUuid="e1" />);
     const action = await screen.findByRole("button", { name: "Into theatre" });
+    expect(action).toHaveTextContent("In theatre");
     expect(action).toHaveProperty("disabled", true);
     const fix = screen.getByRole("link", { name: "Go to step" });
     expect(fix.getAttribute("href")).toBe(
@@ -255,7 +264,10 @@ describe("theatre case header", () => {
     fetchTheatreCases.mockResolvedValue([makeCase()]);
     wrap(<TheatreCaseHeader visitUuid="v1" encounterUuid="e1" />);
     const jump = await screen.findByTestId("theatre-go-to-current-step");
-    expect(jump).toHaveTextContent("Go to current step: Booking & team");
+    expect(jump).toHaveTextContent("Go to Booking");
+    expect(jump.getAttribute("aria-label")).toBe(
+      "Go to the current step: Booking & team",
+    );
     expect(jump.getAttribute("href")).toBe(
       "/clinical/theatre/v1/e1/case?step=booking",
     );
@@ -273,7 +285,10 @@ describe("theatre case header", () => {
     ]);
     wrap(<TheatreCaseHeader visitUuid="v1" encounterUuid="e1" />);
     const jump = await screen.findByTestId("theatre-go-to-current-step");
-    expect(jump).toHaveTextContent("Go to current step: Sign in");
+    expect(jump).toHaveTextContent("Go to Sign in");
+    expect(jump.getAttribute("aria-label")).toBe(
+      "Go to the current step: Sign in",
+    );
     expect(jump.getAttribute("href")).toBe(
       "/clinical/theatre/v1/e1/case?step=sign-in",
     );
@@ -299,21 +314,102 @@ describe("theatre workspace nav", () => {
     });
     expect(rail.querySelector('[data-flow-step="sign-in"]')).toBeTruthy();
     expect(screen.queryByText("Patient records")).toBeNull();
+    expect(screen.queryByText("Vital signs")).toBeNull();
+    expect(screen.queryByText("Nursing")).toBeNull();
     expect(
       screen.getByRole("navigation", { name: "Perioperative journey" }),
     ).toBeTruthy();
-    const vitalSigns = screen.getByTestId("theatre-record-tab-vital-signs");
-    expect(vitalSigns).toHaveTextContent("Vital signs");
-    expect(vitalSigns.closest("nav")?.getAttribute("aria-label")).toBe(
-      "Perioperative journey",
-    );
-    expect(vitalSigns.className).toContain("justify-between");
-    expect(screen.getByTestId("theatre-record-tab-nursing")).toHaveTextContent(
-      "Nursing",
-    );
+    expect(screen.queryByTestId("theatre-record-tab-vital-signs")).toBeNull();
+    expect(screen.queryByTestId("theatre-record-tab-nursing")).toBeNull();
     expect(screen.getByTestId("theatre-flow-step-action-booking")).toBeTruthy();
     expect(rail).toHaveClass("overflow-y-auto");
     expect(screen.queryByTestId("theatre-records-menu")).toBeNull();
+  });
+});
+
+describe("theatre workspace toolbar", () => {
+  beforeEach(() => {
+    fetchTheatreCases.mockReset();
+  });
+
+  it("shows vitals with an info control and record-section actions", async () => {
+    capabilities = [
+      "view_theatre_queue",
+      "view_vital_signs_tab",
+      "view_nursing_notes_tab",
+      "view_orders_tab",
+      "view_medications_tab",
+      "record_clinical_note",
+      "record_chief_complaint",
+      "record_hpi",
+      "view_physical_examination_tab",
+      "view_diagnoses_tab",
+      "record_allergy",
+      "view_activity_tab",
+      "view_client_tab",
+    ];
+    pathname = "/clinical/theatre/v1/e1/case";
+    wrap(<TheatreEncounterEdgeRail visitUuid="v1" encounterUuid="e1" />);
+    const rail = await screen.findByTestId("theatre-workspace-toolbar-rail");
+    expect(rail).toHaveClass("overflow-y-auto");
+    expect(
+      within(rail).getByTestId("theatre-toolbar-vital-blood-pressure"),
+    ).toHaveTextContent("Blood pressure");
+    expect(
+      within(rail).getByTestId("theatre-toolbar-vital-heart-rate"),
+    ).toHaveTextContent("Heart rate");
+    expect(
+      within(rail).getByTestId("theatre-toolbar-vital-temperature"),
+    ).toHaveTextContent("Temperature");
+    expect(
+      within(rail).getByTestId("theatre-toolbar-vital-weight"),
+    ).toHaveTextContent("Weight");
+    expect(
+      within(rail).getByTestId("theatre-toolbar-vital-blood-pressure"),
+    ).toHaveTextContent("—");
+    expect(
+      within(rail).getByTestId("theatre-toolbar-vitals-info"),
+    ).toBeTruthy();
+    const nursing = within(rail).getByTestId("theatre-toolbar-action-nursing");
+    expect(nursing).toHaveTextContent("Nursing");
+    expect(nursing.getAttribute("href")).toBe(
+      "/clinical/theatre/v1/e1/nursing",
+    );
+    expect(
+      screen.getByTestId("theatre-toolbar-action-orders").getAttribute("href"),
+    ).toBe("/clinical/theatre/v1/e1/orders");
+    expect(
+      screen.getByTestId("theatre-toolbar-action-medications"),
+    ).toHaveTextContent("Medications");
+    expect(
+      screen.getByTestId("theatre-toolbar-action-notes"),
+    ).toHaveTextContent("Clinical notes");
+    expect(
+      screen.getByTestId("theatre-toolbar-action-complaint"),
+    ).toHaveTextContent("Complaints & HPI");
+    expect(
+      screen.getByTestId("theatre-toolbar-action-physical-examination"),
+    ).toHaveTextContent("Exam");
+    expect(
+      screen.getByTestId("theatre-toolbar-action-diagnoses"),
+    ).toHaveTextContent("Diagnoses");
+    expect(
+      screen.getByTestId("theatre-toolbar-action-allergies"),
+    ).toHaveTextContent("Allergies");
+    expect(
+      screen.getByTestId("theatre-toolbar-action-activity"),
+    ).toHaveTextContent("Activity");
+    expect(
+      screen.getByTestId("theatre-toolbar-action-client"),
+    ).toHaveTextContent("Client");
+    expect(
+      screen.getByTestId("theatre-toolbar-action-overview"),
+    ).toHaveTextContent("Chart summary");
+    expect(
+      screen
+        .getByTestId("theatre-toolbar-action-overview")
+        .getAttribute("href"),
+    ).toBe("/clinical/theatre/v1/e1/chart");
   });
 });
 

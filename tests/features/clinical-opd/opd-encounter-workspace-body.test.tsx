@@ -158,4 +158,37 @@ describe("OpdEncounterWorkspaceBody", () => {
       screen.getByTestId("opd-encounter-workspace-grid"),
     ).toHaveClass("overflow-hidden");
   });
+
+  it("hides the vitals strip and mounts a right-hand toolbar when configured", () => {
+    function Nav() {
+      return <aside data-testid="dummy-workspace-nav">Nav</aside>;
+    }
+    function Aside() {
+      return <aside data-testid="dummy-workspace-aside">Aside</aside>;
+    }
+
+    render(
+      <ClinicalWorkspaceConfigProvider
+        config={{
+          ...OPD_WORKSPACE_CONFIG,
+          workspaceNav: Nav,
+          workspaceAside: Aside,
+          hideSectionTabBar: true,
+          hideVitalsStatsStrip: true,
+        }}
+      >
+        <OpdEncounterWorkspaceBody>
+          <p>Main content</p>
+        </OpdEncounterWorkspaceBody>
+      </ClinicalWorkspaceConfigProvider>,
+    );
+
+    expect(
+      screen.queryByTestId("opd-encounter-vitals-stats"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("dummy-workspace-aside")).toBeInTheDocument();
+    expect(screen.getByTestId("workspace-nav-main")).toHaveClass(
+      "overflow-y-auto",
+    );
+  });
 });

@@ -26,6 +26,9 @@ export function OpdEncounterWorkspaceBody({
   const workspaceConfig = useOptionalClinicalWorkspaceConfig();
   const WorkspaceBanner = workspaceConfig?.workspaceBanner;
   const WorkspaceNav = workspaceConfig?.workspaceNav;
+  const WorkspaceAside = workspaceConfig?.workspaceAside;
+  const hideVitalsStatsStrip = workspaceConfig?.hideVitalsStatsStrip;
+  const isSplitWorkspace = Boolean(WorkspaceNav || WorkspaceAside);
   const { visitUuid, encounterUuid, chartSummary } = useOpdEncounterWorkspace();
   const activeTab = workspaceTabFromPathname(
     routing,
@@ -49,29 +52,33 @@ export function OpdEncounterWorkspaceBody({
     <div
       className={cn(
         "flex min-w-0 flex-1 flex-col",
-        WorkspaceNav && "h-full min-h-0 overflow-hidden",
+        isSplitWorkspace && "h-full min-h-0 overflow-hidden",
       )}
       data-testid="opd-encounter-workspace-grid"
     >
       <OpdEncounterAllergyBanner allergies={chartSummary?.allergies ?? []} />
-      <OpdEncounterVitalsStatsStrip
-        observations={stripObservations}
-        encounterObservations={thisEncounterVitals}
-        isLoading={observations.isLoading && !chartSummary}
-      />
+      {hideVitalsStatsStrip ? null : (
+        <OpdEncounterVitalsStatsStrip
+          observations={stripObservations}
+          encounterObservations={thisEncounterVitals}
+          isLoading={observations.isLoading && !chartSummary}
+        />
+      )}
       {WorkspaceBanner ? (
         <WorkspaceBanner visitUuid={visitUuid} encounterUuid={encounterUuid} />
       ) : null}
       {routing.hideSectionTabBar ? null : <OpdEncounterTabs />}
 
-      {WorkspaceNav ? (
+      {isSplitWorkspace ? (
         <div
           className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:flex-row"
           data-testid="workspace-nav-split"
         >
-          <WorkspaceNav visitUuid={visitUuid} encounterUuid={encounterUuid} />
+          {WorkspaceNav ? (
+            <WorkspaceNav visitUuid={visitUuid} encounterUuid={encounterUuid} />
+          ) : null}
           <div
-            className="min-h-0 min-w-0 flex-1 overflow-y-auto pb-20 xl:pb-0"
+            className="order-3 min-h-0 min-w-0 flex-1 overflow-y-auto pb-20 xl:pb-0 lg:order-2"
             data-testid="workspace-nav-main"
           >
             {isFullWidthLayout ? (
@@ -82,6 +89,12 @@ export function OpdEncounterWorkspaceBody({
               </DetailPageMainSection>
             )}
           </div>
+          {WorkspaceAside ? (
+            <WorkspaceAside
+              visitUuid={visitUuid}
+              encounterUuid={encounterUuid}
+            />
+          ) : null}
         </div>
       ) : isFullWidthLayout ? (
         children

@@ -22,6 +22,7 @@ import {
   formatDateTime,
   localInputToIso,
   milestoneOrderProblem,
+  MILESTONE_LABELS,
 } from "@/features/clinical-theatre/utils/theatre-planning-display";
 import {
   errorMessage,
@@ -53,7 +54,9 @@ export function TheatreTimingQuickCapture({
           {last.label} {formatClock(last.value)}
         </span>
       ) : (
-        <span>No theatre times yet</span>
+        <span title="No theatre times have been recorded yet">
+          No times yet
+        </span>
       )}
       {data.next_milestone ? (
         <Button
@@ -69,8 +72,11 @@ export function TheatreTimingQuickCapture({
             })
           }
           data-testid="theatre-timing-quick-capture"
+          aria-label={`${data.next_milestone_label} — record this time now`}
+          title={`${data.next_milestone_label} — record this time now`}
         >
-          {data.next_milestone_label} now
+          {MILESTONE_LABELS[data.next_milestone as TheatreMilestone] ??
+            data.next_milestone_label}
         </Button>
       ) : (
         <span>All times recorded</span>
@@ -84,7 +90,12 @@ export function TheatreTimingQuickCapture({
   );
 }
 
-type EditState = { milestone: TheatreMilestone; value: string; reason: string; clear: boolean };
+type EditState = {
+  milestone: TheatreMilestone;
+  value: string;
+  reason: string;
+  clear: boolean;
+};
 
 /** Full theatre timing record: capture, correct (with reason), clear, audit trail. */
 export function TheatreTimingPanel({
@@ -100,7 +111,10 @@ export function TheatreTimingPanel({
   const [localError, setLocalError] = useState<string | null>(null);
   const editable = canRecord && canRecordTimings(theatreCase.status);
 
-  if (isLoading) return <p className="text-sm text-muted-foreground">Loading theatre times…</p>;
+  if (isLoading)
+    return (
+      <p className="text-sm text-muted-foreground">Loading theatre times…</p>
+    );
   if (error || !data) {
     return (
       <p className="text-sm text-red-600">
@@ -155,10 +169,12 @@ export function TheatreTimingPanel({
     <div className="space-y-4" data-testid="theatre-timing-panel">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h3 className="text-base font-semibold text-brand-navy">Theatre times</h3>
+          <h3 className="text-base font-semibold text-brand-navy">
+            Theatre times
+          </h3>
           <p className="text-xs text-muted-foreground">
-            Tap a milestone as it happens. Corrections need a reason and are kept in the
-            audit trail.
+            Tap a milestone as it happens. Corrections need a reason and are
+            kept in the audit trail.
           </p>
         </div>
         {editable && data.next_milestone ? (
@@ -191,7 +207,9 @@ export function TheatreTimingPanel({
             onEdit={(clear) =>
               setEdit({
                 milestone: row.key,
-                value: isoToLocalInput(row.value) || isoToLocalInput(new Date().toISOString()),
+                value:
+                  isoToLocalInput(row.value) ||
+                  isoToLocalInput(new Date().toISOString()),
                 reason: "",
                 clear,
               })
@@ -207,7 +225,8 @@ export function TheatreTimingPanel({
       </ol>
       {localError || capture.error ? (
         <p className="text-sm text-red-600" role="alert">
-          {localError ?? errorMessage(capture.error, "Could not record the time.")}
+          {localError ??
+            errorMessage(capture.error, "Could not record the time.")}
         </p>
       ) : null}
       <TimingIntervals timings={data} />
@@ -240,11 +259,18 @@ function MilestoneRow({
   onSubmit: () => void;
 }) {
   return (
-    <li className="space-y-2 px-3 py-2" data-testid={`theatre-milestone-${row.key}`}>
+    <li
+      className="space-y-2 px-3 py-2"
+      data-testid={`theatre-milestone-${row.key}`}
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="w-5 text-xs text-muted-foreground">{row.sequence}</span>
-          <span className={isNext ? "font-semibold text-brand-navy" : "font-medium"}>
+          <span className="w-5 text-xs text-muted-foreground">
+            {row.sequence}
+          </span>
+          <span
+            className={isNext ? "font-semibold text-brand-navy" : "font-medium"}
+          >
             {row.label}
           </span>
         </div>
@@ -255,15 +281,33 @@ function MilestoneRow({
           {editable && !editing ? (
             <>
               {!row.value ? (
-                <Button type="button" size="sm" variant="outline" disabled={busy} onClick={onCapture}>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={onCapture}
+                >
                   Now
                 </Button>
               ) : null}
-              <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => onEdit(false)}>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                disabled={busy}
+                onClick={() => onEdit(false)}
+              >
                 {row.value ? "Correct" : "Enter time"}
               </Button>
               {row.value ? (
-                <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => onEdit(true)}>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  disabled={busy}
+                  onClick={() => onEdit(true)}
+                >
                   Clear
                 </Button>
               ) : null}
@@ -280,7 +324,9 @@ function MilestoneRow({
           }}
         >
           {editing.clear ? (
-            <p className="text-sm text-muted-foreground">Clear the recorded time.</p>
+            <p className="text-sm text-muted-foreground">
+              Clear the recorded time.
+            </p>
           ) : (
             <div className="space-y-1">
               <Label htmlFor={`timing-${row.key}-at`}>Time</Label>
@@ -288,7 +334,9 @@ function MilestoneRow({
                 id={`timing-${row.key}-at`}
                 type="datetime-local"
                 value={editing.value}
-                onChange={(event) => onChange({ ...editing, value: event.target.value })}
+                onChange={(event) =>
+                  onChange({ ...editing, value: event.target.value })
+                }
               />
             </div>
           )}
@@ -299,8 +347,12 @@ function MilestoneRow({
             <Input
               id={`timing-${row.key}-reason`}
               value={editing.reason}
-              placeholder={editing.clear ? "Why is this time wrong?" : "e.g. tapped late"}
-              onChange={(event) => onChange({ ...editing, reason: event.target.value })}
+              placeholder={
+                editing.clear ? "Why is this time wrong?" : "e.g. tapped late"
+              }
+              onChange={(event) =>
+                onChange({ ...editing, reason: event.target.value })
+              }
             />
           </div>
           <div className="flex gap-2">
@@ -321,28 +373,45 @@ function TimingIntervals({ timings }: { timings: TheatreCaseTimings }) {
   const recorded = timings.intervals.filter((row) => row.minutes !== null);
   if (recorded.length === 0) return null;
   return (
-    <dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3" data-testid="theatre-timing-intervals">
+    <dl
+      className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3"
+      data-testid="theatre-timing-intervals"
+    >
       {recorded.map((row) => (
         <div key={row.key} className="rounded-lg bg-muted/40 p-2">
           <dt className="text-xs text-muted-foreground">{row.label}</dt>
-          <dd className="font-semibold text-brand-navy">{formatMinutes(row.minutes)}</dd>
+          <dd className="font-semibold text-brand-navy">
+            {formatMinutes(row.minutes)}
+          </dd>
         </div>
       ))}
     </dl>
   );
 }
 
-const ACTION_LABELS = { captured: "Recorded", corrected: "Corrected", cleared: "Cleared" } as const;
+const ACTION_LABELS = {
+  captured: "Recorded",
+  corrected: "Corrected",
+  cleared: "Cleared",
+} as const;
 
 function TimingAudit({ timings }: { timings: TheatreCaseTimings }) {
   const events = timings.events ?? [];
   if (events.length === 0) return null;
   return (
-    <details className="rounded-lg bg-muted/40 p-2 text-sm" data-testid="theatre-timing-audit">
-      <summary className="cursor-pointer font-medium">Audit trail ({events.length})</summary>
+    <details
+      className="rounded-lg bg-muted/40 p-2 text-sm"
+      data-testid="theatre-timing-audit"
+    >
+      <summary className="cursor-pointer font-medium">
+        Audit trail ({events.length})
+      </summary>
       <ul className="mt-2 space-y-1">
         {events.map((event, index) => (
-          <li key={`${event.created_at}-${index}`} className="text-xs text-muted-foreground">
+          <li
+            key={`${event.created_at}-${index}`}
+            className="text-xs text-muted-foreground"
+          >
             <span className="font-medium text-foreground">
               {ACTION_LABELS[event.action]} {event.milestone_label}
             </span>

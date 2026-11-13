@@ -29,9 +29,12 @@ import { useTheatreFlowExtras } from "@/features/clinical-theatre/hooks/use-thea
 import type { TheatreCase } from "@/features/clinical-theatre/types/clinical-theatre.types";
 import { ncepodShortLabel } from "@/features/clinical-theatre/utils/theatre-advanced-display";
 import {
+  THEATRE_HEADER_ACTION_LABELS,
   THEATRE_STATUS_LABELS,
   THEATRE_TRANSITION_ACTION_LABELS,
   formatTheatreSlot,
+  theatreJumpButtonDescription,
+  theatreJumpButtonLabel,
   theatreStatusTone,
 } from "@/features/clinical-theatre/utils/theatre-case-display";
 import {
@@ -290,9 +293,11 @@ function TheatreCaseHeaderBar({
               <Link
                 href={stepHref(currentStep)}
                 scroll={false}
+                aria-label={theatreJumpButtonDescription(currentStepLabel)}
+                title={theatreJumpButtonDescription(currentStepLabel)}
                 data-testid="theatre-go-to-current-step"
               >
-                Go to current step: {currentStepLabel}
+                {theatreJumpButtonLabel(currentStep, currentStepLabel)}
               </Link>
             </Button>
           ) : null}
@@ -350,6 +355,16 @@ function HeaderTeam({
           href={href}
           scroll={false}
           className="group inline-flex items-center gap-2 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40"
+          aria-label={
+            shown.length > 0 || theatreCase.lead_surgeon_name
+              ? "Surgical team"
+              : "No team yet — add"
+          }
+          title={
+            shown.length > 0 || theatreCase.lead_surgeon_name
+              ? undefined
+              : "No team yet — add"
+          }
           data-testid="theatre-header-team"
         >
           {shown.length > 0 ? (
@@ -377,7 +392,7 @@ function HeaderTeam({
             <span className="group-hover:text-brand-navy">
               {theatreCase.lead_surgeon_name
                 ? `Surgeon: ${theatreCase.lead_surgeon_name}`
-                : "No team yet — add"}
+                : "Add team"}
             </span>
           )}
         </Link>
@@ -403,8 +418,13 @@ function TheatreNextAction({
   if (action.kind === "recovery-discharge") {
     return (
       <Button asChild size="sm">
-        <Link href={stepHref("recovery")} scroll={false}>
-          Discharge from recovery
+        <Link
+          href={stepHref("recovery")}
+          scroll={false}
+          aria-label="Discharge from recovery"
+          title="Discharge from recovery"
+        >
+          Discharge
         </Link>
       </Button>
     );
@@ -428,8 +448,10 @@ function TheatreNextAction({
           transition.mutate({ uuid: theatreCase.uuid, status: action.status })
         }
         data-testid="theatre-next-action"
+        aria-label={THEATRE_TRANSITION_ACTION_LABELS[action.status]}
+        title={THEATRE_TRANSITION_ACTION_LABELS[action.status]}
       >
-        {THEATRE_TRANSITION_ACTION_LABELS[action.status]}
+        {THEATRE_HEADER_ACTION_LABELS[action.status]}
       </Button>
       {action.blocker ? (
         <p

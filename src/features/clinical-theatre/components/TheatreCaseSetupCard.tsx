@@ -11,7 +11,10 @@ type TheatreCaseSetupCardProps = {
 };
 
 /** Shown when a theatre encounter has no case yet (e.g. opened before drafts). */
-export function TheatreCaseSetupCard({ encounterUuid, canBook }: TheatreCaseSetupCardProps) {
+export function TheatreCaseSetupCard({
+  encounterUuid,
+  canBook,
+}: TheatreCaseSetupCardProps) {
   const ensure = useEnsureTheatreCaseForEncounter();
   return (
     <div
@@ -23,8 +26,8 @@ export function TheatreCaseSetupCard({ encounterUuid, canBook }: TheatreCaseSetu
         <div className="text-sm">
           <p className="font-medium text-brand-navy">Set up the theatre case</p>
           <p className="text-muted-foreground">
-            This patient is on the theatre queue but has no case yet. Create it to
-            record the procedure, team, checklist and notes.
+            This patient is on the theatre queue but has no case yet. Create it
+            to record the procedure, team, checklist and notes.
           </p>
         </div>
       </div>
@@ -34,8 +37,10 @@ export function TheatreCaseSetupCard({ encounterUuid, canBook }: TheatreCaseSetu
           size="sm"
           disabled={ensure.isPending}
           onClick={() => ensure.mutate(encounterUuid)}
+          aria-label="Set up theatre case"
+          title="Set up theatre case"
         >
-          {ensure.isPending ? "Setting up…" : "Set up theatre case"}
+          {ensure.isPending ? "Setting up…" : "Set up"}
         </Button>
       ) : (
         <p className="text-xs text-muted-foreground">
@@ -44,7 +49,9 @@ export function TheatreCaseSetupCard({ encounterUuid, canBook }: TheatreCaseSetu
       )}
       {ensure.error ? (
         <p className="w-full text-sm text-red-600">
-          {ensure.error instanceof Error ? ensure.error.message : "Could not set up the case."}
+          {ensure.error instanceof Error
+            ? ensure.error.message
+            : "Could not set up the case."}
         </p>
       ) : null}
     </div>

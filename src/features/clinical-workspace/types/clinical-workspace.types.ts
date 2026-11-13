@@ -156,6 +156,16 @@ export type ClinicalWorkspaceConfig<TabId extends string = string> =
      */
     workspaceNav?: ComponentType<ClinicalWorkspaceBannerProps>;
     /**
+     * Optional right-hand toolbar, rendered as a fixed column beside the page
+     * content (theatre's vitals and record-section actions).
+     */
+    workspaceAside?: ComponentType<ClinicalWorkspaceBannerProps>;
+    /**
+     * When true, the shared OPD vitals strip above the header is omitted.
+     * Theatre shows those readings on its right-hand toolbar instead.
+     */
+    hideVitalsStatsStrip?: boolean;
+    /**
      * When true, the shared OPD-style patient header is omitted. The specialty
      * is responsible for showing patient identity (theatre uses a compact chip
      * on its workspace banner).
