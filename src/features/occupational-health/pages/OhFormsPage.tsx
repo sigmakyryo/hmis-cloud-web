@@ -10,7 +10,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RequiredFieldMarker } from "@/components/ui/required-field-marker";
-import { ListPageHeaderSection, ListPageLayout } from "@/features/app-shell/components/page-layout";
+import { ListPageLayout } from "@/features/app-shell/components/page-layout";
+import { useToast } from "@/providers/toast-provider";
 import { CatalogSearchSelect } from "@/features/occupational-health/components/CatalogSearchSelect";
 import {
   OH_FORM_FAMILIES,
@@ -95,7 +96,51 @@ async function invalidateFormCatalog(queryClient: ReturnType<typeof useQueryClie
     queryClient.invalidateQueries({ queryKey: ["oh-employee-form-templates"] }),
     queryClient.invalidateQueries({ queryKey: ["oh-exam-templates"] }),
     queryClient.invalidateQueries({ queryKey: ["oh-cof-templates"] }),
+    queryClient.invalidateQueries({ queryKey: ["oh-templates"] }),
   ]);
+}
+
+function applyPublishedVersion(
+  queryClient: ReturnType<typeof useQueryClient>,
+  templateUuid: string,
+  version: { number: number; status: string },
+) {
+  const markList = <T extends { uuid?: string; template_uuid?: string | null; published_version_number?: number | null; published_version_status?: string | null }>(
+    rows: T[] | undefined,
+  ): T[] | undefined => {
+    if (!rows) return rows;
+    return rows.map((row) =>
+      row.uuid === templateUuid || row.template_uuid === templateUuid
+        ? { ...row, published_version_number: version.number, published_version_status: version.status }
+        : row,
+    );
+  };
+  queryClient.setQueriesData<ClinicalFormRecord[]>({ queryKey: ["clinical-forms"] }, markList);
+  queryClient.setQueriesData({ queryKey: ["oh-employee-form-templates"] }, markList);
+  queryClient.setQueriesData({ queryKey: ["oh-exam-templates"] }, markList);
+  queryClient.setQueriesData({ queryKey: ["oh-cof-templates"] }, markList);
+  queryClient.setQueriesData({ queryKey: ["oh-templates"] }, (data) => markBuilderPublished(data, templateUuid, version));
+}
+
+function markBuilderPublished(
+  data: unknown,
+  templateUuid: string,
+  version: { number: number; status: string },
+): unknown {
+  if (Array.isArray(data)) {
+    return data.map((row) => markBuilderPublished(row, templateUuid, version));
+  }
+  if (!data || typeof data !== "object") return data;
+  const row = data as { uuid?: unknown; publishedVersionNumber?: unknown; published_version_number?: unknown };
+  if (row.uuid !== templateUuid) return data;
+  if (!("publishedVersionNumber" in row) && !("published_version_number" in row)) return data;
+  return {
+    ...row,
+    publishedVersionNumber: version.number,
+    publishedVersionStatus: version.status,
+    published_version_number: version.number,
+    published_version_status: version.status,
+  };
 }
 
 export function OhFormsPage() {
@@ -116,12 +161,12 @@ export function OhFormsPage() {
     queryKey: ["oh-cof-templates"],
     queryFn: fetchOhCofTemplates,
   });
+  const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [renaming, setRenaming] = useState<FormRow | null>(null);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | FormKind>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | FormStatus>("all");
-  const [notice, setNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const rows = useMemo(
@@ -152,9 +197,21 @@ export function OhFormsPage() {
 
   const publish = useMutation({
     mutationFn: (row: FormRow) => publishRow(row),
-    onSuccess: async (version) => {
+    onSuccess: async (version, row) => {
       setActionError(null);
-      setNotice(version?.number != null ? `Published v${version.number}. Visits use this snapshot.` : "Published.");
+      if (version?.number != null && row.templateUuid) {
+        applyPublishedVersion(queryClient, row.templateUuid, {
+          number: version.number,
+          status: version.status ?? "published",
+        });
+      }
+      toast({
+        variant: "success",
+        title:
+          version?.number != null
+            ? `Published v${version.number}. Visits use this snapshot.`
+            : "Published.",
+      });
       await invalidateFormCatalog(queryClient);
     },
     onError: () => setActionError("Could not publish the form."),
@@ -163,7 +220,7 @@ export function OhFormsPage() {
     mutationFn: (row: FormRow) => archiveRow(row),
     onSuccess: async () => {
       setActionError(null);
-      setNotice("Archived.");
+      toast({ variant: "success", title: "Archived." });
       await invalidateFormCatalog(queryClient);
     },
     onError: () => setActionError("Could not archive the form."),
@@ -172,7 +229,7 @@ export function OhFormsPage() {
     mutationFn: (row: FormRow) => restoreRow(row),
     onSuccess: async () => {
       setActionError(null);
-      setNotice("Restored.");
+      toast({ variant: "success", title: "Restored." });
       await invalidateFormCatalog(queryClient);
     },
     onError: () => setActionError("Could not restore the form."),
@@ -180,19 +237,6 @@ export function OhFormsPage() {
 
   return (
     <ListPageLayout data-testid="oh-forms-page">
-      <ListPageHeaderSection>
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-lg font-semibold text-brand-navy">Forms</h1>
-            <p className="text-[13px] text-dash-muted">
-              Edit the working copy any time. Publish snapshots a version for visits; earlier published versions stay unchanged.
-            </p>
-          </div>
-          <PrimaryButton type="button" onClick={() => setOpen(true)}>
-            New form
-          </PrimaryButton>
-        </div>
-      </ListPageHeaderSection>
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <Input
@@ -214,8 +258,12 @@ export function OhFormsPage() {
             onChange={setStatusFilter}
             ariaLabel="Filter by status"
           />
+          <div className="ml-auto">
+            <PrimaryButton type="button" onClick={() => setOpen(true)}>
+              New form
+            </PrimaryButton>
+          </div>
         </div>
-        {notice ? <p className="text-[13px] text-emerald-800">{notice}</p> : null}
         {actionError ? <p className="text-[13px] text-red-700">{actionError}</p> : null}
         {isError ? <p className="text-[13px] text-red-700">Could not load forms.</p> : null}
         {isLoading ? <p className="text-[13px] text-dash-muted">Loading forms…</p> : null}
@@ -314,7 +362,7 @@ export function OhFormsPage() {
           row={renaming}
           onClose={() => setRenaming(null)}
           onSaved={async () => {
-            setNotice("Renamed.");
+            toast({ variant: "success", title: "Renamed." });
             setRenaming(null);
             await invalidateFormCatalog(queryClient);
           }}
@@ -367,7 +415,7 @@ function FilterChips<T extends string>({
           className={cn(
             "rounded-full px-2.5 py-0.5 text-[12px] font-medium",
             value === option.value
-              ? "bg-brand-navy text-white"
+              ? "bg-primary text-primary-foreground"
               : "bg-slate-100 text-dash-muted hover:text-brand-navy",
           )}
         >

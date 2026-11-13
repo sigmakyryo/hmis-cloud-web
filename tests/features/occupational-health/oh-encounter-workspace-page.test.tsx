@@ -155,7 +155,15 @@ const ASSESSMENT = {
   clinician: 3,
 };
 
-function renderPage() {
+function renderPage(options?: { panel?: string | null }) {
+  if (options && "panel" in options) {
+    const url = options.panel
+      ? `/?panel=${options.panel}`
+      : "/occupational-health/visit-1/enc-1";
+    window.history.replaceState(null, "", url);
+  } else if (!new URLSearchParams(window.location.search).has("panel")) {
+    window.history.replaceState(null, "", "/?panel=medical-examinations");
+  }
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -345,6 +353,34 @@ describe("OhEncounterWorkspacePage", () => {
       await screen.findByTestId("oh-exam-details-step"),
     ).toBeInTheDocument();
     expect(ohService.fetchOhEncounters).not.toHaveBeenCalled();
+  });
+
+  it("defaults a visit without ?panel to fitness and writes it into the URL", async () => {
+    const { fetchFitWorker } = await import(
+      "@/features/occupational-health/services/fitness.service"
+    );
+    vi.mocked(fetchFitWorker).mockResolvedValue({
+      customer_uuid: "cust-1",
+      worker_label: "Jane Doe",
+      employee_number: "",
+      employer_uuid: null,
+      employer_name: "",
+      site: "",
+      department: "",
+      job_title: "",
+      overall: "unknown",
+      reasons: [],
+      restrictions: [],
+      earliest_expiry: null,
+      items: [],
+      zones: [],
+      role_clearance: { job_title: "", status: "unknown" },
+      computed_at: "2026-11-13T12:00:00Z",
+    });
+    renderPage({ panel: null });
+    expect(await screen.findByTestId("oh-fitness-visit-panel")).toBeInTheDocument();
+    expect(window.location.search).toBe("?panel=fitness");
+    expect(screen.queryByTestId("oh-session-forms")).not.toBeInTheDocument();
   });
 
   it("loads the OH encounter directly without a Django visit lookup", async () => {

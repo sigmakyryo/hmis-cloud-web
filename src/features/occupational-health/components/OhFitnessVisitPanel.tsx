@@ -13,6 +13,7 @@ export function OhFitnessVisitPanel({ customerUuid }: { customerUuid: string }) 
       <FitnessSummary
         customerUuid={customerUuid}
         showWorker
+        blockersAtBottom
         note="Recalculated whenever this visit's certificate, tests or training are saved."
         action={
           <Link

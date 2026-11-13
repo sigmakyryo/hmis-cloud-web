@@ -439,8 +439,21 @@ function TemplateBuilderSession({
       if (!published) {
         return false;
       }
+      queryClient.setQueryData<BuilderTemplate>(detailKey, (current) =>
+        current
+          ? {
+              ...current,
+              publishedVersionNumber: published.number,
+              publishedVersionStatus: published.status,
+            }
+          : current,
+      );
       await queryClient.invalidateQueries({ queryKey: detailKey });
       void queryClient.invalidateQueries({ queryKey: templateQueryKeys.list(kind) });
+      void queryClient.invalidateQueries({ queryKey: ["clinical-forms"] });
+      void queryClient.invalidateQueries({ queryKey: ["oh-employee-form-templates"] });
+      void queryClient.invalidateQueries({ queryKey: ["oh-exam-templates"] });
+      void queryClient.invalidateQueries({ queryKey: ["oh-cof-templates"] });
       return true;
     },
   };

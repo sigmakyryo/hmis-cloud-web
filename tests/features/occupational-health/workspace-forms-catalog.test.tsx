@@ -5,6 +5,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { navigation } from "@/features/app-shell/constants/navigation-config";
 import { OhFormsPage } from "@/features/occupational-health/pages/OhFormsPage";
 
+const toasts = vi.hoisted(() => ({ toast: vi.fn(() => "toast-id") }));
+vi.mock("@/providers/toast-provider", () => ({ useToast: () => toasts }));
+
 vi.mock("@/features/occupational-health/services/oh.service", () => ({
   fetchClinicalForms: vi.fn(async () => []),
   fetchOhVisitTypes: vi.fn(async () => [
@@ -118,5 +121,60 @@ describe("workspace forms catalog", () => {
     expect(screen.getByRole("button", { name: "Rename" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Publish" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Archive" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Forms" })).toBeNull();
+    expect(
+      screen.queryByText(/Edit the working copy any time/),
+    ).toBeNull();
+  });
+
+  it("updates the status badge to Published vN and toasts after publish", async () => {
+    const service = await import("@/features/occupational-health/services/oh.service");
+    vi.mocked(service.publishOhEmployeeFormTemplate).mockImplementation(async () => {
+      vi.mocked(service.fetchOhEmployeeFormTemplates).mockResolvedValue([
+        {
+          id: 1,
+          uuid: "employee-template-1",
+          name: "Warehouse employee form",
+          code: "WEF",
+          active: true,
+          published_version_number: 2,
+          published_version_status: "published",
+        },
+      ]);
+      return {
+        id: 2,
+        uuid: "ver-2",
+        template: "employee-template-1",
+        number: 2,
+        status: "published",
+        snapshot_json: {},
+        content_hash: "abc",
+        published_at: "2026-11-13T12:00:00Z",
+        published_by: 1,
+      };
+    });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <OhFormsPage />
+      </QueryClientProvider>,
+    );
+    const name = await screen.findByText("Warehouse employee form");
+    const row = name.closest("tr") as HTMLElement;
+    expect(within(row).getByText("Draft")).toBeTruthy();
+    fireEvent.click(within(row).getByRole("button", { name: "Publish" }));
+    await waitFor(() => {
+      expect(service.publishOhEmployeeFormTemplate).toHaveBeenCalledWith("employee-template-1");
+    });
+    await waitFor(() => {
+      expect(within(row).getByText("Published v2")).toBeTruthy();
+    });
+    expect(within(row).queryByText("Draft")).toBeNull();
+    expect(toasts.toast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variant: "success",
+        title: "Published v2. Visits use this snapshot.",
+      }),
+    );
   });
 });

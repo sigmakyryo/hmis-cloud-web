@@ -58,20 +58,31 @@ type FitnessSummaryOptions = {
   showWorker?: boolean;
   /** Short line under the facts, e.g. when the answer is recalculated. */
   note?: string;
+  /** Visit workspace: put "Holding this up" and "Checks on file" below the verdict, not beside it. */
+  blockersAtBottom?: boolean;
 };
 
 /** One fit-for-duty answer: verdict column on the left; what holds it up and every source on the right. */
-export function FitnessSummaryView({ worker, compact, action, showWorker, note }: FitnessSummaryOptions & { worker: FitWorker }) {
+export function FitnessSummaryView({ worker, compact, action, showWorker, note, blockersAtBottom }: FitnessSummaryOptions & { worker: FitWorker }) {
   const verdict = VERDICT[worker.overall] ?? VERDICT.unknown;
   const bySource = groupBySource(worker.items);
   const expiryDays = worker.earliest_expiry ? daysUntil(worker.earliest_expiry) : null;
   const hasDated = worker.items.some((item) => Boolean(item.expires_on));
   const workerLine = [worker.employee_number, worker.employer_name, worker.site, worker.department].filter(Boolean);
+  const supporting = (
+    <FitnessSupportingSections worker={worker} compact={compact} bySource={bySource} hasDated={hasDated} />
+  );
 
   return (
     <div className="@container" data-testid="oh-fit-summary">
-      <div className="grid gap-x-10 gap-y-8 @3xl:grid-cols-[17rem_minmax(0,1fr)]">
-        <div className="@3xl:border-r @3xl:border-dash-border @3xl:pr-10">
+      <div
+        className={
+          blockersAtBottom
+            ? "space-y-8"
+            : "grid gap-x-10 gap-y-8 @3xl:grid-cols-[17rem_minmax(0,1fr)]"
+        }
+      >
+        <div className={blockersAtBottom ? undefined : "@3xl:border-r @3xl:border-dash-border @3xl:pr-10"}>
           <div className="flex items-start justify-between gap-3">
             {showWorker && worker.worker_label ? (
               <p className="min-w-0 text-[12.5px] leading-snug text-dash-muted">
@@ -129,81 +140,106 @@ export function FitnessSummaryView({ worker, compact, action, showWorker, note }
           ) : null}
         </div>
 
-        <div className="@container min-w-0 space-y-9">
-          <Section
-            title={worker.reasons.length > 0 ? "Holding this up" : "Clearance"}
-            aside={worker.reasons.length > 0 ? `${worker.reasons.length} to resolve` : undefined}
+        {blockersAtBottom ? (
+          <div
+            className="space-y-9 border-t border-dash-border pt-8"
+            data-testid="oh-fit-blockers"
           >
-            {worker.reasons.length > 0 ? (
-              <ol className="space-y-1">
-                {worker.reasons.map((reason, index) => {
-                  const Icon = SOURCE_ICON[reason.source];
-                  const tone = STATUS_TONE[reason.status];
-                  return (
-                    <li
-                      key={`${reason.source}-${index}`}
-                      className="flex items-center gap-3.5 py-2.5"
-                    >
-                      <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-brand-primary text-[11px] font-semibold tabular-nums text-white">
-                        {index + 1}
-                      </span>
-                      <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-full", TONE_SOFT[tone])}>
-                        <Icon className="size-[18px]" aria-hidden />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-[14px] leading-snug font-semibold text-brand-navy">{reason.message}</span>
-                        <span className="mt-0.5 block text-[12.5px] text-dash-muted">
-                          {label(SOURCE_LABEL, reason.source)} · {STATUS_HINT[reason.status]}
-                        </span>
-                      </span>
-                      <FitStatusLabel status={reason.status} />
-                    </li>
-                  );
-                })}
-              </ol>
-            ) : (
-              <p className="flex items-center gap-3 py-1 text-[14px] font-medium text-emerald-800">
-                <span className={cn("flex size-10 items-center justify-center rounded-full", TONE_SOFT.good)}>
-                  <ShieldCheck className="size-[18px]" aria-hidden />
-                </span>
-                Nothing is holding this up.
-              </p>
-            )}
-          </Section>
-
-          {compact ? null : (
-            <>
-              <Section title="Checks on file" aside={`${worker.items.length} recorded`}>
-                <FitSourceStrip bySource={bySource} />
-              </Section>
-
-              {hasDated ? (
-                <Section title="Next twelve months">
-                  <FitExpiryTimeline items={worker.items} />
-                </Section>
-              ) : null}
-
-              {worker.zones.length > 0 ? (
-                <Section title="Areas" count={worker.zones.length}>
-                  <ul className="divide-y divide-dash-border/70 border-y border-dash-border/70">
-                    {worker.zones.map((zone) => (
-                      <li key={zone.code} className="flex items-center gap-3 py-2 text-[13px]">
-                        <span className="w-14 shrink-0 font-mono text-[11.5px] text-dash-muted">{zone.code}</span>
-                        <span className="min-w-0 flex-1 font-medium text-brand-navy">{zone.name || zone.code}</span>
-                        <span className="shrink-0 text-[12.5px] capitalize text-dash-muted">{zone.status.replace(/_/g, " ")}</span>
-                        <span className="w-24 shrink-0 text-right text-[12.5px] tabular-nums text-dash-muted">
-                          {zone.valid_until ? fmtDate(zone.valid_until) : "—"}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </Section>
-              ) : null}
-            </>
-          )}
-        </div>
+            {supporting}
+          </div>
+        ) : (
+          <div className="@container min-w-0 space-y-9">{supporting}</div>
+        )}
       </div>
     </div>
+  );
+}
+
+function FitnessSupportingSections({
+  worker,
+  compact,
+  bySource,
+  hasDated,
+}: {
+  worker: FitWorker;
+  compact?: boolean;
+  bySource: ReturnType<typeof groupBySource>;
+  hasDated: boolean;
+}) {
+  return (
+    <>
+      <Section
+        title={worker.reasons.length > 0 ? "Holding this up" : "Clearance"}
+        aside={worker.reasons.length > 0 ? `${worker.reasons.length} to resolve` : undefined}
+      >
+        {worker.reasons.length > 0 ? (
+          <ol className="space-y-1">
+            {worker.reasons.map((reason, index) => {
+              const Icon = SOURCE_ICON[reason.source];
+              const tone = STATUS_TONE[reason.status];
+              return (
+                <li
+                  key={`${reason.source}-${index}`}
+                  className="flex items-center gap-3.5 py-2.5"
+                >
+                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-brand-primary text-[11px] font-semibold tabular-nums text-white">
+                    {index + 1}
+                  </span>
+                  <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-full", TONE_SOFT[tone])}>
+                    <Icon className="size-[18px]" aria-hidden />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[14px] leading-snug font-semibold text-brand-navy">{reason.message}</span>
+                    <span className="mt-0.5 block text-[12.5px] text-dash-muted">
+                      {label(SOURCE_LABEL, reason.source)} · {STATUS_HINT[reason.status]}
+                    </span>
+                  </span>
+                  <FitStatusLabel status={reason.status} />
+                </li>
+              );
+            })}
+          </ol>
+        ) : (
+          <p className="flex items-center gap-3 py-1 text-[14px] font-medium text-emerald-800">
+            <span className={cn("flex size-10 items-center justify-center rounded-full", TONE_SOFT.good)}>
+              <ShieldCheck className="size-[18px]" aria-hidden />
+            </span>
+            Nothing is holding this up.
+          </p>
+        )}
+      </Section>
+
+      {compact ? null : (
+        <>
+          <Section title="Checks on file" aside={`${worker.items.length} recorded`}>
+            <FitSourceStrip bySource={bySource} />
+          </Section>
+
+          {hasDated ? (
+            <Section title="Next twelve months">
+              <FitExpiryTimeline items={worker.items} />
+            </Section>
+          ) : null}
+
+          {worker.zones.length > 0 ? (
+            <Section title="Areas" count={worker.zones.length}>
+              <ul className="divide-y divide-dash-border/70 border-y border-dash-border/70">
+                {worker.zones.map((zone) => (
+                  <li key={zone.code} className="flex items-center gap-3 py-2 text-[13px]">
+                    <span className="w-14 shrink-0 font-mono text-[11.5px] text-dash-muted">{zone.code}</span>
+                    <span className="min-w-0 flex-1 font-medium text-brand-navy">{zone.name || zone.code}</span>
+                    <span className="shrink-0 text-[12.5px] capitalize text-dash-muted">{zone.status.replace(/_/g, " ")}</span>
+                    <span className="w-24 shrink-0 text-right text-[12.5px] tabular-nums text-dash-muted">
+                      {zone.valid_until ? fmtDate(zone.valid_until) : "—"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          ) : null}
+        </>
+      )}
+    </>
   );
 }
 

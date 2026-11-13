@@ -169,6 +169,11 @@ it("visit panel shows the fit-for-duty summary", async () => {
   expect(screen.getByRole("img", { name: /1 of 6 checks clear/ })).toBeTruthy();
   expect(screen.getByTestId("oh-fit-timeline").textContent).toContain("Medical");
   expect(screen.getByText(/Training · Blocks clearance/)).toBeTruthy();
+  const blockers = screen.getByTestId("oh-fit-blockers");
+  const verdict = screen.getByText("Not cleared until the items below are resolved.");
+  expect(blockers.textContent).toContain("Holding this up");
+  expect(blockers.textContent).toContain("Checks on file");
+  expect(verdict.compareDocumentPosition(blockers) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
   expect(screen.getByTestId("oh-fit-source-details").textContent).toContain("Medical: fit");
   fireEvent.click(screen.getByTestId("oh-fit-source-training").querySelector("button") as HTMLButtonElement);

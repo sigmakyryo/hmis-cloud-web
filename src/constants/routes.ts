@@ -213,7 +213,7 @@ export const ROUTES = {
       ? `/occupational-health/employment?customer=${encodeURIComponent(customerUuid)}`
       : "/occupational-health/employment",
   occupationalHealthEncounter: (visitUuid: string, encounterUuid: string) =>
-    `/occupational-health/${visitUuid}/${encounterUuid}`,
+    `/occupational-health/${visitUuid}/${encounterUuid}?panel=fitness`,
   occupationalHealthRecord: (
     kind: "certificate" | "assessment" | "finding" | "iod" | "sick-leave",
     uuid: string,

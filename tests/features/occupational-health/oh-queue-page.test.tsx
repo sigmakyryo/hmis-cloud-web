@@ -85,7 +85,7 @@ describe("OhQueuePage", () => {
     expect(await screen.findByText("Jane Doe")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open" })).toHaveAttribute(
       "href",
-      "/occupational-health/visit-1/enc-1",
+      "/occupational-health/visit-1/enc-1?panel=fitness",
     );
   });
 
