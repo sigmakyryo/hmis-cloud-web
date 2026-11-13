@@ -218,8 +218,8 @@ const RECORDS: Record<DedicatedRecordId, RecordDefinition> = {
   },
 };
 
-export function normalizeDedicatedText(value: string): string {
-  const lowered = value
+export function normalizeDedicatedText(value: string | null | undefined): string {
+  const lowered = (value ?? "")
     .toLowerCase()
     .replaceAll("&", " and ")
     .replaceAll("/", " ")
@@ -230,8 +230,8 @@ export function normalizeDedicatedText(value: string): string {
   return lowered;
 }
 
-export function normalizeDedicatedCode(value: string): string {
-  return value
+export function normalizeDedicatedCode(value: string | null | undefined): string {
+  return (value ?? "")
     .toUpperCase()
     .trim()
     .replaceAll("&", "_AND_")
@@ -278,9 +278,10 @@ function matchesRecord(record: RecordDefinition, texts: string[]): boolean {
   return false;
 }
 
-export function matchDedicatedOhRecord(...texts: string[]): DedicatedRecordMatch | null {
+export function matchDedicatedOhRecord(...texts: Array<string | null | undefined>): DedicatedRecordMatch | null {
+  const values = texts.map((text) => text ?? "");
   for (const record of Object.values(RECORDS)) {
-    if (matchesRecord(record, texts)) {
+    if (matchesRecord(record, values)) {
       return {
         id: record.id,
         label: record.label,
