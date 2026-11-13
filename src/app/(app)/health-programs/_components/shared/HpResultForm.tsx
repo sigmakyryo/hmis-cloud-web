@@ -9,8 +9,10 @@ import { CheckField, Field, SelectField } from "@/app/(app)/immunizations/_compo
 import { errorText, today } from "@/app/(app)/fitness/_components/shared/fit-format";
 import {
   recordHpResult,
+  updateHpResult,
   type HpOutcome,
   type HpProgram,
+  type HpResult,
 } from "@/features/occupational-health/services/health-programs.service";
 import { useToast } from "@/providers/toast-provider";
 import { OUTCOME_LABEL, PROGRAM_LABEL, flagText, headline } from "./hp-format";
@@ -19,6 +21,71 @@ const FREQS = ["500", "1000", "2000", "3000", "4000", "6000", "8000"] as const;
 type Values = Record<string, string>;
 
 const toNum = (v: string | undefined) => (v === undefined || v.trim() === "" ? undefined : Number(v));
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
+function str(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "";
+  return String(value);
+}
+
+function dateFromResult(result?: HpResult | null): string {
+  if (!result?.performed_at) return today();
+  return result.performed_at.length >= 10 ? result.performed_at.slice(0, 10) : today();
+}
+
+/** Prefill the programme form from a recorded result so an edit starts with the saved values. */
+export function valuesFromResult(program: HpProgram, result?: HpResult | null): Values {
+  const base: Values = { method: "rula", sex: "male" };
+  if (!result) return base;
+  const d = result.data ?? {};
+  switch (program) {
+    case "hearing": {
+      const out: Values = { ...base };
+      for (const side of ["left", "right"] as const) {
+        const ear = asRecord(d[side]);
+        for (const f of FREQS) {
+          if (ear[f] != null && ear[f] !== "") out[`${side}_${f}`] = str(ear[f]);
+        }
+      }
+      if (d.age != null && d.age !== "") out.age = str(d.age);
+      return out;
+    }
+    case "lung":
+      return {
+        ...base,
+        fev1: str(d.fev1),
+        fvc: str(d.fvc),
+        height_cm: str(d.height_cm),
+        age: str(d.age),
+        sex: d.sex === "female" ? "female" : "male",
+      };
+    case "vision":
+      return {
+        ...base,
+        acuity_right: str(d.acuity_right),
+        acuity_left: str(d.acuity_left),
+        acuity_binocular: str(d.acuity_binocular),
+        field: str(d.field_horizontal_deg),
+        colour: str(d.colour_plates_correct),
+      };
+    case "ergonomics": {
+      const actions = Array.isArray(d.actions) ? d.actions.map((a) => str(a)).filter(Boolean).join("\n") : str(d.actions);
+      return { ...base, method: d.method === "reba" ? "reba" : "rula", score: str(d.score), task: str(d.task), actions };
+    }
+    case "fatigue":
+      return {
+        ...base,
+        epworth: str(d.epworth),
+        hours: str(d.hours_last_7d),
+        shift: str(d.longest_shift_h),
+        sleep24: str(d.sleep_last_24h),
+        sleep48: str(d.sleep_last_48h),
+      };
+  }
+}
 
 function buildData(program: HpProgram, v: Values, flags: { corrected: boolean }): Record<string, unknown> {
   switch (program) {
@@ -78,6 +145,7 @@ export function HpResultForm({
   workerLabel,
   visitUuid,
   policyUuid,
+  existing,
   onClose,
 }: {
   program: HpProgram;
@@ -85,31 +153,39 @@ export function HpResultForm({
   workerLabel?: string;
   visitUuid?: string;
   policyUuid?: string;
+  existing?: HpResult | null;
   onClose: () => void;
 }) {
   const { toast } = useToast();
   const client = useQueryClient();
-  const [v, setV] = useState<Values>({ method: "rula", sex: "male" });
-  const [date, setDate] = useState(today());
-  const [baseline, setBaseline] = useState(false);
-  const [corrected, setCorrected] = useState(false);
-  const [outcome, setOutcome] = useState<"" | HpOutcome>("");
-  const [notes, setNotes] = useState("");
+  const isEdit = Boolean(existing?.uuid);
+  const [v, setV] = useState<Values>(() => valuesFromResult(program, existing));
+  const [date, setDate] = useState(() => dateFromResult(existing));
+  const [baseline, setBaseline] = useState(() => Boolean(existing?.is_baseline));
+  const [corrected, setCorrected] = useState(() => existing?.data?.corrected === true);
+  const [outcome, setOutcome] = useState<"" | HpOutcome>(() => (existing?.outcome_overridden ? existing.outcome : ""));
+  const [notes, setNotes] = useState(() => existing?.notes ?? "");
   const set = (key: string) => (value: string) => setV((prev) => ({ ...prev, [key]: value }));
 
   const save = useMutation({
-    mutationFn: () =>
-      recordHpResult({
-        program,
-        customer_uuid: customerUuid,
-        visit_uuid: visitUuid,
-        policy_uuid: policyUuid,
+    mutationFn: () => {
+      const payload = {
         performed_at: date,
-        is_baseline: baseline || undefined,
+        is_baseline: baseline,
         data: buildData(program, v, { corrected }),
         outcome: outcome || undefined,
         notes: notes || undefined,
-      }),
+      };
+      return isEdit && existing
+        ? updateHpResult(existing.uuid, payload)
+        : recordHpResult({
+            program,
+            customer_uuid: customerUuid,
+            visit_uuid: visitUuid,
+            policy_uuid: policyUuid,
+            ...payload,
+          });
+    },
     onSuccess: (result) => {
       toast({
         variant: "success",
@@ -123,8 +199,10 @@ export function HpResultForm({
     onError: (error) => toast({ variant: "error", title: "Not saved", description: errorText(error) }),
   });
 
+  const title = isEdit ? `Edit ${PROGRAM_LABEL[program]}` : `Enter ${PROGRAM_LABEL[program]} manually`;
+
   return (
-    <Drawer title={`${PROGRAM_LABEL[program]} result`} description={workerLabel || undefined} onClose={onClose} wide>
+    <Drawer title={title} description={workerLabel || undefined} onClose={onClose} wide>
       <div data-testid={`oh-hp-form-${program}`} className="space-y-3">
         <Field label="Test date" type="date" value={date} onChange={setDate} required />
         {program === "hearing" ? (
@@ -212,7 +290,7 @@ export function HpResultForm({
           Cancel
         </SecondaryButton>
         <PageActionButton disabled={save.isPending} onClick={() => save.mutate()}>
-          Save result
+          {isEdit ? "Update result" : "Save result"}
         </PageActionButton>
       </DrawerActions>
     </Drawer>

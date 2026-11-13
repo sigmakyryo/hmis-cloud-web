@@ -99,6 +99,7 @@ function qs(params: Record<string, string | number | undefined | null>): string 
 
 const get = <T>(path: string) => bffRequest<T>(`${BASE}/${path}`);
 const post = <T>(path: string, body: object = {}) => bffRequest<T>(`${BASE}/${path}`, { method: "POST", body });
+const patch = <T>(path: string, body: object = {}) => bffRequest<T>(`${BASE}/${path}`, { method: "PATCH", body });
 
 export const fetchHpPolicies = async (program?: HpProgram) => (await get<{ results: HpPolicy[] }>(`policies${qs({ program })}`)).results;
 export const fetchHpPolicy = (uuid: string) => get<HpPolicy>(`policies/${uuid}`);
@@ -124,6 +125,16 @@ export const recordHpResult = (body: {
   restrictions?: string[];
   notes?: string;
 }) => post<HpResult>("results", body);
+export type HpResultUpdate = {
+  performed_at?: string;
+  is_baseline?: boolean;
+  data: Record<string, unknown>;
+  outcome?: HpOutcome;
+  referral?: boolean;
+  restrictions?: string[];
+  notes?: string;
+};
+export const updateHpResult = (uuid: string, body: HpResultUpdate) => patch<HpResult>(`results/${uuid}`, body);
 export const voidHpResult = (uuid: string, reason: string) => post<HpResult>(`results/${uuid}/void`, { reason });
 export const fetchHpTrend = (customerUuid: string, program: HpProgram) =>
   get<{ program: HpProgram; customer_uuid: string; worker_label: string; results: HpResult[] }>(`workers/${customerUuid}/${program}`);

@@ -38,6 +38,7 @@ vi.mock("@/features/occupational-health/services/health-programs.service", async
     fetchHpDue: (...a: unknown[]) => mocks.due(...a),
     fetchHpResults: (...a: unknown[]) => mocks.results(...a),
     recordHpResult: (...a: unknown[]) => mocks.record(...a),
+    updateHpResult: vi.fn(),
     fetchHpTrend: (...a: unknown[]) => mocks.trend(...a),
     voidHpResult: vi.fn(),
     fetchHpPolicies: (...a: unknown[]) => mocks.policies(...a),
@@ -126,6 +127,7 @@ describe("health programmes", () => {
     expect(healthProgramsProxy.resolve("GET", ["workers", CU, "teeth"])).toBeNull();
     expect(healthProgramsProxy.resolve("POST", ["results"])).not.toBeNull();
     expect(healthProgramsProxy.resolve("PATCH", ["results"])).toBeNull();
+    expect(healthProgramsProxy.resolve("PATCH", ["results", CU])?.path).toBe(`/oh-hp/results/${CU}`);
   });
 
   it("due list records a hearing result with both ears", async () => {
