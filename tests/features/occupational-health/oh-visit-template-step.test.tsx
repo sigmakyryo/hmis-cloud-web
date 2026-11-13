@@ -129,11 +129,13 @@ describe("OhVisitTemplateStep certificate answers", () => {
     expect(screen.getByText("Fitness outcome")).toBeVisible();
     expect(screen.getAllByText("Fit with restrictions").length).toBeGreaterThan(0);
     expect(screen.getAllByText("No work at height").length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
     const pdf = screen.getByRole("link", { name: "Export PDF" });
     expect(pdf).toHaveAttribute(
       "href",
-      "/api/occupational-health/oh-ext/oh-cof-responses/cof-1/pdf",
+      expect.stringContaining("/api/occupational-health/oh-ext/oh-cof-responses/cof-1/pdf"),
     );
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(screen.queryByTestId("oh-exam-template-capture")).toBeNull();
     expect(ohService.createOhCofResponse).not.toHaveBeenCalled();
 
@@ -146,6 +148,6 @@ describe("OhVisitTemplateStep certificate answers", () => {
     renderStep({ is_active: false });
     expect(await screen.findByTestId("oh-cof-answers-view")).toBeVisible();
     expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
-    expect(screen.getByRole("link", { name: "Export PDF" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Export" })).toBeVisible();
   });
 });

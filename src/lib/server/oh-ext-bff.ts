@@ -70,5 +70,5 @@ export const ohExtProxy = createOhModuleProxy({
     { path: "oh/integrations/templates/hearing/csv", type: "text/csv", filename: "oh-hearing-template.csv" },
     { path: "oh/integrations/templates/lung/csv", type: "text/csv", filename: "oh-lung-template.csv" },
   ],
-  queryKeys: ["status", "stage", "channel", "customer_uuid", "open_only", "limit", "from", "to", "within", "updated_since", "months"],
+  queryKeys: ["status", "stage", "channel", "customer_uuid", "open_only", "limit", "from", "to", "within", "updated_since", "months", "include"],
 });

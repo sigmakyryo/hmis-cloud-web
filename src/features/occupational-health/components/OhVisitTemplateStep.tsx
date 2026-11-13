@@ -35,7 +35,7 @@ import {
   recoverOhCofResponseVersion,
   recoverOhEmployeeFormResponseVersion,
 } from "@/features/occupational-health/services/oh.service";
-import type { OhTemplateCapture, OhVisitEncounter } from "@/features/occupational-health/types";
+import type { OhExamination, OhTemplateCapture, OhVisitEncounter } from "@/features/occupational-health/types";
 import { fetchOhImmFitnessGate } from "@/features/occupational-health/services/immunisation.service";
 import { OhCertificateReadiness } from "@/features/occupational-health/components/OhCertificateReadiness";
 import { applyCofDraft, findCofDraftTargets } from "@/features/occupational-health/lib/cof-draft-targets";
@@ -45,6 +45,7 @@ import {
   examAnswersAreComplete,
 } from "@/features/occupational-health/lib/exam-answers-display";
 import { cofResponsePdfUrl } from "@/features/occupational-health/services/oh-ext.service";
+import { useVisitEvidence } from "@/features/occupational-health/hooks/use-visit-evidence";
 import type { OhEncounterPanelId } from "@/features/occupational-health/lib/oh-encounter-modules";
 import { appFont } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
@@ -62,6 +63,7 @@ type OhVisitTemplateStepProps = {
   completionRef?: { current: (() => Promise<boolean>) | null };
   onSaved: () => void;
   onOpenPanel?: (panel: OhEncounterPanelId) => void;
+  examinations?: OhExamination[] | null;
   /** When set, the title, progress and Save render in this element (the step nav row) instead of a header bar. */
   headerSlot?: HTMLElement | null;
 };
@@ -77,10 +79,17 @@ export function OhVisitTemplateStep({
   completionRef,
   onSaved,
   onOpenPanel,
+  examinations = null,
   headerSlot = null,
 }: OhVisitTemplateStepProps) {
   const { toast } = useToast();
   const { userData } = useUser();
+  const evidence = useVisitEvidence({
+    customerUuid: encounter.customer_uuid,
+    encounterUuid: encounter.uuid,
+    examinations,
+    includeExam: family === "cof",
+  });
   const canConfigure = Boolean(userData?.is_admin);
   const record = records[0] ?? null;
   const [current, setCurrent] = useState<OhTemplateCapture | null>(record);
@@ -379,6 +388,10 @@ export function OhVisitTemplateStep({
         pdfUrl={current ? cofResponsePdfUrl(current.uuid) : null}
         onEdit={canEditAnswers ? () => setEditingAnswers(true) : null}
         testId="oh-cof-answers-view"
+        family="cof"
+        evidence={evidence.lines}
+        evidenceLoading={evidence.loading}
+        onOpenPanel={onOpenPanel}
       />
     ) : null;
   const showAnswers = Boolean(answersBody);

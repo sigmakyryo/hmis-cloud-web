@@ -51,8 +51,16 @@ export function createOhModuleProxy(config: OhModuleConfig) {
     const incoming = new URL(request.url).searchParams;
     const params = new URLSearchParams();
     for (const key of config.queryKeys) {
-      const value = incoming.get(key);
-      if (value) params.set(key, value);
+      const values: string[] = [];
+      const seen = new Set<string>();
+      for (const value of [...incoming.getAll(key), ...incoming.getAll(`${key}[]`)]) {
+        if (!value || seen.has(value)) continue;
+        seen.add(value);
+        values.push(value);
+      }
+      for (const value of values) {
+        params.append(key, value);
+      }
     }
     const text = params.toString();
     return text ? `?${text}` : "";

@@ -1,20 +1,43 @@
 "use client";
 
-import {
-  AlertTriangle,
-  Check,
-  CheckCircle2,
-  Copy,
-  FileDown,
-  MinusCircle,
-  Pencil,
-  Printer,
-  ShieldAlert,
-  XCircle,
-} from "lucide-react";
 import { differenceInCalendarDays, differenceInCalendarMonths, isValid, parse, parseISO, startOfDay } from "date-fns";
-import { useEffect, useMemo, useState, type MouseEvent } from "react";
+import {
+  Activity,
+  AlertTriangle,
+  Award,
+  Brain,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  ClipboardList,
+  Ear,
+  Eye,
+  FileText,
+  FlaskConical,
+  Heart,
+  HeartPulse,
+  Moon,
+  PersonStanding,
+  Ruler,
+  Scale,
+  ShieldAlert,
+  Stethoscope,
+  Syringe,
+  Thermometer,
+  Wind,
+  XCircle,
+  type LucideIcon,
+} from "lucide-react";
+import { useState } from "react";
 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   type ExamAnswerGroup,
   type ExamAnswerHighlight,
@@ -24,6 +47,17 @@ import {
   formatCompletedAt,
   sectionAnswerRows,
 } from "@/features/occupational-health/lib/exam-answers-display";
+import type { OhEncounterPanelId } from "@/features/occupational-health/lib/oh-encounter-modules";
+import {
+  pdfExportSections,
+  withPdfInclude,
+  type EvidenceBar,
+  type EvidenceMeter,
+  type EvidenceSpark,
+  type EvidenceVisual,
+  type PdfExportSection,
+  type VisitEvidenceLine,
+} from "@/features/occupational-health/lib/visit-evidence";
 import { cn } from "@/lib/utils";
 
 export type ExamAnswerSubject = {
@@ -36,6 +70,7 @@ type OhExamAnswersViewProps = {
   heading?: string;
   detail?: string;
   subject?: ExamAnswerSubject | null;
+  family?: "exam" | "cof";
   sections: ExamAnswerSectionView[];
   summary?: ExamAnswerSummary | null;
   completedAt?: string | null;
@@ -44,9 +79,10 @@ type OhExamAnswersViewProps = {
   pdfUrl?: string | null;
   onEdit?: (() => void) | null;
   testId?: string;
+  evidence?: VisitEvidenceLine[];
+  evidenceLoading?: boolean;
+  onOpenPanel?: (panel: OhEncounterPanelId) => void;
 };
-
-const TOC_MIN_SECTIONS = 2;
 
 type OutcomeTone = "fit" | "restricted" | "unfit" | "neutral";
 
@@ -68,25 +104,11 @@ export function outcomeTone(outcome: string | undefined): OutcomeTone {
   return "neutral";
 }
 
-const TONE_ACCENT: Record<OutcomeTone, string> = {
-  fit: "border-emerald-600 dark:border-emerald-500",
-  restricted: "border-amber-500 dark:border-amber-400",
-  unfit: "border-red-600 dark:border-red-500",
-  neutral: "border-dash-border",
-};
-
-const TONE_ICON: Record<OutcomeTone, typeof CheckCircle2> = {
-  fit: CheckCircle2,
-  restricted: AlertTriangle,
-  unfit: XCircle,
-  neutral: MinusCircle,
-};
-
-const TONE_ICON_CLASS: Record<OutcomeTone, string> = {
-  fit: "text-emerald-600 dark:text-emerald-400",
-  restricted: "text-amber-600 dark:text-amber-400",
-  unfit: "text-red-600 dark:text-red-400",
-  neutral: "text-dash-muted",
+const TONE_TEXT: Record<OutcomeTone, string> = {
+  fit: "text-emerald-800 dark:text-emerald-300",
+  restricted: "text-amber-800 dark:text-amber-300",
+  unfit: "text-red-800 dark:text-red-300",
+  neutral: "text-brand-navy",
 };
 
 const VITAL_SHORT: Record<string, string> = {
@@ -121,10 +143,7 @@ export function describeValidity(
   }
   const from = validFrom ? parseDisplayDate(validFrom) : null;
   const to = validTo ? parseDisplayDate(validTo) : null;
-  const span =
-    from && to
-      ? formatSpan(from, to)
-      : null;
+  const span = from && to ? formatSpan(from, to) : null;
   const range =
     validFrom && validTo
       ? `Valid ${validFrom} → ${validTo}`
@@ -236,36 +255,71 @@ function sectionFilledCount(section: ExamAnswerSectionView): number {
   return rows + chips;
 }
 
-function closestScrollParent(node: HTMLElement | null): HTMLElement | null {
-  let current = node?.parentElement ?? null;
-  while (current) {
-    const overflow = getComputedStyle(current).overflowY;
-    if (overflow === "auto" || overflow === "scroll") {
-      return current;
-    }
-    current = current.parentElement;
+/** Initials from a worker or clinician name, skipping a leading title. */
+export function subjectInitials(name: string | null | undefined): string {
+  const cleaned = (name ?? "").replace(/^(dr|prof|mr|mrs|ms|miss)\.?\s+/i, "").trim();
+  const parts = cleaned.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) {
+    return "";
   }
-  return null;
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+  const first = parts[0][0];
+  const last = parts[parts.length - 1][0];
+  return `${first ?? ""}${last ?? ""}`.toUpperCase();
 }
 
-function scrollToSection(event: MouseEvent<HTMLAnchorElement>, code: string) {
-  const node = document.getElementById(`oh-answers-${code}`);
-  if (!node) {
-    return;
-  }
-  event.preventDefault();
-  node.scrollIntoView({ behavior: "smooth", block: "start" });
-  try {
-    history.replaceState(null, "", `#oh-answers-${code}`);
-  } catch {
-    // Some test environments reject replaceState.
-  }
+
+function Glyph({ icon: Icon, className }: { icon: LucideIcon; className?: string }) {
+  return <Icon className={className} strokeWidth={1.75} aria-hidden />;
 }
 
-/** Document-style read-only answers for a completed exam or certificate of fitness. */
+const EVIDENCE_ICONS: Record<string, LucideIcon> = {
+  exam: Stethoscope,
+  vision: Eye,
+  hearing: Ear,
+  lung: Wind,
+  ergonomics: PersonStanding,
+  fatigue: Moon,
+  "drug-alcohol": FlaskConical,
+  immunizations: Syringe,
+};
+
+function systemGlyph(code: string, name: string): LucideIcon {
+  const key = `${code} ${name}`.toLowerCase();
+  if (/vital/.test(key)) return HeartPulse;
+  if (/cardio|heart|circulat/.test(key)) return Heart;
+  if (/respir|lung|chest|pulmon/.test(key)) return Wind;
+  if (/neuro|nervous|brain/.test(key)) return Brain;
+  if (/musculo|skel|ortho|bone|joint/.test(key)) return PersonStanding;
+  if (/vision|eye|ophthal/.test(key)) return Eye;
+  if (/hear|audio|ear/.test(key)) return Ear;
+  if (/certificate|fitness|review|outcome/.test(key)) return Award;
+  if (/histor|presenting|complaint/.test(key)) return ClipboardList;
+  if (/mental|psych/.test(key)) return Brain;
+  return FileText;
+}
+
+function vitalGlyph(label: string): LucideIcon {
+  const key = label.trim().toLowerCase();
+  if (/temp/.test(key)) return Thermometer;
+  if (/weight|kg|mass/.test(key)) return Scale;
+  if (/height|cm|stature/.test(key)) return Ruler;
+  if (/heart|pulse|bp|blood pressure|hr\b/.test(key)) return HeartPulse;
+  return Activity;
+}
+
+function sectionTotal(sections: ExamAnswerSectionView[]): { filled: number; total: number } {
+  const filled = sections.reduce((sum, section) => sum + sectionFilledCount(section), 0);
+  const empty = sections.reduce((sum, section) => sum + sectionEmptyCount(section), 0);
+  return { filled, total: filled + empty };
+}
+
+/** Read-only completed exam or certificate, led by the outcome and visit evidence. */
 export function OhExamAnswersView({
   heading,
-  detail,
+  family,
   subject,
   sections,
   summary,
@@ -274,359 +328,698 @@ export function OhExamAnswersView({
   notes,
   pdfUrl,
   onEdit,
-  testId = "oh-exam-answers-view",
+  testId,
+  evidence,
+  evidenceLoading = false,
+  onOpenPanel,
 }: OhExamAnswersViewProps) {
-  const [revealed, setRevealed] = useState<ReadonlySet<string>>(() => new Set());
-  const [activeCode, setActiveCode] = useState<string | null>(null);
+  const kind = family ?? (summary?.outcome ? "cof" : "exam");
   const when = formatCompletedAt(completedAt);
-  const meta = [completedBy, when].filter(Boolean).join(" · ");
-  const subjectLine = formatSubjectLine(subject);
-  const outcome = summary?.outcome;
-  const tone = outcomeTone(outcome);
-  const validity = describeValidity(summary?.validFrom, summary?.validTo);
-  const restrictions = summary?.restrictions ?? [];
+  const headerMeta = [completedBy, when].filter(Boolean).join(" · ") || null;
+  const signed = formatSigned(completedBy, when);
+  const validity = summary ? describeValidity(summary.validFrom, summary.validTo) : null;
+  const tone = outcomeTone(summary?.outcome);
   const vitals = (summary?.highlights ?? []).filter((item) => item.role === "vital");
-  const findings = (summary?.highlights ?? []).filter((item) => item.role === "finding");
-  const hasOutcome = Boolean(outcome || validity || restrictions.length);
-  const signed = hasOutcome ? formatSigned(completedBy, when) : null;
-
-  const prepared = useMemo(
-    () =>
-      sections.map((section) => {
-        const showEmpty = revealed.has(section.code);
-        const emptyCount = sectionEmptyCount(section);
-        const filledCount = sectionFilledCount(section);
-        const groups = section.groups
-          .map((group) => ({
-            ...group,
-            rows: group.rows.filter((row) => showEmpty || !row.empty),
-          }))
-          .filter(
-            (group) => (group.chips?.length ?? 0) > 0 || group.rows.length > 0 || (showEmpty && group.name),
-          );
-        const hasFilled = filledCount > 0;
-        return {
-          section,
-          groups,
-          emptyCount,
-          filledCount,
-          showEmpty,
-          hasFilled,
-          hasContent: hasFilled || emptyCount > 0,
-        };
-      }),
-    [sections, revealed],
-  );
-  const visible = prepared.filter((item) => item.hasContent);
-  const showToc = visible.length >= TOC_MIN_SECTIONS;
-  const sectionCodes = visible.map((item) => item.section.code);
-  const sectionKey = sectionCodes.join("|");
-  const firstCode = sectionCodes[0] ?? null;
-
-  useEffect(() => {
-    if (!showToc || typeof IntersectionObserver === "undefined") {
-      return;
-    }
-    const codes = sectionKey ? sectionKey.split("|") : [];
-    const nodes = codes
-      .map((code) => document.getElementById(`oh-answers-${code}`))
-      .filter((node): node is HTMLElement => node != null);
-    if (!nodes.length) {
-      return;
-    }
-    const root = closestScrollParent(nodes[0]!) ?? null;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visibleEntries = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-        const next = visibleEntries[0]?.target.id.replace(/^oh-answers-/, "") ?? null;
-        if (next) {
-          setActiveCode(next);
-        }
-      },
-      { root, rootMargin: "-15% 0px -65% 0px", threshold: [0, 0.25, 1] },
-    );
-    for (const node of nodes) {
-      observer.observe(node);
-    }
-    return () => observer.disconnect();
-  }, [showToc, sectionKey]);
-
-  function toggleEmpty(code: string) {
-    setRevealed((current) => {
-      const next = new Set(current);
-      if (next.has(code)) {
-        next.delete(code);
-      } else {
-        next.add(code);
-      }
-      return next;
-    });
-  }
+  const findings = (summary?.highlights ?? []).filter((item) => item.role !== "vital");
+  const { filled, total } = sectionTotal(sections);
+  const hasSignature =
+    sections.some((section) => sectionAnswerRows(section).some((row) => Boolean(row.previewSrc))) || Boolean(signed);
+  const hasFitness = Boolean(summary?.outcome) || (summary?.restrictions.length ?? 0) > 0;
+  const exportSections = pdfExportSections({
+    family: kind,
+    hasAnswers: filled > 0,
+    hasFitness,
+    hasSignature,
+    evidence: evidence ?? [],
+  });
+  const title = heading ?? (kind === "cof" ? "Certificate of fitness" : "Examination");
+  const showOutcome = kind === "cof" && Boolean(summary?.outcome || validity || (summary?.restrictions.length ?? 0) || signed);
 
   return (
-    <div
-      className={cn(
-        "mx-auto w-full",
-        showToc
-          ? "max-w-[720px] lg:grid lg:max-w-[56rem] lg:grid-cols-[9.25rem_minmax(0,45rem)] lg:items-start lg:gap-x-10 print:grid-cols-1 print:max-w-none"
-          : "max-w-[720px] print:max-w-none",
-      )}
-      data-testid={testId}
-    >
-      <style>{PRINT_CSS}</style>
-      {showToc ? (
-        <nav
-          aria-label="Answer sections"
-          data-testid="oh-exam-answers-jump"
-          className="hidden lg:sticky lg:top-6 lg:block lg:self-start lg:pt-10 print:hidden"
-        >
-          <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.1em] text-dash-muted">Sections</p>
-          <ol className="space-y-0.5 border-l border-dash-border">
-            {visible.map(({ section, filledCount }) => {
-              const active = (activeCode ?? firstCode) === section.code;
-              return (
-                <li key={section.code}>
-                  <a
-                    href={`#oh-answers-${section.code}`}
-                    aria-current={active ? "location" : undefined}
-                    onClick={(event) => scrollToSection(event, section.code)}
-                    className={cn(
-                      "-ml-px flex items-baseline justify-between gap-2 border-l py-1 pl-3 text-[12px] leading-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30",
-                      active
-                        ? "border-brand-navy font-medium text-brand-navy"
-                        : "border-transparent text-dash-muted hover:text-brand-navy",
-                    )}
-                  >
-                    <span className="min-w-0 truncate">{section.name}</span>
-                    {filledCount > 0 ? (
-                      <span className="shrink-0 tabular-nums text-[10px] font-normal text-dash-muted">{filledCount}</span>
-                    ) : null}
-                  </a>
-                </li>
-              );
-            })}
-          </ol>
-        </nav>
-      ) : null}
+    <article className="min-w-0 text-[13px] leading-5 text-brand-navy" data-testid={testId ?? "oh-exam-answers-view"}>
+      <AnswersHeader
+        title={title}
+        subject={subject}
+        status="Completed"
+        meta={headerMeta}
+        onEdit={onEdit}
+        pdfUrl={pdfUrl}
+        exportSections={exportSections}
+      />
 
-      <article className="py-8 sm:py-10 print:py-0">
-        <header className="flex items-start justify-between gap-4">
-          <div className="min-w-0 space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              {heading ? (
-                <h2 className="text-[17px] font-semibold tracking-tight text-brand-navy">{heading}</h2>
-              ) : null}
-              <span
-                className="inline-flex items-center rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300"
-                data-testid="oh-exam-answers-status"
-              >
-                Completed
-              </span>
-            </div>
-            {subjectLine ? (
-              <p className="text-[12px] text-dash-muted" data-testid="oh-exam-answers-subject">
-                {subjectLine}
-              </p>
-            ) : null}
-            {detail ? <p className="text-[12px] text-dash-muted">{detail}</p> : null}
-            {meta && !signed ? <p className="text-[12px] tabular-nums text-dash-muted">{meta}</p> : null}
-          </div>
-          <ActionGroup onEdit={onEdit} pdfUrl={pdfUrl} />
-        </header>
-
-        {hasOutcome ? (
-          <OutcomeBanner
-            outcome={outcome}
-            tone={tone}
-            validity={validity}
-            restrictions={restrictions}
-            signed={signed}
+      {kind === "cof" ? (
+        <>
+          {showOutcome ? (
+            <OutcomeHero
+              outcome={summary?.outcome}
+              tone={tone}
+              validity={validity}
+              validFrom={summary?.validFrom}
+              validTo={summary?.validTo}
+              restrictions={summary?.restrictions ?? []}
+              signed={signed}
+              signedBy={completedBy}
+            />
+          ) : null}
+          <EvidenceGrid
+            title="Visit evidence"
+            lines={evidence ?? []}
+            loading={evidenceLoading}
+            onOpenPanel={onOpenPanel}
           />
-        ) : null}
-
-        {vitals.length || findings.length ? (
-          <ExamHighlights vitals={vitals} findings={findings} />
-        ) : null}
-
-        {visible.map(({ section, groups, emptyCount, filledCount, showEmpty }) => (
-          <section
-            key={section.code}
-            id={`oh-answers-${section.code}`}
-            className="mt-8 scroll-mt-8 border-t border-dash-border pt-6 print:break-inside-avoid"
-            data-testid={`oh-exam-answers-section-${section.code}`}
-          >
-            <h3 className="flex items-baseline gap-2 text-[13px] font-semibold tracking-tight text-brand-navy">
-              {section.name}
-              {filledCount > 0 ? (
-                <span className="text-[11px] font-normal tabular-nums text-dash-muted">{filledCount}</span>
-              ) : null}
-            </h3>
-            <div className={cn(groups.length > 1 ? "mt-4 space-y-6" : "mt-3")}>
-              {groups.map((group) => (
-                <AnswerGroup key={group.code} group={group} />
-              ))}
-            </div>
-            {emptyCount > 0 ? (
-              <button
-                type="button"
-                onClick={() => toggleEmpty(section.code)}
-                data-testid="oh-exam-answers-empty-toggle"
-                aria-pressed={showEmpty}
-                className="mt-4 text-[12px] text-dash-muted transition-colors hover:text-brand-navy hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30 print:hidden"
-              >
-                {showEmpty ? "Hide empty" : `${emptyCount} not recorded`}
-              </button>
-            ) : null}
-          </section>
-        ))}
-
-        {notes?.trim() ? (
-          <p className="mt-8 border-t border-dash-border pt-5 text-[13px] leading-6 text-dash-muted">{notes.trim()}</p>
-        ) : null}
-
-        {!visible.length ? (
-          <p className="mt-8 border-t border-dash-border py-6 text-[13px] italic text-dash-muted">No answers recorded.</p>
-        ) : null}
-      </article>
-    </div>
+          <FormAnswers sections={sections} defaultOpen={false} filled={filled} total={total} />
+        </>
+      ) : (
+        <>
+          {vitals.length > 0 || findings.length > 0 ? <ExamHighlights vitals={vitals} findings={findings} /> : null}
+          <FormAnswers sections={sections} defaultOpen filled={filled} total={total} />
+          {notes ? (
+            <section className="mt-5">
+              <h3 className="text-[13px] font-semibold text-brand-navy">Notes</h3>
+              <p className="mt-1 whitespace-pre-wrap text-[13px] text-brand-navy">{notes}</p>
+            </section>
+          ) : null}
+          <EvidenceGrid
+            title="Related checks"
+            lines={evidence ?? []}
+            loading={evidenceLoading}
+            onOpenPanel={onOpenPanel}
+          />
+        </>
+      )}
+    </article>
   );
 }
 
-const PRINT_CSS = `
-@media print {
-  @page { margin: 14mm; }
-  [data-testid="oh-cof-readiness"],
-  [data-testid="oh-cof-assistant-toggle"],
-  [data-testid="oh-cof-footer"],
-  [data-testid="oh-encounter-module-nav"] {
-    display: none !important;
-  }
-  [data-testid="oh-exam-answers-view"],
-  [data-testid="oh-cof-answers-view"] {
-    max-width: none !important;
-  }
-}
-`;
-
-function ActionGroup({
+function AnswersHeader({
+  title,
+  subject,
+  status,
+  meta,
   onEdit,
   pdfUrl,
+  exportSections,
 }: {
+  title: string;
+  subject?: ExamAnswerSubject | null;
+  status: string;
+  meta: string | null;
   onEdit?: (() => void) | null;
   pdfUrl?: string | null;
+  exportSections: PdfExportSection[];
 }) {
+  const initials = subjectInitials(subject?.name);
+  const subjectLine = formatSubjectLine(subject);
   return (
-    <div
-      role="group"
-      aria-label="Document actions"
-      className="flex shrink-0 overflow-hidden rounded-md border border-dash-border bg-dash-panel print:hidden"
-    >
-      {onEdit ? (
-        <button
-          type="button"
-          onClick={onEdit}
-          title="Edit"
-          data-testid="oh-exam-answers-edit"
-          className="inline-flex items-center gap-1.5 border-r border-dash-border px-2.5 py-1.5 text-[12px] font-medium text-brand-navy hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-primary/30"
-        >
-          <Pencil className="size-3.5 text-dash-muted" aria-hidden />
-          Edit
-        </button>
-      ) : null}
-      {pdfUrl ? (
-        <a
-          href={pdfUrl}
-          target="_blank"
-          rel="noreferrer"
-          title="Export PDF"
-          aria-label="Export PDF"
-          data-testid="oh-exam-answers-export-pdf"
-          className="inline-flex items-center gap-1.5 border-r border-dash-border px-2.5 py-1.5 text-[12px] font-medium text-brand-navy hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-primary/30"
-        >
-          <FileDown className="size-3.5 text-dash-muted" aria-hidden />
-          PDF
-        </a>
-      ) : null}
-      <button
-        type="button"
-        title="Print"
-        onClick={() => window.print()}
-        data-testid="oh-exam-answers-print"
-        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[12px] font-medium text-brand-navy hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-primary/30"
-      >
-        <Printer className="size-3.5 text-dash-muted" aria-hidden />
-        Print
-      </button>
-    </div>
+    <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-b border-dash-border pb-4">
+      <div className="flex min-w-0 items-center gap-3">
+        {initials ? (
+          <span
+            aria-hidden
+            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-brand-primary/10 text-[13px] font-semibold tracking-wide text-brand-primary dark:bg-brand-primary/20"
+          >
+            {initials}
+          </span>
+        ) : null}
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+            <h2 className="text-[17px] font-semibold tracking-tight text-brand-navy">{title}</h2>
+            <span
+              data-testid="oh-exam-answers-status"
+              className="inline-flex items-center rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300"
+            >
+              {status}
+            </span>
+          </div>
+          {subjectLine ? (
+            <p className="mt-0.5 truncate text-[12px] text-dash-muted" data-testid="oh-exam-answers-subject">
+              {subjectLine}
+            </p>
+          ) : null}
+          {meta ? <p className="text-[12px] tabular-nums text-dash-muted">{meta}</p> : null}
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        {onEdit ? (
+          <button
+            type="button"
+            onClick={onEdit}
+            data-testid="oh-exam-answers-edit"
+            className="inline-flex items-center rounded-md border border-dash-border bg-transparent px-3 py-1.5 text-[13px] font-medium text-brand-navy transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
+          >
+            Edit
+          </button>
+        ) : null}
+        {pdfUrl ? <ExportDialog pdfUrl={pdfUrl} sections={exportSections} /> : null}
+      </div>
+    </header>
   );
 }
 
-function OutcomeBanner({
+const HERO_WASH: Record<OutcomeTone, string> = {
+  fit: "from-emerald-50/95 via-emerald-50/45 to-transparent dark:from-emerald-500/15 dark:via-emerald-500/5 dark:to-transparent",
+  restricted: "from-amber-50/95 via-amber-50/45 to-transparent dark:from-amber-500/15 dark:via-amber-500/5 dark:to-transparent",
+  unfit: "from-rose-50/95 via-rose-50/45 to-transparent dark:from-rose-500/15 dark:via-rose-500/5 dark:to-transparent",
+  neutral: "from-muted/80 via-muted/30 to-transparent dark:from-white/5 dark:via-white/0 dark:to-transparent",
+};
+
+const HERO_EDGE: Record<OutcomeTone, string> = {
+  fit: "border-emerald-500/70 dark:border-emerald-400/60",
+  restricted: "border-amber-500/70 dark:border-amber-400/60",
+  unfit: "border-rose-500/70 dark:border-rose-400/60",
+  neutral: "border-dash-border",
+};
+
+const HERO_ICON_WRAP: Record<OutcomeTone, string> = {
+  fit: "bg-emerald-100/80 text-emerald-700 ring-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-500/30",
+  restricted: "bg-amber-100/80 text-amber-800 ring-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-500/30",
+  unfit: "bg-rose-100/80 text-rose-800 ring-rose-200 dark:bg-rose-500/15 dark:text-rose-300 dark:ring-rose-500/30",
+  neutral: "bg-muted text-dash-muted ring-dash-border",
+};
+
+const HERO_ICON: Record<OutcomeTone, typeof CheckCircle2> = {
+  fit: CheckCircle2,
+  restricted: AlertTriangle,
+  unfit: XCircle,
+  neutral: CheckCircle2,
+};
+
+function OutcomeHero({
   outcome,
   tone,
   validity,
+  validFrom,
+  validTo,
   restrictions,
   signed,
+  signedBy,
 }: {
   outcome?: string;
   tone: OutcomeTone;
   validity: ValidityDescription | null;
+  validFrom?: string | null;
+  validTo?: string | null;
   restrictions: string[];
   signed: string | null;
+  signedBy?: string | null;
 }) {
-  const Icon = TONE_ICON[tone];
+  const initials = subjectInitials(signedBy);
   return (
-    <div
-      className={cn("mt-6 border-l-2 py-1 pl-4", TONE_ACCENT[tone])}
+    <section
+      className={cn("mt-4 border-l-4 bg-gradient-to-r px-5 py-5", HERO_WASH[tone], HERO_EDGE[tone])}
       data-testid="oh-exam-answers-outcome"
       data-tone={tone}
     >
-      {outcome ? (
-        <div className="flex items-start gap-2">
-          <Icon className={cn("mt-0.5 size-5 shrink-0", TONE_ICON_CLASS[tone])} aria-hidden />
-          <p className="text-[20px] font-semibold leading-tight tracking-tight text-brand-navy">{outcome}</p>
+      <div className="flex flex-wrap items-start justify-between gap-5">
+        <div className="flex min-w-0 flex-1 items-start gap-4">
+          <span
+            className={cn("mt-0.5 flex size-14 shrink-0 items-center justify-center rounded-full ring-1", HERO_ICON_WRAP[tone])}
+            aria-hidden
+          >
+            <Glyph icon={HERO_ICON[tone]} className="size-7" />
+          </span>
+          <div className="min-w-0 flex-1">
+            {outcome ? (
+              <>
+                <h3 className="text-[11px] font-medium uppercase tracking-[0.1em] text-dash-muted">Fitness outcome</h3>
+                <p className={cn("mt-1 text-[22px] font-semibold leading-tight tracking-tight", TONE_TEXT[tone])}>
+                  {outcome}
+                </p>
+              </>
+            ) : null}
+            {validity ? (
+              <ValidityTrack
+                validity={validity}
+                validFrom={validFrom}
+                validTo={validTo}
+              />
+            ) : null}
+            {restrictions.length ? (
+              <ul className="mt-3 flex flex-wrap gap-1.5" data-testid="oh-exam-answers-restrictions">
+                {restrictions.map((line) => (
+                  <li
+                    key={line}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[12px] font-medium text-amber-950 dark:bg-amber-500/15 dark:text-amber-200"
+                  >
+                    <ShieldAlert className="size-3 shrink-0" aria-hidden />
+                    {line}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {signed ? (
+              <div className="mt-3 flex items-center gap-2" data-testid="oh-exam-answers-signed">
+                {initials ? (
+                  <span
+                    aria-hidden
+                    className="flex size-7 shrink-0 items-center justify-center rounded-full bg-brand-primary/10 text-[10px] font-semibold text-brand-primary dark:bg-brand-primary/20"
+                  >
+                    {initials}
+                  </span>
+                ) : null}
+                <p className="text-[12px] tabular-nums text-dash-muted">{signed}</p>
+              </div>
+            ) : null}
+          </div>
         </div>
-      ) : null}
-      {validity ? (
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <p className="text-[12px] tabular-nums text-dash-muted">{validity.label}</p>
-          {validity.remaining ? (
-            <span
-              data-testid="oh-exam-answers-remaining"
-              data-tone={validity.remainingTone ?? undefined}
+        {validity?.remaining ? <RemainingRing validity={validity} validFrom={validFrom} validTo={validTo} /> : null}
+      </div>
+    </section>
+  );
+}
+
+function validityPlacement(
+  validFrom: string | null | undefined,
+  validTo: string | null | undefined,
+  now: Date = new Date(),
+): { todayPct: number; remainingPct: number } | null {
+  const to = validTo ? parseDisplayDate(validTo) : null;
+  if (!to) {
+    return null;
+  }
+  const from = validFrom ? parseDisplayDate(validFrom) : null;
+  const start = from ?? now;
+  const total = startOfDay(to).getTime() - startOfDay(start).getTime();
+  if (total <= 0) {
+    return { todayPct: 1, remainingPct: 0 };
+  }
+  const elapsed = startOfDay(now).getTime() - startOfDay(start).getTime();
+  const remaining = startOfDay(to).getTime() - startOfDay(now).getTime();
+  return {
+    todayPct: Math.min(1, Math.max(0, elapsed / total)),
+    remainingPct: Math.min(1, Math.max(0, remaining / total)),
+  };
+}
+
+function ValidityTrack({
+  validity,
+  validFrom,
+  validTo,
+}: {
+  validity: ValidityDescription;
+  validFrom?: string | null;
+  validTo?: string | null;
+}) {
+  const place = validityPlacement(validFrom, validTo);
+  return (
+    <div className="mt-3 max-w-lg">
+      <p className="text-[12px] tabular-nums text-dash-muted">{validity.label}</p>
+      {place && (validFrom || validTo) ? (
+        <div className="mt-2" data-testid="oh-exam-answers-validity-bar">
+          <div className="relative h-1.5 rounded-full bg-muted dark:bg-white/10">
+            <div
               className={cn(
-                "inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums",
-                validity.remainingTone === "expired" &&
-                  "bg-red-50 text-red-800 dark:bg-red-500/15 dark:text-red-300",
-                validity.remainingTone === "soon" &&
-                  "bg-amber-50 text-amber-900 dark:bg-amber-500/15 dark:text-amber-300",
-                validity.remainingTone === "ok" &&
-                  "bg-muted text-dash-muted",
+                "absolute inset-y-0 left-0 rounded-full",
+                validity.remainingTone === "expired"
+                  ? "bg-rose-400 dark:bg-rose-400/80"
+                  : validity.remainingTone === "soon"
+                    ? "bg-amber-400 dark:bg-amber-400/80"
+                    : "bg-brand-primary/70",
               )}
-            >
-              {validity.remaining}
-            </span>
-          ) : null}
+              style={{ width: `${place.todayPct * 100}%` }}
+            />
+            <span
+              aria-hidden
+              title="Today"
+              className="absolute top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand-navy ring-2 ring-white dark:bg-white dark:ring-brand-navy"
+              style={{ left: `${place.todayPct * 100}%` }}
+            />
+          </div>
+          <div className="mt-1 flex justify-between text-[10px] tabular-nums text-dash-muted">
+            <span>{validFrom || "Issued"}</span>
+            <span>Today</span>
+            <span>{validTo || "Expiry"}</span>
+          </div>
         </div>
-      ) : null}
-      {restrictions.length ? (
-        <ul className="mt-3 space-y-1.5" data-testid="oh-exam-answers-restrictions">
-          {restrictions.map((line) => (
-            <li key={line} className="flex items-start gap-2 text-[13px] leading-5 text-brand-navy">
-              <ShieldAlert className="mt-0.5 size-3.5 shrink-0 text-dash-muted" aria-hidden />
-              <span>{line}</span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {signed ? (
-        <p className="mt-3 text-[12px] tabular-nums text-dash-muted" data-testid="oh-exam-answers-signed">
-          {signed}
-        </p>
       ) : null}
     </div>
+  );
+}
+
+function RemainingRing({
+  validity,
+  validFrom,
+  validTo,
+}: {
+  validity: ValidityDescription;
+  validFrom?: string | null;
+  validTo?: string | null;
+}) {
+  const place = validityPlacement(validFrom, validTo);
+  const pct = place?.remainingPct ?? (validity.remainingTone === "expired" ? 0 : 1);
+  const radius = 22;
+  const circumference = 2 * Math.PI * radius;
+  const tone = validity.remainingTone;
+  const stroke =
+    tone === "expired"
+      ? "stroke-rose-500 dark:stroke-rose-400"
+      : tone === "soon"
+        ? "stroke-amber-500 dark:stroke-amber-400"
+        : "stroke-emerald-600 dark:stroke-emerald-400";
+  return (
+    <div
+      className="relative size-[4.5rem] shrink-0"
+      data-testid="oh-exam-answers-remaining"
+      data-tone={tone ?? undefined}
+    >
+      <svg viewBox="0 0 56 56" className="-rotate-90" aria-hidden>
+        <circle
+          cx="28"
+          cy="28"
+          r={radius}
+          fill="none"
+          strokeWidth="4"
+          className="stroke-muted dark:stroke-white/10"
+        />
+        <circle
+          cx="28"
+          cy="28"
+          r={radius}
+          fill="none"
+          strokeWidth="4"
+          strokeLinecap="round"
+          className={stroke}
+          strokeDasharray={circumference}
+          strokeDashoffset={circumference * (1 - pct)}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center px-1 text-center">
+        <span
+          className={cn(
+            "text-[10px] font-semibold leading-tight tabular-nums",
+            tone === "expired" && "text-rose-800 dark:text-rose-300",
+            tone === "soon" && "text-amber-900 dark:text-amber-300",
+            tone === "ok" && "text-emerald-800 dark:text-emerald-300",
+          )}
+        >
+          {validity.remaining}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function EvidenceGrid({
+  title,
+  lines,
+  loading,
+  onOpenPanel,
+}: {
+  title: string;
+  lines: VisitEvidenceLine[];
+  loading: boolean;
+  onOpenPanel?: (panel: OhEncounterPanelId) => void;
+}) {
+  if (!loading && lines.length === 0) {
+    return null;
+  }
+  return (
+    <section className="mt-6" data-testid="oh-exam-answers-evidence">
+      <h3 className="text-[13px] font-semibold text-brand-navy">{title}</h3>
+      {loading && lines.length === 0 ? (
+        <p className="mt-2 text-[12px] text-dash-muted" role="status">
+          Loading visit records…
+        </p>
+      ) : (
+        <ul className="mt-2 grid grid-cols-1 border-l border-t border-dash-border sm:grid-cols-2 xl:grid-cols-4">
+          {lines.map((line) => (
+            <EvidenceTile key={line.id} line={line} onOpenPanel={onOpenPanel} />
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function EvidenceTile({
+  line,
+  onOpenPanel,
+}: {
+  line: VisitEvidenceLine;
+  onOpenPanel?: (panel: OhEncounterPanelId) => void;
+}) {
+  const figure = line.displayValue ?? line.result;
+  const actionLabel = line.available ? "Open" : "Record";
+  return (
+    <li
+      className={cn(
+        "group relative border-b border-r border-dash-border p-3.5 transition-shadow duration-200 motion-reduce:transition-none",
+        "hover:z-10 hover:shadow-sm",
+        !line.available && "bg-muted/30 dark:bg-white/5",
+      )}
+      data-testid={`oh-exam-answers-evidence-${line.id}`}
+      data-available={line.available ? "true" : "false"}
+    >
+      <div className="flex items-start gap-2.5">
+        <span
+          className={cn(
+            "flex size-8 shrink-0 items-center justify-center rounded-full",
+            line.available
+              ? line.tone === "attention"
+                ? "bg-amber-50 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300"
+                : "bg-brand-primary/10 text-brand-primary dark:bg-brand-primary/20"
+              : "bg-muted text-dash-muted",
+          )}
+          aria-hidden
+        >
+          <Glyph icon={EVIDENCE_ICONS[line.id] ?? Activity} className="size-3.5" />
+        </span>
+        <div className="min-w-0 flex-1 pr-5">
+          <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-dash-muted">{line.label}</p>
+          <p
+            className={cn(
+              "mt-0.5 text-[17px] font-semibold leading-tight tracking-tight tabular-nums",
+              line.available ? "text-brand-navy" : "text-dash-muted",
+            )}
+          >
+            {figure}
+            {line.displayUnit ? (
+              <span className="ml-1 text-[10px] font-medium text-dash-muted">{line.displayUnit}</span>
+            ) : null}
+          </p>
+          {line.displayValue && line.result && line.result !== line.displayValue ? (
+            <p className="mt-0.5 truncate text-[11px] text-dash-muted">{line.result}</p>
+          ) : null}
+          {line.visual ? <EvidenceVisuals visual={line.visual} tone={line.tone} /> : null}
+          <div className="mt-2">
+            <span
+              className={cn(
+                "inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+                line.tone === "ok" && "bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300",
+                line.tone === "attention" && "bg-amber-50 text-amber-900 dark:bg-amber-500/15 dark:text-amber-300",
+                line.tone === "needed" && "bg-amber-50 text-amber-900 dark:bg-amber-500/15 dark:text-amber-300",
+                line.tone === "muted" && "bg-muted text-dash-muted",
+              )}
+            >
+              {line.statusLabel}
+            </span>
+          </div>
+        </div>
+      </div>
+      {onOpenPanel && line.panel ? (
+        <button
+          type="button"
+          onClick={() => onOpenPanel(line.panel as OhEncounterPanelId)}
+          className={cn(
+            "absolute top-2.5 right-2 inline-flex items-center gap-0.5 rounded-md px-1.5 py-1 text-[11px] font-medium text-brand-primary transition-opacity duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30 motion-reduce:transition-none",
+            line.available
+              ? "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+              : "opacity-100",
+          )}
+        >
+          {actionLabel}
+          <ChevronRight className="size-3.5" aria-hidden />
+          <span className="sr-only"> {line.label}</span>
+        </button>
+      ) : null}
+    </li>
+  );
+}
+
+function EvidenceVisuals({ visual, tone }: { visual: EvidenceVisual; tone: VisitEvidenceLine["tone"] }) {
+  return (
+    <div className="mt-2 space-y-1.5">
+      {visual.spark?.length ? <MiniSpark series={visual.spark} /> : null}
+      {visual.bars?.length ? <MiniBars bars={visual.bars} attention={tone === "attention"} /> : null}
+      {visual.meter ? <MiniMeter meter={visual.meter} attention={tone === "attention"} /> : null}
+    </div>
+  );
+}
+
+function MiniBars({ bars, attention }: { bars: EvidenceBar[]; attention: boolean }) {
+  return (
+    <ul className="space-y-1" aria-hidden>
+      {bars.map((bar) => {
+        const pct = bar.max > 0 ? Math.min(100, Math.max(0, (bar.value / bar.max) * 100)) : 0;
+        return (
+          <li key={bar.label} className="flex items-center gap-1.5">
+            <span className="w-3 text-[9px] font-medium text-dash-muted">{bar.label}</span>
+            <span className="h-1.5 min-w-0 flex-1 rounded-full bg-muted dark:bg-white/10">
+              <span
+                className={cn(
+                  "block h-full rounded-full",
+                  attention ? "bg-amber-500 dark:bg-amber-400" : "bg-brand-primary",
+                )}
+                style={{ width: `${pct}%` }}
+              />
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function MiniMeter({ meter, attention }: { meter: EvidenceMeter; attention: boolean }) {
+  const pct = meter.max > 0 ? Math.min(100, Math.max(0, (meter.value / meter.max) * 100)) : 0;
+  return (
+    <div className="h-1.5 rounded-full bg-muted dark:bg-white/10" aria-hidden>
+      <div
+        className={cn("h-full rounded-full", attention ? "bg-amber-500 dark:bg-amber-400" : "bg-brand-primary")}
+        style={{ width: `${pct}%` }}
+      />
+    </div>
+  );
+}
+
+function MiniSpark({ series }: { series: EvidenceSpark[] }) {
+  const width = 96;
+  const height = 28;
+  const pad = 2;
+  const allY = series.flatMap((item) => item.points.map((point) => point.y));
+  const max = Math.max(80, ...allY);
+  const strokes = ["stroke-brand-primary", "stroke-amber-600 dark:stroke-amber-400"];
+  function path(points: Array<{ x: string; y: number }>): string {
+    if (points.length < 2) {
+      return "";
+    }
+    return points
+      .map((point, index) => {
+        const x = pad + (index / (points.length - 1)) * (width - 2 * pad);
+        const y = pad + (1 - point.y / max) * (height - 2 * pad);
+        return `${index === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`;
+      })
+      .join(" ");
+  }
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible" aria-hidden>
+      {series.map((item, index) => (
+        <path
+          key={item.label}
+          d={path(item.points)}
+          fill="none"
+          strokeWidth="1.5"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          className={strokes[index % strokes.length]}
+        />
+      ))}
+    </svg>
+  );
+}
+
+function FormAnswers({
+  sections,
+  defaultOpen,
+  filled,
+  total,
+}: {
+  sections: ExamAnswerSectionView[];
+  defaultOpen: boolean;
+  filled: number;
+  total: number;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const ratio = total > 0 ? filled / total : 0;
+  return (
+    <section className="mt-6" data-testid="oh-exam-answers-form">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        data-testid="oh-exam-answers-form-toggle"
+        className="flex w-full items-center gap-3 rounded-md px-1 py-2 text-left transition-colors duration-200 hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30 motion-reduce:transition-none"
+      >
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-semibold text-brand-navy">Form answers ({filled})</p>
+          <p className="text-[11px] text-dash-muted">
+            {filled} of {total} recorded
+          </p>
+        </div>
+        <span className="hidden h-1.5 w-24 overflow-hidden rounded-full bg-muted sm:block dark:bg-white/10" aria-hidden>
+          <span className="block h-full rounded-full bg-brand-primary" style={{ width: `${Math.round(ratio * 100)}%` }} />
+        </span>
+        <ChevronDown
+          className={cn(
+            "size-4 shrink-0 text-dash-muted transition-transform duration-300 motion-reduce:transition-none",
+            open && "rotate-180",
+          )}
+          aria-hidden
+        />
+      </button>
+      {open ? (
+        <div className="mt-3 animate-in fade-in-0 slide-in-from-top-1 duration-300 motion-reduce:animate-none">
+          <SectionsList sections={sections} />
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function SectionsList({ sections, className }: { sections: ExamAnswerSectionView[]; className?: string }) {
+  return (
+    <div className={cn("space-y-6", className)}>
+      {sections.map((section) => (
+        <SectionBlock key={section.code} section={section} />
+      ))}
+    </div>
+  );
+}
+
+function SectionBlock({ section }: { section: ExamAnswerSectionView }) {
+  const empty = sectionEmptyCount(section);
+  const filled = sectionFilledCount(section);
+  const flagged = sectionAnswerRows(section).filter((row) => row.flagged && !row.empty).length;
+  const [showEmpty, setShowEmpty] = useState(false);
+  return (
+    <section data-testid={`oh-exam-answers-section-${section.code}`} id={`oh-answers-${section.code}`}>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span
+            className="flex size-7 items-center justify-center rounded-full bg-brand-primary/10 text-brand-primary dark:bg-brand-primary/20"
+            aria-hidden
+          >
+            <Glyph icon={systemGlyph(section.code, section.name)} className="size-3.5" />
+          </span>
+          <h3 className="text-[13px] font-semibold text-brand-navy">{section.name}</h3>
+          <span
+            className={cn(
+              "inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+              flagged > 0
+                ? "bg-amber-50 text-amber-900 dark:bg-amber-500/15 dark:text-amber-300"
+                : "bg-muted text-dash-muted",
+            )}
+          >
+            {flagged > 0 ? `${flagged} flagged` : `${filled} recorded`}
+          </span>
+        </div>
+        {empty > 0 ? (
+          <button
+            type="button"
+            onClick={() => setShowEmpty((current) => !current)}
+            data-testid="oh-exam-answers-empty-toggle"
+            className="text-[11px] font-medium text-dash-muted transition-colors hover:text-brand-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
+          >
+            {showEmpty ? "Hide empty" : `${empty} not recorded`}
+          </button>
+        ) : null}
+      </div>
+      <div className="space-y-4">
+        {section.groups.map((group) => (
+          <AnswerGroup key={group.code || group.name} group={group} showEmpty={showEmpty} />
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -638,39 +1031,41 @@ function ExamHighlights({
   findings: ExamAnswerHighlight[];
 }) {
   return (
-    <div className="mt-6 space-y-3" data-testid="oh-exam-answers-highlights">
+    <div className="mt-5 space-y-3" data-testid="oh-exam-answers-highlights">
       {vitals.length ? (
-        <ul className="flex flex-wrap items-stretch">
-          {vitals.map((item, index) => {
+        <ul className="flex flex-wrap border-y border-dash-border">
+          {vitals.map((item) => {
             const { amount, unit } = splitVitalValue(item.value);
             return (
               <li
                 key={item.key}
                 className={cn(
-                  "flex flex-col justify-center px-4 py-0.5",
-                  index > 0 && "border-l border-dash-border",
-                  index === 0 && "pl-0",
-                  item.flagged && "text-amber-800 dark:text-amber-300",
+                  "flex min-w-[7.5rem] flex-1 flex-col justify-center gap-1 border-r border-dash-border px-4 py-3 last:border-r-0 transition-shadow duration-200 hover:shadow-sm motion-reduce:transition-none",
+                  item.flagged && "bg-rose-50/80 dark:bg-rose-500/10",
                 )}
                 title={item.flagged ? `${item.label}: outside the recorded range` : item.label}
                 data-flagged={item.flagged || undefined}
               >
-                <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-dash-muted">
+                <span
+                  className={cn(
+                    "flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.08em]",
+                    item.flagged ? "text-rose-800 dark:text-rose-300" : "text-dash-muted",
+                  )}
+                >
+                  <Glyph icon={vitalGlyph(item.label)} className="size-3.5" />
                   {shortVitalLabel(item.label)}
                 </span>
-                <span className="mt-0.5 flex items-baseline gap-1">
+                <span className="flex items-baseline gap-1">
                   <span
                     className={cn(
-                      "text-[17px] font-semibold tabular-nums tracking-tight",
-                      item.flagged ? "text-amber-800 dark:text-amber-300" : "text-brand-navy",
+                      "text-[22px] font-semibold tabular-nums tracking-tight",
+                      item.flagged ? "text-rose-800 dark:text-rose-300" : "text-brand-navy",
                     )}
                   >
                     {amount}
                   </span>
                   {unit ? <span className="text-[11px] font-normal text-dash-muted">{unit}</span> : null}
-                  {item.flagged ? (
-                    <span className="sr-only">Outside the recorded range</span>
-                  ) : null}
+                  {item.flagged ? <span className="sr-only">Outside the recorded range</span> : null}
                 </span>
               </li>
             );
@@ -679,8 +1074,10 @@ function ExamHighlights({
       ) : null}
       {findings.length ? (
         <ul className="flex flex-wrap gap-1.5">
-          {findings.map((item) => (
-            <Chip key={item.key}>{item.value}</Chip>
+          {findings.map((item, index) => (
+            <Chip key={item.key} tone={index % 3}>
+              {item.value}
+            </Chip>
           ))}
         </ul>
       ) : null}
@@ -688,30 +1085,31 @@ function ExamHighlights({
   );
 }
 
-function AnswerGroup({ group }: { group: ExamAnswerGroup }) {
-  const longRows = group.rows.filter((row) => isWideRow(row));
-  const inlineRows = group.rows.filter((row) => !isWideRow(row));
+function AnswerGroup({ group, showEmpty }: { group: ExamAnswerGroup; showEmpty: boolean }) {
+  const rows = group.rows.filter((row) => showEmpty || !row.empty);
+  const longRows = rows.filter((row) => isWideRow(row));
+  const inlineRows = rows.filter((row) => !isWideRow(row));
   return (
     <div data-testid={group.name ? `oh-exam-answers-group-${group.code}` : undefined}>
       {group.name ? (
-        <h4 className="mb-2 text-[11px] font-medium uppercase tracking-[0.08em] text-dash-muted">{group.name}</h4>
+        <h4 className="mb-1.5 text-[12px] font-medium text-dash-muted">{group.name}</h4>
       ) : null}
       {group.chips?.length ? (
-        <ul className="mb-3 flex flex-wrap gap-1.5" data-testid="oh-exam-answers-chips">
+        <ul className="mb-2 flex flex-wrap gap-1.5" data-testid="oh-exam-answers-chips">
           {group.chips.map((chip) => (
             <Chip key={chip}>{chip}</Chip>
           ))}
         </ul>
       ) : null}
       {inlineRows.length ? (
-        <dl>
+        <dl className="grid grid-cols-1 sm:grid-cols-2 sm:gap-x-6">
           {inlineRows.map((row) => (
             <AnswerField key={row.key} row={row} />
           ))}
         </dl>
       ) : null}
       {longRows.length ? (
-        <dl className={cn(inlineRows.length ? "mt-1" : "")}>
+        <dl className={inlineRows.length ? "mt-1" : undefined}>
           {longRows.map((row) => (
             <AnswerField key={row.key} row={row} wide />
           ))}
@@ -730,9 +1128,8 @@ function AnswerField({ row, wide = false }: { row: ExamAnswerRow; wide?: boolean
   return (
     <div
       className={cn(
-        "group relative -mx-2 rounded-md border-t border-dash-border/80 px-2 py-2 first:border-t-0 first:pt-2 hover:bg-muted/70 print:hover:bg-transparent motion-reduce:transition-none",
-        wide ? "block" : "grid grid-cols-[minmax(0,40%)_minmax(0,60%)] items-baseline gap-x-6",
-        row.empty && "animate-in fade-in-0 slide-in-from-top-1 duration-200 motion-reduce:animate-none",
+        "border-t border-dash-border py-1.5 first:border-t-0 first:pt-0",
+        wide ? "block" : "grid grid-cols-[minmax(0,42%)_minmax(0,58%)] items-baseline gap-x-4",
       )}
       data-testid={`oh-exam-answers-field-${row.key}`}
     >
@@ -740,14 +1137,13 @@ function AnswerField({ row, wide = false }: { row: ExamAnswerRow; wide?: boolean
       <dd
         className={cn(
           "min-w-0 break-words text-[13px] leading-5 text-brand-navy",
-          wide && "mt-1.5 leading-6",
+          wide && "mt-1",
           tabular && "tabular-nums",
           row.empty && "italic text-dash-muted",
-          row.flagged && "text-amber-800 dark:text-amber-300",
+          row.flagged && "text-rose-800 dark:text-rose-300",
         )}
       >
         <AnswerValue row={row} />
-        {!row.empty && !row.previewSrc ? <CopyValue text={row.value} label={row.label} /> : null}
       </dd>
     </div>
   );
@@ -764,7 +1160,7 @@ function AnswerValue({ row }: { row: ExamAnswerRow }) {
       <img
         src={row.previewSrc}
         alt={row.label}
-        className="h-14 w-auto max-w-[16rem] rounded-sm border border-dash-border bg-dash-panel object-contain"
+        className="h-14 w-auto max-w-[16rem] border border-dash-border bg-dash-panel object-contain"
       />
     );
   }
@@ -775,10 +1171,7 @@ function AnswerValue({ row }: { row: ExamAnswerRow }) {
     return (
       <span className="inline-flex items-center gap-1.5">
         <span
-          className={cn(
-            "size-1.5 rounded-full",
-            yes && !na ? "bg-emerald-600 dark:bg-emerald-400" : "bg-dash-muted",
-          )}
+          className={cn("size-1.5 rounded-full", yes && !na ? "bg-emerald-600 dark:bg-emerald-400" : "bg-dash-muted")}
           aria-hidden
         />
         {row.value}
@@ -803,39 +1196,109 @@ function AnswerValue({ row }: { row: ExamAnswerRow }) {
   return <>{row.value}</>;
 }
 
-function CopyValue({ text, label }: { text: string; label: string }) {
-  const [copied, setCopied] = useState(false);
-
-  async function onCopy() {
-    try {
-      if (!navigator.clipboard?.writeText) {
-        return;
-      }
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // Clipboard may be unavailable.
-    }
-  }
-
+function Chip({ children, tone = 0 }: { children: string; tone?: number }) {
+  const wash = [
+    "bg-brand-primary/10 text-brand-navy dark:bg-brand-primary/20 dark:text-emerald-100",
+    "bg-sky-50 text-sky-950 dark:bg-sky-500/15 dark:text-sky-200",
+    "bg-violet-50 text-violet-950 dark:bg-violet-500/15 dark:text-violet-200",
+  ];
   return (
-    <button
-      type="button"
-      onClick={() => void onCopy()}
-      title={copied ? "Copied" : `Copy ${label}`}
-      aria-label={copied ? "Copied" : `Copy ${label}`}
-      className="absolute top-1.5 right-1 hidden rounded p-1 text-dash-muted hover:bg-muted hover:text-brand-navy group-hover:inline-flex focus-visible:inline-flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30 print:hidden motion-reduce:transition-none"
-    >
-      {copied ? <Check className="size-3" aria-hidden /> : <Copy className="size-3" aria-hidden />}
-    </button>
+    <li className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium", wash[tone % wash.length])}>
+      {children}
+    </li>
   );
 }
 
-function Chip({ children }: { children: string }) {
+function ExportDialog({ pdfUrl, sections }: { pdfUrl: string; sections: PdfExportSection[] }) {
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<string[]>([]);
+
+  function setOpenAndDefaults(next: boolean) {
+    if (next) {
+      setSelected(sections.filter((section) => section.available).map((section) => section.key));
+    }
+    setOpen(next);
+  }
+
+  function toggle(key: string) {
+    setSelected((current) => (current.includes(key) ? current.filter((item) => item !== key) : [...current, key]));
+  }
+
+  const href = withPdfInclude(pdfUrl, selected);
+
   return (
-    <li className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-brand-navy">
-      {children}
-    </li>
+    <>
+      <button
+        type="button"
+        onClick={() => setOpenAndDefaults(true)}
+        data-testid="oh-exam-answers-export-pdf"
+        className="inline-flex items-center rounded-md bg-brand-primary px-3 py-1.5 text-[13px] font-medium text-white transition-opacity duration-200 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30 motion-reduce:transition-none"
+      >
+        Export
+      </button>
+      <Dialog open={open} onOpenChange={setOpenAndDefaults}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Export PDF</DialogTitle>
+            <DialogDescription>Choose the sections to include. Available records are selected to start.</DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-3 text-[12px]">
+            <button
+              type="button"
+              onClick={() => setSelected(sections.map((section) => section.key))}
+              className="font-medium text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
+            >
+              Select all
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelected([])}
+              className="font-medium text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
+            >
+              Select none
+            </button>
+          </div>
+          <ul className="mt-3 max-h-[50vh] space-y-1 overflow-y-auto">
+            {sections.map((section) => (
+              <li key={section.key}>
+                <label className="flex cursor-pointer items-center gap-2 py-1 text-[13px] text-brand-navy">
+                  <input
+                    type="checkbox"
+                    checked={selected.includes(section.key)}
+                    onChange={() => toggle(section.key)}
+                    data-available={section.available ? "true" : "false"}
+                    className="size-3.5 accent-brand-primary"
+                  />
+                  <span className="flex-1">{section.label}</span>
+                  {section.note ? <span className="text-[11px] text-dash-muted">{section.note}</span> : null}
+                </label>
+              </li>
+            ))}
+          </ul>
+          <DialogFooter>
+            <a
+              href={selected.length > 0 ? href : undefined}
+              aria-disabled={selected.length === 0 || undefined}
+              onClick={(event) => {
+                if (selected.length === 0) {
+                  event.preventDefault();
+                  return;
+                }
+                setOpen(false);
+              }}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="oh-exam-answers-export-confirm"
+              className={cn(
+                "inline-flex items-center justify-center rounded-md bg-brand-primary px-3 py-1.5 text-[13px] font-medium text-white",
+                selected.length === 0 && "pointer-events-none opacity-50",
+              )}
+            >
+              Export PDF
+            </a>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

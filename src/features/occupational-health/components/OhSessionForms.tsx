@@ -177,6 +177,7 @@ export function OhSessionForms({
           focusedExamUuid={focusedExamUuid}
           examFocusRequest={examFocusRequest}
           onActiveExamChange={onActiveExamChange}
+          onOpenPanel={onOpenPanel}
         />
       </section>
 
@@ -198,6 +199,7 @@ export function OhSessionForms({
             completionRef={cofCompletionRef}
             onSaved={workspace.refetchAll}
             onOpenPanel={onOpenPanel}
+            examinations={workspace.examinations}
             headerSlot={showCof ? navSlot : null}
           />
         </section>

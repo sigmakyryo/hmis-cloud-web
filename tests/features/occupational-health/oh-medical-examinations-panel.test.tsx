@@ -239,12 +239,14 @@ describe("OhMedicalExaminationsPanel", () => {
     expect(screen.getByTestId("oh-exam-answers-status")).toHaveTextContent("Completed");
     expect(screen.getAllByText("BP").length).toBeGreaterThan(0);
     expect(screen.getAllByText("120/80").length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
     const pdf = screen.getByRole("link", { name: "Export PDF" });
     expect(pdf).toHaveAttribute(
       "href",
-      "/api/occupational-health/oh-ext/oh-examinations/exam-1/pdf",
+      expect.stringContaining("/api/occupational-health/oh-ext/oh-examinations/exam-1/pdf"),
     );
     expect(pdf).toHaveAttribute("target", "_blank");
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(screen.queryByTestId("oh-exam-template-capture")).not.toBeInTheDocument();
     expect(ohService.createOhExamination).not.toHaveBeenCalled();
 
@@ -452,9 +454,10 @@ describe("OhMedicalExaminationsPanel", () => {
     await waitFor(() => expect(completionRef.current).toBeTypeOf("function"));
     await expect(completionRef.current!()).resolves.toBe(true);
     expect(await screen.findByTestId("oh-exam-answers-view")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
     expect(screen.getByRole("link", { name: "Export PDF" })).toHaveAttribute(
       "href",
-      "/api/occupational-health/oh-ext/oh-examinations/exam-new/pdf",
+      expect.stringContaining("/api/occupational-health/oh-ext/oh-examinations/exam-new/pdf"),
     );
     expect(screen.queryByTestId("oh-exam-template-capture")).not.toBeInTheDocument();
   });
@@ -484,6 +487,6 @@ describe("OhMedicalExaminationsPanel", () => {
     });
     expect(await screen.findByTestId("oh-exam-answers-view")).toBeVisible();
     expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
-    expect(screen.getByRole("link", { name: "Export PDF" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Export" })).toBeVisible();
   });
 });

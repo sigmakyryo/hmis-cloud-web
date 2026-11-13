@@ -36,7 +36,7 @@ import {
   type ExamTemplateAnswers,
   type ExamTemplateResponseEnvelope,
 } from "@/features/occupational-health/lib/exam-template-snapshot";
-import { EXAM_TEMPLATE_RESPONSE_KEY } from "@/features/occupational-health/lib/oh-encounter-modules";
+import { EXAM_TEMPLATE_RESPONSE_KEY, type OhEncounterPanelId } from "@/features/occupational-health/lib/oh-encounter-modules";
 import {
   createOhExamination,
   publishOhExamTemplate,
@@ -65,6 +65,7 @@ import {
   examAnswersAreComplete,
 } from "@/features/occupational-health/lib/exam-answers-display";
 import { examinationPdfUrl } from "@/features/occupational-health/services/oh-ext.service";
+import { useVisitEvidence } from "@/features/occupational-health/hooks/use-visit-evidence";
 import { useToast } from "@/providers/toast-provider";
 
 type OhMedicalExaminationsPanelProps = {
@@ -77,6 +78,7 @@ type OhMedicalExaminationsPanelProps = {
   focusedExamUuid?: string | null;
   examFocusRequest?: number;
   onActiveExamChange?: (examUuid: string | null) => void;
+  onOpenPanel?: (panel: OhEncounterPanelId) => void;
 };
 
 function readEnvelope(
@@ -154,9 +156,14 @@ export function OhMedicalExaminationsPanel({
   focusedExamUuid = null,
   examFocusRequest = 0,
   onActiveExamChange,
+  onOpenPanel,
 }: OhMedicalExaminationsPanelProps) {
   const { toast } = useToast();
   const { userData } = useUser();
+  const evidence = useVisitEvidence({
+    customerUuid: encounter.customer_uuid,
+    encounterUuid: encounter.uuid,
+  });
   const canConfigure = Boolean(userData?.is_admin);
   const queryClient = useQueryClient();
   const [recoveryOpen, setRecoveryOpen] = useState(false);
@@ -674,6 +681,10 @@ export function OhMedicalExaminationsPanel({
                 notes={examNotes}
                 pdfUrl={examinationPdfUrl(examination.uuid)}
                 onEdit={encounter.is_active === false ? null : () => setEditingAnswers(true)}
+                family="exam"
+                evidence={evidence.lines}
+                evidenceLoading={evidence.loading}
+                onOpenPanel={onOpenPanel}
               />
             ) : (
               <>

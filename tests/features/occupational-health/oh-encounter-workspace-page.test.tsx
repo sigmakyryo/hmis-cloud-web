@@ -453,9 +453,10 @@ describe("OhEncounterWorkspacePage", () => {
     expect(
       await screen.findByTestId("oh-exam-answers-view"),
     ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
     expect(screen.getByRole("link", { name: "Export PDF" })).toHaveAttribute(
       "href",
-      "/api/occupational-health/oh-ext/oh-examinations/exam-1/pdf",
+      expect.stringContaining("/api/occupational-health/oh-ext/oh-examinations/exam-1/pdf"),
     );
     expect(
       screen.queryByTestId("oh-fitness-certificate-form"),
