@@ -3,7 +3,8 @@
 import { Suspense, useEffect } from "react";
 
 import { AppSidebar } from "@/components/app-sidebar";
-import { AppHeader } from "@/features/app-shell/components/AppHeader";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { AppCommandMenu } from "@/features/app-shell/components/AppCommandMenu";
 import { WorkspaceSetupBanner } from "@/features/app-shell/components/WorkspaceSetupBanner";
 import { ModuleAccessGate } from "@/features/app-shell/components/ModuleAccessGate";
 import { PageActivityBar } from "@/features/app-shell/components/PageActivityBar";
@@ -19,7 +20,7 @@ import { WorkspaceUsageRecorder } from "@/features/overview/components/Workspace
 const AUTHENTICATED_SHELL_CLASS = "app-authenticated-shell";
 
 /**
- * Authenticated app shell. White sidebar and header, flush page body.
+ * Authenticated app shell. White sidebar, flush page body.
  * Record wells inside a page use the gray canvas; the shell itself stays flat.
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -43,9 +44,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <AppSidebar />
         <SidebarInset className="min-h-0 overflow-hidden bg-white">
           <AppBreadcrumbProvider>
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-              <AppHeader />
-              <div className="relative flex min-h-0 flex-1 flex-col overflow-auto bg-white">
+            <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+              <SidebarTrigger className="absolute left-2 top-2 z-20 md:hidden" />
+              <AppCommandMenu />
+              <div className="relative flex min-h-0 flex-1 flex-col overflow-auto bg-white pt-12 md:pt-0">
                 <ModuleAccessGate>{children}</ModuleAccessGate>
               </div>
             </div>
