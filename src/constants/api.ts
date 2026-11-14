@@ -590,6 +590,8 @@ export const BFF_OCCUPATIONAL_HEALTH_ROUTES = {
   employeeFormOpen: "/api/occupational-health/employee-form-responses/open",
   employeeFormInvites: (uuid: string) =>
     `/api/occupational-health/employee-form-responses/${uuid}/invites`,
+  employeeFormInviteRecipient: (uuid: string) =>
+    `/api/occupational-health/employee-form-responses/${uuid}/invite-recipient`,
   employeeFormDocument: (uuid: string) =>
     `/api/occupational-health/employee-form-responses/${uuid}/document`,
   clinicalForms: "/api/occupational-health/clinical-forms",
@@ -598,6 +600,8 @@ export const BFF_OCCUPATIONAL_HEALTH_ROUTES = {
   clinicalFormResponses: (uuid: string) =>
     `/api/occupational-health/clinical-forms/${uuid}/responses`,
   formGroups: "/api/occupational-health/form-groups",
+  formGroup: (uuid: string) => `/api/occupational-health/form-groups/${uuid}`,
+  formGroupsLayout: "/api/occupational-health/form-groups/layout",
   visitTypes: "/api/occupational-health/visit-types",
   visitTypeArchive: (uuid: string) =>
     `/api/occupational-health/visit-types/${uuid}/archive`,

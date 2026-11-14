@@ -26,6 +26,7 @@ import {
 import { OhEmployeeSessionRows } from "@/features/occupational-health/components/OhEmployeeSessionRows";
 import { OhExamTemplateCaptureForm } from "@/features/occupational-health/components/OhExamTemplateCaptureForm";
 import { parseExamTemplateSnapshot, type ExamTemplateAnswers } from "@/features/occupational-health/lib/exam-template-snapshot";
+import { SendFormEmailDialog } from "@/features/occupational-health/components/SendFormEmailDialog";
 import {
   createOhEmployeeFormInvite,
   fetchOhEmployeeFormResponses,
@@ -119,19 +120,15 @@ export function OhEmployeeFormsTab({
       setSheet("view");
     },
   });
+  const [emailOpen, setEmailOpen] = useState(false);
   const copyLink = useMutation({
-    mutationFn: async (email = false) => {
+    mutationFn: async () => {
       const record = form ?? await openOhEmployeeForm(customerUuid);
-      const invite = email ? await createOhEmployeeFormInvite(record.uuid, true) : await createOhEmployeeFormInvite(record.uuid);
+      const invite = await createOhEmployeeFormInvite(record.uuid);
       return `${window.location.origin}${ROUTES.workforceForm(invite.token)}`;
     },
-    onSuccess: async (link, email) => {
+    onSuccess: async (link) => {
       setPublicLink(link);
-      if (email) {
-        toast({ variant: "success", title: "Form sent to the employee’s email" });
-        await refresh();
-        return;
-      }
       try {
         await navigator.clipboard.writeText(link);
         setLinkCopied(true);
@@ -224,9 +221,19 @@ export function OhEmployeeFormsTab({
                     title="Copy public link"
                     detail={linkCopied ? "Copied. The employee opens this page to fill the form." : "Copy the page the employee uses to fill this form."}
                     disabled={copyLink.isPending}
-                    onClick={() => copyLink.mutate(false)}
+                    onClick={() => copyLink.mutate()}
                   />
-                  <SecondaryButton type="button" disabled={copyLink.isPending} onClick={() => copyLink.mutate(true)}>Send email</SecondaryButton>
+                  <SecondaryButton type="button" disabled={copyLink.isPending} onClick={() => setEmailOpen(true)}>Send email</SecondaryButton>
+                  <SendFormEmailDialog
+                    open={emailOpen}
+                    onOpenChange={setEmailOpen}
+                    resolveFormUuid={async () => (form ?? await openOhEmployeeForm(customerUuid)).uuid}
+                    onSent={async ({ token, sentTo }) => {
+                      setPublicLink(`${window.location.origin}${ROUTES.workforceForm(token)}`);
+                      toast({ variant: "success", title: sentTo ? `Form sent to ${sentTo}` : "Form sent to the employee’s email" });
+                      await refresh();
+                    }}
+                  />
                   {publicLink ? (
                     <p className="break-all px-1 text-[13px] text-brand-primary" data-testid="oh-employee-form-link">{publicLink}</p>
                   ) : null}

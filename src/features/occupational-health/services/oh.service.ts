@@ -493,8 +493,21 @@ export async function openOhEmployeeForm(customerUuid: string) {
   });
 }
 
+export type OhEmployeeFormInviteRecipient = {
+  email: string | null;
+  name: string;
+  source: "employee_record" | "employment_record" | null;
+  reason: string | null;
+};
+
+export async function fetchOhEmployeeFormInviteRecipient(uuid: string) {
+  return bffRequest<OhEmployeeFormInviteRecipient>(
+    BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormInviteRecipient(uuid),
+  );
+}
+
 export async function createOhEmployeeFormInvite(uuid: string, sendEmail = false) {
-  return bffRequest<{ token: string; expires_at: string }>(
+  return bffRequest<{ token: string; expires_at: string; sent_to?: string | null }>(
     BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormInvites(uuid),
     { method: "POST", body: sendEmail ? { send_email: true } : {} },
   );

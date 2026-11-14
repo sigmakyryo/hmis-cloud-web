@@ -22,6 +22,7 @@ import {
 import type { OhTemplateCapture, OhVisitEncounter } from "@/features/occupational-health/types";
 import { employeeFormExportUrl } from "@/features/occupational-health/services/oh-ext.service";
 import { ROUTES } from "@/constants/routes";
+import { SendFormEmailDialog } from "@/features/occupational-health/components/SendFormEmailDialog";
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { appFont } from "@/lib/fonts";
@@ -156,6 +157,7 @@ export function OhSessionEmployeeForm({
     }
   }
 
+  const [emailOpen, setEmailOpen] = useState(false);
   const link = useMutation({
     mutationFn: async (action: "copy" | "qr" | "show" | "email") => {
       const record = await ensureRecord();
@@ -255,9 +257,19 @@ export function OhSessionEmployeeForm({
               <h3 className="text-sm font-semibold text-brand-navy">Share employee form</h3>
               <p className="mt-1 text-[13px] text-dash-muted">Let the employee complete the form on their own device.</p>
               <div className="mt-3 flex flex-wrap gap-2">
-                <SecondaryButton type="button" disabled={shareDisabled} onClick={() => share("email")}>
+                <SecondaryButton type="button" disabled={shareDisabled} onClick={() => setEmailOpen(true)}>
                   <Mail className="size-4" aria-hidden="true" /> Send email
                 </SecondaryButton>
+                <SendFormEmailDialog
+                  open={emailOpen}
+                  onOpenChange={setEmailOpen}
+                  resolveFormUuid={async () => (await ensureRecord()).uuid}
+                  onSent={({ token, sentTo }) => {
+                    setPublicLink(`${window.location.origin}${ROUTES.workforceForm(token)}`);
+                    setMessage(null);
+                    toast({ variant: "success", title: sentTo ? `Form sent to ${sentTo}` : "Form sent to the employee’s email" });
+                  }}
+                />
                 <SecondaryButton type="button" disabled={shareDisabled || Boolean(publicLink)} onClick={() => share("show")}>
                   <ExternalLink className="size-4" aria-hidden="true" /> Create link
                 </SecondaryButton>
