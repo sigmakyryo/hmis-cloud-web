@@ -37,6 +37,7 @@ export type BuilderSection = {
   isSystem: boolean;
   active: boolean;
   contentMode: OhLibraryContentMode;
+  appliesToSex?: "male" | "female" | null;
   defaultResponseFields: OhResponseField[];
 };
 
@@ -73,6 +74,7 @@ export type SectionInput = {
   isMandatory: boolean;
   selectionMode: OhCatalogSelectionMode;
   contentMode: OhLibraryContentMode;
+  appliesToSex?: "male" | "female" | null;
   defaultResponseFields: OhResponseField[];
 };
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { createNativeOhVisit } from "@/features/occupational-health/services/native-visit.service";
-import { ROUTES } from "@/constants/routes";
+import { ohQueueEntryHref } from "@/features/occupational-health/lib/oh-queue-route";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Building2, Loader2 } from "lucide-react";
@@ -57,6 +57,7 @@ import {
   formatCustomerName,
 } from "@/features/customers/utils/format-customer";
 import { OhRiskProfileRequiredNotice } from "@/features/occupational-health/components/OhRiskProfileRequiredNotice";
+import { startableFromCustomers } from "@/features/occupational-health/lib/oh-visit-types";
 import { fetchOhVisitTypes } from "@/features/occupational-health/services/oh.service";
 import { fetchOhVisitEligibility } from "@/features/occupational-health/services/visit-eligibility.service";
 import { OH_RISK_PROFILE_REQUIRED_MESSAGE } from "@/features/occupational-health/utils/customer-has-risk-profile";
@@ -434,9 +435,7 @@ export function CustomerVisitDialog({
           description: `Successfully started visit for ${customerName}.`,
         });
         if (created.visit && created.uuid) {
-          router.push(
-            ROUTES.occupationalHealthEncounter(created.visit, created.uuid),
-          );
+          router.push(ohQueueEntryHref(created));
         }
         return;
       }
@@ -682,7 +681,7 @@ export function CustomerVisitDialog({
                   }
                   defaultClinicName={defaultClinic?.name ?? "Your clinic"}
                   departments={departments}
-                  visitTypes={visitTypes.data ?? []}
+                  visitTypes={startableFromCustomers(visitTypes.data ?? [])}
                   consultationServices={consultationServices}
                   isLoadingConsultationServices={isLoadingConsultationServices}
                   insuranceSchemes={insuranceSchemes}

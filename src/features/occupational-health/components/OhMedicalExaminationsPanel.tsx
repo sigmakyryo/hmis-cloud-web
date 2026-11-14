@@ -260,7 +260,8 @@ export function OhMedicalExaminationsPanel({
   const captureTemplateUuid = examination?.template_uuid ?? historicalEnvelope?.template_uuid ?? captureVersion?.template ?? examTemplateUuid;
   const snapshot = useMemo(() => parseExamTemplateSnapshot(
     examination?.template_snapshot ?? captureVersion?.snapshot_json,
-  ), [examination?.template_snapshot, captureVersion?.snapshot_json]);
+    examination?.template_snapshot ? undefined : encounter.gender ?? null,
+  ), [examination?.template_snapshot, captureVersion?.snapshot_json, encounter.gender]);
   const definitionsMissing = Boolean(snapshot?.sections.some((section) => section.content_mode === "direct" ? section.response_definitions_missing : section.items.some((item) => item.response_definitions_missing)));
   const hasEnteredResponses = Object.values(answers.fields).some((fields) => Object.values(fields).some((value) => typeof value !== "string" || value.trim() !== ""));
   const readyReplacement = [...(versionsQuery.data ?? [])].filter((row) => row.status === "published" && hasCompleteExamDefinitions(row.snapshot_json) && row.uuid !== versionUuid).sort((a, b) => b.number - a.number || b.id - a.id)[0];

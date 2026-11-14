@@ -493,10 +493,23 @@ export async function openOhEmployeeForm(customerUuid: string) {
   });
 }
 
-export async function createOhEmployeeFormInvite(uuid: string) {
-  return bffRequest<{ token: string; expires_at: string }>(
+export type OhEmployeeFormInviteRecipient = {
+  email: string | null;
+  name: string;
+  source: "employee_record" | "employment_record" | null;
+  reason: string | null;
+};
+
+export async function fetchOhEmployeeFormInviteRecipient(uuid: string) {
+  return bffRequest<OhEmployeeFormInviteRecipient>(
+    BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormInviteRecipient(uuid),
+  );
+}
+
+export async function createOhEmployeeFormInvite(uuid: string, sendEmail = false) {
+  return bffRequest<{ token: string; expires_at: string; sent_to?: string | null }>(
     BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormInvites(uuid),
-    { method: "POST", body: {} },
+    { method: "POST", body: sendEmail ? { send_email: true } : {} },
   );
 }
 
@@ -590,6 +603,31 @@ export async function createFormGroup(name: string) {
   return bffRequest<FormGroupRecord>(BFF_OCCUPATIONAL_HEALTH_ROUTES.formGroups, {
     method: "POST",
     body: { name },
+  });
+}
+
+export async function renameFormGroup(uuid: string, name: string) {
+  return bffRequest<FormGroupRecord>(BFF_OCCUPATIONAL_HEALTH_ROUTES.formGroup(uuid), {
+    method: "PATCH",
+    body: { name },
+  });
+}
+
+export async function deleteFormGroup(uuid: string) {
+  return bffRequest<{ uuid: string; deleted: boolean }>(BFF_OCCUPATIONAL_HEALTH_ROUTES.formGroup(uuid), {
+    method: "DELETE",
+  });
+}
+
+export type FormLayoutItem =
+  | { form_uuid: string }
+  | { template_kind: "employee" | "exam" | "certificate"; template_uuid: string };
+
+/** Saves group order and each group's ordered forms (uuid null = ungrouped) in one request. */
+export async function saveFormLayout(groups: Array<{ uuid: string | null; items: FormLayoutItem[] }>) {
+  return bffRequest<FormGroupRecord[]>(BFF_OCCUPATIONAL_HEALTH_ROUTES.formGroupsLayout, {
+    method: "PUT",
+    body: { groups },
   });
 }
 

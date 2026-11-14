@@ -126,6 +126,7 @@ function fromLibrarySection(row: OhLibrarySection): BuilderSection {
     code: row.code,
     name: row.name,
     isMandatory: Boolean(row.is_mandatory),
+    appliesToSex: row.applies_to_sex,
     selectionMode: getSectionSelectionMode(row),
     isSystem: false,
     active: row.active !== false,
@@ -187,6 +188,7 @@ function sectionPayload(input: SectionInput) {
   return {
     name: input.name.trim(),
     is_mandatory: input.isMandatory,
+    applies_to_sex: input.appliesToSex,
     selection_mode: input.selectionMode,
     content_mode: input.contentMode,
     default_response_fields: normalizeResponseFields(input.defaultResponseFields),

@@ -59,7 +59,7 @@ function publishedFields(raw: unknown): OhResponseField[] {
   });
 }
 
-export function parseExamTemplateSnapshot(raw: unknown): ExamTemplateSnapshot | null {
+export function parseExamTemplateSnapshot(raw: unknown, subjectSex?: string | null): ExamTemplateSnapshot | null {
   if (!raw || typeof raw !== "object") {
     return null;
   }
@@ -67,8 +67,16 @@ export function parseExamTemplateSnapshot(raw: unknown): ExamTemplateSnapshot | 
   if (!Array.isArray(sections)) {
     return null;
   }
+  const sex = subjectSex?.trim().toLowerCase();
   const normalized: ExamTemplateSnapshotSection[] = sections
     .filter((row): row is Record<string, unknown> => Boolean(row) && typeof row === "object")
+    .filter((attachment) => {
+      const nested = attachment.library_section;
+      const source = nested && typeof nested === "object" ? nested as Record<string, unknown> : attachment;
+      const restriction = source.applies_to_sex;
+      return subjectSex === undefined || !restriction || restriction === sex ||
+        (sex === "m" && restriction === "male") || (sex === "f" && restriction === "female");
+    })
     .map((attachment, index) => {
       const nested = attachment.library_section;
       const row = nested && typeof nested === "object" ? nested as Record<string, unknown> : attachment;

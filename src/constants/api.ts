@@ -362,6 +362,15 @@ export const BFF_OCCUPATIONAL_HEALTH_ROUTES = {
   iodCase: (uuid: string) => `/api/occupational-health/iod-cases/${uuid}`,
   iodCaseStatutoryPack: (uuid: string) =>
     `/api/occupational-health/iod-cases/${uuid}/statutory-pack`,
+  iodCaseDocument: (uuid: string) =>
+    `/api/occupational-health/iod-cases/${uuid}/document`,
+  opdIodCases: "/api/occupational-health/opd-iod",
+  opdIodByEncounter: (encounterUuid: string) =>
+    `/api/occupational-health/opd-iod/by-encounter/${encounterUuid}`,
+  iodCaseEntries: (uuid: string) =>
+    `/api/occupational-health/iod-cases/${uuid}/entries`,
+  iodCaseEntry: (uuid: string, entryUuid: string) =>
+    `/api/occupational-health/iod-cases/${uuid}/entries/${entryUuid}`,
   campaignQueue: "/api/occupational-health/campaign-queue",
   surveillanceRequirements: "/api/occupational-health/surveillance-requirements",
   surveillanceSchedule: "/api/occupational-health/surveillance/schedule",
@@ -590,6 +599,8 @@ export const BFF_OCCUPATIONAL_HEALTH_ROUTES = {
   employeeFormOpen: "/api/occupational-health/employee-form-responses/open",
   employeeFormInvites: (uuid: string) =>
     `/api/occupational-health/employee-form-responses/${uuid}/invites`,
+  employeeFormInviteRecipient: (uuid: string) =>
+    `/api/occupational-health/employee-form-responses/${uuid}/invite-recipient`,
   employeeFormDocument: (uuid: string) =>
     `/api/occupational-health/employee-form-responses/${uuid}/document`,
   clinicalForms: "/api/occupational-health/clinical-forms",
@@ -598,6 +609,8 @@ export const BFF_OCCUPATIONAL_HEALTH_ROUTES = {
   clinicalFormResponses: (uuid: string) =>
     `/api/occupational-health/clinical-forms/${uuid}/responses`,
   formGroups: "/api/occupational-health/form-groups",
+  formGroup: (uuid: string) => `/api/occupational-health/form-groups/${uuid}`,
+  formGroupsLayout: "/api/occupational-health/form-groups/layout",
   visitTypes: "/api/occupational-health/visit-types",
   visitTypeArchive: (uuid: string) =>
     `/api/occupational-health/visit-types/${uuid}/archive`,

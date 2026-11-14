@@ -8,6 +8,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  SidebarMenuBadge,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/components/ui/sidebar";
 import { NotificationsPanel } from "@/features/notifications/components/NotificationsPanel";
 import { useInboxUnreadCount } from "@/features/notifications/hooks/use-inbox-unread-count";
 import { appFont } from "@/lib/fonts";
@@ -29,36 +34,25 @@ export function AppHeaderNotifications() {
   const badgeLabel = unreadCount > 99 ? "99+" : String(unreadCount);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          data-testid="app-header-notifications-trigger"
-          aria-label={unreadLabel(unreadCount)}
-          className={cn(
-            "relative flex size-9 items-center justify-center rounded-full text-dash-muted",
-            "transition-colors hover:bg-dash-canvas hover:text-brand-navy",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/25",
-            "data-[state=open]:bg-dash-canvas data-[state=open]:text-brand-navy",
-          )}
+    <SidebarMenuItem>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <SidebarMenuButton
+            tooltip={unreadLabel(unreadCount)}
+            data-testid="app-header-notifications-trigger"
+            aria-label={unreadLabel(unreadCount)}
+          >
+            <AppIcon name="notification" size={18} />
+            <span>Notifications</span>
+          </SidebarMenuButton>
+        </PopoverTrigger>
+        <PopoverContent
+          side="right"
+          align="end"
+          sideOffset={8}
+          className={cn(appFont.className, "w-80 overflow-hidden p-0")}
+          data-testid="app-header-notifications-popover"
         >
-          <AppIcon name="notification" size={18} />
-          {unreadCount > 0 ? (
-            <span
-              data-testid="app-header-notifications-badge"
-              className="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-primary px-1 text-[10px] font-semibold leading-none text-white"
-            >
-              {badgeLabel}
-            </span>
-          ) : null}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent
-        align="end"
-        sideOffset={8}
-        className={cn(appFont.className, "w-80 overflow-hidden p-0")}
-        data-testid="app-header-notifications-popover"
-      >
         <NotificationsPanel
           enabled={open}
           maxItems={6}
@@ -69,7 +63,22 @@ export function AppHeaderNotifications() {
           emptyDescription="New notifications will show up here."
           data-testid="app-header-notifications-panel"
         />
-      </PopoverContent>
-    </Popover>
+        </PopoverContent>
+      </Popover>
+      {unreadCount > 0 ? (
+        <>
+          <SidebarMenuBadge
+            data-testid="app-header-notifications-badge"
+            className="bg-brand-primary text-[10px] font-semibold text-white"
+          >
+            {badgeLabel}
+          </SidebarMenuBadge>
+          <span
+            aria-hidden
+            className="pointer-events-none absolute right-1.5 top-1.5 hidden size-2 rounded-full bg-brand-primary group-data-[collapsible=icon]:block"
+          />
+        </>
+      ) : null}
+    </SidebarMenuItem>
   );
 }

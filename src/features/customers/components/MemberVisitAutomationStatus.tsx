@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { useMasmIntegrationEnabled } from "@/features/claims/hooks/use-masm-integration-enabled";
 import { AppIcon } from "@/components/icons/app-icon";
+import { SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
   Sheet,
@@ -21,7 +22,6 @@ import {
 } from "@/features/customers/services/member-visit-automation.service";
 import type { MemberVisitAutomationRun } from "@/features/customers/types/member-visit-automation.types";
 import { BffError } from "@/lib/bff-client";
-import { cn } from "@/lib/utils";
 import { useUser } from "@/providers/user-provider";
 
 const POLL_MS = 30_000;
@@ -108,31 +108,26 @@ export function MemberVisitAutomationStatus() {
   }
 
   return (
-    <>
-      <button
-        type="button"
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        tooltip={label}
         data-testid="app-header-automation-trigger"
         aria-label={label}
         onClick={() => setOpen(true)}
-        className={cn(
-          "relative flex size-8 items-center justify-center rounded-lg transition-colors",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/25",
-          running
-            ? "text-brand-primary hover:bg-white"
-            : "text-dash-muted hover:bg-white hover:text-brand-navy",
-        )}
+        className={running ? "text-brand-primary" : undefined}
       >
         <AppIcon name="automation" size={18} />
-        {running ? (
-          <span
-            data-testid="app-header-automation-live"
-            className="absolute right-1 top-1 flex size-2"
-          >
-            <span className="absolute inline-flex size-full animate-ping rounded-full bg-brand-primary opacity-75" />
-            <span className="relative inline-flex size-2 rounded-full bg-brand-primary" />
-          </span>
-        ) : null}
-      </button>
+        <span>Visit automation</span>
+      </SidebarMenuButton>
+      {running ? (
+        <span
+          data-testid="app-header-automation-live"
+          className="pointer-events-none absolute right-2 top-2 flex size-2 group-data-[collapsible=icon]:right-1 group-data-[collapsible=icon]:top-1"
+        >
+          <span className="absolute inline-flex size-full animate-ping rounded-full bg-brand-primary opacity-75" />
+          <span className="relative inline-flex size-2 rounded-full bg-brand-primary" />
+        </span>
+      ) : null}
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="right" className="flex w-full flex-col sm:max-w-md">
           <SheetHeader>
@@ -205,6 +200,6 @@ export function MemberVisitAutomationStatus() {
           </div>
         </SheetContent>
       </Sheet>
-    </>
+    </SidebarMenuItem>
   );
 }

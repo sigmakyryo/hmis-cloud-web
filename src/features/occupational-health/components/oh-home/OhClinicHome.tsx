@@ -5,6 +5,10 @@ import Link from "next/link";
 import { UserIdenticon } from "@/components/UserIdenticon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ROUTES } from "@/constants/routes";
+import {
+  isIodVisit,
+  ohQueueEntryHref,
+} from "@/features/occupational-health/lib/oh-queue-route";
 import { OpdEncounterStatusBadge } from "@/features/clinical-opd/components/OpdEncounterStatusBadge";
 import { formatWaitingMinutes } from "@/features/clinical-opd/utils/opd-queue-stage";
 import { OhHomePageRow } from "@/features/occupational-health/components/oh-home/OhHomePageRow";
@@ -40,11 +44,12 @@ function waitingMinutes(encounter: OhVisitEncounter): number | null {
 
 function QueueRow({ encounter }: { encounter: OhVisitEncounter }) {
   const name = clientLabel(encounter);
-  const href = ROUTES.occupationalHealthEncounter(
-    encounter.visit,
-    encounter.uuid,
-  );
-  const context = [encounter.employer_name, encounter.department_name]
+  const href = ohQueueEntryHref(encounter);
+  const context = [
+    isIodVisit(encounter) ? "Injury on duty" : null,
+    encounter.employer_name,
+    encounter.department_name,
+  ]
     .flatMap((value) => (value?.trim() ? [value.trim()] : []))
     .join(" · ");
 

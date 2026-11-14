@@ -9,14 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { BFF_OCCUPATIONAL_HEALTH_ROUTES } from "@/constants/api";
-import { ListPageLayout } from "@/features/app-shell/components/page-layout";
+import { DetailPageSkeleton, ListPageLayout } from "@/features/app-shell/components/page-layout";
 import { OhAccessDenied } from "@/features/occupational-health/components/OhAccessDenied";
 import { OhStatusChip } from "@/features/occupational-health/components/OhStatusChip";
+import { OhIodCaseDetailPage } from "@/features/occupational-health/pages/OhIodCaseDetailPage";
 import {
   certificatePdfUrl,
   fetchCertificateHistory,
   fetchCertificateVerifyLink,
-  iodPackPdfUrl,
   cancelSickLeave,
   recordSickLeaveReturn,
   sickLeavePdfUrl,
@@ -93,24 +93,6 @@ export const OH_RECORD_KINDS: Record<string, KindConfig> = {
       { key: "cancel_reason", label: "Cancel reason" },
     ],
   },
-  iod: {
-    title: "Injury on duty / occupational disease case",
-    detailPath: BFF_OCCUPATIONAL_HEALTH_ROUTES.iodCase,
-    fields: [
-      { key: "status", label: "Status", type: { options: ["open", "under_review", "closed"] } },
-      { key: "severity", label: "Severity", type: { options: ["minor", "moderate", "serious", "fatal"] } },
-      { key: "onset_date", label: "Onset / incident date", type: "date" },
-      { key: "lost_days", label: "Lost days", type: "number" },
-      { key: "she_reference", label: "SHE reference", type: "text" },
-      { key: "mechanism", label: "Mechanism", type: "text" },
-      { key: "body_part", label: "Body part", type: "text" },
-      { key: "incident_location", label: "Incident location", type: "text" },
-      { key: "safety_classification", label: "Safety classification", type: "text" },
-      { key: "work_related", label: "Work related", type: "boolean" },
-      { key: "description", label: "Description", type: "textarea" },
-    ],
-    readOnly: [{ key: "created_at", label: "Recorded" }],
-  },
 };
 
 type RecordRow = Record<string, unknown> & { uuid: string };
@@ -133,6 +115,9 @@ export function OhRecordDetailPage({ kind, uuid, extra }: { kind: string; uuid: 
   const { userData, isLoading: isUserLoading } = useUser();
   const config = OH_RECORD_KINDS[kind];
 
+  if (isUserLoading && kind === "iod") {
+    return <DetailPageSkeleton data-testid="oh-record-detail" />;
+  }
   if (isUserLoading) {
     return (
       <ListPageLayout data-testid="oh-record-detail">
@@ -142,6 +127,9 @@ export function OhRecordDetailPage({ kind, uuid, extra }: { kind: string; uuid: 
   }
   if (!canAccessOccupationalHealth(userData)) {
     return <OhAccessDenied data-testid="oh-record-detail" />;
+  }
+  if (kind === "iod") {
+    return <OhIodCaseDetailPage uuid={uuid} />;
   }
   if (!config) {
     return (
@@ -245,18 +233,6 @@ function OhRecordDetailBody({ kind, uuid, config, extra }: { kind: string; uuid:
                 status={String(record.data.status ?? "")}
                 onChanged={() => void queryClient.invalidateQueries({ queryKey: ["oh-record", kind, uuid] })}
               />
-            ) : null}
-            {kind === "iod" ? (
-              <div className="space-y-1">
-                <Button asChild size="sm" variant="outline" className="gap-1">
-                  <a href={iodPackPdfUrl(uuid)} target="_blank" rel="noreferrer">
-                    <FileDown className="size-3.5" /> Notification pack PDF
-                  </a>
-                </Button>
-                <p className="text-xs text-brand-muted">
-                  Generic layout, not an official form. Verify the official form and deadlines for your jurisdiction.
-                </p>
-              </div>
             ) : null}
             {extra}
           </>

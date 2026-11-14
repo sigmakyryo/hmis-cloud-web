@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { FileText } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { FileText, LayoutGrid, List } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -10,9 +11,13 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RequiredFieldMarker } from "@/components/ui/required-field-marker";
-import { ListPageLayout } from "@/features/app-shell/components/page-layout";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ListPageActiveFilters, ListPageFilterButton, ListPageFilterChip, ListPageSearchField, ListPageLayout } from "@/features/app-shell/components/page-layout";
 import { useToast } from "@/providers/toast-provider";
 import { CatalogSearchSelect } from "@/features/occupational-health/components/CatalogSearchSelect";
+import { OhFormGroupsBoard } from "@/features/occupational-health/components/OhFormGroupsBoard";
+import type { BoardItem } from "@/features/occupational-health/lib/oh-form-groups-layout";
 import {
   OH_FORM_FAMILIES,
   OH_PREDEFINED_FORM_TYPES,
@@ -42,9 +47,18 @@ import {
 } from "@/features/occupational-health/services/oh.service";
 import type { OhCofTemplate, OhExamTemplate } from "@/features/occupational-health/types";
 import { ROUTES } from "@/constants/routes";
+import { Fragment } from "react";
 import { AlertDialog } from "radix-ui";
 import { appFont } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
+import {
+  formsFiltersFromSearchParams,
+  matchesFormsView,
+  ohFormsHref,
+  type OhFormsListFilters,
+  type OhFormsStatus,
+  type OhFormsView,
+} from "@/features/occupational-health/utils/oh-forms-list-url";
 
 type FormKind = "employee" | "exam" | "certificate" | "custom";
 type FormStatus = "draft" | "published" | "archived";
@@ -57,6 +71,9 @@ type FormRow = {
   status: FormStatus;
   publishedVersion: number | null;
   groupName: string | null;
+  groupUuid?: string | null;
+  groupSortOrder: number;
+  sortOrder: number;
   detail: string;
   templateKind: "employee" | "exam" | "certificate" | null;
   templateUuid: string | null;
@@ -71,11 +88,10 @@ const TYPE_FILTERS: Array<{ value: "all" | FormKind; label: string }> = [
   { value: "custom", label: "Custom" },
 ];
 
-const STATUS_FILTERS: Array<{ value: "all" | FormStatus; label: string }> = [
+const STATUS_FILTERS: Array<{ value: OhFormsStatus; label: string }> = [
   { value: "all", label: "All statuses" },
   { value: "draft", label: "Draft" },
   { value: "published", label: "Published" },
-  { value: "archived", label: "Archived" },
 ];
 
 const STATUS_TONE: Record<FormStatus, string> = {
@@ -172,9 +188,23 @@ export function OhFormsPage() {
   const [open, setOpen] = useState(false);
   const [archiving, setArchiving] = useState<FormRow | null>(null);
   const [renaming, setRenaming] = useState<FormRow | null>(null);
-  const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<"all" | FormKind>("all");
-  const [statusFilter, setStatusFilter] = useState<"all" | FormStatus>("all");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlFilters = formsFiltersFromSearchParams(searchParams);
+  const [search, setSearchState] = useState(urlFilters.search);
+  const typeFilter = urlFilters.type;
+  const view = urlFilters.view;
+  const statusFilter = urlFilters.status;
+  const setFilters = (patch: Partial<OhFormsListFilters>) => {
+    router.replace(ohFormsHref({ ...urlFilters, search, ...patch }), { scroll: false });
+  };
+  const setSearch = (value: string) => {
+    setSearchState(value);
+    router.replace(ohFormsHref({ ...urlFilters, search: value }), { scroll: false });
+  };
+  const setTypeFilter = (value: "all" | FormKind) => setFilters({ type: value });
+  const setStatusFilter = (value: OhFormsStatus) => setFilters({ status: value });
+  const setView = (value: OhFormsView) => setFilters({ view: value, status: "all" });
   const [actionError, setActionError] = useState<string | null>(null);
 
   const rows = useMemo(
@@ -187,7 +217,7 @@ export function OhFormsPage() {
     const q = search.trim().toLowerCase();
     return rows.filter((row) => {
       if (typeFilter !== "all" && row.kind !== typeFilter) return false;
-      if (statusFilter !== "all" && row.status !== statusFilter) return false;
+      if (!matchesFormsView(row.status, view, statusFilter)) return false;
       if (!q) return true;
       return (
         row.name.toLowerCase().includes(q) ||
@@ -196,8 +226,10 @@ export function OhFormsPage() {
         row.detail.toLowerCase().includes(q)
       );
     });
-  }, [rows, search, typeFilter, statusFilter]);
+  }, [rows, search, typeFilter, statusFilter, view]);
 
+  const archivedCount = rows.filter((row) => row.status === "archived").length;
+  const liveCount = rows.length - archivedCount;
   const isLoading = forms.isLoading || employee.isLoading || exams.isLoading || certificates.isLoading;
   const isError = forms.isError || employee.isError || exams.isError || certificates.isError;
   const isEmpty = !isLoading && !isError && rows.length === 0;
@@ -224,6 +256,32 @@ export function OhFormsPage() {
     },
     onError: () => setActionError("Could not publish the form."),
   });
+  const groups = useQuery({ queryKey: ["form-groups"], queryFn: fetchFormGroups });
+  const organising = urlFilters.layout === "groups" && view === "live";
+  const setOrganising = (on: boolean) => setFilters({ layout: on ? "groups" : "list" });
+  const boardItems = useMemo<BoardItem[]>(
+    () =>
+      rows.flatMap((row) => {
+        if (row.status === "archived") return [];
+        const ref = row.clinicalUuid
+          ? { form_uuid: row.clinicalUuid }
+          : row.templateKind && row.templateUuid
+            ? { template_kind: row.templateKind, template_uuid: row.templateUuid }
+            : null;
+        if (!ref) return [];
+        return [{
+          key: row.key,
+          name: row.name,
+          typeLabel: row.typeLabel,
+          statusLabel: statusLabel(row),
+          groupUuid: row.groupUuid ?? null,
+          sortOrder: row.sortOrder,
+          ref,
+        }];
+      }),
+    [rows],
+  );
+
   const archive = useMutation({
     mutationFn: (row: FormRow) => archiveRow(row),
     onSuccess: async () => {
@@ -248,31 +306,48 @@ export function OhFormsPage() {
     <ListPageLayout data-testid="oh-forms-page">
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search forms"
-            className="h-8 max-w-xs text-[13px]"
-            aria-label="Search forms"
-          />
-          <FilterChips
-            options={TYPE_FILTERS}
-            value={typeFilter}
-            onChange={setTypeFilter}
-            ariaLabel="Filter by type"
-          />
-          <FilterChips
-            options={STATUS_FILTERS}
-            value={statusFilter}
-            onChange={setStatusFilter}
-            ariaLabel="Filter by status"
-          />
-          <div className="ml-auto">
+          {!organising ? (
+            <div className="flex min-w-0 flex-1 items-center gap-2 sm:max-w-sm">
+              <ListPageSearchField id="oh-form-search" value={search} placeholder="Search forms" onChange={setSearch}
+                onSubmit={() => setFilters({ search })} />
+              <FormsFilters type={typeFilter} status={view === "live" ? statusFilter : "all"} showStatus={view === "live"}
+                onApply={(type, status) => setFilters({ type, status })} />
+            </div>
+          ) : null}
+          <ViewTabs view={view} liveCount={liveCount} archivedCount={archivedCount} onChange={setView} />
+          <div className="ml-auto flex items-center gap-2">
+            {view === "live" ? (
+              <div className="inline-flex rounded-lg border border-dash-border p-0.5" role="group" aria-label="Forms layout">
+                <button
+                  type="button"
+                  aria-pressed={!organising}
+                  onClick={() => setOrganising(false)}
+                  className={cn("inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[12px] font-medium", !organising ? "bg-brand-navy text-white" : "text-dash-muted hover:text-brand-navy")}
+                >
+                  <List className="size-3.5" aria-hidden="true" /> List
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={organising}
+                  data-testid="oh-forms-organise-groups"
+                  onClick={() => setOrganising(true)}
+                  className={cn("inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[12px] font-medium", organising ? "bg-brand-navy text-white" : "text-dash-muted hover:text-brand-navy")}
+                >
+                  <LayoutGrid className="size-3.5" aria-hidden="true" /> Organise groups
+                </button>
+              </div>
+            ) : null}
             <PrimaryButton type="button" onClick={() => setOpen(true)}>
               New form
             </PrimaryButton>
           </div>
         </div>
+        {!organising && (typeFilter !== "all" || (view === "live" && statusFilter !== "all")) ? (
+          <ListPageActiveFilters onClearAll={() => setFilters({ type: "all", status: "all" })}>
+            {typeFilter !== "all" ? <ListPageFilterChip label={TYPE_FILTERS.find((item) => item.value === typeFilter)?.label ?? typeFilter} onRemove={() => setTypeFilter("all")} /> : null}
+            {view === "live" && statusFilter !== "all" ? <ListPageFilterChip label={STATUS_FILTERS.find((item) => item.value === statusFilter)?.label ?? statusFilter} onRemove={() => setStatusFilter("all")} /> : null}
+          </ListPageActiveFilters>
+        ) : null}
         {actionError ? <p className="text-[13px] text-red-700">{actionError}</p> : null}
         {isError ? <p className="text-[13px] text-red-700">Could not load forms.</p> : null}
         {isLoading ? <p className="text-[13px] text-dash-muted">Loading forms…</p> : null}
@@ -291,10 +366,17 @@ export function OhFormsPage() {
         ) : null}
         {noMatches ? (
           <p className="py-8 text-center text-[13px] text-dash-muted" data-testid="oh-forms-no-matches">
-            No forms match those filters.
+            {view === "archived" && archivedCount === 0 ? "No archived forms." : "No forms match those filters."}
           </p>
         ) : null}
-        {filtered.length > 0 ? (
+        {organising && !isLoading && !isError ? (
+          <OhFormGroupsBoard
+            items={boardItems}
+            groups={groups.data ?? []}
+            onChanged={() => invalidateFormCatalog(queryClient)}
+          />
+        ) : null}
+        {!organising && filtered.length > 0 ? (
           <div className="overflow-x-auto" data-testid="oh-forms-list">
             <table className="w-full min-w-[40rem] border-collapse text-left">
               <thead>
@@ -306,10 +388,20 @@ export function OhFormsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((row) => (
+                {filtered.toSorted(compareByGroupOrder).map((row, index, sorted) => (
+                  <Fragment key={row.key}>
+                    {index === 0 || sorted[index - 1].groupName !== row.groupName ? (
+                      <tr className="border-y border-dash-border">
+                        <th colSpan={4} scope="row" className="px-2 py-2 text-xs font-semibold text-brand-navy">
+                          {row.groupName ?? "Ungrouped"}
+                        </th>
+                      </tr>
+                    ) : null}
                   <tr key={row.key} className="border-b border-dash-border last:border-0" data-testid="oh-form-row">
                     <td className="px-2 py-2 align-top">
-                      <p className="text-[13px] font-medium text-brand-navy">{row.name}</p>
+                      <p className="text-[13px] font-medium text-brand-navy">
+                        {row.name}
+                      </p>
                       {row.detail ? <p className="text-[12px] text-dash-muted">{row.detail}</p> : null}
                     </td>
                     <td className="px-2 py-2 align-top">
@@ -355,6 +447,7 @@ export function OhFormsPage() {
                       </div>
                     </td>
                   </tr>
+                  </Fragment>
                 ))}
               </tbody>
             </table>
@@ -397,6 +490,43 @@ export function OhFormsPage() {
   );
 }
 
+function ViewTabs({
+  view,
+  liveCount,
+  archivedCount,
+  onChange,
+}: {
+  view: OhFormsView;
+  liveCount: number;
+  archivedCount: number;
+  onChange: (view: OhFormsView) => void;
+}) {
+  const tabs: Array<{ value: OhFormsView; label: string; count: number }> = [
+    { value: "live", label: "Live", count: liveCount },
+    { value: "archived", label: "Archived", count: archivedCount },
+  ];
+  return (
+    <div className="inline-flex border-b border-dash-border" role="tablist" aria-label="Live or archived forms" data-testid="oh-forms-view-tabs">
+      {tabs.map((tab) => (
+        <button
+          key={tab.value}
+          type="button"
+          role="tab"
+          aria-selected={view === tab.value}
+          onClick={() => onChange(tab.value)}
+          className={cn(
+            "inline-flex items-center gap-1.5 border-b-2 px-3 py-1.5 text-[13px] font-medium transition-colors",
+            view === tab.value ? "border-brand-primary text-brand-primary" : "border-transparent text-dash-muted hover:text-brand-navy",
+          )}
+        >
+          {tab.label}
+          <span className="tabular-nums text-[11px] text-dash-muted">{tab.count}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function Badge({
   className,
   children,
@@ -419,34 +549,67 @@ function Badge({
   );
 }
 
-function FilterChips<T extends string>({
-  options,
-  value,
-  onChange,
-  ariaLabel,
-}: {
-  options: Array<{ value: T; label: string }>;
+function FormsFilters({ type, status, showStatus, onApply }: {
+  type: "all" | FormKind;
+  status: OhFormsStatus;
+  showStatus: boolean;
+  onApply: (type: "all" | FormKind, status: OhFormsStatus) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState({ type, status });
+  const activeCount = Number(type !== "all") + Number(status !== "all");
+
+  function changeOpen(next: boolean) {
+    if (next) setDraft({ type, status });
+    setOpen(next);
+  }
+
+  function apply(nextType: "all" | FormKind, nextStatus: OhFormsStatus) {
+    onApply(nextType, nextStatus);
+    setOpen(false);
+  }
+
+  return (
+    <Popover open={open} onOpenChange={changeOpen}>
+      <PopoverTrigger asChild>
+        <span><ListPageFilterButton activeCount={activeCount} onClick={() => changeOpen(true)} /></span>
+      </PopoverTrigger>
+      <PopoverContent align="end" sideOffset={6} className={cn("w-80 max-w-[calc(100vw-2rem)] rounded-xl border-dash-border p-0 shadow-xl", appFont.className)}>
+        <h2 className="border-b border-dash-border px-4 py-2.5 text-sm font-semibold">Filters</h2>
+        <div className="space-y-3 px-4 py-3">
+          <FormFilterSelect id="oh-filter-type" label="Form type" value={draft.type} options={TYPE_FILTERS}
+            onChange={(value) => setDraft({ ...draft, type: value })} />
+          {showStatus ? <FormFilterSelect id="oh-filter-status" label="Publication status" value={draft.status} options={STATUS_FILTERS}
+            onChange={(value) => setDraft({ ...draft, status: value })} /> : null}
+        </div>
+        <div className="flex justify-between border-t border-dash-border px-4 py-3">
+          <SecondaryButton type="button" onClick={() => apply("all", "all")}>Reset</SecondaryButton>
+          <PrimaryButton type="button" onClick={() => apply(draft.type, draft.status)}>Apply filters</PrimaryButton>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function FormFilterSelect<T extends string>({ id, label, value, options, onChange }: {
+  id: string;
+  label: string;
   value: T;
+  options: Array<{ value: T; label: string }>;
   onChange: (value: T) => void;
-  ariaLabel: string;
 }) {
   return (
-    <div className="flex flex-wrap gap-1" role="group" aria-label={ariaLabel}>
-      {options.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          onClick={() => onChange(option.value)}
-          className={cn(
-            "rounded-full px-2.5 py-0.5 text-[12px] font-medium",
-            value === option.value
-              ? "bg-primary text-primary-foreground"
-              : "bg-slate-100 text-dash-muted hover:text-brand-navy",
-          )}
-        >
-          {option.label}
-        </button>
-      ))}
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <Select value={value} onValueChange={(next) => {
+        const option = options.find((item) => item.value === next);
+        if (option) onChange(option.value);
+      }}>
+        <SelectTrigger id={id} className="w-full"><SelectValue /></SelectTrigger>
+        <SelectContent className={appFont.className}>
+          {options.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+        </SelectContent>
+      </Select>
     </div>
   );
 }
@@ -469,6 +632,19 @@ function RowAction({
     >
       {children}
     </button>
+  );
+}
+
+/** Groups in saved order (Ungrouped last), then forms in saved order, then by name. */
+function compareByGroupOrder(left: FormRow, right: FormRow): number {
+  const leftGrouped = left.groupName != null;
+  const rightGrouped = right.groupName != null;
+  if (leftGrouped !== rightGrouped) return leftGrouped ? -1 : 1;
+  return (
+    left.groupSortOrder - right.groupSortOrder ||
+    (left.groupName ?? "").localeCompare(right.groupName ?? "") ||
+    left.sortOrder - right.sortOrder ||
+    left.name.localeCompare(right.name)
   );
 }
 
@@ -532,6 +708,9 @@ function clinicalRow(form: ClinicalFormRecord): FormRow {
     status: formStatus(form.active, form.published_version_number),
     publishedVersion: form.published_version_number ?? null,
     groupName: form.group?.name ?? null,
+    groupUuid: form.group?.uuid ?? null,
+    groupSortOrder: form.group?.sort_order ?? 0,
+    sortOrder: form.sort_order ?? 0,
     detail: formDetail(form),
     templateKind: form.template_kind,
     templateUuid: form.template_uuid,
@@ -552,6 +731,8 @@ function templateRow(
     status: formStatus(template.active, template.published_version_number),
     publishedVersion: template.published_version_number ?? null,
     groupName: null,
+    groupSortOrder: 0,
+    sortOrder: 0,
     detail,
     templateKind: kind,
     templateUuid: template.uuid,

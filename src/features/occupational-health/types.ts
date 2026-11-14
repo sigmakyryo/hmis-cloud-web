@@ -32,6 +32,8 @@ export type OhVisitEncounter = {
     name: string;
     forms: Array<{ uuid: string; name: string; system_type?: string | null }>;
   } | null;
+  /** Set for Injury on Duty visits: the IOD case opened with the visit. */
+  iod_case?: { uuid: string; status: string } | null;
   started_at: string | null;
   ended_at: string | null;
   notes: string;
@@ -317,6 +319,7 @@ export type OhResponseField = OhResponseConfig & {
 
 /** Reusable template library section (COF or exam). */
 export type OhLibrarySection = {
+  applies_to_sex?: "male" | "female" | null;
   id: number;
   uuid: string;
   kind: OhLibrarySectionKind;

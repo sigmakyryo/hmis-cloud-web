@@ -11,7 +11,10 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
+  SidebarMenu,
 } from "@/components/ui/sidebar";
+import { AppHeaderNotifications } from "@/features/app-shell/components/AppHeaderNotifications";
+import { MemberVisitAutomationStatus } from "@/features/customers/components/MemberVisitAutomationStatus";
 import { buildSidebarNavItems } from "@/features/app-shell/utils/build-sidebar-nav";
 import { useUser } from "@/providers/user-provider";
 
@@ -25,7 +28,11 @@ const SidebarTeamSwitcher = memo(function SidebarTeamSwitcher() {
 
 const SidebarAccount = memo(function SidebarAccount() {
   return (
-    <SidebarFooter className="p-2">
+    <SidebarFooter className="gap-1 p-2">
+      <SidebarMenu>
+        <MemberVisitAutomationStatus />
+        <AppHeaderNotifications />
+      </SidebarMenu>
       <NavUser />
     </SidebarFooter>
   );

@@ -26,6 +26,7 @@ import {
 import { OhEmployeeSessionRows } from "@/features/occupational-health/components/OhEmployeeSessionRows";
 import { OhExamTemplateCaptureForm } from "@/features/occupational-health/components/OhExamTemplateCaptureForm";
 import { parseExamTemplateSnapshot, type ExamTemplateAnswers } from "@/features/occupational-health/lib/exam-template-snapshot";
+import { SendFormEmailDialog } from "@/features/occupational-health/components/SendFormEmailDialog";
 import {
   createOhEmployeeFormInvite,
   fetchOhEmployeeFormResponses,
@@ -39,6 +40,7 @@ import type { OhTemplateCapture } from "@/features/occupational-health/types";
 import { customerDetailTabHref } from "@/features/customers/utils/customer-detail-tabs";
 import { employeeFormExportUrl } from "@/features/occupational-health/services/oh-ext.service";
 import { ROUTES } from "@/constants/routes";
+import { useToast } from "@/providers/toast-provider";
 import { appFont } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
 
@@ -68,6 +70,7 @@ export function OhEmployeeFormsTab({
   hazardProfileId = null,
 }: OhEmployeeFormsTabProps) {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const responses = useQuery({
     queryKey: ["oh-employee-form-responses", customerUuid],
     queryFn: fetchOhEmployeeFormResponses,
@@ -117,6 +120,7 @@ export function OhEmployeeFormsTab({
       setSheet("view");
     },
   });
+  const [emailOpen, setEmailOpen] = useState(false);
   const copyLink = useMutation({
     mutationFn: async () => {
       const record = form ?? await openOhEmployeeForm(customerUuid);
@@ -219,12 +223,23 @@ export function OhEmployeeFormsTab({
                     disabled={copyLink.isPending}
                     onClick={() => copyLink.mutate()}
                   />
+                  <SecondaryButton type="button" disabled={copyLink.isPending} onClick={() => setEmailOpen(true)}>Send email</SecondaryButton>
+                  <SendFormEmailDialog
+                    open={emailOpen}
+                    onOpenChange={setEmailOpen}
+                    resolveFormUuid={async () => (form ?? await openOhEmployeeForm(customerUuid)).uuid}
+                    onSent={async ({ token, sentTo }) => {
+                      setPublicLink(`${window.location.origin}${ROUTES.workforceForm(token)}`);
+                      toast({ variant: "success", title: sentTo ? `Form sent to ${sentTo}` : "Form sent to the employee’s email" });
+                      await refresh();
+                    }}
+                  />
                   {publicLink ? (
                     <p className="break-all px-1 text-[13px] text-brand-primary" data-testid="oh-employee-form-link">{publicLink}</p>
                   ) : null}
                   <UploadChoice pending={upload.isPending} onFile={(file) => upload.mutate(file)} />
                   {open.isError || upload.isError ? <p className="text-sm text-red-700">The employee form could not be opened.</p> : null}
-                  {copyLink.isError ? <p className="text-sm text-red-700">The public link could not be created.</p> : null}
+                  {copyLink.isError ? <p className="text-sm text-red-700">{copyLink.error.message}</p> : null}
                 </div>
               ) : (
                 <EmployeeFormSetupState

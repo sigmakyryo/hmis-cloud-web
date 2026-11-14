@@ -88,6 +88,7 @@ export const itemBillingSchema = z
   });
 
 const sectionFormObject = z.object({
+  appliesToSex: z.enum(["male", "female"]).nullable().optional(),
   name,
   isMandatory: z.boolean(),
   selectionMode: z.enum(["exclusive", "inclusive"]),

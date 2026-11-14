@@ -1,3 +1,4 @@
+import { ToastProvider } from "@/providers/toast-provider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -38,6 +39,7 @@ afterEach(() => {
 describe("employee form setup empty state", () => {
   it("links to the risk profile sheet when the profile has no employee form", async () => {
     render(
+      <ToastProvider>
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
         <OhEmployeeFormsTab
           customerUuid="customer-1"
@@ -46,7 +48,8 @@ describe("employee form setup empty state", () => {
           employerName="Test"
           hazardProfileId={4}
         />
-      </QueryClientProvider>,
+      </QueryClientProvider>
+      </ToastProvider>,
     );
 
     fireEvent.click(await screen.findByRole("button", { name: "Fill" }));
@@ -62,6 +65,7 @@ describe("employee form setup empty state", () => {
     const service = await import("@/features/occupational-health/services/oh.service");
     vi.mocked(service.fetchOhHazardProfiles).mockResolvedValueOnce([]);
     render(
+      <ToastProvider>
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
         <OhEmployeeFormsTab
           customerUuid="3077af73-dd86-4163-bf1f-50d6836d624e"
@@ -70,7 +74,8 @@ describe("employee form setup empty state", () => {
           employerName="test"
           hazardProfileId={null}
         />
-      </QueryClientProvider>,
+      </QueryClientProvider>
+      </ToastProvider>,
     );
 
     fireEvent.click(await screen.findByRole("button", { name: "Fill" }));
