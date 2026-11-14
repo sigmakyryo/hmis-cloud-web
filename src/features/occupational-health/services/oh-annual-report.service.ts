@@ -45,6 +45,7 @@ export const ANNUAL_SECTION_LABEL: Record<string, string> = {
   health_programmes: "Health programmes",
   drug_alcohol: "Drug & alcohol",
   immunisation: "Immunisation",
+  exposure: "Exposure management",
 };
 
 const BASE = BFF_OCCUPATIONAL_HEALTH_ROUTES.ohAnnualReports;

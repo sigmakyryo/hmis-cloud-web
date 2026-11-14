@@ -3,7 +3,7 @@ import { HmisApiError } from "@/lib/server/hmis-api";
 import { OH_SERVICE_URL, ohServiceRequest } from "@/lib/server/oh-service";
 import { requireAccessToken } from "@/lib/server/require-access-token";
 
-export type OhModuleMethod = "GET" | "POST" | "PATCH";
+export type OhModuleMethod = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
 
 export type OhModuleBinary = { pattern: RegExp; type: string; filename: string };
 
@@ -31,6 +31,8 @@ export function createOhModuleProxy(config: OhModuleConfig) {
     GET: (config.rules.GET ?? []).map(ohRule),
     POST: (config.rules.POST ?? []).map(ohRule),
     PATCH: (config.rules.PATCH ?? []).map(ohRule),
+    PUT: (config.rules.PUT ?? []).map(ohRule),
+    DELETE: (config.rules.DELETE ?? []).map(ohRule),
   };
   const binary: OhModuleBinary[] = (config.binary ?? []).map((b) => ({ ...b, pattern: ohRule(b.path) }));
   const created = (config.created ?? []).map(ohRule);
@@ -136,5 +138,7 @@ export function ohModuleRouteHandlers(proxy: OhModuleProxy) {
     GET: async (request: Request, context: Ctx) => proxy.proxy("GET", request, (await context.params).path ?? []),
     POST: async (request: Request, context: Ctx) => proxy.proxy("POST", request, (await context.params).path ?? []),
     PATCH: async (request: Request, context: Ctx) => proxy.proxy("PATCH", request, (await context.params).path ?? []),
+    PUT: async (request: Request, context: Ctx) => proxy.proxy("PUT", request, (await context.params).path ?? []),
+    DELETE: async (request: Request, context: Ctx) => proxy.proxy("DELETE", request, (await context.params).path ?? []),
   };
 }

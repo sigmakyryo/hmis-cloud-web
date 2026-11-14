@@ -31,6 +31,7 @@ export const moduleDisplayNames: Record<string, string> = {
   DrugAlcohol: "Drug & Alcohol",
   Fitness: "Fitness",
   HealthPrograms: "Health programs",
+  ExposureManagement: "Exposure management",
   Forms: "Forms",
 };
 
@@ -52,6 +53,7 @@ export const moduleIcons: Record<string, AppIconName> = {
   DrugAlcohol: "flask",
   Fitness: "activity",
   HealthPrograms: "heartPulse",
+  ExposureManagement: "activity",
   Forms: "file",
 };
 
@@ -83,6 +85,7 @@ export const OH_FAMILY_MODULES = [
   "DrugAlcohol",
   "Fitness",
   "HealthPrograms",
+  "ExposureManagement",
 ] as const;
 
 export type OhFamilyModule = (typeof OH_FAMILY_MODULES)[number];
@@ -518,14 +521,6 @@ export const navigation: NavigationItem[] = [
     enabledInWebNew: true,
   },
   {
-    name: "Exposures",
-    href: ROUTES.immunizationsExposures,
-    icon: "shield",
-    requiredGroup: "OccupationalHealth",
-    moduleName: "Immunizations",
-    enabledInWebNew: true,
-  },
-  {
     name: "Governance",
     href: ROUTES.immunizationsGovernance,
     icon: "shield",
@@ -635,6 +630,70 @@ export const navigation: NavigationItem[] = [
     icon: "heartPulse",
     requiredGroup: "OccupationalHealth",
     moduleName: "HealthPrograms",
+    enabledInWebNew: true,
+  },
+  {
+    name: "Overview",
+    href: ROUTES.exposureManagement,
+    icon: "activity",
+    requiredGroup: "OccupationalHealth",
+    moduleName: "ExposureManagement",
+    enabledInWebNew: true,
+  },
+  {
+    name: "Events",
+    href: ROUTES.exposureManagementEvents,
+    icon: "activity",
+    requiredGroup: "OccupationalHealth",
+    moduleName: "ExposureManagement",
+    enabledInWebNew: true,
+  },
+  {
+    name: "Groups",
+    href: ROUTES.exposureManagementGroups,
+    icon: "activity",
+    requiredGroup: "OccupationalHealth",
+    moduleName: "ExposureManagement",
+    enabledInWebNew: true,
+  },
+  {
+    name: "Measurements",
+    href: ROUTES.exposureManagementMeasurements,
+    icon: "activity",
+    requiredGroup: "OccupationalHealth",
+    moduleName: "ExposureManagement",
+    enabledInWebNew: true,
+  },
+  {
+    name: "Agents & limits",
+    href: ROUTES.exposureManagementAgents,
+    icon: "activity",
+    requiredGroup: "OccupationalHealth",
+    moduleName: "ExposureManagement",
+    enabledInWebNew: true,
+  },
+  {
+    name: "Sampling",
+    href: ROUTES.exposureManagementSampling,
+    icon: "activity",
+    requiredGroup: "OccupationalHealth",
+    moduleName: "ExposureManagement",
+    enabledInWebNew: true,
+  },
+  {
+    name: "Incidents",
+    href: ROUTES.exposureManagementIncidents,
+    icon: "activity",
+    requiredGroup: "OccupationalHealth",
+    moduleName: "ExposureManagement",
+    enabledInWebNew: true,
+  },
+  {
+    name: "Reports",
+    href: ROUTES.exposureManagementReports,
+    icon: "activity",
+    requiredGroup: "OccupationalHealth",
+    moduleName: "ExposureManagement",
     enabledInWebNew: true,
   },
   {

@@ -14,6 +14,7 @@ const SECTION_COLOR: Record<string, string> = {
   health_programmes: OH_SERIES_PALETTE[2],
   drug_alcohol: OH_SERIES_PALETTE[3],
   immunisation: OH_SERIES_PALETTE[4],
+  exposure: OH_SERIES_PALETTE[5] ?? OH_SERIES_PALETTE[0],
 };
 
 function SectionTable({ rows }: { rows: Record<string, number | string> }) {

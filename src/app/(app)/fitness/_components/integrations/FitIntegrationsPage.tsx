@@ -41,6 +41,7 @@ const SCOPES: FitFeedScope[] = [
   "certificate_events",
   "surveillance_events",
   "iod_events",
+  "exposure_events",
   "exports",
   "roster_import",
   "device_import",

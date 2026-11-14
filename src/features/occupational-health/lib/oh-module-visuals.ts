@@ -50,6 +50,7 @@ export const OH_MODULE_ICON: Record<OhFamilyModule, LucideIcon> = {
   DrugAlcohol: FlaskConical,
   Fitness: BadgeCheck,
   HealthPrograms: HeartPulse,
+  ExposureManagement: Gauge,
 };
 
 const PAGE_ICON: Record<string, LucideIcon> = {
@@ -60,7 +61,14 @@ const PAGE_ICON: Record<string, LucideIcon> = {
   [ROUTES.occupationalHealthSurveillance]: Radar,
   [ROUTES.immunizationsDue]: CalendarClock,
   [ROUTES.immunizationsRisk]: ClipboardList,
-  [ROUTES.immunizationsExposures]: Siren,
+  [ROUTES.exposureManagement]: Gauge,
+  [ROUTES.exposureManagementEvents]: Siren,
+  [ROUTES.exposureManagementGroups]: Users,
+  [ROUTES.exposureManagementMeasurements]: TestTubes,
+  [ROUTES.exposureManagementAgents]: FlaskConical,
+  [ROUTES.exposureManagementSampling]: CalendarClock,
+  [ROUTES.exposureManagementIncidents]: Syringe,
+  [ROUTES.exposureManagementReports]: FileDown,
   [ROUTES.immunizationsVaccines]: Package,
   [ROUTES.immunizationsSchedules]: CalendarRange,
   [ROUTES.immunizationsGovernance]: Landmark,
