@@ -362,6 +362,11 @@ export const BFF_OCCUPATIONAL_HEALTH_ROUTES = {
   iodCase: (uuid: string) => `/api/occupational-health/iod-cases/${uuid}`,
   iodCaseStatutoryPack: (uuid: string) =>
     `/api/occupational-health/iod-cases/${uuid}/statutory-pack`,
+  iodCaseDocument: (uuid: string) =>
+    `/api/occupational-health/iod-cases/${uuid}/document`,
+  opdIodCases: "/api/occupational-health/opd-iod",
+  opdIodByEncounter: (encounterUuid: string) =>
+    `/api/occupational-health/opd-iod/by-encounter/${encounterUuid}`,
   iodCaseEntries: (uuid: string) =>
     `/api/occupational-health/iod-cases/${uuid}/entries`,
   iodCaseEntry: (uuid: string, entryUuid: string) =>

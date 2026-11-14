@@ -15,6 +15,7 @@ import {
 } from "@/features/app-shell/components/page-layout";
 import { useAppBreadcrumb } from "@/features/app-shell/hooks/use-app-breadcrumb";
 import { OpdEncounterHeader } from "@/features/clinical-opd/components/detail/OpdEncounterHeader";
+import { OpdEncounterMoreMenu } from "@/features/clinical-opd/components/detail/OpdEncounterMoreMenu";
 import { OpdEncounterScheduleButton } from "@/features/clinical-opd/components/detail/OpdEncounterScheduleButton";
 import { OpdEncounterTabSkeleton } from "@/features/clinical-opd/components/detail/OpdEncounterTabSkeleton";
 import { OpdEncounterWorkspaceBody } from "@/features/clinical-opd/components/detail/OpdEncounterWorkspaceBody";
@@ -259,7 +260,12 @@ export function OpdEncounterWorkspacePage({
           {config.hideEncounterHeader ? null : (
             <OpdEncounterHeader
               customer={customer}
-              actions={<OpdEncounterScheduleButton customer={customer} />}
+              actions={
+                <div className="flex items-center gap-2">
+                  <OpdEncounterScheduleButton customer={customer} />
+                  <OpdEncounterMoreMenu />
+                </div>
+              }
             />
           )}
           <DetailPageTabsSection

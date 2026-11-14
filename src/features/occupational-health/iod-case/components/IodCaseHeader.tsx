@@ -40,6 +40,8 @@ type IodCaseHeaderProps = {
   onReopen: () => void;
   onMarkUnderReview: () => void;
   onCopyLink: () => void;
+  onDraftFromVisit: () => void;
+  isDrafting: boolean;
 };
 
 /** Title, status and the case actions, kept together at the top so nothing has to be hunted for. */
@@ -53,11 +55,17 @@ export function IodCaseHeader({
   onReopen,
   onMarkUnderReview,
   onCopyLink,
+  onDraftFromVisit,
+  isDrafting,
 }: IodCaseHeaderProps) {
   const closed = isCaseClosed(item.status);
   const worker = pack?.employee.full_name.trim() ?? "";
   const context = [pack?.employee.job_title, pack?.employer.name, pack?.employee.site].filter(Boolean).join(" · ");
   const canOpenVisit = Boolean(item.visit_uuid && item.encounter_uuid);
+  const opdVisit =
+    item.source_visit_uuid && item.source_encounter_uuid
+      ? ROUTES.clinicalOpdEncounter(item.source_visit_uuid, item.source_encounter_uuid)
+      : null;
 
   return (
     <DetailPageHeaderSection className="space-y-3 border-b-0">
@@ -125,6 +133,18 @@ export function IodCaseHeader({
             <DropdownMenuContent align="end" className={appFont.className}>
               {item.status === "open" ? (
                 <DropdownMenuItem onSelect={onMarkUnderReview}>Mark as under review</DropdownMenuItem>
+              ) : null}
+              {opdVisit ? (
+                <DropdownMenuItem asChild>
+                  <Link href={opdVisit}>
+                    <ExternalLink className="mr-2 size-3.5" aria-hidden="true" /> Open visit
+                  </Link>
+                </DropdownMenuItem>
+              ) : null}
+              {opdVisit ? (
+                <DropdownMenuItem disabled={isDrafting} onSelect={onDraftFromVisit}>
+                  {isDrafting ? "Drafting…" : "Draft from visit record"}
+                </DropdownMenuItem>
               ) : null}
               {canOpenVisit ? (
                 <DropdownMenuItem asChild>

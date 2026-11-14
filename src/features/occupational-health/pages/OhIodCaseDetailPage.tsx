@@ -23,7 +23,7 @@ import { IodCaseNotificationsTab } from "@/features/occupational-health/iod-case
 import { IodCaseOverviewTab } from "@/features/occupational-health/iod-case/components/IodCaseOverviewTab";
 import { IodCaseTimelineTab } from "@/features/occupational-health/iod-case/components/IodCaseTimelineTab";
 import { countActions, summariseNotices } from "@/features/occupational-health/iod-case/iod-case.utils";
-import { useIodCase, useUpdateIodCase } from "@/features/occupational-health/iod-case/use-iod-case";
+import { useDraftIodFromVisit, useIodCase, useUpdateIodCase } from "@/features/occupational-health/iod-case/use-iod-case";
 import { useToast } from "@/providers/toast-provider";
 import { cn } from "@/lib/utils";
 
@@ -78,6 +78,7 @@ export function OhIodCaseDetailPage({ uuid }: { uuid: string }) {
   const { toast } = useToast();
   const { detail, pack, entries } = useIodCase(uuid);
   const update = useUpdateIodCase(uuid);
+  const draft = useDraftIodFromVisit(uuid);
   const [tab, setTab] = useCaseTab();
   const [editing, setEditing] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -118,6 +119,8 @@ export function OhIodCaseDetailPage({ uuid }: { uuid: string }) {
         onReopen={() => update.mutate({ status: "open" })}
         onMarkUnderReview={() => update.mutate({ status: "under_review" })}
         onCopyLink={() => void copyLink()}
+        onDraftFromVisit={() => draft.mutate()}
+        isDrafting={draft.isPending}
       />
       <IodCaseFactsStrip item={item} pack={pack.data} entries={timeline} today={today} />
 

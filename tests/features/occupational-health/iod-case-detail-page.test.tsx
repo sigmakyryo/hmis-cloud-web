@@ -232,3 +232,81 @@ describe("IOD case detail page", () => {
     expect(await screen.findByText("Case not found")).toBeTruthy();
   });
 });
+
+describe("IOD case recorded from an OPD visit", () => {
+  const fromVisit = {
+    source_visit_uuid: "visit-1",
+    source_encounter_uuid: "enc-1",
+  };
+
+  function mockCase(over: Record<string, unknown>) {
+    mocks.bffRequest.mockImplementation(async (path: string, options?: { method?: string }) => {
+      if (path === `${BASE}/statutory-pack`) return pack;
+      if (path === `${BASE}/entries`) return entries;
+      if (path === `${BASE}/document`) return { uuid: UUID, ai_status: "documented" };
+      if (path === BASE && options?.method !== "PATCH") return { ...caseRecord, ...over };
+      throw new Error(`Unexpected request ${path}`);
+    });
+  }
+
+  it("says what the AI drafted and links back to the visit", async () => {
+    mockCase({ ...fromVisit, ai_status: "documented", ai_drafted_fields: ["description", "body_part"], ai_documented_at: "2026-11-14T10:00:00Z" });
+    renderPage();
+
+    const notice = await screen.findByTestId("oh-iod-ai-notice");
+    expect(notice.textContent).toContain("Drafted by AI from the visit record");
+    expect(notice.textContent).toContain("description, body part");
+    expect(screen.getByTestId("oh-iod-case-opd-visit-link").getAttribute("href")).toBe("/clinical/opd/visit-1/enc-1");
+  });
+
+  it("explains that it is waiting for the visit to be documented", async () => {
+    mockCase({ ...fromVisit, ai_status: "waiting" });
+    renderPage();
+
+    expect((await screen.findByTestId("oh-iod-ai-notice")).textContent).toContain("Waiting for the visit to be documented");
+  });
+
+  it.each([
+    ["needs_input", "doesn’t describe the incident"],
+    ["failed", "could not be drafted automatically"],
+  ])("explains the %s state", async (status, text) => {
+    mockCase({ ...fromVisit, ai_status: status });
+    renderPage();
+
+    expect((await screen.findByTestId("oh-iod-ai-notice")).textContent).toContain(text);
+  });
+
+  it("shows no AI notice or visit link for a case that was not recorded from a visit", async () => {
+    mockCase({});
+    renderPage();
+
+    await screen.findByRole("heading", { name: "Crush · Hand" });
+    expect(screen.queryByTestId("oh-iod-ai-notice")).toBeNull();
+    expect(screen.queryByTestId("oh-iod-case-opd-visit-link")).toBeNull();
+  });
+
+  it("drafts the case again from the visit record on request", async () => {
+    mockCase({ ...fromVisit, ai_status: "needs_input" });
+    renderPage();
+
+    fireEvent.keyDown(await screen.findByRole("button", { name: "More actions" }), { key: "Enter" });
+    const menu = await screen.findByRole("menu");
+    expect(within(menu).getByRole("menuitem", { name: "Open visit" }).getAttribute("href")).toBe("/clinical/opd/visit-1/enc-1");
+    fireEvent.click(within(menu).getByRole("menuitem", { name: "Draft from visit record" }));
+
+    await waitFor(() => expect(callsTo(`${BASE}/document`, "POST")).toHaveLength(1));
+    await waitFor(() =>
+      expect(mocks.toast).toHaveBeenCalledWith(expect.objectContaining({ variant: "success", title: "Drafted from the visit record" })),
+    );
+  });
+
+  it("does not offer drafting for a case that has no visit", async () => {
+    mockCase({});
+    renderPage();
+
+    fireEvent.keyDown(await screen.findByRole("button", { name: "More actions" }), { key: "Enter" });
+    const menu = await screen.findByRole("menu");
+
+    expect(within(menu).queryByRole("menuitem", { name: "Draft from visit record" })).toBeNull();
+  });
+});

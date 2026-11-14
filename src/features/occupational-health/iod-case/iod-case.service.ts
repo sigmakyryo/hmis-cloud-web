@@ -60,6 +60,13 @@ export function normalizeIodCase(raw: RawIodCase): IodCaseDetail {
     return_to_work_on: nullableText(raw.return_to_work_on),
     closed_on: nullableText(raw.closed_on),
     closure_summary: text(raw.closure_summary),
+    source_visit_uuid: nullableText(raw.source_visit_uuid),
+    source_encounter_uuid: nullableText(raw.source_encounter_uuid),
+    ai_status: text(raw.ai_status),
+    ai_documented_at: nullableText(raw.ai_documented_at),
+    ai_drafted_fields: Array.isArray(raw.ai_drafted_fields)
+      ? raw.ai_drafted_fields.filter((field): field is string => typeof field === "string")
+      : [],
     is_active: raw.is_active !== false,
     created_at: nullableText(raw.created_at),
     updated_at: nullableText(raw.updated_at),

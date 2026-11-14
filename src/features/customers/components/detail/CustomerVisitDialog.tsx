@@ -57,6 +57,7 @@ import {
   formatCustomerName,
 } from "@/features/customers/utils/format-customer";
 import { OhRiskProfileRequiredNotice } from "@/features/occupational-health/components/OhRiskProfileRequiredNotice";
+import { startableFromCustomers } from "@/features/occupational-health/lib/oh-visit-types";
 import { fetchOhVisitTypes } from "@/features/occupational-health/services/oh.service";
 import { fetchOhVisitEligibility } from "@/features/occupational-health/services/visit-eligibility.service";
 import { OH_RISK_PROFILE_REQUIRED_MESSAGE } from "@/features/occupational-health/utils/customer-has-risk-profile";
@@ -680,7 +681,7 @@ export function CustomerVisitDialog({
                   }
                   defaultClinicName={defaultClinic?.name ?? "Your clinic"}
                   departments={departments}
-                  visitTypes={visitTypes.data ?? []}
+                  visitTypes={startableFromCustomers(visitTypes.data ?? [])}
                   consultationServices={consultationServices}
                   isLoadingConsultationServices={isLoadingConsultationServices}
                   insuranceSchemes={insuranceSchemes}

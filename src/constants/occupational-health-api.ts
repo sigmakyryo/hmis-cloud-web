@@ -37,6 +37,10 @@ export const OCCUPATIONAL_HEALTH_API_PATHS = {
   iodCases: "/iod-cases/",
   iodCase: (uuid: string) => `/iod-cases/${uuid}/`,
   iodCaseStatutoryPack: (uuid: string) => `/iod-cases/${uuid}/statutory-pack/`,
+  iodCaseDocument: (uuid: string) => `/iod-cases/${uuid}/document/`,
+  opdIodCases: "/oh-opd/iod-cases/",
+  opdIodByEncounter: (encounterUuid: string) =>
+    `/oh-opd/iod-cases/by-encounter/${encounterUuid}/`,
   iodCaseEntries: (uuid: string) => `/iod-cases/${uuid}/entries/`,
   iodCaseEntry: (uuid: string, entryUuid: string) =>
     `/iod-cases/${uuid}/entries/${entryUuid}/`,

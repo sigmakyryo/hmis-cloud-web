@@ -32,6 +32,14 @@ export type IodCaseDetail = {
   return_to_work_on: string | null;
   closed_on: string | null;
   closure_summary: string;
+  /** The OPD visit and encounter the case was recorded from (HMIS ids), when it was. */
+  source_visit_uuid: string | null;
+  source_encounter_uuid: string | null;
+  /** AI write-up from the visit record: "" (not tried), waiting, documented, needs_input, failed. */
+  ai_status: string;
+  ai_documented_at: string | null;
+  /** Fields the AI filled in, for review. */
+  ai_drafted_fields: string[];
   is_active: boolean;
   created_at: string | null;
   updated_at: string | null;

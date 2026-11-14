@@ -108,4 +108,27 @@ describe("normalizeIodCase", () => {
     expect(item.closed_on).toBeNull();
     expect(item.she_reference.trim()).toBe("");
   });
+
+  it("reads the visit link and AI fields, and defaults them when absent", async () => {
+    const { normalizeIodCase } = await import("@/features/occupational-health/iod-case/iod-case.service");
+    const older = normalizeIodCase({ uuid: "u" });
+    expect(older.source_visit_uuid).toBeNull();
+    expect(older.source_encounter_uuid).toBeNull();
+    expect(older.ai_status).toBe("");
+    expect(older.ai_drafted_fields).toEqual([]);
+    expect(older.ai_documented_at).toBeNull();
+
+    const linked = normalizeIodCase({
+      uuid: "u",
+      source_visit_uuid: "v",
+      source_encounter_uuid: "e",
+      ai_status: "documented",
+      ai_drafted_fields: ["description", 7, "body_part"],
+      ai_documented_at: "2026-11-14T10:00:00Z",
+    });
+    expect(linked.source_encounter_uuid).toBe("e");
+    expect(linked.ai_status).toBe("documented");
+    expect(linked.ai_drafted_fields).toEqual(["description", "body_part"]);
+  });
 });
+

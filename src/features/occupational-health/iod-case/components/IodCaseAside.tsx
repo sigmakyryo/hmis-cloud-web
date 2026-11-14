@@ -135,6 +135,18 @@ export function IodCaseAside({ item, pack }: IodCaseAsideProps) {
           )}
         </AsideBlock>
 
+        {item.source_visit_uuid && item.source_encounter_uuid ? (
+          <AsideBlock title="Linked records">
+            <Link
+              href={ROUTES.clinicalOpdEncounter(item.source_visit_uuid, item.source_encounter_uuid)}
+              className="inline-block text-[13px] font-medium text-brand-primary hover:underline"
+              data-testid="oh-iod-case-opd-visit-link"
+            >
+              Open the OPD visit this was recorded from
+            </Link>
+          </AsideBlock>
+        ) : null}
+
         <AsideBlock title="Case details">
           <dl className="space-y-1.5">
             <Row label="Reference">{item.she_reference || <IodEmpty>Not set</IodEmpty>}</Row>
