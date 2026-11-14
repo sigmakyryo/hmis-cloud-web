@@ -5,6 +5,7 @@ import { OhEmployeeFormsTab } from "@/features/occupational-health/components/Oh
 import { OhEmployeeImmunizationsPanel } from "@/features/occupational-health/components/OhEmployeeImmunizationsPanel";
 import { OhEmployeeDrugAlcoholPanel } from "@/features/occupational-health/components/OhEmployeeDrugAlcoholPanel";
 import { OhEmployeeFitnessPanel } from "@/features/occupational-health/components/OhEmployeeFitnessPanel";
+import { ExposureWorkerPanel } from "@/features/exposure-management/components/ExposureWorkerPanel";
 import { useOhEmployeeDetail } from "@/features/occupational-health/components/oh-employee-detail-context";
 
 export function OhEmployeeEmploymentRoute() {
@@ -38,4 +39,9 @@ export function OhEmployeeDrugAlcoholRoute() {
 export function OhEmployeeFitnessRoute() {
   const { customer } = useOhEmployeeDetail();
   return <OhEmployeeFitnessPanel customerUuid={customer.uuid} />;
+}
+
+export function OhEmployeeExposureRoute() {
+  const { customer } = useOhEmployeeDetail();
+  return <ExposureWorkerPanel customerUuid={customer.uuid} />;
 }

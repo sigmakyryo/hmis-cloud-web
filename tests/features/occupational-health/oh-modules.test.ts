@@ -12,13 +12,14 @@ import {
 const modules = buildOhModules(["OccupationalHealth"], { enabledModules: ["OccupationalHealth"] });
 
 describe("buildOhModules", () => {
-  it("lists the five OH modules with described pages, queue first", () => {
+  it("lists the six OH modules with described pages, queue first", () => {
     expect(modules.map((module) => module.slug)).toEqual([
       "clinic",
       "immunizations",
       "drug-alcohol",
       "fitness",
       "health-programs",
+      "exposure-management",
     ]);
     expect(modules[0].pages[0]).toMatchObject({ name: "OHS Queue", href: ROUTES.occupationalHealth });
     expect(modules.every((module) => module.pages.every((page) => page.description.length > 0))).toBe(true);
@@ -50,6 +51,13 @@ describe("buildOhModules", () => {
   it("finds a page and its module by href", () => {
     expect(findOhPage(modules, ROUTES.fitnessTraining)?.module.slug).toBe("fitness");
     expect(findOhPage(modules, "/nowhere")).toBeNull();
+  });
+
+  it("homes the exposure pages, with the biological incidents among them", () => {
+    const exposure = findOhModuleBySlug(modules, "exposure-management");
+    expect(exposure?.pages.map((page) => page.href)).toContain(ROUTES.exposureManagementIncidents);
+    expect(findOhPage(modules, ROUTES.exposureManagementEvents)?.module.slug).toBe("exposure-management");
+    expect(findOhPage(modules, ROUTES.immunizationsExposures)).toBeNull();
   });
 
   it("finds a module by slug", () => {

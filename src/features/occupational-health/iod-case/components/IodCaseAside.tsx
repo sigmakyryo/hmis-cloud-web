@@ -7,6 +7,7 @@ import type { IodCaseDetail, IodStatutoryPack } from "@/features/occupational-he
 import { initials, isCaseClosed } from "@/features/occupational-health/iod-case/iod-case.utils";
 import { formatOhDate, humanizeOhCode } from "@/features/occupational-health/utils/oh-format";
 import { ROUTES } from "@/constants/routes";
+import { LinkedExposureEvent } from "@/features/exposure-management/components/LinkedExposureEvent";
 import { cn } from "@/lib/utils";
 
 function AsideBlock({ title, children }: { title: string; children: ReactNode }) {
@@ -146,6 +147,8 @@ export function IodCaseAside({ item, pack }: IodCaseAsideProps) {
             </Link>
           </AsideBlock>
         ) : null}
+
+        <LinkedExposureEvent iodCaseUuid={item.uuid} wrap={(content) => <AsideBlock title="Exposure event">{content}</AsideBlock>} />
 
         <AsideBlock title="Case details">
           <dl className="space-y-1.5">
