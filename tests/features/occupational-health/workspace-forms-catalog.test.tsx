@@ -6,6 +6,12 @@ import { navigation } from "@/features/app-shell/constants/navigation-config";
 import { OhFormsPage } from "@/features/occupational-health/pages/OhFormsPage";
 
 const toasts = vi.hoisted(() => ({ toast: vi.fn(() => "toast-id") }));
+const nav = vi.hoisted(() => ({ params: new URLSearchParams(), replace: vi.fn() }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: nav.replace, prefetch: vi.fn() }),
+  useSearchParams: () => nav.params,
+  usePathname: () => "/occupational-health/forms",
+}));
 vi.mock("@/providers/toast-provider", () => ({ useToast: () => toasts }));
 
 vi.mock("@/features/occupational-health/services/oh.service", () => ({
@@ -43,6 +49,8 @@ vi.mock("@/features/occupational-health/services/oh.service", () => ({
 
 afterEach(() => {
   cleanup();
+  nav.params = new URLSearchParams();
+  nav.replace.mockReset();
 });
 
 describe("workspace forms catalog", () => {

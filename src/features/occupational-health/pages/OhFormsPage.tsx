@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { FileText } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -47,6 +48,14 @@ import { AlertDialog } from "radix-ui";
 import { bffRequest } from "@/lib/bff-client";
 import { appFont } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
+import {
+  formsFiltersFromSearchParams,
+  matchesFormsView,
+  ohFormsHref,
+  type OhFormsListFilters,
+  type OhFormsStatus,
+  type OhFormsView,
+} from "@/features/occupational-health/utils/oh-forms-list-url";
 
 type FormKind = "employee" | "exam" | "certificate" | "custom";
 type FormStatus = "draft" | "published" | "archived";
@@ -74,12 +83,10 @@ const TYPE_FILTERS: Array<{ value: "all" | FormKind; label: string }> = [
   { value: "custom", label: "Custom" },
 ];
 
-const STATUS_FILTERS: Array<{ value: "all" | "live" | FormStatus; label: string }> = [
-  { value: "live", label: "Live" },
+const STATUS_FILTERS: Array<{ value: OhFormsStatus; label: string }> = [
   { value: "all", label: "All statuses" },
   { value: "draft", label: "Draft" },
   { value: "published", label: "Published" },
-  { value: "archived", label: "Archived" },
 ];
 
 const STATUS_TONE: Record<FormStatus, string> = {
@@ -176,9 +183,23 @@ export function OhFormsPage() {
   const [open, setOpen] = useState(false);
   const [archiving, setArchiving] = useState<FormRow | null>(null);
   const [renaming, setRenaming] = useState<FormRow | null>(null);
-  const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<"all" | FormKind>("all");
-  const [statusFilter, setStatusFilter] = useState<"all" | "live" | FormStatus>("live");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlFilters = formsFiltersFromSearchParams(searchParams);
+  const [search, setSearchState] = useState(urlFilters.search);
+  const typeFilter = urlFilters.type;
+  const view = urlFilters.view;
+  const statusFilter = urlFilters.status;
+  const setFilters = (patch: Partial<OhFormsListFilters>) => {
+    router.replace(ohFormsHref({ ...urlFilters, search, ...patch }), { scroll: false });
+  };
+  const setSearch = (value: string) => {
+    setSearchState(value);
+    router.replace(ohFormsHref({ ...urlFilters, search: value }), { scroll: false });
+  };
+  const setTypeFilter = (value: "all" | FormKind) => setFilters({ type: value });
+  const setStatusFilter = (value: OhFormsStatus) => setFilters({ status: value });
+  const setView = (value: OhFormsView) => setFilters({ view: value, status: "all" });
   const [actionError, setActionError] = useState<string | null>(null);
 
   const rows = useMemo(
@@ -191,8 +212,7 @@ export function OhFormsPage() {
     const q = search.trim().toLowerCase();
     return rows.filter((row) => {
       if (typeFilter !== "all" && row.kind !== typeFilter) return false;
-      if (statusFilter === "live" && row.status === "archived") return false;
-      if (statusFilter !== "all" && statusFilter !== "live" && row.status !== statusFilter) return false;
+      if (!matchesFormsView(row.status, view, statusFilter)) return false;
       if (!q) return true;
       return (
         row.name.toLowerCase().includes(q) ||
@@ -201,8 +221,10 @@ export function OhFormsPage() {
         row.detail.toLowerCase().includes(q)
       );
     });
-  }, [rows, search, typeFilter, statusFilter]);
+  }, [rows, search, typeFilter, statusFilter, view]);
 
+  const archivedCount = rows.filter((row) => row.status === "archived").length;
+  const liveCount = rows.length - archivedCount;
   const isLoading = forms.isLoading || employee.isLoading || exams.isLoading || certificates.isLoading;
   const isError = forms.isError || employee.isError || exams.isError || certificates.isError;
   const isEmpty = !isLoading && !isError && rows.length === 0;
@@ -290,12 +312,15 @@ export function OhFormsPage() {
             onChange={setTypeFilter}
             ariaLabel="Filter by type"
           />
-          <FilterChips
-            options={STATUS_FILTERS}
-            value={statusFilter}
-            onChange={setStatusFilter}
-            ariaLabel="Filter by status"
-          />
+          <ViewTabs view={view} liveCount={liveCount} archivedCount={archivedCount} onChange={setView} />
+          {view === "live" ? (
+            <FilterChips
+              options={STATUS_FILTERS}
+              value={statusFilter}
+              onChange={setStatusFilter}
+              ariaLabel="Filter by status"
+            />
+          ) : null}
           <div className="ml-auto">
             <PrimaryButton type="button" onClick={() => setOpen(true)}>
               New form
@@ -320,7 +345,7 @@ export function OhFormsPage() {
         ) : null}
         {noMatches ? (
           <p className="py-8 text-center text-[13px] text-dash-muted" data-testid="oh-forms-no-matches">
-            No forms match those filters.
+            {view === "archived" && archivedCount === 0 ? "No archived forms." : "No forms match those filters."}
           </p>
         ) : null}
         <div className="flex flex-wrap items-center gap-3 border-y border-dash-border py-3">
@@ -474,6 +499,43 @@ export function OhFormsPage() {
         />
       ) : null}
     </ListPageLayout>
+  );
+}
+
+function ViewTabs({
+  view,
+  liveCount,
+  archivedCount,
+  onChange,
+}: {
+  view: OhFormsView;
+  liveCount: number;
+  archivedCount: number;
+  onChange: (view: OhFormsView) => void;
+}) {
+  const tabs: Array<{ value: OhFormsView; label: string; count: number }> = [
+    { value: "live", label: "Live", count: liveCount },
+    { value: "archived", label: "Archived", count: archivedCount },
+  ];
+  return (
+    <div className="inline-flex rounded-lg bg-slate-100 p-0.5" role="tablist" aria-label="Live or archived forms" data-testid="oh-forms-view-tabs">
+      {tabs.map((tab) => (
+        <button
+          key={tab.value}
+          type="button"
+          role="tab"
+          aria-selected={view === tab.value}
+          onClick={() => onChange(tab.value)}
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-[12px] font-medium transition-colors",
+            view === tab.value ? "bg-white text-brand-navy shadow-sm ring-1 ring-dash-border" : "text-dash-muted hover:text-brand-navy",
+          )}
+        >
+          {tab.label}
+          <span className="tabular-nums text-[11px] text-dash-muted">{tab.count}</span>
+        </button>
+      ))}
+    </div>
   );
 }
 
