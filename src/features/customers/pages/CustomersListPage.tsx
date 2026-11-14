@@ -381,11 +381,13 @@ export function CustomersListPage() {
   return (
     <ListPageLayout
       data-testid="customers-page"
-      className="space-y-0 bg-white px-0 pt-0 md:px-0"
+      className="h-auto min-h-0 flex-1 overflow-hidden bg-white pb-0 sm:pb-0"
     >
-      {hasNoCustomerRecords ? null : directoryHeader}
       {hasNoCustomerRecords ? null : (
-        <CustomerSummaryStatsCards stats={stats} isLoading={isStatsLoading} />
+        <div data-list-band className="sticky top-0 z-20 shrink-0 bg-white">
+          {directoryHeader}
+          <CustomerSummaryStatsCards stats={stats} isLoading={isStatsLoading} />
+        </div>
       )}
       <MembershipSearchDialog
         open={membershipSearchOpen}
@@ -456,13 +458,15 @@ export function CustomersListPage() {
       />
 
       {hasNoCustomerRecords ? (
-        <CustomersEmptyState
-          onAddClient={handleAddClient}
-          onSearchMembership={openMembershipSearch}
-        />
+        <div data-list-band className="min-h-0 flex-1 overflow-auto">
+          <CustomersEmptyState
+            onAddClient={handleAddClient}
+            onSearchMembership={openMembershipSearch}
+          />
+        </div>
       ) : (
         <>
-          <ListPageTableSection>
+          <ListPageTableSection className="flex min-h-0 flex-1 flex-col overflow-hidden">
             {isLoading ? (
               <CustomersTableSkeleton rows={10} />
             ) : error ? (
@@ -511,7 +515,7 @@ export function CustomersListPage() {
             )}
           </ListPageTableSection>
           {!isLoading && !error && !isFilteredEmpty ? (
-            <div className="border-t border-dash-border px-4 py-3 md:px-6">
+            <div data-list-band className="sticky bottom-0 z-20 shrink-0 bg-white">
               <ListPagePagination
                 page={page}
                 pageSize={DEFAULT_PAGE_SIZE}
@@ -520,7 +524,7 @@ export function CustomersListPage() {
                 hasPrevious={hasPrevious}
                 isLoading={isRefreshing}
                 onPageChange={handlePageChange}
-                className="pt-0"
+                className="bg-white max-sm:pr-16"
               />
             </div>
           ) : null}

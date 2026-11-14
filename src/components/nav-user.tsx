@@ -62,16 +62,15 @@ export function NavUser() {
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
             <SidebarMenuButton
-              size="lg"
               tooltip="Account"
               data-testid="sidebar-account-trigger"
-              className="rounded-lg"
+              className="h-9 rounded-lg"
             >
               <UserIdenticon
                 seed={email || displayName}
                 name={displayName}
                 imageUrl={avatarUrl}
-                className="size-8"
+                className="size-6 rounded-md"
               />
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium text-brand-navy">

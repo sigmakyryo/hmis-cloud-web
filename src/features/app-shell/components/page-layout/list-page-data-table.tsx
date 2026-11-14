@@ -8,12 +8,15 @@ type ListPageDataTableProps = {
   children: ReactNode;
   className?: string;
   variant?: ListPageDataTableVariant;
+  /** Fill the parent and scroll rows. The column header stays pinned. */
+  scrollRows?: boolean;
 };
 
 export function ListPageDataTable({
   children,
   className,
   variant = "plain",
+  scrollRows = false,
 }: ListPageDataTableProps) {
   return (
     <div
@@ -21,10 +24,11 @@ export function ListPageDataTable({
         variant === "card"
           ? "overflow-hidden rounded-xl border border-dash-border bg-dash-panel"
           : "w-full overflow-hidden",
+        scrollRows && "flex h-full min-h-0 flex-col",
         className,
       )}
     >
-      <div className="overflow-x-auto">
+      <div className={cn(scrollRows ? "min-h-0 flex-1 overflow-auto" : "overflow-x-auto")}>
         <table className="min-w-full text-left text-[13px] leading-tight">
           {children}
         </table>
@@ -36,11 +40,17 @@ export function ListPageDataTable({
 export function ListPageDataTableHeader({
   children,
   className,
+  sticky = false,
 }: {
   children: ReactNode;
   className?: string;
+  sticky?: boolean;
 }) {
-  return <thead className={cn(className)}>{children}</thead>;
+  return (
+    <thead className={cn(sticky && "sticky top-0 z-10 bg-white", className)}>
+      {children}
+    </thead>
+  );
 }
 
 export function ListPageDataTableHeaderRow({

@@ -59,11 +59,14 @@ export function TeamSwitcher() {
           type="button"
           data-testid="sidebar-team-switcher-trigger"
           aria-label={`Switch workspace, ${activeClinicLabel}`}
-          className="flex h-8 w-full items-center gap-2 rounded-md px-1 text-left outline-none transition-colors hover:bg-dash-canvas focus-visible:ring-2 focus-visible:ring-brand-primary/25 data-[state=open]:bg-dash-canvas group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+          className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left outline-none transition-colors hover:bg-dash-canvas focus-visible:ring-2 focus-visible:ring-brand-primary/25 data-[state=open]:bg-dash-canvas group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
         >
-          <WorkspaceAvatar name={tenantName} tone="primary" className="size-6 rounded-md text-[10px]" />
+          <WorkspaceAvatar
+            name={activeClinicLabel}
+            className="size-7 rounded-lg text-[11px]"
+          />
           <span className="grid min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
-            <span className="truncate text-[13px] font-medium leading-tight text-brand-navy">
+            <span className="truncate text-[13px] font-semibold leading-tight text-brand-navy">
               {isLoading ? "Loading..." : activeClinicLabel}
             </span>
             <span className="truncate text-[11px] leading-tight text-dash-muted">
@@ -102,8 +105,7 @@ export function TeamSwitcher() {
                   >
                     <WorkspaceAvatar
                       name={clinic.clinic_name}
-                      tone="primary"
-                      className="size-7 text-[10px]"
+                      className="size-7 rounded-lg text-[11px]"
                     />
                     <span className="min-w-0 flex-1">
                       <span
@@ -129,7 +131,7 @@ export function TeamSwitcher() {
         ) : (
           <p className="px-2 py-1.5 text-sm text-dash-muted">No clinics assigned</p>
         )}
-        <div className="mt-1 border-t border-dash-border pt-1">
+        <div className="mt-1">
           <Link
             href={ROUTES.settingsOrganization}
             onClick={() => setOpen(false)}

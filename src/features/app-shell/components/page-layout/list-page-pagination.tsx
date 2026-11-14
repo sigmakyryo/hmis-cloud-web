@@ -1,3 +1,5 @@
+import { ChevronLeft, ChevronRight } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -52,37 +54,40 @@ export function ListPagePagination({
   const end = Math.min(page * pageSize, totalCount);
   const pageItems = buildPageItems(page, totalPages);
 
+  const pageButtonClass =
+    "h-6 min-w-6 rounded-md px-1.5 text-[12px] tabular-nums";
+
   return (
     <div
       className={cn(
-        "flex flex-col gap-2 border-t border-dash-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between md:px-6",
+        "flex h-9 items-center justify-between gap-3 border-t border-dash-border px-3 md:px-4",
         className,
       )}
     >
-      <p className="text-[13px] text-dash-muted">
-        Showing{" "}
+      <p className="min-w-0 truncate text-[12px] text-dash-muted">
         <span className="font-medium tabular-nums text-brand-navy">
           {start}–{end}
-        </span>{" "}
-        of{" "}
+        </span>
+        {" of "}
         <span className="tabular-nums">{totalCount}</span>
       </p>
-      <div className="flex flex-wrap items-center gap-1">
+      <div className="flex shrink-0 items-center gap-0.5">
         <Button
           type="button"
-          variant="outline"
+          variant="ghost"
           size="sm"
-          className="h-7 rounded-md border-dash-border bg-white px-2.5 text-[13px] text-brand-slate hover:bg-dash-canvas"
+          aria-label="Previous"
+          className="size-6 rounded-md px-0 text-brand-slate hover:bg-dash-canvas"
           disabled={!hasPrevious || isLoading}
           onClick={() => onPageChange(page - 1)}
         >
-          Previous
+          <ChevronLeft className="size-3.5" />
         </Button>
         {pageItems.map((item, index) =>
           item === "ellipsis" ? (
             <span
               key={`ellipsis-${index}`}
-              className="px-1.5 text-sm text-dash-muted"
+              className="px-0.5 text-[12px] text-dash-muted"
             >
               …
             </span>
@@ -94,7 +99,7 @@ export function ListPagePagination({
               size="sm"
               disabled={isLoading}
               className={cn(
-                "h-7 min-w-7 rounded-md px-2 text-[13px] tabular-nums",
+                pageButtonClass,
                 item === page
                   ? "bg-brand-primary text-white hover:bg-brand-primary-hover hover:text-white"
                   : "text-brand-slate hover:bg-dash-canvas",
@@ -107,13 +112,14 @@ export function ListPagePagination({
         )}
         <Button
           type="button"
-          variant="outline"
+          variant="ghost"
           size="sm"
-          className="h-7 rounded-md border-dash-border bg-white px-2.5 text-[13px] text-brand-slate hover:bg-dash-canvas"
+          aria-label="Next"
+          className="size-6 rounded-md px-0 text-brand-slate hover:bg-dash-canvas"
           disabled={!hasNext || isLoading}
           onClick={() => onPageChange(page + 1)}
         >
-          Next
+          <ChevronRight className="size-3.5" />
         </Button>
       </div>
     </div>

@@ -52,6 +52,7 @@ import {
 import {
   isEmployeeBasedOrganization,
 } from "@/features/settings/utils/organization-type";
+import { cn } from "@/lib/utils";
 import { useToast } from "@/providers/toast-provider";
 import { useUser } from "@/providers/user-provider";
 
@@ -203,13 +204,16 @@ export function CustomersTable({
 
   return (
     <TooltipProvider delayDuration={200}>
-      <ListPageDataTable className={className}>
-        <ListPageDataTableHeader>
+      <ListPageDataTable className={cn("h-full min-h-0", className)} scrollRows>
+        <ListPageDataTableHeader sticky>
           <ListPageDataTableHeaderRow>
             {columns.map((column) => (
               <ListPageDataTableHeaderCell
                 key={column.key}
-                className={column.key === "actions" ? "text-right pr-4" : undefined}
+                className={cn(
+                  "sticky top-0 z-10 bg-white shadow-[inset_0_-1px_0_var(--color-dash-border)]",
+                  column.key === "actions" && "pr-4 text-right",
+                )}
               >
                 {column.label}
               </ListPageDataTableHeaderCell>
