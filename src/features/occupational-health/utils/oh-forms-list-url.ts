@@ -3,12 +3,15 @@ import { ROUTES } from "@/constants/routes";
 export type OhFormsView = "live" | "archived";
 export type OhFormsStatus = "all" | "draft" | "published";
 export type OhFormsType = "all" | "employee" | "exam" | "certificate" | "custom";
+export type OhFormsLayout = "list" | "groups";
 
 export type OhFormsListFilters = {
   view: OhFormsView;
   status: OhFormsStatus;
   type: OhFormsType;
   search: string;
+  /** Optional so callers that only filter need not pass it; defaults to the list. */
+  layout?: OhFormsLayout;
 };
 
 const TYPES: OhFormsType[] = ["all", "employee", "exam", "certificate", "custom"];
@@ -33,6 +36,7 @@ export function formsFiltersFromSearchParams(params: ParamsLike | null | undefin
     status: parseFormsStatus(params?.get("status")),
     type: parseFormsType(params?.get("type")),
     search: params?.get("q") ?? "",
+    layout: params?.get("layout") === "groups" ? "groups" : "list",
   };
 }
 
@@ -43,6 +47,7 @@ export function ohFormsHref(filters: Partial<OhFormsListFilters> = {}): string {
   if (filters.type && filters.type !== "all") params.set("type", filters.type);
   if (filters.view === "archived") params.set("view", "archived");
   if (filters.view !== "archived" && filters.status && filters.status !== "all") params.set("status", filters.status);
+  if (filters.view !== "archived" && filters.layout === "groups") params.set("layout", "groups");
   const query = params.toString();
   return query ? `${ROUTES.occupationalHealthForms}?${query}` : ROUTES.occupationalHealthForms;
 }

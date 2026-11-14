@@ -41,6 +41,9 @@ vi.mock("@/features/occupational-health/services/oh.service", () => ({
   publishOhExamTemplate: vi.fn(),
   publishOhCofTemplate: vi.fn(),
   publishOhEmployeeFormTemplate: vi.fn(),
+  renameFormGroup: vi.fn(),
+  deleteFormGroup: vi.fn(),
+  saveFormLayout: vi.fn(),
 }));
 
 afterEach(() => {
@@ -60,7 +63,7 @@ function renderPage() {
 
 describe("forms Live / Archived URL", () => {
   it("defaults to live and keeps compact hrefs", () => {
-    expect(formsFiltersFromSearchParams(new URLSearchParams())).toEqual({ view: "live", status: "all", type: "all", search: "" });
+    expect(formsFiltersFromSearchParams(new URLSearchParams())).toEqual({ view: "live", status: "all", type: "all", search: "", layout: "list" });
     expect(ohFormsHref({ view: "live" })).toBe("/occupational-health/forms");
     expect(ohFormsHref({ view: "archived", search: "intake", type: "employee", status: "draft" })).toBe(
       "/occupational-health/forms?q=intake&type=employee&view=archived",
@@ -106,5 +109,22 @@ describe("forms page Live / Archived filter", () => {
     renderPage();
     expect(await screen.findByText("Audiometry")).toBeInTheDocument();
     expect(screen.queryByText("Warehouse employee form")).not.toBeInTheDocument();
+  });
+});
+
+describe("forms page organise groups mode", () => {
+  it("switches to the groups board through the URL", async () => {
+    renderPage();
+    fireEvent.click(await screen.findByTestId("oh-forms-organise-groups"));
+    expect(nav.replace).toHaveBeenCalledWith("/occupational-health/forms?layout=groups", { scroll: false });
+  });
+
+  it("renders the board with live forms when layout=groups", async () => {
+    nav.params = new URLSearchParams("layout=groups");
+    renderPage();
+    expect(await screen.findByTestId("oh-form-groups-board")).toBeInTheDocument();
+    expect(await screen.findByText("Warehouse employee form")).toBeInTheDocument();
+    expect(screen.queryByText("Old intake form")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("oh-forms-list")).not.toBeInTheDocument();
   });
 });

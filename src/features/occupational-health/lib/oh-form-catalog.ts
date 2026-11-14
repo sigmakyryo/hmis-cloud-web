@@ -29,7 +29,8 @@ export type ClinicalFormRecord = {
     to?: string | null;
     required?: boolean;
   } | null;
-  group: { uuid: string; name: string } | null;
+  group: { uuid: string; name: string; sort_order?: number } | null;
+  sort_order?: number;
   template_kind: "employee" | "exam" | "certificate" | null;
   template_uuid: string | null;
   active?: boolean;
@@ -49,4 +50,6 @@ export type OhVisitTypeRecord = {
 export type FormGroupRecord = {
   uuid: string;
   name: string;
+  sort_order?: number;
+  forms_count?: number;
 };

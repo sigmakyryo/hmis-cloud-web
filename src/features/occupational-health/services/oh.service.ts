@@ -606,6 +606,31 @@ export async function createFormGroup(name: string) {
   });
 }
 
+export async function renameFormGroup(uuid: string, name: string) {
+  return bffRequest<FormGroupRecord>(BFF_OCCUPATIONAL_HEALTH_ROUTES.formGroup(uuid), {
+    method: "PATCH",
+    body: { name },
+  });
+}
+
+export async function deleteFormGroup(uuid: string) {
+  return bffRequest<{ uuid: string; deleted: boolean }>(BFF_OCCUPATIONAL_HEALTH_ROUTES.formGroup(uuid), {
+    method: "DELETE",
+  });
+}
+
+export type FormLayoutItem =
+  | { form_uuid: string }
+  | { template_kind: "employee" | "exam" | "certificate"; template_uuid: string };
+
+/** Saves group order and each group's ordered forms (uuid null = ungrouped) in one request. */
+export async function saveFormLayout(groups: Array<{ uuid: string | null; items: FormLayoutItem[] }>) {
+  return bffRequest<FormGroupRecord[]>(BFF_OCCUPATIONAL_HEALTH_ROUTES.formGroupsLayout, {
+    method: "PUT",
+    body: { groups },
+  });
+}
+
 export async function fetchOhVisitTypes() {
   return bffRequest<OhVisitTypeRecord[]>(BFF_OCCUPATIONAL_HEALTH_ROUTES.visitTypes);
 }

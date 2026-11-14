@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FileText } from "lucide-react";
+import { FileText, LayoutGrid, List } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -14,6 +14,8 @@ import { RequiredFieldMarker } from "@/components/ui/required-field-marker";
 import { ListPageLayout } from "@/features/app-shell/components/page-layout";
 import { useToast } from "@/providers/toast-provider";
 import { CatalogSearchSelect } from "@/features/occupational-health/components/CatalogSearchSelect";
+import { OhFormGroupsBoard } from "@/features/occupational-health/components/OhFormGroupsBoard";
+import type { BoardItem } from "@/features/occupational-health/lib/oh-form-groups-layout";
 import {
   OH_FORM_FAMILIES,
   OH_PREDEFINED_FORM_TYPES,
@@ -45,7 +47,6 @@ import type { OhCofTemplate, OhExamTemplate } from "@/features/occupational-heal
 import { ROUTES } from "@/constants/routes";
 import { Fragment } from "react";
 import { AlertDialog } from "radix-ui";
-import { bffRequest } from "@/lib/bff-client";
 import { appFont } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
 import {
@@ -69,6 +70,8 @@ type FormRow = {
   publishedVersion: number | null;
   groupName: string | null;
   groupUuid?: string | null;
+  groupSortOrder: number;
+  sortOrder: number;
   detail: string;
   templateKind: "employee" | "exam" | "certificate" | null;
   templateUuid: string | null;
@@ -252,28 +255,30 @@ export function OhFormsPage() {
     onError: () => setActionError("Could not publish the form."),
   });
   const groups = useQuery({ queryKey: ["form-groups"], queryFn: fetchFormGroups });
-  const [dragged, setDragged] = useState<FormRow | null>(null);
-  const move = useMutation({
-    mutationFn: ({ row, group }: { row: FormRow; group: string | null }) => {
-      if (row.clinicalUuid) return updateClinicalForm(row.clinicalUuid, { form_group_uuid: group });
-      return bffRequest(
-        `/api/occupational-health/clinical-forms/templates/${row.templateKind}/${encodeURIComponent(row.templateUuid ?? "")}/group`,
-        { method: "PATCH", body: { form_group_uuid: group } },
-      );
-    },
-    onSuccess: async () => {
-      setActionError(null);
-      toast({ variant: "success", title: "Form group updated" });
-      await invalidateFormCatalog(queryClient);
-    },
-    onError: () => setActionError("Could not move the form to that group."),
-  });
-  const addGroup = useMutation({
-    mutationFn: createFormGroup,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["form-groups"] }),
-    onError: () => setActionError("Could not create the group."),
-  });
-  const [groupName, setGroupName] = useState("");
+  const organising = urlFilters.layout === "groups" && view === "live";
+  const setOrganising = (on: boolean) => setFilters({ layout: on ? "groups" : "list" });
+  const boardItems = useMemo<BoardItem[]>(
+    () =>
+      rows.flatMap((row) => {
+        if (row.status === "archived") return [];
+        const ref = row.clinicalUuid
+          ? { form_uuid: row.clinicalUuid }
+          : row.templateKind && row.templateUuid
+            ? { template_kind: row.templateKind, template_uuid: row.templateUuid }
+            : null;
+        if (!ref) return [];
+        return [{
+          key: row.key,
+          name: row.name,
+          typeLabel: row.typeLabel,
+          statusLabel: statusLabel(row),
+          groupUuid: row.groupUuid ?? null,
+          sortOrder: row.sortOrder,
+          ref,
+        }];
+      }),
+    [rows],
+  );
 
   const archive = useMutation({
     mutationFn: (row: FormRow) => archiveRow(row),
@@ -321,7 +326,28 @@ export function OhFormsPage() {
               ariaLabel="Filter by status"
             />
           ) : null}
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            {view === "live" ? (
+              <div className="inline-flex rounded-lg border border-dash-border p-0.5" role="group" aria-label="Forms layout">
+                <button
+                  type="button"
+                  aria-pressed={!organising}
+                  onClick={() => setOrganising(false)}
+                  className={cn("inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[12px] font-medium", !organising ? "bg-brand-navy text-white" : "text-dash-muted hover:text-brand-navy")}
+                >
+                  <List className="size-3.5" aria-hidden="true" /> List
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={organising}
+                  data-testid="oh-forms-organise-groups"
+                  onClick={() => setOrganising(true)}
+                  className={cn("inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[12px] font-medium", organising ? "bg-brand-navy text-white" : "text-dash-muted hover:text-brand-navy")}
+                >
+                  <LayoutGrid className="size-3.5" aria-hidden="true" /> Organise groups
+                </button>
+              </div>
+            ) : null}
             <PrimaryButton type="button" onClick={() => setOpen(true)}>
               New form
             </PrimaryButton>
@@ -348,32 +374,14 @@ export function OhFormsPage() {
             {view === "archived" && archivedCount === 0 ? "No archived forms." : "No forms match those filters."}
           </p>
         ) : null}
-        <div className="flex flex-wrap items-center gap-3 border-y border-dash-border py-3">
-          <form className="flex items-center gap-2" onSubmit={(event) => {
-            event.preventDefault();
-            if (!groupName.trim()) return;
-            addGroup.mutate(groupName.trim(), { onSuccess: () => setGroupName("") });
-          }}>
-            <Input value={groupName} onChange={(event) => setGroupName(event.target.value)} aria-label="Group name" placeholder="Group name" maxLength={120} />
-            <SecondaryButton type="submit" disabled={addGroup.isPending || !groupName.trim()}>Add group</SecondaryButton>
-          </form>
-          {dragged ? (
-            <div className="flex flex-wrap items-center gap-2" aria-label="Drop form into a group">
-              {[{ uuid: "", name: "Ungrouped" }, ...(groups.data ?? [])].map((group) => (
-                <span key={group.uuid} className="rounded-md border border-dashed border-brand-primary px-3 py-2 text-sm"
-                  onDragOver={(event) => event.preventDefault()}
-                  onDrop={(event) => {
-                    event.preventDefault();
-                    if (!move.isPending) move.mutate({ row: dragged, group: group.uuid || null });
-                    setDragged(null);
-                  }}>
-                  {group.name}
-                </span>
-              ))}
-            </div>
-          ) : null}
-        </div>
-        {filtered.length > 0 ? (
+        {organising && !isLoading && !isError ? (
+          <OhFormGroupsBoard
+            items={boardItems}
+            groups={groups.data ?? []}
+            onChanged={() => invalidateFormCatalog(queryClient)}
+          />
+        ) : null}
+        {!organising && filtered.length > 0 ? (
           <div className="overflow-x-auto" data-testid="oh-forms-list">
             <table className="w-full min-w-[40rem] border-collapse text-left">
               <thead>
@@ -385,7 +393,7 @@ export function OhFormsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.toSorted((left, right) => (left.groupName ?? "").localeCompare(right.groupName ?? "")).map((row, index, sorted) => (
+                {filtered.toSorted(compareByGroupOrder).map((row, index, sorted) => (
                   <Fragment key={row.key}>
                     {index === 0 || sorted[index - 1].groupName !== row.groupName ? (
                       <tr className="border-y border-dash-border bg-dash-canvas">
@@ -397,23 +405,8 @@ export function OhFormsPage() {
                   <tr key={row.key} className="border-b border-dash-border last:border-0" data-testid="oh-form-row">
                     <td className="px-2 py-2 align-top">
                       <p className="text-[13px] font-medium text-brand-navy">
-                        {row.clinicalUuid || row.templateUuid ? (
-                          <span draggable onDragStart={(event) => {
-                            event.dataTransfer.setData("text/plain", row.name);
-                            event.dataTransfer.effectAllowed = "move";
-                            setDragged(row);
-                          }} onDragEnd={() => setDragged(null)} className="mr-2 cursor-grab text-dash-muted" title="Drag to a group" aria-hidden="true">⠿</span>
-                        ) : null}
                         {row.name}
                       </p>
-                      {row.clinicalUuid || row.templateUuid ? (
-                        <select aria-label={`Group for ${row.name}`} value={row.groupUuid ?? ""} disabled={move.isPending}
-                          onChange={(event) => move.mutate({ row, group: event.target.value || null })}
-                          className="mt-1 max-w-44 rounded border border-dash-border bg-white px-1 py-0.5 text-xs text-dash-muted">
-                          <option value="">Ungrouped</option>
-                          {(groups.data ?? []).map((group) => <option key={group.uuid} value={group.uuid}>{group.name}</option>)}
-                        </select>
-                      ) : null}
                       {row.detail ? <p className="text-[12px] text-dash-muted">{row.detail}</p> : null}
                     </td>
                     <td className="px-2 py-2 align-top">
@@ -614,6 +607,19 @@ function RowAction({
   );
 }
 
+/** Groups in saved order (Ungrouped last), then forms in saved order, then by name. */
+function compareByGroupOrder(left: FormRow, right: FormRow): number {
+  const leftGrouped = left.groupName != null;
+  const rightGrouped = right.groupName != null;
+  if (leftGrouped !== rightGrouped) return leftGrouped ? -1 : 1;
+  return (
+    left.groupSortOrder - right.groupSortOrder ||
+    (left.groupName ?? "").localeCompare(right.groupName ?? "") ||
+    left.sortOrder - right.sortOrder ||
+    left.name.localeCompare(right.name)
+  );
+}
+
 function statusLabel(row: FormRow): string {
   if (row.status === "published" && row.publishedVersion != null) {
     return `Published v${row.publishedVersion}`;
@@ -675,6 +681,8 @@ function clinicalRow(form: ClinicalFormRecord): FormRow {
     publishedVersion: form.published_version_number ?? null,
     groupName: form.group?.name ?? null,
     groupUuid: form.group?.uuid ?? null,
+    groupSortOrder: form.group?.sort_order ?? 0,
+    sortOrder: form.sort_order ?? 0,
     detail: formDetail(form),
     templateKind: form.template_kind,
     templateUuid: form.template_uuid,
@@ -695,6 +703,8 @@ function templateRow(
     status: formStatus(template.active, template.published_version_number),
     publishedVersion: template.published_version_number ?? null,
     groupName: null,
+    groupSortOrder: 0,
+    sortOrder: 0,
     detail,
     templateKind: kind,
     templateUuid: template.uuid,
