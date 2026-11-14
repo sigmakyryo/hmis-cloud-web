@@ -310,6 +310,7 @@ export function AppointmentsListPage() {
   return (
     <>
       <ListPageLayout
+        fill={isListView}
         data-testid="appointments-page"
         className={cn((isBoardView || isCalendarView) && "overflow-hidden sm:pb-3")}
       >

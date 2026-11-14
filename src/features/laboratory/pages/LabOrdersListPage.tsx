@@ -218,7 +218,7 @@ export function LabOrdersListPage() {
     !isLoading && !error && totalCount === 0 && !hasActiveQuery;
 
   return (
-    <ListPageLayout data-testid="lab-orders-page">
+    <ListPageLayout fill data-testid="lab-orders-page">
       <LabOrdersPageHeader
         accession={accession}
         filters={filters}

@@ -125,7 +125,7 @@ export function PharmacyQueuePage() {
   const hasPrevious = page > 1;
 
   return (
-    <ListPageLayout data-testid="pharmacy-queue-page">
+    <ListPageLayout fill data-testid="pharmacy-queue-page">
       <PharmacyQueuePageHeader
         search={search}
         isLoading={isRefreshing}

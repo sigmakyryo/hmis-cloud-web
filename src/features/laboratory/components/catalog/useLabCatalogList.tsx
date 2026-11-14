@@ -212,7 +212,7 @@ export function LabCatalogListShell({
   }
 
   return (
-    <ListPageLayout data-testid={dataTestId}>
+    <ListPageLayout fill data-testid={dataTestId}>
       {header}
       <ListPageTableSection>
         {isLoading ? (

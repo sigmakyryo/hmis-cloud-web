@@ -103,7 +103,7 @@ export function BatchesListPage() {
   }
 
   return (
-    <ListPageLayout data-testid="inventory-batches-page">
+    <ListPageLayout fill data-testid="inventory-batches-page">
       <CreateBatchDialog
         open={createOpen}
         onOpenChange={setCreateOpen}

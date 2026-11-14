@@ -101,7 +101,7 @@ export function StockListPage() {
   }
 
   return (
-    <ListPageLayout data-testid="inventory-stock-page">
+    <ListPageLayout fill data-testid="inventory-stock-page">
       <StockDetailDialog
         stock={selectedStock}
         open={detailOpen}

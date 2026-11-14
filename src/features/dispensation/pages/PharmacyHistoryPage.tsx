@@ -130,7 +130,7 @@ export function PharmacyHistoryPage() {
   const hasPrevious = page > 1;
 
   return (
-    <ListPageLayout data-testid="pharmacy-history-page">
+    <ListPageLayout fill data-testid="pharmacy-history-page">
       <PharmacyHistoryPageHeader
         search={search}
         isLoading={isRefreshing}

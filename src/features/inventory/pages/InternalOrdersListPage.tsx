@@ -111,7 +111,7 @@ export function InternalOrdersListPage() {
   }
 
   return (
-    <ListPageLayout data-testid="inventory-internal-orders-page">
+    <ListPageLayout fill data-testid="inventory-internal-orders-page">
       <CreateInternalOrderDialog
         open={createOpen}
         onOpenChange={setCreateOpen}

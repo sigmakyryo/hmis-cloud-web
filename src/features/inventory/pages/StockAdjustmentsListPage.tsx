@@ -111,7 +111,7 @@ export function StockAdjustmentsListPage() {
   }
 
   return (
-    <ListPageLayout data-testid="inventory-stock-adjustments-page">
+    <ListPageLayout fill data-testid="inventory-stock-adjustments-page">
       <CreateStockAdjustmentDialog
         open={createOpen}
         onOpenChange={setCreateOpen}

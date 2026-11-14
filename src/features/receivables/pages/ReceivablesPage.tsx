@@ -230,7 +230,7 @@ export function ReceivablesPage() {
   const hasNoRecords = isEmpty && !query && aging == null;
 
   return (
-    <ListPageLayout data-testid="receivables-page">
+    <ListPageLayout fill data-testid="receivables-page">
       {hasNoRecords ? null : (
       <ReceivablesToolbar
         view={view}

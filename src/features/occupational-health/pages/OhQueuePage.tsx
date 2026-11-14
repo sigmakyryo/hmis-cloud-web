@@ -73,7 +73,7 @@ export function OhQueuePage() {
   }
 
   return (
-    <ListPageLayout data-testid="oh-queue-page">
+    <ListPageLayout fill data-testid="oh-queue-page">
       <OhQueuePageHeader
         search={search}
         status={status}
