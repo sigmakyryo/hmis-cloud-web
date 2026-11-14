@@ -20,7 +20,7 @@ import { useUser } from "@/providers/user-provider";
 
 const SidebarTeamSwitcher = memo(function SidebarTeamSwitcher() {
   return (
-    <SidebarHeader className="h-12 justify-center gap-0 border-b border-dash-border px-2.5 py-0">
+    <SidebarHeader className="gap-0 px-2 pb-1 pt-3">
       <TeamSwitcher />
     </SidebarHeader>
   );
@@ -28,7 +28,7 @@ const SidebarTeamSwitcher = memo(function SidebarTeamSwitcher() {
 
 const SidebarAccount = memo(function SidebarAccount() {
   return (
-    <SidebarFooter className="gap-1 p-2">
+    <SidebarFooter className="gap-0.5 px-2 pb-2 pt-1">
       <SidebarMenu>
         <MemberVisitAutomationStatus />
         <AppHeaderNotifications />

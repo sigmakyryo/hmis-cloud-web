@@ -530,7 +530,7 @@ const SidebarMenuItem = React.forwardRef<
 SidebarMenuItem.displayName = "SidebarMenuItem"
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-2.5 overflow-hidden rounded-md px-2.5 py-2 text-left text-[13px] text-brand-slate outline-none ring-sidebar-ring transition-[width,height,padding,background-color,color] hover:bg-dash-canvas hover:text-brand-navy focus-visible:ring-2 active:bg-dash-canvas disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-brand-primary data-[active=true]:font-medium data-[active=true]:text-white data-[active=true]:hover:bg-brand-primary-hover data-[active=true]:hover:text-white data-[state=open]:hover:text-brand-navy group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!rounded-md group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-[18px] [&>svg]:shrink-0 data-[active=true]:[&_svg]:text-white",
+        "peer/menu-button flex w-full items-center gap-2.5 overflow-hidden rounded-lg px-2 py-2 text-left text-[13px] text-brand-slate outline-none ring-sidebar-ring transition-[width,height,padding,background-color,color] hover:bg-dash-canvas hover:text-brand-navy focus-visible:ring-2 active:bg-dash-canvas disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-brand-primary/10 data-[active=true]:font-medium data-[active=true]:text-brand-primary data-[active=true]:hover:bg-brand-primary/15 data-[active=true]:hover:text-brand-primary data-[state=open]:hover:text-brand-navy group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!rounded-lg group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-[18px] [&>svg]:shrink-0 data-[active=true]:[&_svg]:text-brand-primary",
   {
     variants: {
       variant: {
@@ -539,7 +539,7 @@ const sidebarMenuButtonVariants = cva(
           "bg-dash-panel shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:text-brand-navy hover:shadow-[0_0_0_1px_hsl(var(--sidebar-border))]",
       },
       size: {
-        default: "h-9 text-sm",
+        default: "h-8 text-[13px]",
         sm: "h-7 text-xs",
         lg: "h-12 rounded-lg text-sm group-data-[collapsible=icon]:!p-0",
       },
@@ -706,7 +706,7 @@ const SidebarMenuSub = React.forwardRef<
     ref={ref}
     data-sidebar="menu-sub"
     className={cn(
-      "mx-3.5 flex min-w-0 translate-x-px flex-col gap-1 border-l border-sidebar-border px-2.5 py-0.5",
+      "mx-2 flex min-w-0 flex-col gap-0.5 px-1 py-0.5",
       "group-data-[collapsible=icon]:hidden",
       className
     )}
@@ -738,10 +738,9 @@ const SidebarMenuSubButton = React.forwardRef<
       data-size={size}
       data-active={isActive}
       className={cn(
-        "flex h-8 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2.5 text-brand-slate outline-none ring-sidebar-ring hover:bg-dash-canvas hover:text-brand-navy focus-visible:ring-2 active:bg-dash-canvas disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
-        "data-[active=true]:font-medium data-[active=true]:text-brand-primary data-[active=true]:hover:text-brand-primary",
+        "flex h-8 min-w-0 items-center gap-2 overflow-hidden rounded-lg px-2 text-[13px] text-brand-slate outline-none ring-sidebar-ring hover:bg-dash-canvas hover:text-brand-navy focus-visible:ring-2 active:bg-dash-canvas disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+        "data-[active=true]:bg-brand-primary/10 data-[active=true]:font-medium data-[active=true]:text-brand-primary data-[active=true]:hover:bg-brand-primary/15 data-[active=true]:hover:text-brand-primary",
         size === "sm" && "text-xs",
-        size === "md" && "text-sm",
         "group-data-[collapsible=icon]:hidden",
         className
       )}

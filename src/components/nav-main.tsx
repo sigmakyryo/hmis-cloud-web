@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 
 import { AppIcon } from "@/components/icons/app-icon";
 import { useWorkspaceStore } from "@/state/workspace.store";
@@ -18,11 +19,14 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import type { SidebarNavItem } from "@/features/app-shell/utils/build-sidebar-nav";
 import { cn } from "@/lib/utils";
 
 function NavMenuItems({ items }: { items: SidebarNavItem[] }) {
+  const { state } = useSidebar();
+  const collapsed = state === "collapsed";
   const openNavSections = useWorkspaceStore((state) => state.openNavSections);
   const setNavSectionOpen = useWorkspaceStore((state) => state.setNavSectionOpen);
 
@@ -39,12 +43,19 @@ function NavMenuItems({ items }: { items: SidebarNavItem[] }) {
           >
             <SidebarMenuItem>
               <CollapsibleTrigger asChild>
-                <SidebarMenuButton tooltip={item.title} isActive={item.isActive}>
+                <SidebarMenuButton
+                  tooltip={item.title}
+                  isActive={collapsed && Boolean(item.isActive)}
+                  className={cn(
+                    item.isActive && !collapsed && "font-medium text-brand-navy",
+                  )}
+                >
                   {item.icon ? <AppIcon name={item.icon} /> : null}
-                  <span>{item.title}</span>
-                  <AppIcon
-                    name="chevronRight"
-                    className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90"
+                  <span className="truncate">{item.title}</span>
+                  <ChevronRight
+                    aria-hidden
+                    strokeWidth={2}
+                    className="ml-auto !size-3.5 shrink-0 text-dash-muted transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90"
                   />
                 </SidebarMenuButton>
               </CollapsibleTrigger>
@@ -96,7 +107,7 @@ export function NavMain({ items }: { items: SidebarNavItem[] }) {
   return (
     <>
       {workspaceItems.length > 0 ? (
-        <SidebarGroup className="pt-2">
+        <SidebarGroup className="px-2 py-1">
           <NavMenuItems items={workspaceItems} />
         </SidebarGroup>
       ) : null}
