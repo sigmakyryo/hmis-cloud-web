@@ -1,5 +1,6 @@
 "use client";
 
+import { ROUTES } from "@/constants/routes";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FileDown, History, Save } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
@@ -248,11 +249,20 @@ function OhRecordDetailBody({ kind, uuid, config, extra }: { kind: string; uuid:
             ) : null}
             {kind === "iod" ? (
               <div className="space-y-1">
-                <Button asChild size="sm" variant="outline" className="gap-1">
-                  <a href={iodPackPdfUrl(uuid)} target="_blank" rel="noreferrer">
-                    <FileDown className="size-3.5" /> Notification pack PDF
-                  </a>
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button asChild size="sm" variant="outline" className="gap-1">
+                    <a href={iodPackPdfUrl(uuid)} target="_blank" rel="noreferrer">
+                      <FileDown className="size-3.5" /> Notification pack PDF
+                    </a>
+                  </Button>
+                  {typeof record.data.visit_uuid === "string" && typeof record.data.encounter_uuid === "string" ? (
+                    <Button asChild size="sm" variant="ghost" data-testid="oh-iod-open-visit">
+                      <a href={ROUTES.occupationalHealthEncounter(record.data.visit_uuid, record.data.encounter_uuid)}>
+                        Open visit workspace
+                      </a>
+                    </Button>
+                  ) : null}
+                </div>
                 <p className="text-xs text-brand-muted">
                   Generic layout, not an official form. Verify the official form and deadlines for your jurisdiction.
                 </p>

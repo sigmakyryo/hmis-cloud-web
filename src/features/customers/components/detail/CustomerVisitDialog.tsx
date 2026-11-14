@@ -1,7 +1,7 @@
 "use client";
 
 import { createNativeOhVisit } from "@/features/occupational-health/services/native-visit.service";
-import { ROUTES } from "@/constants/routes";
+import { ohQueueEntryHref } from "@/features/occupational-health/lib/oh-queue-route";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Building2, Loader2 } from "lucide-react";
@@ -434,9 +434,7 @@ export function CustomerVisitDialog({
           description: `Successfully started visit for ${customerName}.`,
         });
         if (created.visit && created.uuid) {
-          router.push(
-            ROUTES.occupationalHealthEncounter(created.visit, created.uuid),
-          );
+          router.push(ohQueueEntryHref(created));
         }
         return;
       }

@@ -17,7 +17,10 @@ import {
 import { OpdEncounterStatusBadge } from "@/features/clinical-opd/components/OpdEncounterStatusBadge";
 import type { OhVisitEncounter } from "@/features/occupational-health/types";
 import { formatWaitingMinutes } from "@/features/clinical-opd/utils/opd-queue-stage";
-import { ROUTES } from "@/constants/routes";
+import {
+  isIodVisit,
+  ohQueueEntryHref,
+} from "@/features/occupational-health/lib/oh-queue-route";
 
 type OhQueueTableProps = {
   encounters: OhVisitEncounter[];
@@ -69,10 +72,8 @@ export function OhQueueTable({
       </ListPageDataTableHeader>
       <ListPageDataTableBody>
         {encounters.map((encounter) => {
-          const href = ROUTES.occupationalHealthEncounter(
-            encounter.visit,
-            encounter.uuid,
-          );
+          const href = ohQueueEntryHref(encounter);
+          const iod = isIodVisit(encounter);
           const clientLabel =
             encounter.customer_name?.trim() ||
             encounter.customer_identifier?.trim() ||
@@ -100,6 +101,14 @@ export function OhQueueTable({
                     >
                       {clientLabel}
                     </Link>
+                    {iod ? (
+                      <span
+                        data-testid="oh-queue-iod-badge"
+                        className="inline-flex items-center rounded-full bg-amber-50 px-1.5 py-px text-[11px] font-medium text-amber-800 ring-1 ring-inset ring-amber-200"
+                      >
+                        Injury on duty
+                      </span>
+                    ) : null}
                     {encounter.location_name ? (
                       <p className="truncate text-[12px] text-brand-muted">
                         {encounter.location_name}
