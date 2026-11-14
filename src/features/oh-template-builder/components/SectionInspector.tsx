@@ -1,5 +1,6 @@
 "use client";
 
+import { SectionAudienceToggle } from "@/features/oh-template-builder/components/SectionAudienceToggle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Archive, Layers, Unlink } from "lucide-react";
 import { useCallback } from "react";
@@ -166,14 +167,9 @@ export function SectionInspector({ attachment, section }: SectionInspectorProps)
                     name="appliesToSex"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Section visibility</FormLabel>
+                        <FormLabel>Who sees this section</FormLabel>
                         <FormControl>
-                          <select className="w-full rounded-md border border-dash-border bg-white px-3 py-2 text-sm"
-                            value={field.value ?? ""} onChange={(event) => field.onChange(event.target.value || null)}>
-                            <option value="">Everyone</option>
-                            <option value="male">Male only</option>
-                            <option value="female">Female only</option>
-                          </select>
+                          <SectionAudienceToggle value={field.value ?? null} onChange={field.onChange} />
                         </FormControl>
                       </FormItem>
                     )}

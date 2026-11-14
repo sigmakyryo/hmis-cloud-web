@@ -1,5 +1,6 @@
 "use client";
 
+import { sectionAudienceLabel } from "@/features/oh-template-builder/components/SectionAudienceToggle";
 import { ArrowDown, ArrowUp, ChevronRight, Lock, SlidersHorizontal } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
@@ -124,6 +125,14 @@ export function CanvasSection({ attachment, isFirst, isLast }: CanvasSectionProp
             {section?.isMandatory ? (
               <span className="rounded bg-brand-tint px-1.5 py-px text-[11px] font-medium text-brand-primary">
                 Required
+              </span>
+            ) : null}
+            {sectionAudienceLabel(section?.appliesToSex) ? (
+              <span
+                data-testid="canvas-section-audience"
+                className="rounded bg-violet-50 px-1.5 py-px text-[11px] font-medium text-violet-800"
+              >
+                {sectionAudienceLabel(section?.appliesToSex)}
               </span>
             ) : null}
             <span className="rounded border border-dash-border px-1.5 py-px text-[11px] text-brand-slate">
