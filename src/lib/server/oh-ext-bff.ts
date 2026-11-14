@@ -15,6 +15,7 @@ export const ohExtProxy = createOhModuleProxy({
       "fitness-certificates/{id}/pdf",
       "oh-examinations/{id}/pdf",
       "oh-cof-responses/{id}/pdf",
+      "oh-employee-form-responses/{id}/pdf",
       "fitness-certificates/{id}/verify-link",
       "fitness-certificates/{id}/history",
       "oh/visit-cancellation-reasons",
@@ -53,6 +54,7 @@ export const ohExtProxy = createOhModuleProxy({
     ],
   },
   binary: [
+    { path: "oh-employee-form-responses/{id}/pdf", type: "application/pdf", filename: "employee-form.pdf" },
     { path: "fitness-certificates/{id}/pdf", type: "application/pdf", filename: "certificate-of-fitness.pdf" },
     { path: "oh-examinations/{id}/pdf", type: "application/pdf", filename: "examination.pdf" },
     { path: "oh-cof-responses/{id}/pdf", type: "application/pdf", filename: "certificate-of-fitness-form.pdf" },

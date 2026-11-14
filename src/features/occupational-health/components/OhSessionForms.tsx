@@ -200,6 +200,7 @@ export function OhSessionForms({
             onSaved={workspace.refetchAll}
             onOpenPanel={onOpenPanel}
             examinations={workspace.examinations}
+            episodes={episodes}
             headerSlot={showCof ? navSlot : null}
           />
         </section>

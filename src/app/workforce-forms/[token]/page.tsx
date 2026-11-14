@@ -172,7 +172,16 @@ export default function PublicWorkforceFormPage({ params }: { params: Promise<{ 
           </label>
         </div>
       ) : null}
-      {locked ? <p className="mt-4 text-sm text-brand-navy">This form is complete.</p> : null}
+      {locked ? (
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <p className="text-sm text-brand-navy">This form is complete.</p>
+          <SecondaryButton asChild>
+            <a href={`${BFF_OCCUPATIONAL_HEALTH_ROUTES.workforceForm(token)}/pdf`} target="_blank" rel="noreferrer">
+              {form?.status === "uploaded" ? "Download document" : "Open PDF to print or save"}
+            </a>
+          </SecondaryButton>
+        </div>
+      ) : null}
     </main>
   );
 }

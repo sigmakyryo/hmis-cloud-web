@@ -61,11 +61,27 @@ export function OhIodCasesPage() {
     <ListPageLayout data-testid="oh-iod-cases-page">
       <ListPageHeaderSection>
         <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-lg font-semibold text-brand-navy">Injuries on duty</h1>
-            <p className="text-[13px] text-dash-muted">
-              Workplace injuries and incidents. Open a case from a visit or here; statutory packs stay on each record.
-            </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search cases"
+              className="h-8 max-w-xs text-[13px]"
+              aria-label="Search cases"
+            />
+            {(["all", "open", "closed"] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setStatusFilter(value)}
+                className={cn(
+                  "rounded-full px-2.5 py-0.5 text-[12px] font-medium capitalize",
+                  statusFilter === value ? "bg-brand-navy text-white" : "bg-slate-100 text-dash-muted",
+                )}
+              >
+                {value === "all" ? "All statuses" : value === "open" ? "Open" : "Closed"}
+              </button>
+            ))}
           </div>
           <PrimaryButton type="button" onClick={() => setCreating(true)}>
             Open case
@@ -73,28 +89,6 @@ export function OhIodCasesPage() {
         </div>
       </ListPageHeaderSection>
       <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search cases"
-            className="h-8 max-w-xs text-[13px]"
-            aria-label="Search cases"
-          />
-          {(["all", "open", "closed"] as const).map((value) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setStatusFilter(value)}
-              className={cn(
-                "rounded-full px-2.5 py-0.5 text-[12px] font-medium capitalize",
-                statusFilter === value ? "bg-brand-navy text-white" : "bg-slate-100 text-dash-muted",
-              )}
-            >
-              {value === "all" ? "All statuses" : value === "open" ? "Open" : "Closed"}
-            </button>
-          ))}
-        </div>
         {cases.isError ? <p className="text-[13px] text-red-700">Could not load injury cases.</p> : null}
         {cases.isLoading ? <p className="text-[13px] text-dash-muted">Loading cases…</p> : null}
         {isEmpty ? (

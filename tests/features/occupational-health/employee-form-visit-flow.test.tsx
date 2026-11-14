@@ -72,10 +72,10 @@ vi.mock("next/navigation", () => ({
 afterEach(cleanup);
 
 describe("employee form visit flow", () => {
-  it("lists settings tabs as employers, visit types, and dispensing", () => {
+  it("lists settings tabs as employers, visit services, and dispensing", () => {
     expect(OH_MODULE_TABS.map((tab) => tab.label)).toEqual([
       "Employers",
-      "Visit types",
+      "Visit services",
       "Dispensing",
     ]);
     render(
@@ -86,11 +86,11 @@ describe("employee form visit flow", () => {
       </ToastProvider>,
     );
     const tabs = screen.getAllByRole("button", {
-      name: /Employers|Visit types|Dispensing/,
+      name: /Employers|Visit services|Dispensing/,
     });
     expect(tabs.map((tab) => tab.textContent)).toEqual([
       "Employers",
-      "Visit types",
+      "Visit services",
       "Dispensing",
     ]);
   });

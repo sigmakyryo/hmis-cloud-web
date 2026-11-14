@@ -28,15 +28,15 @@ export function useDefinedOccupationalForms() {
   const clinical = useQuery({ queryKey: ["clinical-forms"], queryFn: () => fetchClinicalForms() });
   const employee = useQuery({
     queryKey: ["oh-employee-form-templates"],
-    queryFn: fetchOhEmployeeFormTemplates,
+    queryFn: () => fetchOhEmployeeFormTemplates(),
   });
   const exams = useQuery({
     queryKey: ["oh-exam-templates"],
-    queryFn: fetchOhExamTemplates,
+    queryFn: () => fetchOhExamTemplates(),
   });
   const certificates = useQuery({
     queryKey: ["oh-cof-templates"],
-    queryFn: fetchOhCofTemplates,
+    queryFn: () => fetchOhCofTemplates(),
   });
   const linked = new Set(
     (clinical.data ?? []).flatMap((form) => (form.template_uuid ? [form.template_uuid] : [])),

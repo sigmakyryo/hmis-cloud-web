@@ -308,7 +308,7 @@ export function StartVisitFormFields({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    Type <RequiredFieldMarker />
+                    Visit service <RequiredFieldMarker />
                   </FormLabel>
                   <FormControl>
                     <SearchableSelect
@@ -322,11 +322,11 @@ export function StartVisitFormFields({
                       disabled={visitTypes.length === 0}
                       searchValue={typeSearch}
                       onSearchChange={setTypeSearch}
-                      searchPlaceholder="Search visit types"
-                      placeholder="Select a type"
+                      searchPlaceholder="Search visit services"
+                      placeholder="Select a visit service"
                       displayValue={selectedVisitType?.name}
                       minSearchLength={0}
-                      noResultsMessage="No visit types found"
+                      noResultsMessage="No visit services found"
                       contentClassName="z-[60]"
                       data-testid="start-visit-type"
                     >

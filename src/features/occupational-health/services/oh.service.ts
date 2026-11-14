@@ -1345,9 +1345,11 @@ export function ohCatalogSectionIsSystem(section: OhCatalogSection): boolean {
   return Boolean(section.is_system || (section.system_role || "").trim());
 }
 
-export async function fetchOhCofTemplates() {
+export async function fetchOhCofTemplates(includeInactive = false) {
   const response = await bffRequest<ListResponse<OhCofTemplate>>(
-    BFF_OCCUPATIONAL_HEALTH_ROUTES.cofTemplates,
+    includeInactive
+      ? `${BFF_OCCUPATIONAL_HEALTH_ROUTES.cofTemplates}?include_inactive=1`
+      : BFF_OCCUPATIONAL_HEALTH_ROUTES.cofTemplates,
   );
   return response.results;
 }
@@ -1655,9 +1657,11 @@ export function ohExamSectionItemLabel(item: OhLibrarySectionItem): string {
   return ohLibrarySectionItemLabel(item);
 }
 
-export async function fetchOhExamTemplates() {
+export async function fetchOhExamTemplates(includeInactive = false) {
   const response = await bffRequest<ListResponse<OhExamTemplate>>(
-    BFF_OCCUPATIONAL_HEALTH_ROUTES.examTemplates,
+    includeInactive
+      ? `${BFF_OCCUPATIONAL_HEALTH_ROUTES.examTemplates}?include_inactive=1`
+      : BFF_OCCUPATIONAL_HEALTH_ROUTES.examTemplates,
   );
   return response.results;
 }
@@ -1761,9 +1765,11 @@ export async function detachOhExamTemplateSection(uuid: string) {
   );
 }
 
-export async function fetchOhEmployeeFormTemplates() {
+export async function fetchOhEmployeeFormTemplates(includeInactive = false) {
   const response = await bffRequest<ListResponse<OhExamTemplate>>(
-    BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormTemplates,
+    includeInactive
+      ? `${BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormTemplates}?include_inactive=1`
+      : BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormTemplates,
   );
   return response.results;
 }

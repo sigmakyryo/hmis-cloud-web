@@ -14,7 +14,7 @@ export type OhModuleTabId = "employers" | "visit-types" | "dispensing";
 
 export const OH_MODULE_TABS: Array<{ id: OhModuleTabId; label: string }> = [
   { id: "employers", label: "Employers" },
-  { id: "visit-types", label: "Visit types" },
+  { id: "visit-types", label: "Visit services" },
   { id: "dispensing", label: "Dispensing" },
 ];
 

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { PrimaryButton, SecondaryButton } from "@/components/ui/app-buttons";
+import { fetchOhVisitPolicy, updateOhVisitPolicy } from "@/features/occupational-health/services/visit-eligibility.service";
 import { Input } from "@/components/ui/input";
 import { CatalogSearchSelect } from "@/features/occupational-health/components/CatalogSearchSelect";
 import {
@@ -20,6 +21,14 @@ type OhVisitTypesSettingsTabProps = {
 
 export function OhVisitTypesSettingsTab({ isActive }: OhVisitTypesSettingsTabProps) {
   const queryClient = useQueryClient();
+  const policy = useQuery({ queryKey: ["oh-visit-policy"], queryFn: fetchOhVisitPolicy, enabled: isActive });
+  const savePolicy = useMutation({
+    mutationFn: updateOhVisitPolicy,
+    onSuccess: async (data) => {
+      queryClient.setQueryData(["oh-visit-policy"], data);
+      await queryClient.invalidateQueries({ queryKey: ["oh-visit-eligibility"] });
+    },
+  });
   const types = useQuery({
     queryKey: ["oh-visit-types"],
     queryFn: fetchOhVisitTypes,
@@ -56,7 +65,7 @@ export function OhVisitTypesSettingsTab({ isActive }: OhVisitTypesSettingsTabPro
   const attach = useMutation({
     mutationFn: (formUuids: string[]) => {
       if (!selected) {
-        return Promise.reject(new Error("Choose a visit type first."));
+        return Promise.reject(new Error("Choose a visit service first."));
       }
       return attachOhVisitTypeForms(selected.uuid, formUuids);
     },
@@ -74,6 +83,15 @@ export function OhVisitTypesSettingsTab({ isActive }: OhVisitTypesSettingsTabPro
 
   return (
     <div className="grid gap-6 py-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]" data-testid="oh-visit-types-tab">
+      <div className="border-b border-dash-border pb-4 lg:col-span-2">
+        <label className="flex items-center gap-2 text-sm text-brand-navy">
+          <input type="checkbox" checked={policy.data?.block_repeat_pre_employment ?? false}
+            disabled={!policy.data || savePolicy.isPending}
+            onChange={(event) => savePolicy.mutate(event.target.checked)} />
+          Block pre-employment visits when the employee form is already complete
+        </label>
+        {policy.isError || savePolicy.isError ? <p role="alert" className="mt-2 text-sm text-red-700">Could not load or save the visit policy.</p> : null}
+      </div>
       <div>
         <ul className="divide-y divide-dash-border rounded-md border border-dash-border">
           {(types.data ?? []).map((type) => (
@@ -99,9 +117,9 @@ export function OhVisitTypesSettingsTab({ isActive }: OhVisitTypesSettingsTabPro
             addType.mutate({ name, description });
           }}
         >
-          <Input value={name} placeholder="New visit type" onChange={(event) => setName(event.target.value)} required />
+          <Input value={name} placeholder="New visit service" onChange={(event) => setName(event.target.value)} required />
           <Input value={description} placeholder="Description" onChange={(event) => setDescription(event.target.value)} />
-          <PrimaryButton type="submit" disabled={addType.isPending}>Add type</PrimaryButton>
+          <PrimaryButton type="submit" disabled={addType.isPending}>Add service</PrimaryButton>
         </form>
       </div>
       {selected ? (

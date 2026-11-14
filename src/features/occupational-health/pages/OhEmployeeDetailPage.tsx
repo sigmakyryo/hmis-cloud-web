@@ -23,6 +23,7 @@ import {
   OhEmployeeDetailHeader,
   OhEmployeeTabLabel,
 } from "@/features/occupational-health/components/OhEmployeeDetailSections";
+import { fetchOhVisitEligibility } from "@/features/occupational-health/services/visit-eligibility.service";
 import { useEmploymentEpisodes } from "@/features/occupational-health/hooks/use-occupational-health";
 import {
   OH_EMPLOYEE_DETAIL_TABS,
@@ -46,6 +47,11 @@ export function OhEmployeeDetailPage({ customerUuid, children }: OhEmployeeDetai
     queryKey: ["customer", customerUuid],
     queryFn: () => fetchCustomer(customerUuid),
   });
+  const assessment = useQuery({
+    queryKey: ["oh-visit-eligibility", customerUuid],
+    queryFn: () => fetchOhVisitEligibility(customerUuid),
+  });
+  const nextAssessment = assessment.data?.next_assessment_date;
   const episodes = useEmploymentEpisodes(customerUuid);
   const employers = useQuery({ queryKey: ["oh-employers"], queryFn: fetchOhEmployers, staleTime: 5 * 60_000 });
   const jobs = useQuery({ queryKey: ["oh-job-titles"], queryFn: () => fetchOhJobTitles(), staleTime: 5 * 60_000 });
@@ -97,6 +103,13 @@ export function OhEmployeeDetailPage({ customerUuid, children }: OhEmployeeDetai
           profile={profile}
           names={names}
         />
+        {nextAssessment ? (
+          <p className="border-b border-dash-border px-4 py-2 text-sm text-brand-navy">
+            Next assessment due <time dateTime={nextAssessment}>{new Intl.DateTimeFormat("en-GB", {
+              dateStyle: "medium", timeZone: "UTC",
+            }).format(new Date(nextAssessment))}</time>
+          </p>
+        ) : null}
         <DetailPageTabsSection>
           <DetailPageTabsNavSection aria-label="Employee">
             {OH_EMPLOYEE_DETAIL_TABS.map((item) => (

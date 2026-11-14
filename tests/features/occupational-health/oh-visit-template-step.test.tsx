@@ -121,6 +121,13 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("OhVisitTemplateStep certificate answers", () => {
+  it("blocks editing a certificate pinned to an archived template", () => {
+    renderStep({ records: [{ ...RECORD, template_available: false }] });
+    expect(screen.getByRole("heading", { name: "Set up the Certificate of Fitness" })).toBeVisible();
+    expect(screen.getByText(/restore the original form/i)).toBeVisible();
+    expect(ohService.patchOhCofResponses).not.toHaveBeenCalled();
+  });
+
   it("shows a completed answers view with Export PDF for a saved certificate", async () => {
     renderStep();
 

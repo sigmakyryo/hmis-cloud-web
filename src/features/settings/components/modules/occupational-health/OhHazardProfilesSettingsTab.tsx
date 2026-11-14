@@ -62,6 +62,7 @@ const SCHEDULE_UNITS: Array<{
 ];
 
 type TemplateOption = {
+  active?: boolean;
   uuid: string;
   name: string;
   code?: string;
@@ -102,10 +103,8 @@ function OhTemplateSearchableSelect({
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) {
-      return options;
-    }
     return options.filter((option) => {
+      if (option.active === false) return false;
       const haystack = `${option.name} ${option.code ?? ""}`.toLowerCase();
       return haystack.includes(term);
     });
@@ -121,6 +120,9 @@ function OhTemplateSearchableSelect({
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
+      {selected?.active === false ? (
+        <p className="text-sm text-dash-muted">Choose an active form or clear this archived template.</p>
+      ) : null}
       <SearchableSelect
         id={id}
         value={value}
@@ -136,7 +138,7 @@ function OhTemplateSearchableSelect({
           value === NONE_TEMPLATE
             ? noneLabel
             : selected
-              ? formatTemplateLabel(selected)
+              ? `${formatTemplateLabel(selected)}${selected.active === false ? " (archived)" : ""}`
               : "Selected template"
         }
         searchValue={search}
@@ -215,9 +217,9 @@ export function OhHazardProfilesSettingsTab({
         const [profileRows, nextCofTemplates, nextExamTemplates, nextEmployeeFormTemplates] =
           await Promise.all([
             fetchOhHazardProfiles(employer.id),
-            fetchOhCofTemplates(),
-            fetchOhExamTemplates(),
-            fetchOhEmployeeFormTemplates(),
+            fetchOhCofTemplates(true),
+            fetchOhExamTemplates(true),
+            fetchOhEmployeeFormTemplates(true),
           ]);
         if (active) {
           setProfiles(profileRows);

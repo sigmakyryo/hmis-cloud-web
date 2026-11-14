@@ -99,7 +99,8 @@ export function createOhModuleProxy(config: OhModuleConfig) {
         return new Response(await upstream.arrayBuffer(), {
           status: 200,
           headers: {
-            "Content-Type": resolved.binary.type,
+            "Content-Type": upstream.headers.get("Content-Type") ?? resolved.binary.type,
+            "X-Content-Type-Options": "nosniff",
             "Content-Disposition":
               upstream.headers.get("Content-Disposition") ?? `attachment; filename="${resolved.binary.filename}"`,
             "Cache-Control": "no-store",

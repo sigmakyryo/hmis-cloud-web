@@ -18,9 +18,10 @@ import type { OhExamination, OhTemplateCapture, OhVisitEncounter } from "@/featu
 type OhEmployeeSessionRowsProps = {
   customerUuid: string;
   employeeForms: OhTemplateCapture[];
+  onViewEmployeeForm: (response: OhTemplateCapture) => void;
 };
 
-export function OhEmployeeSessionRows({ customerUuid, employeeForms }: OhEmployeeSessionRowsProps) {
+export function OhEmployeeSessionRows({ customerUuid, employeeForms, onViewEmployeeForm }: OhEmployeeSessionRowsProps) {
   const encounters = useQuery({
     queryKey: ["oh-encounters", "employee-forms", customerUuid],
     queryFn: () => fetchOhEncounters({ pageSize: 100 }),
@@ -101,12 +102,20 @@ export function OhEmployeeSessionRows({ customerUuid, employeeForms }: OhEmploye
                   <ul className="space-y-2 py-1" data-testid="oh-employee-session-forms">
                     {steps.map((step) => {
                       const progress = formProgress(step, visit, examinations.data ?? [], certificates.data ?? [], employeeForms);
+                      const response = step.kind === "employee"
+                        ? employeeForms.find((row) => row.encounter === visit.id)
+                        : undefined;
                       return (
                         <li key={step.kind === "attached" ? step.uuid : step.kind} className="flex items-baseline justify-between gap-4 text-sm">
                           <span className="text-brand-navy">{step.title}</span>
                           <span className="text-dash-muted">
                             {progress.label}
                             {progress.when === "—" ? "" : ` · ${progress.when}`}
+                            {response ? (
+                              <button type="button" className="ml-3 font-medium text-brand-primary" onClick={() => onViewEmployeeForm(response)}>
+                                View responses
+                              </button>
+                            ) : null}
                           </span>
                         </li>
                       );

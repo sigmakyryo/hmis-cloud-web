@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Copy, ExternalLink, QrCode } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useMutation } from "@tanstack/react-query";
 
 import { PrimaryButton, SecondaryButton } from "@/components/ui/app-buttons";
@@ -18,7 +20,16 @@ import {
   reopenOhEmployeeFormResponse,
 } from "@/features/occupational-health/services/oh.service";
 import type { OhTemplateCapture, OhVisitEncounter } from "@/features/occupational-health/types";
+import { employeeFormExportUrl } from "@/features/occupational-health/services/oh-ext.service";
 import { ROUTES } from "@/constants/routes";
+
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { appFont } from "@/lib/fonts";
+import { useToast } from "@/providers/toast-provider";
+
+const EmployeeInviteQr = dynamic(() => import("qrcode.react").then((module) => module.QRCodeSVG), {
+  loading: () => <p role="status">Loading QR code…</p>,
+});
 
 type OhSessionEmployeeFormProps = {
   encounter: OhVisitEncounter;
@@ -55,7 +66,8 @@ export function OhSessionEmployeeForm({
   const mode: Mode = editing ? "manual" : "actions";
   const showSummary = submitted && summaryRows.length > 0 && !editing;
   const [publicLink, setPublicLink] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
+  const { toast } = useToast();
   const [message, setMessage] = useState<string | null>(null);
   const formRef = useRef(form);
   const answersRef = useRef(currentAnswers);
@@ -131,23 +143,46 @@ export function OhSessionEmployeeForm({
     },
   });
 
+  async function copyLink(url: string) {
+    try {
+      await navigator.clipboard.writeText(url);
+      toast({ variant: "success", title: "Link copied to clipboard" });
+    } catch {
+      toast({
+        variant: "error",
+        title: "Could not copy link",
+        description: "Select the link to copy it manually.",
+      });
+    }
+  }
+
   const link = useMutation({
-    mutationFn: async () => {
-      if (publicLink) return publicLink;
+    mutationFn: async (_action: "copy" | "qr" | "show") => {
       const record = await ensureRecord();
       const invite = await createOhEmployeeFormInvite(record.uuid);
       return `${window.location.origin}${ROUTES.workforceForm(invite.token)}`;
     },
-    onSuccess: async (next) => {
-      setPublicLink(next);
-      try {
-        await navigator.clipboard.writeText(next);
-        setCopied(true);
-      } catch {
-        setCopied(false);
-      }
+    onSuccess: (url, action) => {
+      setPublicLink(url);
+      setMessage(null);
+      if (action === "qr") setQrOpen(true);
+      if (action === "copy") void copyLink(url);
+    },
+    onError: (error) => {
+      setMessage(error instanceof Error ? error.message : "Could not create the employee form link.");
     },
   });
+
+  function share(action: "copy" | "qr" | "show") {
+    if (!publicLink) {
+      link.mutate(action);
+      return;
+    }
+    if (action === "qr") setQrOpen(true);
+    if (action === "copy") void copyLink(publicLink);
+  }
+
+  const shareDisabled = link.isPending || submitted || encounter.is_active === false || form?.template_available === false;
 
   useEffect(() => {
     if (!continueRef) return;
@@ -173,6 +208,13 @@ export function OhSessionEmployeeForm({
             {submitted ? "Submitted details" : "Collect employee details"}
           </h2>
         </div>
+        {submitted && form ? (
+          <SecondaryButton asChild>
+            <a href={employeeFormExportUrl(form.uuid)} target="_blank" rel="noreferrer">
+              {form.status === "uploaded" ? "Download document" : "Export PDF"}
+            </a>
+          </SecondaryButton>
+        ) : null}
         {showSummary && encounter.is_active !== false ? (
           <SecondaryButton type="button" disabled={reopen.isPending} onClick={() => reopen.mutate()}>
             {reopen.isPending ? "Opening…" : "Edit"}
@@ -208,23 +250,43 @@ export function OhSessionEmployeeForm({
               disabled={manual.isPending || encounter.is_active === false}
               onClick={() => manual.mutate()}
             />
-            <Choice
-              title="Send link"
-              detail="Create a page the employee can open to fill this form."
-              disabled={link.isPending || submitted || encounter.is_active === false}
-              onClick={() => link.mutate()}
-            />
-            <Choice
-              title="Copy link"
-              detail={copied ? "Copied. Share this page with the employee." : "Copy the page for this visit."}
-              disabled={link.isPending || submitted || encounter.is_active === false}
-              onClick={() => link.mutate()}
-            />
-            {publicLink ? (
-              <p className="break-all px-1 text-[13px] text-brand-primary" data-testid="oh-session-employee-link">
-                {publicLink}
-              </p>
-            ) : null}
+            <section className="mt-2 rounded-xl border border-dash-border bg-dash-canvas p-4" aria-label="Share employee form">
+              <h3 className="text-sm font-semibold text-brand-navy">Share employee form</h3>
+              <p className="mt-1 text-[13px] text-dash-muted">Let the employee complete the form on their own device.</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <SecondaryButton type="button" disabled={shareDisabled || Boolean(publicLink)} onClick={() => share("show")}>
+                  <ExternalLink className="size-4" aria-hidden="true" /> Create link
+                </SecondaryButton>
+                <SecondaryButton type="button" disabled={shareDisabled} onClick={() => share("copy")}>
+                  <Copy className="size-4" aria-hidden="true" /> Copy link
+                </SecondaryButton>
+                <SecondaryButton type="button" disabled={shareDisabled} onClick={() => share("qr")}>
+                  <QrCode className="size-4" aria-hidden="true" /> Show QR code
+                </SecondaryButton>
+              </div>
+              {link.isPending ? <p className="mt-3 text-sm text-dash-muted" role="status">Creating link…</p> : null}
+              {publicLink ? (
+                <p className="mt-3 select-all break-all rounded-md border border-dash-border bg-white px-3 py-2 text-[13px] text-brand-primary" data-testid="oh-session-employee-link">
+                  {publicLink}
+                </p>
+              ) : null}
+            </section>
+            <Dialog open={qrOpen && !submitted && encounter.is_active !== false && form?.template_available !== false} onOpenChange={setQrOpen}>
+              <DialogContent className={appFont.className}>
+                <DialogHeader>
+                  <DialogTitle>Employee form QR code</DialogTitle>
+                  <DialogDescription>Ask the employee to scan this code with their phone camera.</DialogDescription>
+                </DialogHeader>
+                {publicLink ? (
+                  <div className="mx-auto rounded-xl border border-dash-border bg-white p-2">
+                    <EmployeeInviteQr value={publicLink} size={224} marginSize={4} role="img" aria-label="Employee form QR code" />
+                  </div>
+                ) : null}
+                <SecondaryButton type="button" onClick={() => share("copy")}>
+                  <Copy className="size-4" aria-hidden="true" /> Copy link
+                </SecondaryButton>
+              </DialogContent>
+            </Dialog>
             {incomplete ? (
               <p className="text-sm text-dash-muted">
                 This form needs updated fields from Occupational Health settings before it can be completed.

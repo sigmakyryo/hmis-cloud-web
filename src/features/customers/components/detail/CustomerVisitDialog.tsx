@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Building2, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 
 import {
   DestructiveButton,
@@ -192,6 +192,12 @@ export function CustomerVisitDialog({
     staleTime: 0,
     retry: false,
   });
+  const selectedVisitServiceUuid = useWatch({ control: form.control, name: "visit_type" });
+  const selectedVisitService = visitTypes.data?.find((type) => type.uuid === selectedVisitServiceUuid);
+  const repeatPreEmploymentBlocked = Boolean(
+    isOhDepartment && selectedVisitService?.code === "pre_employment" &&
+    eligibility.data?.pre_employment_form_completed && eligibility.data.block_repeat_pre_employment,
+  );
   const showRiskProfileNotice = Boolean(
     isOhDepartment &&
     !eligibility.isError &&
@@ -377,7 +383,10 @@ export function CustomerVisitDialog({
           form.getValues("department") !== values.department
         )
           return;
-        if (!check.data?.eligible) {
+        if (!check.data?.eligible || (
+          visitTypes.data?.find((type) => type.uuid === values.visit_type)?.code === "pre_employment" &&
+          check.data.pre_employment_form_completed && check.data.block_repeat_pre_employment
+        )) {
           setStartStep("visit");
           return;
         }
@@ -386,7 +395,7 @@ export function CustomerVisitDialog({
         if (!values.visit_type) {
           form.setError("visit_type", {
             type: "manual",
-            message: "Select a visit type",
+            message: "Select a visit service",
           });
           setStartStep("visit");
           return;
@@ -547,7 +556,7 @@ export function CustomerVisitDialog({
     if (!valid) {
       return;
     }
-    if (showRiskProfileNotice || eligibilityUnavailable) {
+    if (showRiskProfileNotice || eligibilityUnavailable || repeatPreEmploymentBlocked) {
       return;
     }
     setStartStep("payment");
@@ -638,6 +647,15 @@ export function CustomerVisitDialog({
                     ) : null}
                   </div>
                 ) : null}
+                {isOhDepartment && eligibility.data?.pre_employment_form_completed !== undefined ? (
+                  <p className="border-b border-dash-border pb-3 text-sm text-dash-muted" role="status">
+                    {repeatPreEmploymentBlocked
+                      ? "Pre-employment form completed. Workspace policy blocks this visit service."
+                      : eligibility.data.pre_employment_form_completed
+                        ? "Pre-employment form completed."
+                        : "Pre-employment form incomplete."}
+                  </p>
+                ) : null}
                 <StartVisitFormFields
                   form={form}
                   nativeOh={isOhDepartment}
@@ -645,14 +663,14 @@ export function CustomerVisitDialog({
                   onStepChange={(step) => {
                     if (
                       step !== "visit" &&
-                      (showRiskProfileNotice || eligibilityUnavailable)
+                      (showRiskProfileNotice || eligibilityUnavailable || repeatPreEmploymentBlocked)
                     ) {
                       return;
                     }
                     setStartStep(step);
                   }}
                   lockLaterSteps={
-                    showRiskProfileNotice || eligibilityUnavailable
+                    showRiskProfileNotice || eligibilityUnavailable || repeatPreEmploymentBlocked
                   }
                   riskProfileNotice={
                     showRiskProfileNotice ? (
@@ -743,6 +761,7 @@ export function CustomerVisitDialog({
                   disabled={
                     isSubmitting ||
                     eligibilityUnavailable ||
+                    repeatPreEmploymentBlocked ||
                     showRiskProfileNotice ||
                     (modeOfPayment === "insurance" &&
                       insuranceSchemes.length === 0)
@@ -776,6 +795,7 @@ export function CustomerVisitDialog({
                   disabled={
                     isSubmitting ||
                     eligibilityUnavailable ||
+                    repeatPreEmploymentBlocked ||
                     showRiskProfileNotice
                   }
                   onClick={() => void handleContinueToPayment()}
@@ -797,6 +817,7 @@ export function CustomerVisitDialog({
                   disabled={
                     isSubmitting ||
                     eligibilityUnavailable ||
+                    repeatPreEmploymentBlocked ||
                     showRiskProfileNotice ||
                     (modeOfPayment === "insurance" &&
                       insuranceSchemes.length === 0)
@@ -837,6 +858,7 @@ export function CustomerVisitDialog({
                   disabled={
                     isSubmitting ||
                     eligibilityUnavailable ||
+                    repeatPreEmploymentBlocked ||
                     showRiskProfileNotice ||
                     (modeOfPayment === "insurance" &&
                       insuranceSchemes.length === 0)

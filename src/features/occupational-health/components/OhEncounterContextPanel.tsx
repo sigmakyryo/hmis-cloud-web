@@ -7,6 +7,8 @@ import { OhDrugAlcoholVisitPanel } from "@/features/occupational-health/componen
 import { OhFitnessVisitPanel } from "@/features/occupational-health/components/OhFitnessVisitPanel";
 import { OhHealthChecksVisitPanel } from "@/features/occupational-health/components/OhHealthChecksVisitPanel";
 import { OhIodVisitPanel } from "@/features/occupational-health/components/OhIodVisitPanel";
+import { OhFormSetupRequired } from "@/features/occupational-health/components/OhFormSetupRequired";
+import { useVisitRiskProfile } from "@/features/occupational-health/hooks/use-visit-risk-profile";
 import { OhSessionForms } from "@/features/occupational-health/components/OhSessionForms";
 import {
   OhColumnPanel,
@@ -56,6 +58,15 @@ export function OhEncounterContextPanel({
   onOpenPanel,
   navSlot = null,
 }: OhEncounterContextPanelProps) {
+  const { profile, query: profileQuery } = useVisitRiskProfile(
+    episodes,
+    activePanel === "fitness" && encounter.is_active !== false,
+  );
+  const fitnessFormUnavailable = encounter.is_active !== false &&
+    (profile?.exam_template_available === false || profile?.cof_template_available === false ||
+      workspace.examinations.some((exam) => exam.is_active !== false && exam.template_available === false) ||
+      workspace.cofResponses.some((form) => form.is_active !== false && form.template_available === false));
+
   const forms = (
     <OhSessionForms
       activeStep={activeStep}
@@ -107,7 +118,17 @@ export function OhEncounterContextPanel({
   if (activePanel === "fitness") {
     return (
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-        {customer?.uuid ? (
+        {fitnessFormUnavailable ? (
+          <OhFormSetupRequired
+            form="fitness forms"
+            profile={profile}
+            refreshing={profileQuery.isFetching}
+            onRecheck={() => {
+              workspace.refetchAll();
+              if (profileQuery.isEnabled) void profileQuery.refetch();
+            }}
+          />
+        ) : customer?.uuid ? (
           <OhFitnessVisitPanel
             customerUuid={customer.uuid}
             onOpenPanel={onOpenPanel}

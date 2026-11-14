@@ -355,6 +355,17 @@ describe("OhEncounterWorkspacePage", () => {
     expect(ohService.fetchOhEncounters).not.toHaveBeenCalled();
   });
 
+  it("shows form setup in fitness when the risk profile links an archived form", async () => {
+    const { fetchFitWorker } = await import("@/features/occupational-health/services/fitness.service");
+    vi.mocked(fetchFitWorker).mockRejectedValue(new Error("Fitness data unavailable"));
+    ohService.fetchOhHazardProfiles.mockResolvedValue([
+      { id: 44, uuid: "hp-1", employer: 5, employer_uuid: "employer-uuid", exam_template_available: false },
+    ]);
+    renderPage({ panel: "fitness" });
+    expect(await screen.findByRole("heading", { name: "Set up fitness forms" })).toBeVisible();
+    expect(screen.queryByTestId("oh-fitness-visit-panel")).not.toBeInTheDocument();
+  });
+
   it("defaults a visit without ?panel to fitness and writes it into the URL", async () => {
     const { fetchFitWorker } = await import(
       "@/features/occupational-health/services/fitness.service"
@@ -642,15 +653,23 @@ describe("OhEncounterWorkspacePage", () => {
       encounter: 7,
     });
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
-    fireEvent.click(screen.getByRole("button", { name: /Copy link/ }));
-    await waitFor(() =>
-      expect(ohService.createOhEmployeeFormInvite).toHaveBeenCalledWith(
-        "form-1",
-      ),
-    );
-    expect(
-      await screen.findByTestId("oh-session-employee-link"),
-    ).toHaveTextContent("/workforce-forms/session-token");
+    const clipboard = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", Object.assign(Object.create(navigator), { clipboard: { writeText: clipboard } }));
+    try {
+      fireEvent.click(screen.getByRole("button", { name: /Copy link/ }));
+      await waitFor(() => expect(toasts.toast).toHaveBeenCalledWith({
+        variant: "success", title: "Link copied to clipboard",
+      }));
+      expect(clipboard).toHaveBeenCalledWith(expect.stringContaining("/workforce-forms/session-token"));
+      expect(await screen.findByTestId("oh-session-employee-link")).toHaveTextContent("/workforce-forms/session-token");
+      fireEvent.click(screen.getByRole("button", { name: "Show QR code" }));
+      const dialog = await screen.findByRole("dialog", { name: "Employee form QR code" });
+      expect(await within(dialog).findByRole("img", { name: "Employee form QR code" })).toBeInTheDocument();
+      expect(ohService.createOhEmployeeFormInvite).toHaveBeenCalledExactlyOnceWith("form-1");
+      fireEvent.keyDown(dialog, { key: "Escape" });
+    } finally {
+      vi.unstubAllGlobals();
+    }
     expect(ohService.createOhEmployeeFormResponse).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByTestId("oh-session-step-examination"));
     expect(

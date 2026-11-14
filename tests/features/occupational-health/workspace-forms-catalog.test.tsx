@@ -67,6 +67,17 @@ describe("workspace forms catalog", () => {
     expect(await screen.findByText("Warehouse employee form")).toBeTruthy();
   });
 
+  it("requires confirmation in an alert dialog before archiving", async () => {
+    const service = await import("@/features/occupational-health/services/oh.service");
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<QueryClientProvider client={client}><OhFormsPage /></QueryClientProvider>);
+    fireEvent.click(await screen.findByRole("button", { name: "Archive" }));
+    const dialog = screen.getByRole("alertdialog", { name: /Archive Warehouse employee form/ });
+    expect(service.archiveOhEmployeeFormTemplate).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Archive form" }));
+    await waitFor(() => expect(service.archiveOhEmployeeFormTemplate).toHaveBeenCalledWith("employee-template-1"));
+  });
+
   it("creates an employee form from the same dialog", async () => {
     const service = await import("@/features/occupational-health/services/oh.service");
     vi.mocked(service.createClinicalForm).mockResolvedValue({

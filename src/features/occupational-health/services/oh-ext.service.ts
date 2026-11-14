@@ -188,3 +188,7 @@ export const importRoster = (body: { csv: string; dry_run: boolean; create_job_t
   ohExtPost<OhImportResult>("oh/integrations/roster-import", body);
 export const importDeviceResults = (body: { program: "hearing" | "lung"; csv: string; dry_run: boolean }) =>
   ohExtPost<OhImportResult>("oh/integrations/device-import", body);
+
+export function employeeFormExportUrl(uuid: string): string {
+  return `/api/occupational-health/oh-ext/oh-employee-form-responses/${encodeURIComponent(uuid)}/pdf`;
+}

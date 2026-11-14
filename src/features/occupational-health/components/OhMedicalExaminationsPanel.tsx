@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { OhFormSetupRequired } from "@/features/occupational-health/components/OhFormSetupRequired";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { focusFirstExamError, validateExamAnswers, type ExamErrors } from "../lib/exam-template-validation";
@@ -179,6 +180,7 @@ export function OhMedicalExaminationsPanel({
     queryFn: () => fetchOhHazardProfiles(episode?.employer),
     enabled: Boolean(episode?.employer),
     retry: false,
+    refetchOnMount: "always",
   });
 
   const riskProfile: OhHazardProfile | null = useMemo(() => {
@@ -479,7 +481,7 @@ export function OhMedicalExaminationsPanel({
   }
 
   async function persistAnswers(next: ExamTemplateAnswers) {
-    if (encounter.is_active === false || !captureTemplateUuid || !versionUuid || !snapshot || !selectedExamType) {
+    if (examination?.template_available === false || (!examination && riskProfile?.exam_template_available === false) || encounter.is_active === false || !captureTemplateUuid || !versionUuid || !snapshot || !selectedExamType) {
       return false;
     }
     let exam = examinationRef.current;
@@ -602,6 +604,16 @@ export function OhMedicalExaminationsPanel({
       actionLabel={onAction ? actionLabel : canConfigure ? actionLabel : undefined} onAction={onAction}
       needsAdministrator={Boolean(href) && !canConfigure && !onAction} refreshing={refreshing || profilesQuery.isFetching || versionsQuery.isFetching}
       onRecheck={() => void recheckSetup()} error={setupError}
+    />} />;
+  }
+
+  if (encounter.is_active !== false && (examination?.template_available === false || (!examination && riskProfile?.exam_template_available === false))) {
+    return <OhCorporateWorkspace form={<OhFormSetupRequired
+      form="the medical examination"
+      profile={riskProfile}
+      pinned={examination?.template_available === false}
+      refreshing={refreshing || profilesQuery.isFetching}
+      onRecheck={() => void recheckSetup()}
     />} />;
   }
 

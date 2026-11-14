@@ -351,6 +351,16 @@ describe("OhMedicalExaminationsPanel", () => {
     vi.useRealTimers();
   });
 
+  it("blocks an archived examination even when a published snapshot exists", async () => {
+    ohService.fetchOhHazardProfiles.mockResolvedValue([{ ...PROFILE, exam_template_available: false }]);
+    renderPanel();
+    expect(await screen.findByRole("heading", { name: "Set up the medical examination" })).toBeVisible();
+    expect(screen.getByRole("link", { name: /Edit risk profile forms/ })).toHaveAttribute(
+      "href", "/settings/modules/occupational-health?employer=employer-uuid&profile=hp-1",
+    );
+    expect(ohService.createOhExamination).not.toHaveBeenCalled();
+  });
+
   it("offers a contextual profile setup link and decorative illustration when no template is linked", async () => {
     ohService.fetchOhHazardProfiles.mockResolvedValue([{ ...PROFILE, exam_template: null }]);
     renderPanel();

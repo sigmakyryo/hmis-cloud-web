@@ -37,6 +37,7 @@ import {
 } from "@/features/occupational-health/services/oh.service";
 import type { OhTemplateCapture } from "@/features/occupational-health/types";
 import { customerDetailTabHref } from "@/features/customers/utils/customer-detail-tabs";
+import { employeeFormExportUrl } from "@/features/occupational-health/services/oh-ext.service";
 import { ROUTES } from "@/constants/routes";
 import { appFont } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
@@ -77,12 +78,14 @@ export function OhEmployeeFormsTab({
     queryFn: () => loadEmployeeFormSetup(employerId, hazardProfileId),
     enabled: responses.isSuccess && !form && Boolean(employerId),
   });
+  const [viewed, setViewed] = useState<OhTemplateCapture | null>(null);
   const [sheet, setSheet] = useState<SheetMode | null>(null);
   const [answers, setAnswers] = useState<ExamTemplateAnswers | null>(null);
   const [publicLink, setPublicLink] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
-  const snapshot = parseExamTemplateSnapshot(form?.template_snapshot ?? null);
-  const envelope = form?.responses_json?.__employee_form__ as { answers?: ExamTemplateAnswers } | undefined;
+  const displayForm = sheet === "view" ? viewed ?? form : form;
+  const snapshot = parseExamTemplateSnapshot(displayForm?.template_snapshot ?? null);
+  const envelope = displayForm?.responses_json?.__employee_form__ as { answers?: ExamTemplateAnswers } | undefined;
   const currentAnswers = answers ?? envelope?.answers ?? { picks: {}, fields: {} };
   const status: FormStatus = form?.status ?? "not_started";
   const filled = status === "submitted" || status === "uploaded";
@@ -133,6 +136,7 @@ export function OhEmployeeFormsTab({
   });
 
   function openSheet() {
+    setViewed(null);
     setSheet(filled ? "view" : "actions");
   }
 
@@ -180,7 +184,10 @@ export function OhEmployeeFormsTab({
               </button>
             </ListPageDataTableCell>
           </ListPageDataTableRow>
-          <OhEmployeeSessionRows customerUuid={customerUuid} employeeForms={responses.data ?? []} />
+          <OhEmployeeSessionRows customerUuid={customerUuid} employeeForms={responses.data ?? []} onViewEmployeeForm={(response) => {
+            setViewed(response);
+            setSheet("view");
+          }} />
         </ListPageDataTableBody>
       </ListPageDataTable>
 
@@ -239,13 +246,20 @@ export function OhEmployeeFormsTab({
             ) : null}
             {sheet === "manual" || sheet === "view" ? (
               <div className="space-y-4">
-                {form?.document_original_name ? (
-                  <p className="text-[13px] text-brand-navy">Uploaded file: {form.document_original_name}</p>
+                {displayForm?.document_original_name ? (
+                  <p className="text-[13px] text-brand-navy">Uploaded file: {displayForm.document_original_name}</p>
+                ) : null}
+                {sheet === "view" && displayForm && (displayForm.status === "submitted" || displayForm.status === "uploaded") ? (
+                  <SecondaryButton asChild>
+                    <a href={employeeFormExportUrl(displayForm.uuid)} target="_blank" rel="noreferrer">
+                      {displayForm.status === "uploaded" ? "Download document" : "Open PDF to print or save"}
+                    </a>
+                  </SecondaryButton>
                 ) : null}
                 {snapshot ? (
                   <OhExamTemplateCaptureForm
                     snapshot={snapshot}
-                    value={currentAnswers}
+                    value={sheet === "view" ? envelope?.answers ?? { picks: {}, fields: {} } : currentAnswers}
                     disabled={sheet === "view" || save.isPending}
                     onChange={(next) => setAnswers(next)}
                   />

@@ -42,6 +42,7 @@ import {
 } from "@/features/occupational-health/services/oh.service";
 import type { OhCofTemplate, OhExamTemplate } from "@/features/occupational-health/types";
 import { ROUTES } from "@/constants/routes";
+import { AlertDialog } from "radix-ui";
 import { appFont } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
 
@@ -97,6 +98,12 @@ async function invalidateFormCatalog(queryClient: ReturnType<typeof useQueryClie
     queryClient.invalidateQueries({ queryKey: ["oh-exam-templates"] }),
     queryClient.invalidateQueries({ queryKey: ["oh-cof-templates"] }),
     queryClient.invalidateQueries({ queryKey: ["oh-templates"] }),
+    queryClient.invalidateQueries({ queryKey: ["oh-hazard-profiles"] }),
+    queryClient.invalidateQueries({ queryKey: ["oh-examinations"] }),
+    queryClient.invalidateQueries({ queryKey: ["oh-cof-responses"] }),
+    queryClient.invalidateQueries({ queryKey: ["oh-employee-form-responses"] }),
+    queryClient.invalidateQueries({ queryKey: ["oh-exam-template-versions"] }),
+    queryClient.invalidateQueries({ queryKey: ["oh-template-versions"] }),
   ]);
 }
 
@@ -150,19 +157,20 @@ export function OhFormsPage() {
     queryFn: () => fetchClinicalForms({ includeInactive: true }),
   });
   const employee = useQuery({
-    queryKey: ["oh-employee-form-templates"],
-    queryFn: fetchOhEmployeeFormTemplates,
+    queryKey: ["oh-employee-form-templates", { includeInactive: true }],
+    queryFn: () => fetchOhEmployeeFormTemplates(true),
   });
   const exams = useQuery({
-    queryKey: ["oh-exam-templates"],
-    queryFn: fetchOhExamTemplates,
+    queryKey: ["oh-exam-templates", { includeInactive: true }],
+    queryFn: () => fetchOhExamTemplates(true),
   });
   const certificates = useQuery({
-    queryKey: ["oh-cof-templates"],
-    queryFn: fetchOhCofTemplates,
+    queryKey: ["oh-cof-templates", { includeInactive: true }],
+    queryFn: () => fetchOhCofTemplates(true),
   });
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  const [archiving, setArchiving] = useState<FormRow | null>(null);
   const [renaming, setRenaming] = useState<FormRow | null>(null);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | FormKind>("all");
@@ -220,6 +228,7 @@ export function OhFormsPage() {
     mutationFn: (row: FormRow) => archiveRow(row),
     onSuccess: async () => {
       setActionError(null);
+      setArchiving(null);
       toast({ variant: "success", title: "Archived." });
       await invalidateFormCatalog(queryClient);
     },
@@ -337,11 +346,7 @@ export function OhFormsPage() {
                           </RowAction>
                         ) : (
                           <RowAction
-                            onClick={() => {
-                              if (window.confirm(`Archive “${row.name}”?`)) {
-                                archive.mutate(row);
-                              }
-                            }}
+                            onClick={() => setArchiving(row)}
                             disabled={archive.isPending}
                           >
                             Archive
@@ -356,6 +361,26 @@ export function OhFormsPage() {
           </div>
         ) : null}
       </div>
+      <AlertDialog.Root open={archiving !== null} onOpenChange={(next) => {
+        if (!next && !archive.isPending) setArchiving(null);
+      }}>
+        <AlertDialog.Portal>
+          <AlertDialog.Overlay className="dialog-overlay fixed inset-0 z-50 bg-brand-navy/40" />
+          <AlertDialog.Content className={cn("dialog-content fixed left-1/2 top-1/2 z-50 w-[95vw] max-w-md rounded-xl border border-dash-border bg-white p-6 shadow-xl", appFont.className)}>
+            <AlertDialog.Title className="text-base font-semibold text-brand-navy">Archive {archiving?.name}?</AlertDialog.Title>
+            <AlertDialog.Description className="mt-2 text-sm text-dash-muted">
+              This form will be unavailable for visits until it is restored. Saved responses will be kept.
+            </AlertDialog.Description>
+            {archive.isError ? <p className="mt-3 text-sm text-red-700" role="alert">Could not archive the form. Try again.</p> : null}
+            <div className="mt-6 flex justify-end gap-2">
+              <AlertDialog.Cancel disabled={archive.isPending} className="rounded-lg border border-dash-border px-3 py-2 text-sm">Cancel</AlertDialog.Cancel>
+              <button type="button" disabled={archive.isPending} className="rounded-lg bg-red-700 px-3 py-2 text-sm font-medium text-white disabled:opacity-50" onClick={() => { if (archiving) archive.mutate(archiving); }}>
+                {archive.isPending ? "Archiving…" : "Archive form"}
+              </button>
+            </div>
+          </AlertDialog.Content>
+        </AlertDialog.Portal>
+      </AlertDialog.Root>
       {open ? <CreateFormDialog onClose={() => setOpen(false)} /> : null}
       {renaming ? (
         <RenameFormDialog

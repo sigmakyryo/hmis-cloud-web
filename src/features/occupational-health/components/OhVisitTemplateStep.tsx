@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { OhFormSetupRequired } from "@/features/occupational-health/components/OhFormSetupRequired";
+import { useVisitRiskProfile } from "@/features/occupational-health/hooks/use-visit-risk-profile";
 import { useQuery } from "@tanstack/react-query";
 
 import { PrimaryButton, SecondaryButton } from "@/components/ui/app-buttons";
@@ -35,7 +37,7 @@ import {
   recoverOhCofResponseVersion,
   recoverOhEmployeeFormResponseVersion,
 } from "@/features/occupational-health/services/oh.service";
-import type { OhExamination, OhTemplateCapture, OhVisitEncounter } from "@/features/occupational-health/types";
+import type { EmploymentEpisode, OhExamination, OhTemplateCapture, OhVisitEncounter } from "@/features/occupational-health/types";
 import { fetchOhImmFitnessGate } from "@/features/occupational-health/services/immunisation.service";
 import { OhCertificateReadiness } from "@/features/occupational-health/components/OhCertificateReadiness";
 import { applyCofDraft, findCofDraftTargets } from "@/features/occupational-health/lib/cof-draft-targets";
@@ -64,9 +66,12 @@ type OhVisitTemplateStepProps = {
   onSaved: () => void;
   onOpenPanel?: (panel: OhEncounterPanelId) => void;
   examinations?: OhExamination[] | null;
+  episodes?: EmploymentEpisode[];
   /** When set, the title, progress and Save render in this element (the step nav row) instead of a header bar. */
   headerSlot?: HTMLElement | null;
 };
+
+const NO_EPISODES: EmploymentEpisode[] = [];
 
 export function OhVisitTemplateStep({
   family,
@@ -80,6 +85,7 @@ export function OhVisitTemplateStep({
   onSaved,
   onOpenPanel,
   examinations = null,
+  episodes = NO_EPISODES,
   headerSlot = null,
 }: OhVisitTemplateStepProps) {
   const { toast } = useToast();
@@ -92,6 +98,12 @@ export function OhVisitTemplateStep({
   });
   const canConfigure = Boolean(userData?.is_admin);
   const record = records[0] ?? null;
+  const { profile, query: profileQuery } = useVisitRiskProfile(episodes, encounter.is_active !== false);
+  const linkedFormUnavailable = family === "cof" && profile !== null &&
+    (profile.cof_template === null || profile.cof_template_available === false);
+  const formUnavailable = encounter.is_active !== false &&
+    (record?.template_available === false || (!record && linkedFormUnavailable));
+
   const [current, setCurrent] = useState<OhTemplateCapture | null>(record);
   const [answers, setAnswers] = useState<ExamTemplateAnswers>(emptyExamTemplateAnswers());
   const [saving, setSaving] = useState(false);
@@ -173,7 +185,7 @@ export function OhVisitTemplateStep({
     let cancelled = false;
     async function open() {
       await Promise.resolve();
-      if (cancelled || locked || encounter.is_active === false) return;
+      if (cancelled || locked || formUnavailable || (!recordKey && profileQuery.isFetching) || encounter.is_active === false) return;
       const existing = records[0] ?? null;
       if (existing) {
         setCurrent((previous) =>
@@ -212,11 +224,11 @@ export function OhVisitTemplateStep({
     return () => {
       cancelled = true;
     };
-  }, [encounter.id, encounter.is_active, family, locked, recordKey, recordVersion, records, responseKey]);
+  }, [encounter.id, encounter.is_active, family, formUnavailable, locked, profileQuery.isFetching, recordKey, recordVersion, records, responseKey]);
 
   async function persist(next: ExamTemplateAnswers, requireComplete: boolean) {
     const active = currentRef.current;
-    if (!active || !snapshot || encounter.is_active === false || Boolean(displayBlocked)) return false;
+    if (formUnavailable || !active || !snapshot || encounter.is_active === false || Boolean(displayBlocked)) return false;
     if (requireComplete) {
       const nextErrors = validateExamAnswers(snapshot, next);
       if (Object.keys(nextErrors).length) {
@@ -346,6 +358,20 @@ export function OhVisitTemplateStep({
       examAnswersAreComplete(snapshot, cofEnvelope.answers),
   );
   const answersView = family === "cof" && !editingAnswers && (completedThisSession || openedExistingComplete);
+
+  if (formUnavailable || (!current && message?.includes("active, published form"))) {
+    return <OhFormSetupRequired
+      form={family === "cof" ? "the Certificate of Fitness" : "the employee form"}
+      profile={profile}
+      pinned={record?.template_available === false}
+      refreshing={profileQuery.isFetching}
+      onRecheck={() => {
+        setMessage(null);
+        onSaved();
+        if (profileQuery.isEnabled) void profileQuery.refetch();
+      }}
+    />;
+  }
 
   if (locked) {
     return (

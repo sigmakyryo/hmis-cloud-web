@@ -127,14 +127,17 @@ export type OhHazardProfile = {
   hazards?: number[];
   /** Attached COF template UUID (tenant-scoped). */
   cof_template?: string | null;
+  cof_template_available?: boolean | null;
   cof_template_name?: string | null;
   cof_template_code?: string | null;
   /** Attached exam template UUID (tenant-scoped). */
   exam_template?: string | null;
+  exam_template_available?: boolean | null;
   exam_template_name?: string | null;
   exam_template_code?: string | null;
   /** Attached employee-form template UUID (tenant-scoped). */
   employee_form_template?: string | null;
+  employee_form_template_available?: boolean | null;
   employee_form_template_name?: string | null;
   employee_form_template_code?: string | null;
   is_active?: boolean;
@@ -533,6 +536,7 @@ export type OhTemplateCapture = {
   responses_json?: Record<string, unknown>;
   row_version?: number;
   template_version_uuid?: string | null;
+  template_available?: boolean | null;
   template_uuid?: string | null;
   template_version_number?: number | null;
   template_snapshot?: Record<string, unknown> | null;
@@ -545,6 +549,7 @@ export type OhTemplateCapture = {
 
 export type OhExamination = {
   billing_charges?: OhVisitBillingCharge[];
+  template_available?: boolean | null;
   template_uuid?: string | null;
   template_version_number?: number | null;
   template_version_uuid?: string | null;
