@@ -317,6 +317,7 @@ export type OhResponseField = OhResponseConfig & {
 
 /** Reusable template library section (COF or exam). */
 export type OhLibrarySection = {
+  applies_to_sex?: "male" | "female" | null;
   id: number;
   uuid: string;
   kind: OhLibrarySectionKind;

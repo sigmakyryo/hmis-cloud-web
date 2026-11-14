@@ -493,10 +493,10 @@ export async function openOhEmployeeForm(customerUuid: string) {
   });
 }
 
-export async function createOhEmployeeFormInvite(uuid: string) {
+export async function createOhEmployeeFormInvite(uuid: string, sendEmail = false) {
   return bffRequest<{ token: string; expires_at: string }>(
     BFF_OCCUPATIONAL_HEALTH_ROUTES.employeeFormInvites(uuid),
-    { method: "POST", body: {} },
+    { method: "POST", body: sendEmail ? { send_email: true } : {} },
   );
 }
 

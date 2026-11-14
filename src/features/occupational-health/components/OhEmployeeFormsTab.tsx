@@ -39,6 +39,7 @@ import type { OhTemplateCapture } from "@/features/occupational-health/types";
 import { customerDetailTabHref } from "@/features/customers/utils/customer-detail-tabs";
 import { employeeFormExportUrl } from "@/features/occupational-health/services/oh-ext.service";
 import { ROUTES } from "@/constants/routes";
+import { useToast } from "@/providers/toast-provider";
 import { appFont } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
 
@@ -68,6 +69,7 @@ export function OhEmployeeFormsTab({
   hazardProfileId = null,
 }: OhEmployeeFormsTabProps) {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const responses = useQuery({
     queryKey: ["oh-employee-form-responses", customerUuid],
     queryFn: fetchOhEmployeeFormResponses,
@@ -118,13 +120,18 @@ export function OhEmployeeFormsTab({
     },
   });
   const copyLink = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (email = false) => {
       const record = form ?? await openOhEmployeeForm(customerUuid);
-      const invite = await createOhEmployeeFormInvite(record.uuid);
+      const invite = email ? await createOhEmployeeFormInvite(record.uuid, true) : await createOhEmployeeFormInvite(record.uuid);
       return `${window.location.origin}${ROUTES.workforceForm(invite.token)}`;
     },
-    onSuccess: async (link) => {
+    onSuccess: async (link, email) => {
       setPublicLink(link);
+      if (email) {
+        toast({ variant: "success", title: "Form sent to the employee’s email" });
+        await refresh();
+        return;
+      }
       try {
         await navigator.clipboard.writeText(link);
         setLinkCopied(true);
@@ -217,14 +224,15 @@ export function OhEmployeeFormsTab({
                     title="Copy public link"
                     detail={linkCopied ? "Copied. The employee opens this page to fill the form." : "Copy the page the employee uses to fill this form."}
                     disabled={copyLink.isPending}
-                    onClick={() => copyLink.mutate()}
+                    onClick={() => copyLink.mutate(false)}
                   />
+                  <SecondaryButton type="button" disabled={copyLink.isPending} onClick={() => copyLink.mutate(true)}>Send email</SecondaryButton>
                   {publicLink ? (
                     <p className="break-all px-1 text-[13px] text-brand-primary" data-testid="oh-employee-form-link">{publicLink}</p>
                   ) : null}
                   <UploadChoice pending={upload.isPending} onFile={(file) => upload.mutate(file)} />
                   {open.isError || upload.isError ? <p className="text-sm text-red-700">The employee form could not be opened.</p> : null}
-                  {copyLink.isError ? <p className="text-sm text-red-700">The public link could not be created.</p> : null}
+                  {copyLink.isError ? <p className="text-sm text-red-700">{copyLink.error.message}</p> : null}
                 </div>
               ) : (
                 <EmployeeFormSetupState

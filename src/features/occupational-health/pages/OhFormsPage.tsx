@@ -42,7 +42,9 @@ import {
 } from "@/features/occupational-health/services/oh.service";
 import type { OhCofTemplate, OhExamTemplate } from "@/features/occupational-health/types";
 import { ROUTES } from "@/constants/routes";
+import { Fragment } from "react";
 import { AlertDialog } from "radix-ui";
+import { bffRequest } from "@/lib/bff-client";
 import { appFont } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
 
@@ -57,6 +59,7 @@ type FormRow = {
   status: FormStatus;
   publishedVersion: number | null;
   groupName: string | null;
+  groupUuid?: string | null;
   detail: string;
   templateKind: "employee" | "exam" | "certificate" | null;
   templateUuid: string | null;
@@ -71,7 +74,8 @@ const TYPE_FILTERS: Array<{ value: "all" | FormKind; label: string }> = [
   { value: "custom", label: "Custom" },
 ];
 
-const STATUS_FILTERS: Array<{ value: "all" | FormStatus; label: string }> = [
+const STATUS_FILTERS: Array<{ value: "all" | "live" | FormStatus; label: string }> = [
+  { value: "live", label: "Live" },
   { value: "all", label: "All statuses" },
   { value: "draft", label: "Draft" },
   { value: "published", label: "Published" },
@@ -174,7 +178,7 @@ export function OhFormsPage() {
   const [renaming, setRenaming] = useState<FormRow | null>(null);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | FormKind>("all");
-  const [statusFilter, setStatusFilter] = useState<"all" | FormStatus>("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "live" | FormStatus>("live");
   const [actionError, setActionError] = useState<string | null>(null);
 
   const rows = useMemo(
@@ -187,7 +191,8 @@ export function OhFormsPage() {
     const q = search.trim().toLowerCase();
     return rows.filter((row) => {
       if (typeFilter !== "all" && row.kind !== typeFilter) return false;
-      if (statusFilter !== "all" && row.status !== statusFilter) return false;
+      if (statusFilter === "live" && row.status === "archived") return false;
+      if (statusFilter !== "all" && statusFilter !== "live" && row.status !== statusFilter) return false;
       if (!q) return true;
       return (
         row.name.toLowerCase().includes(q) ||
@@ -224,6 +229,30 @@ export function OhFormsPage() {
     },
     onError: () => setActionError("Could not publish the form."),
   });
+  const groups = useQuery({ queryKey: ["form-groups"], queryFn: fetchFormGroups });
+  const [dragged, setDragged] = useState<FormRow | null>(null);
+  const move = useMutation({
+    mutationFn: ({ row, group }: { row: FormRow; group: string | null }) => {
+      if (row.clinicalUuid) return updateClinicalForm(row.clinicalUuid, { form_group_uuid: group });
+      return bffRequest(
+        `/api/occupational-health/clinical-forms/templates/${row.templateKind}/${encodeURIComponent(row.templateUuid ?? "")}/group`,
+        { method: "PATCH", body: { form_group_uuid: group } },
+      );
+    },
+    onSuccess: async () => {
+      setActionError(null);
+      toast({ variant: "success", title: "Form group updated" });
+      await invalidateFormCatalog(queryClient);
+    },
+    onError: () => setActionError("Could not move the form to that group."),
+  });
+  const addGroup = useMutation({
+    mutationFn: createFormGroup,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["form-groups"] }),
+    onError: () => setActionError("Could not create the group."),
+  });
+  const [groupName, setGroupName] = useState("");
+
   const archive = useMutation({
     mutationFn: (row: FormRow) => archiveRow(row),
     onSuccess: async () => {
@@ -294,6 +323,31 @@ export function OhFormsPage() {
             No forms match those filters.
           </p>
         ) : null}
+        <div className="flex flex-wrap items-center gap-3 border-y border-dash-border py-3">
+          <form className="flex items-center gap-2" onSubmit={(event) => {
+            event.preventDefault();
+            if (!groupName.trim()) return;
+            addGroup.mutate(groupName.trim(), { onSuccess: () => setGroupName("") });
+          }}>
+            <Input value={groupName} onChange={(event) => setGroupName(event.target.value)} aria-label="Group name" placeholder="Group name" maxLength={120} />
+            <SecondaryButton type="submit" disabled={addGroup.isPending || !groupName.trim()}>Add group</SecondaryButton>
+          </form>
+          {dragged ? (
+            <div className="flex flex-wrap items-center gap-2" aria-label="Drop form into a group">
+              {[{ uuid: "", name: "Ungrouped" }, ...(groups.data ?? [])].map((group) => (
+                <span key={group.uuid} className="rounded-md border border-dashed border-brand-primary px-3 py-2 text-sm"
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    if (!move.isPending) move.mutate({ row: dragged, group: group.uuid || null });
+                    setDragged(null);
+                  }}>
+                  {group.name}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
         {filtered.length > 0 ? (
           <div className="overflow-x-auto" data-testid="oh-forms-list">
             <table className="w-full min-w-[40rem] border-collapse text-left">
@@ -306,10 +360,35 @@ export function OhFormsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((row) => (
+                {filtered.toSorted((left, right) => (left.groupName ?? "").localeCompare(right.groupName ?? "")).map((row, index, sorted) => (
+                  <Fragment key={row.key}>
+                    {index === 0 || sorted[index - 1].groupName !== row.groupName ? (
+                      <tr className="border-y border-dash-border bg-dash-canvas">
+                        <th colSpan={4} scope="row" className="px-2 py-2 text-xs font-semibold text-brand-navy">
+                          {row.groupName ?? "Ungrouped"}
+                        </th>
+                      </tr>
+                    ) : null}
                   <tr key={row.key} className="border-b border-dash-border last:border-0" data-testid="oh-form-row">
                     <td className="px-2 py-2 align-top">
-                      <p className="text-[13px] font-medium text-brand-navy">{row.name}</p>
+                      <p className="text-[13px] font-medium text-brand-navy">
+                        {row.clinicalUuid || row.templateUuid ? (
+                          <span draggable onDragStart={(event) => {
+                            event.dataTransfer.setData("text/plain", row.name);
+                            event.dataTransfer.effectAllowed = "move";
+                            setDragged(row);
+                          }} onDragEnd={() => setDragged(null)} className="mr-2 cursor-grab text-dash-muted" title="Drag to a group" aria-hidden="true">⠿</span>
+                        ) : null}
+                        {row.name}
+                      </p>
+                      {row.clinicalUuid || row.templateUuid ? (
+                        <select aria-label={`Group for ${row.name}`} value={row.groupUuid ?? ""} disabled={move.isPending}
+                          onChange={(event) => move.mutate({ row, group: event.target.value || null })}
+                          className="mt-1 max-w-44 rounded border border-dash-border bg-white px-1 py-0.5 text-xs text-dash-muted">
+                          <option value="">Ungrouped</option>
+                          {(groups.data ?? []).map((group) => <option key={group.uuid} value={group.uuid}>{group.name}</option>)}
+                        </select>
+                      ) : null}
                       {row.detail ? <p className="text-[12px] text-dash-muted">{row.detail}</p> : null}
                     </td>
                     <td className="px-2 py-2 align-top">
@@ -355,6 +434,7 @@ export function OhFormsPage() {
                       </div>
                     </td>
                   </tr>
+                  </Fragment>
                 ))}
               </tbody>
             </table>
@@ -532,6 +612,7 @@ function clinicalRow(form: ClinicalFormRecord): FormRow {
     status: formStatus(form.active, form.published_version_number),
     publishedVersion: form.published_version_number ?? null,
     groupName: form.group?.name ?? null,
+    groupUuid: form.group?.uuid ?? null,
     detail: formDetail(form),
     templateKind: form.template_kind,
     templateUuid: form.template_uuid,

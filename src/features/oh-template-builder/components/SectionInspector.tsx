@@ -62,6 +62,7 @@ export function SectionInspector({ attachment, section }: SectionInspectorProps)
     values: {
       name: section.name,
       isMandatory: section.isMandatory,
+      appliesToSex: section.appliesToSex ?? null,
       selectionMode: section.selectionMode,
       contentMode: section.contentMode,
       defaultResponseFields: normalizeResponseFields(section.defaultResponseFields),
@@ -160,6 +161,23 @@ export function SectionInspector({ attachment, section }: SectionInspectorProps)
               label: "Settings",
               content: (
                 <div className="space-y-5">
+                  <FormField
+                    control={form.control}
+                    name="appliesToSex"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Section visibility</FormLabel>
+                        <FormControl>
+                          <select className="w-full rounded-md border border-dash-border bg-white px-3 py-2 text-sm"
+                            value={field.value ?? ""} onChange={(event) => field.onChange(event.target.value || null)}>
+                            <option value="">Everyone</option>
+                            <option value="male">Male only</option>
+                            <option value="female">Female only</option>
+                          </select>
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
                   <FormField
                     control={form.control}
                     name="contentMode"
