@@ -157,15 +157,9 @@ export function OhFormGroupsBoard({ items, groups, onChanged }: Props) {
 
   return (
     <section className="space-y-4" data-testid="oh-form-groups-board" aria-label="Organise form groups">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="text-sm font-semibold text-brand-navy">Organise groups</h2>
-          <p className="text-[12px] text-dash-muted">
-            Drag a form by its handle to reorder it or move it to another group. Arrow buttons and “Move to” do the same from the keyboard.
-          </p>
-        </div>
+      <div className="flex justify-end border-b border-dash-border pb-3">
         <form
-          className="flex items-center gap-2"
+          className="flex max-w-full items-center gap-2"
           onSubmit={(event) => {
             event.preventDefault();
             const name = newGroup.trim();
@@ -178,7 +172,7 @@ export function OhFormGroupsBoard({ items, groups, onChanged }: Props) {
             placeholder="New group name"
             aria-label="New group name"
             maxLength={120}
-            className="h-8 w-52 text-[13px]"
+            className="h-8 w-52 min-w-0 text-[13px]"
           />
           <PrimaryButton type="submit" disabled={create.isPending || !newGroup.trim()} data-testid="oh-form-group-create">
             <FolderPlus className="size-4" aria-hidden="true" />
@@ -201,7 +195,7 @@ export function OhFormGroupsBoard({ items, groups, onChanged }: Props) {
         onDragCancel={() => setActiveKey(null)}
         onDragEnd={onDragEnd}
       >
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="space-y-6">
           {board.map((group) => (
             <GroupPanel
               key={group.uuid ?? UNGROUPED_ID}
@@ -224,7 +218,7 @@ export function OhFormGroupsBoard({ items, groups, onChanged }: Props) {
           ))}
         </div>
         <DragOverlay dropAnimation={null}>
-          {active ? <FormCardBody item={active} className="rotate-1 shadow-lg ring-2 ring-brand-primary/40" /> : null}
+          {active ? <FormCardBody item={active} className="bg-white shadow-lg ring-2 ring-brand-primary/40" /> : null}
         </DragOverlay>
       </DndContext>
       <AlertDialog.Root open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>
@@ -296,12 +290,11 @@ function GroupPanel({
       data-testid="oh-form-group-panel"
       data-group={group.uuid ?? UNGROUPED_ID}
       className={cn(
-        "flex flex-col rounded-xl border bg-white transition-colors",
-        isUngrouped ? "border-dashed border-dash-border bg-dash-canvas/60" : "border-dash-border",
-        isOver && "border-brand-primary bg-brand-primary/5",
+        "flex flex-col border-b border-dash-border transition-colors",
+        isOver && "ring-1 ring-brand-primary",
       )}
     >
-      <header className="flex items-center gap-2 border-b border-dash-border px-3 py-2">
+      <header className="flex items-center gap-2 border-b border-dash-border px-2 py-2.5">
         {editing ? (
           <form
             className="flex flex-1 items-center gap-1"
@@ -338,7 +331,7 @@ function GroupPanel({
             <h3 className="flex-1 truncate text-[13px] font-semibold text-brand-navy" data-testid="oh-form-group-name">
               {group.name}
             </h3>
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-dash-muted">
+            <span className="text-xs tabular-nums text-dash-muted">
               {group.keys.length}
             </span>
             {!isUngrouped ? (
@@ -360,7 +353,7 @@ function GroupPanel({
           </>
         )}
       </header>
-      <ul className="flex min-h-16 flex-1 flex-col gap-1.5 p-2" aria-label={`Forms in ${group.name}`}>
+      <ul className="min-h-12 divide-y divide-dash-border" aria-label={`Forms in ${group.name}`}>
         {group.keys.map((key, index) => {
           const item = byKey.get(key);
           if (!item) return null;
@@ -379,8 +372,8 @@ function GroupPanel({
           );
         })}
         {group.keys.length === 0 ? (
-          <li className={cn("rounded-lg border border-dashed border-dash-border px-3 py-4 text-center text-[12px] text-dash-muted", dragging && "border-brand-primary text-brand-primary")}>
-            {dragging ? "Drop here" : isUngrouped ? "Every form is in a group." : "No forms yet. Drag one here."}
+          <li className={cn("px-3 py-4 text-[12px] text-dash-muted", dragging && "border-brand-primary text-brand-primary")}>
+            {dragging ? "Drop here" : isUngrouped ? "Every form is in a group." : "No forms in this group."}
           </li>
         ) : null}
       </ul>
@@ -471,7 +464,7 @@ function FormCardBody({
   className?: string;
 }) {
   return (
-    <div className={cn("flex items-center gap-2 rounded-lg border border-dash-border bg-white px-2 py-1.5", className)}>
+    <div className={cn("flex flex-wrap items-center gap-x-2 gap-y-1 px-2 py-2.5", className)}>
       {handle ?? <GripVertical className="size-4 text-dash-muted" aria-hidden="true" />}
       <div className="min-w-0 flex-1">
         <p className="truncate text-[13px] font-medium text-brand-navy">{item.name}</p>

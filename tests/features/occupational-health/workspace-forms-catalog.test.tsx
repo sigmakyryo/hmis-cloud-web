@@ -75,6 +75,15 @@ describe("workspace forms catalog", () => {
     expect(await screen.findByText("Warehouse employee form")).toBeTruthy();
   });
 
+  it("opens the filter popover with type and publication controls", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<QueryClientProvider client={client}><OhFormsPage /></QueryClientProvider>);
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    expect(await screen.findByRole("combobox", { name: "Form type" })).toBeVisible();
+    expect(screen.getByRole("combobox", { name: "Publication status" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Apply filters" })).toBeEnabled();
+  });
+
   it("requires confirmation in an alert dialog before archiving", async () => {
     const service = await import("@/features/occupational-health/services/oh.service");
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });

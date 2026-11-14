@@ -113,9 +113,11 @@ describe("employee form visit flow", () => {
 
   it("shows the employee form status and fill actions", async () => {
     render(
+      <ToastProvider>
       <QueryClientProvider client={new QueryClient()}>
         <OhEmployeeFormsTab customerUuid="customer-1" />
-      </QueryClientProvider>,
+      </QueryClientProvider>
+      </ToastProvider>,
     );
     expect(await screen.findByTestId("oh-employee-form-status")).toHaveTextContent("Not started");
     expect(screen.getByRole("row", { name: /Employee form/ })).toBeTruthy();
@@ -136,9 +138,11 @@ describe("employee form visit flow", () => {
 
   it("expands a visit to the forms recorded in that session", async () => {
     render(
+      <ToastProvider>
       <QueryClientProvider client={new QueryClient()}>
         <OhEmployeeFormsTab customerUuid="customer-1" />
-      </QueryClientProvider>,
+      </QueryClientProvider>
+      </ToastProvider>,
     );
     expect(await screen.findByText("Periodic")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Show forms" }));

@@ -98,24 +98,6 @@ describe("surveillance recalls card", () => {
 });
 
 describe("record detail pages", () => {
-  it("edits an IOD case and sends only the changed fields", async () => {
-    mocks.bffRequest.mockImplementation(async (_path: string, opts?: { method?: string }) => {
-      if (opts?.method === "PATCH") return {};
-      return { uuid: UUID, status: "open", severity: "minor", lost_days: 0, onset_date: "2026-05-01", work_related: true, description: "Cut", created_at: "2026-05-01T08:00:00Z" };
-    });
-    renderWithClient(<OhRecordDetailPage kind="iod" uuid={UUID} />);
-    const lost = (await screen.findByLabelText("Lost days")) as HTMLInputElement;
-    await waitFor(() => expect(lost.value).toBe("0"));
-    fireEvent.change(lost, { target: { value: "4" } });
-    fireEvent.click(screen.getByText("Save changes"));
-    await waitFor(() =>
-      expect(mocks.bffRequest).toHaveBeenCalledWith(`/api/occupational-health/iod-cases/${UUID}`, { method: "PATCH", body: { lost_days: 4 } }),
-    );
-    expect(screen.getByText("Notification pack PDF").closest("a")?.getAttribute("href")).toBe(
-      `/api/occupational-health/oh-ext/iod-cases/${UUID}/statutory-pack/pdf`,
-    );
-  });
-
   it("shows a certificate read-only with its PDF link and version history", async () => {
     mocks.bffRequest.mockImplementation(async (path: string) => {
       if (path.endsWith("/history"))

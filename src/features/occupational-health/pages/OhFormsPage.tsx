@@ -11,7 +11,9 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RequiredFieldMarker } from "@/components/ui/required-field-marker";
-import { ListPageLayout } from "@/features/app-shell/components/page-layout";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ListPageActiveFilters, ListPageFilterButton, ListPageFilterChip, ListPageSearchField, ListPageLayout } from "@/features/app-shell/components/page-layout";
 import { useToast } from "@/providers/toast-provider";
 import { CatalogSearchSelect } from "@/features/occupational-health/components/CatalogSearchSelect";
 import { OhFormGroupsBoard } from "@/features/occupational-health/components/OhFormGroupsBoard";
@@ -304,28 +306,15 @@ export function OhFormsPage() {
     <ListPageLayout data-testid="oh-forms-page">
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search forms"
-            className="h-8 max-w-xs text-[13px]"
-            aria-label="Search forms"
-          />
-          <FilterChips
-            options={TYPE_FILTERS}
-            value={typeFilter}
-            onChange={setTypeFilter}
-            ariaLabel="Filter by type"
-          />
-          <ViewTabs view={view} liveCount={liveCount} archivedCount={archivedCount} onChange={setView} />
-          {view === "live" ? (
-            <FilterChips
-              options={STATUS_FILTERS}
-              value={statusFilter}
-              onChange={setStatusFilter}
-              ariaLabel="Filter by status"
-            />
+          {!organising ? (
+            <div className="flex min-w-0 flex-1 items-center gap-2 sm:max-w-sm">
+              <ListPageSearchField id="oh-form-search" value={search} placeholder="Search forms" onChange={setSearch}
+                onSubmit={() => setFilters({ search })} />
+              <FormsFilters type={typeFilter} status={view === "live" ? statusFilter : "all"} showStatus={view === "live"}
+                onApply={(type, status) => setFilters({ type, status })} />
+            </div>
           ) : null}
+          <ViewTabs view={view} liveCount={liveCount} archivedCount={archivedCount} onChange={setView} />
           <div className="ml-auto flex items-center gap-2">
             {view === "live" ? (
               <div className="inline-flex rounded-lg border border-dash-border p-0.5" role="group" aria-label="Forms layout">
@@ -353,6 +342,12 @@ export function OhFormsPage() {
             </PrimaryButton>
           </div>
         </div>
+        {!organising && (typeFilter !== "all" || (view === "live" && statusFilter !== "all")) ? (
+          <ListPageActiveFilters onClearAll={() => setFilters({ type: "all", status: "all" })}>
+            {typeFilter !== "all" ? <ListPageFilterChip label={TYPE_FILTERS.find((item) => item.value === typeFilter)?.label ?? typeFilter} onRemove={() => setTypeFilter("all")} /> : null}
+            {view === "live" && statusFilter !== "all" ? <ListPageFilterChip label={STATUS_FILTERS.find((item) => item.value === statusFilter)?.label ?? statusFilter} onRemove={() => setStatusFilter("all")} /> : null}
+          </ListPageActiveFilters>
+        ) : null}
         {actionError ? <p className="text-[13px] text-red-700">{actionError}</p> : null}
         {isError ? <p className="text-[13px] text-red-700">Could not load forms.</p> : null}
         {isLoading ? <p className="text-[13px] text-dash-muted">Loading forms…</p> : null}
@@ -396,7 +391,7 @@ export function OhFormsPage() {
                 {filtered.toSorted(compareByGroupOrder).map((row, index, sorted) => (
                   <Fragment key={row.key}>
                     {index === 0 || sorted[index - 1].groupName !== row.groupName ? (
-                      <tr className="border-y border-dash-border bg-dash-canvas">
+                      <tr className="border-y border-dash-border">
                         <th colSpan={4} scope="row" className="px-2 py-2 text-xs font-semibold text-brand-navy">
                           {row.groupName ?? "Ungrouped"}
                         </th>
@@ -511,7 +506,7 @@ function ViewTabs({
     { value: "archived", label: "Archived", count: archivedCount },
   ];
   return (
-    <div className="inline-flex rounded-lg bg-slate-100 p-0.5" role="tablist" aria-label="Live or archived forms" data-testid="oh-forms-view-tabs">
+    <div className="inline-flex border-b border-dash-border" role="tablist" aria-label="Live or archived forms" data-testid="oh-forms-view-tabs">
       {tabs.map((tab) => (
         <button
           key={tab.value}
@@ -520,8 +515,8 @@ function ViewTabs({
           aria-selected={view === tab.value}
           onClick={() => onChange(tab.value)}
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-[12px] font-medium transition-colors",
-            view === tab.value ? "bg-white text-brand-navy shadow-sm ring-1 ring-dash-border" : "text-dash-muted hover:text-brand-navy",
+            "inline-flex items-center gap-1.5 border-b-2 px-3 py-1.5 text-[13px] font-medium transition-colors",
+            view === tab.value ? "border-brand-primary text-brand-primary" : "border-transparent text-dash-muted hover:text-brand-navy",
           )}
         >
           {tab.label}
@@ -554,34 +549,67 @@ function Badge({
   );
 }
 
-function FilterChips<T extends string>({
-  options,
-  value,
-  onChange,
-  ariaLabel,
-}: {
-  options: Array<{ value: T; label: string }>;
+function FormsFilters({ type, status, showStatus, onApply }: {
+  type: "all" | FormKind;
+  status: OhFormsStatus;
+  showStatus: boolean;
+  onApply: (type: "all" | FormKind, status: OhFormsStatus) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState({ type, status });
+  const activeCount = Number(type !== "all") + Number(status !== "all");
+
+  function changeOpen(next: boolean) {
+    if (next) setDraft({ type, status });
+    setOpen(next);
+  }
+
+  function apply(nextType: "all" | FormKind, nextStatus: OhFormsStatus) {
+    onApply(nextType, nextStatus);
+    setOpen(false);
+  }
+
+  return (
+    <Popover open={open} onOpenChange={changeOpen}>
+      <PopoverTrigger asChild>
+        <span><ListPageFilterButton activeCount={activeCount} onClick={() => changeOpen(true)} /></span>
+      </PopoverTrigger>
+      <PopoverContent align="end" sideOffset={6} className={cn("w-80 max-w-[calc(100vw-2rem)] rounded-xl border-dash-border p-0 shadow-xl", appFont.className)}>
+        <h2 className="border-b border-dash-border px-4 py-2.5 text-sm font-semibold">Filters</h2>
+        <div className="space-y-3 px-4 py-3">
+          <FormFilterSelect id="oh-filter-type" label="Form type" value={draft.type} options={TYPE_FILTERS}
+            onChange={(value) => setDraft({ ...draft, type: value })} />
+          {showStatus ? <FormFilterSelect id="oh-filter-status" label="Publication status" value={draft.status} options={STATUS_FILTERS}
+            onChange={(value) => setDraft({ ...draft, status: value })} /> : null}
+        </div>
+        <div className="flex justify-between border-t border-dash-border px-4 py-3">
+          <SecondaryButton type="button" onClick={() => apply("all", "all")}>Reset</SecondaryButton>
+          <PrimaryButton type="button" onClick={() => apply(draft.type, draft.status)}>Apply filters</PrimaryButton>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function FormFilterSelect<T extends string>({ id, label, value, options, onChange }: {
+  id: string;
+  label: string;
   value: T;
+  options: Array<{ value: T; label: string }>;
   onChange: (value: T) => void;
-  ariaLabel: string;
 }) {
   return (
-    <div className="flex flex-wrap gap-1" role="group" aria-label={ariaLabel}>
-      {options.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          onClick={() => onChange(option.value)}
-          className={cn(
-            "rounded-full px-2.5 py-0.5 text-[12px] font-medium",
-            value === option.value
-              ? "bg-primary text-primary-foreground"
-              : "bg-slate-100 text-dash-muted hover:text-brand-navy",
-          )}
-        >
-          {option.label}
-        </button>
-      ))}
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <Select value={value} onValueChange={(next) => {
+        const option = options.find((item) => item.value === next);
+        if (option) onChange(option.value);
+      }}>
+        <SelectTrigger id={id} className="w-full"><SelectValue /></SelectTrigger>
+        <SelectContent className={appFont.className}>
+          {options.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+        </SelectContent>
+      </Select>
     </div>
   );
 }
