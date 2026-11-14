@@ -395,6 +395,7 @@ export const BFF_OCCUPATIONAL_HEALTH_ROUTES = {
   ohAnnualReports: "/api/occupational-health/annual-reports",
   ohHealthPrograms: "/api/occupational-health/health-programs",
   ohExposure: "/api/occupational-health/exposure",
+  ohHome: "/api/occupational-health/home",
   ohExt: "/api/occupational-health/oh-ext",
   ohWellbeing: "/api/occupational-health/wellbeing",
   ohEmployerPortalAdmin: "/api/occupational-health/employer-portal-admin",

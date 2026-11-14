@@ -1,21 +1,38 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { cleanup, fireEvent, render as rtlRender, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ROUTES } from "@/constants/routes";
 import { OhModuleBar } from "@/features/occupational-health/components/OhModuleBar";
-import { recordOhRecentPage } from "@/features/occupational-health/lib/oh-recent-pages";
 import { OhHomePage } from "@/features/occupational-health/pages/OhHomePage";
 
 const nav = vi.hoisted(() => ({
   replace: vi.fn(),
+  push: vi.fn(),
   pathname: "/occupational-health/home",
   search: "",
 }));
 
-const queue = vi.hoisted(() => ({
+const data = vi.hoisted(() => ({
   encounters: [] as Array<Record<string, unknown>>,
-  compliance: null as { overdue: number; due: number } | null,
+  compliance: null as { overdue: number; due: number; completed: number } | null,
+  exposure: vi.fn(),
+  immCompliance: vi.fn(),
+  immDue: vi.fn(),
+  immFollowups: vi.fn(),
+  daDue: vi.fn(),
+  daMro: vi.fn(),
+  daRtd: vi.fn(),
+  daRandom: vi.fn(),
+  fitBoard: vi.fn(),
+  hpDue: vi.fn(),
+  home: vi.fn(),
 }));
+
+function render(node: React.ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return rtlRender(<QueryClientProvider client={client}>{node}</QueryClientProvider>);
+}
 
 const user = vi.hoisted(() => ({
   value: {
@@ -25,7 +42,7 @@ const user = vi.hoisted(() => ({
 }));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn(), replace: nav.replace, prefetch: vi.fn() }),
+  useRouter: () => ({ push: nav.push, replace: nav.replace, prefetch: vi.fn() }),
   usePathname: () => nav.pathname,
   useSearchParams: () => new URLSearchParams(nav.search),
 }));
@@ -44,29 +61,119 @@ vi.mock("@/providers/user-provider", () => ({
 
 vi.mock("@/features/occupational-health/hooks/use-occupational-health", () => ({
   useOhEncounters: () => ({
-    data: queue.encounters,
+    data: data.encounters,
     isLoading: false,
     isSuccess: true,
     isError: false,
     refetch: vi.fn(),
   }),
-  useOhComplianceDashboard: () => ({ data: queue.compliance }),
+  useOhComplianceDashboard: () => ({ data: data.compliance }),
 }));
 
+vi.mock("@/features/exposure-management/services/exposure.service", () => ({
+  exposureKeys: { dashboard: ["exposure", "dashboard"] },
+  fetchExposureDashboard: () => data.exposure(),
+}));
+
+vi.mock("@/features/occupational-health/services/immunisation.service", () => ({
+  fetchOhImmCompliance: () => data.immCompliance(),
+  fetchOhImmDue: () => data.immDue(),
+  fetchOhImmExposureDueFollowups: () => data.immFollowups(),
+}));
+
+vi.mock("@/features/occupational-health/services/drug-alcohol.service", () => ({
+  fetchDaDue: () => data.daDue(),
+  fetchDaMroQueue: () => data.daMro(),
+  fetchDaRtdCases: () => data.daRtd(),
+  fetchDaCompliance: () => data.daRandom(),
+}));
+
+vi.mock("@/features/occupational-health/services/fitness.service", () => ({
+  fetchFitBoard: () => data.fitBoard(),
+}));
+
+vi.mock("@/features/occupational-health/services/health-programs.service", () => ({
+  HP_PROGRAMS: ["hearing", "lung", "vision", "ergonomics", "fatigue"],
+  fetchHpDue: () => data.hpDue(),
+}));
+
+vi.mock("@/features/occupational-health/services/oh-home.service", () => ({
+  ohHomeKeys: { summary: (module: string) => ["oh-home", "summary", module] },
+  fetchOhHomeSummary: (module: string) => data.home(module),
+}));
+
+const HOME: Record<string, unknown> = {
+  clinic: {
+    visits_by_day: Array.from({ length: 14 }, (_, i) => ({ date: `2026-11-${String(i + 1).padStart(2, "0")}`, visits: i, cancelled: 0 })),
+    iod: { open: 1, opened_30d: 2, closed_30d: 1, lost_days_open: 4, recent: [{ uuid: "iod-1", severity: "serious", body_part: "Left hand", mechanism: "Caught in roller", onset_date: "2026-11-12", status: "open" }] },
+    certificates: { expiring_30d: 17, expired_30d: 3 },
+  },
+  immunizations: {
+    stock: { lots: 4, expiring_60d: 1, low_stock: 1, quarantined: 1, recalled: 0, expiring: [{ uuid: "lot-1", vaccine: "Hepatitis B", lot_number: "HB-2291", expiry_date: "2026-11-26", quantity_on_hand: 8 }] },
+    doses_by_week: [{ week_start: "2026-11-09", doses: 11 }],
+    coverage_by_vaccine: [{ code: "HEPB", name: "Hepatitis B", people: 10, up_to_date: 6, percent: 60 }],
+  },
+  "drug-alcohol": {
+    month: { tests: 4, verified: 2, positive: 1, refusals: 0, cancelled: 0, positivity_rate: 50 },
+    by_reason: [{ reason: "random", tests: 3, positive: 0 }],
+    recent: [{ uuid: "t1", customer_initials: "Y.C.", employer_name: "Press Cane", reason: "reasonable_suspicion", status: "verified", final_result: "positive", created_at: "2026-11-13T10:00:00Z" }],
+  },
+  fitness: {
+    expiring: { count: 1, rows: [{ customer_uuid: "w9", worker_label: "Esther Nkhoma", employer_name: "Illovo", earliest_expiry: "2026-11-20" }] },
+    by_employer: [{ employer: "Illovo", workers: 10, fit: 8, restricted: 1, not_fit: 1, unknown: 0 }],
+    training_expiring: { count: 2, by_course: [{ course: "Working at heights", count: 2 }] },
+  },
+  "health-programs": {
+    by_month: [{ month: "2026-11", total: 5, hearing: 5, lung: 0, vision: 0, ergonomics: 0, fatigue: 0 }],
+    outcomes_12m: { fit: 8, restricted: 1, unfit: 1, pending: 0 },
+    referrals: { count_60d: 1, rows: [{ uuid: "r1", customer_uuid: "c1", program: "lung", performed_at: "2026-11-10T10:00:00Z", outcome: "unfit" }] },
+  },
+  "exposure-management": {
+    recent_results: [{ uuid: "m1", agent: "Noise", group: "Mill operators", sampled_at: "2026-11-14T10:00:00Z", evaluation: "exceeds", worst_ratio: 1.26, below_lod: false, result_value: 89, result_unit: "dB(A)" }],
+    controls: { open: 3, overdue: 2, by_hierarchy: [{ hierarchy: "engineering", open: 2 }, { hierarchy: "ppe", open: 1 }] },
+  },
+};
+
 afterEach(cleanup);
+
+const exposureDashboard = {
+  kpis: { open_events: 2, open_critical: 1 },
+  agents: [{ uuid: "a1", code: "SILICA", name: "Respirable silica", category: "dust" }],
+  groups: [
+    { uuid: "g1", code: "F", name: "Foundry", members: 12, cells: [{ agent_id: 1, band: 4, confidence: "ok", sample_count: 9, p95: 0.2, oel_value: 0.05, oel_unit: "mg/m3", status: "draft", open_events: 1 }] },
+  ],
+  events: [
+    { uuid: "e1", severity: "critical", status: "open", agent_name: "Respirable silica", group_name: "Foundry", summary: "", overdue: true },
+    { uuid: "e2", severity: "action_level", status: "closed", agent_name: "Noise", group_name: "Press shop", summary: "", overdue: false },
+  ],
+};
 
 describe("OhHomePage", () => {
   beforeEach(() => {
     window.localStorage.clear();
-    queue.encounters = [];
-    queue.compliance = null;
+    data.encounters = [];
+    data.compliance = null;
+    for (const key of ["home", "exposure", "immCompliance", "immDue", "immFollowups", "daDue", "daMro", "daRtd", "daRandom", "fitBoard", "hpDue"] as const) {
+      data[key].mockReset();
+    }
+    data.exposure.mockResolvedValue(exposureDashboard);
+    data.home.mockReset();
+    data.home.mockImplementation(async (module: string) => HOME[module]);
     nav.replace.mockReset();
+    nav.push.mockReset();
     nav.pathname = "/occupational-health/home";
     nav.search = "";
     user.value = {
       userData: { groups: ["OccupationalHealth"], enabled_modules: ["OccupationalHealth"], is_admin: false },
       isLoading: false,
     };
+  });
+
+  it("has no header search or stats strip", () => {
+    render(<OhHomePage />);
+
+    expect(screen.queryByTestId("oh-home-search")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("oh-home-figures")).not.toBeInTheDocument();
   });
 
   it("opens on the clinic module with its pages and a start link", () => {
@@ -76,16 +183,13 @@ describe("OhHomePage", () => {
     expect(within(detail).getByRole("heading", { name: "OHS clinic" })).toBeInTheDocument();
     expect(within(detail).getByRole("link", { name: "Open queue" })).toHaveAttribute("href", ROUTES.occupationalHealth);
     expect(within(detail).getByText("No visits in the queue.")).toBeInTheDocument();
-    expect(within(detail).getByRole("link", { name: /^Employees/ })).toHaveAttribute(
-      "href",
-      ROUTES.occupationalHealthEmployees,
-    );
+    expect(within(detail).getByRole("link", { name: /^Employees/ })).toHaveAttribute("href", ROUTES.occupationalHealthEmployees);
     expect(screen.getByTestId("oh-home-module-clinic")).toHaveAttribute("aria-pressed", "true");
-    expect(screen.queryByRole("heading", { level: 1, name: "Occupational Health" })).toHaveClass("sr-only");
+    expect(screen.getByRole("heading", { level: 1, name: "Occupational Health" })).toBeInTheDocument();
   });
 
-  it("lists the visits waiting in the clinic queue", () => {
-    queue.encounters = [
+  it("lists the visits waiting in the clinic queue, with where compliance stands", () => {
+    data.encounters = [
       {
         uuid: "enc-1",
         visit: "visit-1",
@@ -98,44 +202,237 @@ describe("OhHomePage", () => {
         created_at: new Date().toISOString(),
       },
     ];
-    queue.compliance = { overdue: 4, due: 2 };
+    data.compliance = { overdue: 4, due: 2, completed: 10 };
 
     render(<OhHomePage />);
 
     const row = screen.getByTestId("oh-home-queue-row");
     expect(row).toHaveAttribute("href", ROUTES.occupationalHealthEncounter("visit-1", "enc-1"));
     expect(row).toHaveTextContent("Owen Onions");
-    expect(row).toHaveTextContent("Illovo");
-    expect(screen.getByRole("link", { name: /^OHS Compliance/ })).toHaveTextContent("4 overdue, 2 due");
+    expect(screen.getByRole("img", { name: "Compliance: 4 overdue, 2 due, 10 up to date" })).toBeInTheDocument();
+    const todos = screen.getAllByTestId("oh-home-todo");
+    expect(todos[0]).toHaveTextContent("4Checks overdue");
+    expect(todos[0]).toHaveAttribute("href", ROUTES.occupationalHealthCompliance);
   });
 
-  it("lists recently opened OH pages", () => {
-    recordOhRecentPage(ROUTES.drugAlcoholMro);
-    recordOhRecentPage("/not-an-oh-page");
+  it("immunizations leads with coverage, lowest first, and what needs a dose", async () => {
+    nav.search = "module=immunizations";
+    data.immCompliance.mockResolvedValue({
+      group_by: "employer",
+      summary: { people: 15, compliant: 10, percent_compliant: 66.7, overdue_rows: 5 },
+      groups: [
+        { group: "Illovo", people: 10, compliant: 8, overdue: 2, percent_compliant: 80 },
+        { group: "Mill", people: 5, compliant: 2, overdue: 3, percent_compliant: 40 },
+      ],
+      overdue: [],
+    });
+    data.immDue.mockResolvedValue([{}, {}, {}]);
+    data.immFollowups.mockResolvedValue([{}]);
 
     render(<OhHomePage />);
 
-    const recent = screen.getByTestId("oh-home-recent");
-    expect(within(recent).getAllByRole("link")).toHaveLength(1);
-    expect(within(recent).getByRole("link", { name: /MRO review/ })).toHaveAttribute("href", ROUTES.drugAlcoholMro);
+    const view = await screen.findByTestId("oh-home-view-immunizations");
+    await waitFor(() => expect(view).toHaveTextContent("10 of 15 workers are up to date (67%)"));
+    const employerMeters = within(view)
+      .getAllByRole("meter")
+      .map((meter) => meter.getAttribute("aria-label"))
+      .filter((name) => name?.startsWith("Mill") || name?.startsWith("Illovo"));
+    expect(employerMeters).toEqual(["Mill: 40%", "Illovo: 80%"]);
+    const todos = within(view).getAllByTestId("oh-home-todo");
+    expect(todos[0]).toHaveTextContent("5Doses overdue");
+    expect(todos[1]).toHaveTextContent("3Doses due this week");
+    expect(todos[2]).toHaveAttribute("href", ROUTES.exposureManagementIncidents);
+    expect(within(screen.getByTestId("oh-home-module-detail")).getByRole("link", { name: /^Due/ })).toHaveAttribute("href", ROUTES.immunizationsDue);
   });
 
-  it("focuses search when / is pressed", () => {
+  it("shows an error line, not zeros, when a module's data cannot be loaded", async () => {
+    nav.search = "module=immunizations";
+    data.immCompliance.mockRejectedValue(new Error("down"));
+    data.immDue.mockResolvedValue([]);
+    data.immFollowups.mockResolvedValue([]);
+
     render(<OhHomePage />);
 
-    fireEvent.keyDown(window, { key: "/" });
-
-    expect(screen.getByTestId("oh-home-search")).toHaveFocus();
+    const view = await screen.findByTestId("oh-home-view-immunizations");
+    expect(await within(view).findByRole("alert")).toHaveTextContent("Could not load this.");
   });
 
-  it("shows the module named in the URL", () => {
+  it("drug and alcohol shows the flow from due, to the MRO, to return to duty", async () => {
     nav.search = "module=drug-alcohol";
+    data.daDue.mockResolvedValue({ rows: [], counts: { total: 7, overdue: 2 } });
+    data.daMro.mockResolvedValue([{}, {}]);
+    data.daRtd.mockResolvedValue([{ rtd_passed_at: null }, { rtd_passed_at: "2026-01-01" }]);
+    data.daRandom.mockResolvedValue([
+      { pool_uuid: "p1", pool_name: "Mine crews", drug_tests_done: 3, drug_tests_required: 10, drug_on_track: false },
+    ]);
 
     render(<OhHomePage />);
 
-    const detail = screen.getByTestId("oh-home-module-detail");
-    expect(within(detail).getByRole("heading", { name: "Drug & Alcohol" })).toBeInTheDocument();
-    expect(within(detail).getByRole("link", { name: /MRO review/ })).toHaveAttribute("href", ROUTES.drugAlcoholMro);
+    const stages = await screen.findAllByTestId("oh-home-da-stage");
+    expect(stages.map((stage) => stage.getAttribute("href"))).toEqual([ROUTES.drugAlcoholDue, ROUTES.drugAlcoholMro, ROUTES.drugAlcoholRtd]);
+    expect(stages[0]).toHaveTextContent("7");
+    expect(stages[0]).toHaveTextContent("2 overdue");
+    expect(stages[1]).toHaveTextContent("2");
+    expect(stages[2]).toHaveTextContent("1");
+    expect(await screen.findByText(/3 of 10 drug tests · behind/)).toBeInTheDocument();
+  });
+
+  it("fitness shows the split and puts the workers who are not fit first", async () => {
+    nav.search = "module=fitness";
+    data.fitBoard.mockResolvedValue({
+      counts: { fit: 6, fit_with_restrictions: 2, not_fit: 1, unknown: 1, due_soon: 3 },
+      employers: [],
+      sites: [],
+      results: [
+        { customer_uuid: "w1", worker_label: "Worker A", overall: "fit_with_restrictions", reason: "No heights", employer_name: "Illovo" },
+        { customer_uuid: "w2", worker_label: "Worker B", overall: "not_fit", reason: "Medical expired", employer_name: "Mill" },
+        { customer_uuid: "w3", worker_label: "Worker C", overall: "fit", reason: null, employer_name: "Mill" },
+      ],
+    });
+
+    render(<OhHomePage />);
+
+    const view = await screen.findByTestId("oh-home-view-fitness");
+    await waitFor(() => expect(view).toHaveTextContent("6 of 10 workers are fit for work, and 3 have a clearance expiring soon."));
+    const workers = within(view).getAllByTestId("oh-home-fit-worker");
+    expect(workers.map((worker) => worker.textContent)).toEqual([
+      expect.stringContaining("Worker B"),
+      expect.stringContaining("Worker A"),
+    ]);
+    expect(workers[0]).toHaveAttribute("href", ROUTES.occupationalHealthEmployee("w2"));
+  });
+
+  it("health programs shows one lane per programme with how many are due", async () => {
+    nav.search = "module=health-programs";
+    data.hpDue.mockResolvedValue({ rows: [], counts: { total: 9, overdue: 3, never: 2, due: 4, hearing: 5, lung: 4 } });
+
+    render(<OhHomePage />);
+
+    const lanes = await screen.findAllByTestId("oh-home-hp-lane");
+    expect(lanes).toHaveLength(5);
+    expect(lanes[0]).toHaveAttribute("href", ROUTES.healthProgramsHearing);
+    expect(lanes[0]).toHaveTextContent("5");
+    expect(lanes[2]).toHaveTextContent("0");
+    expect(screen.getByTestId("oh-home-view-health-programs")).toHaveTextContent("3 overdue, 2 never tested, and 4 due soon.");
+  });
+
+  it("exposure shows the heatmap and only the open events", async () => {
+    nav.search = "module=exposure-management";
+
+    render(<OhHomePage />);
+
+    const view = await screen.findByTestId("oh-home-view-exposure-management");
+    expect(await within(view).findByText("Over limit")).toBeInTheDocument();
+    const events = within(view).getAllByTestId("oh-home-exposure-event");
+    expect(events).toHaveLength(1);
+    expect(events[0]).toHaveAttribute("href", `${ROUTES.exposureManagementEvents}?event=e1`);
+    expect(events[0]).toHaveTextContent("Overdue");
+  });
+
+  it("lists every page of the module under its view", () => {
+    nav.search = "module=drug-alcohol";
+    data.daDue.mockResolvedValue({ rows: [], counts: {} });
+    data.daMro.mockResolvedValue([]);
+    data.daRtd.mockResolvedValue([]);
+    data.daRandom.mockResolvedValue([]);
+
+    render(<OhHomePage />);
+
+    expect(screen.getByRole("link", { name: /MRO review/ })).toHaveAttribute("href", ROUTES.drugAlcoholMro);
+  });
+
+  it("clinic adds injury cases, certificates and a fortnight of visits from the OH service", async () => {
+    data.compliance = { overdue: 4, due: 2, completed: 10 };
+
+    render(<OhHomePage />);
+
+    const injury = await screen.findByTestId("oh-home-iod-case");
+    expect(injury).toHaveAttribute("href", ROUTES.occupationalHealthRecord("iod", "iod-1"));
+    expect(injury).toHaveTextContent("Left hand · Caught in roller");
+    expect(screen.getByText(/days lost on open cases/)).toBeInTheDocument();
+    const todos = screen.getAllByTestId("oh-home-todo").map((todo) => todo.textContent);
+    expect(todos).toEqual(expect.arrayContaining([expect.stringContaining("17Certificates expiring"), expect.stringContaining("3Certificates lapsed")]));
+    expect(screen.getByRole("img", { name: "Visits per day over the last 14 days, 91 in all." })).toBeInTheDocument();
+    expect(data.home).toHaveBeenCalledWith("clinic");
+  });
+
+  it("immunizations adds stock, coverage by vaccine and doses per week", async () => {
+    nav.search = "module=immunizations";
+    data.immCompliance.mockResolvedValue({ group_by: "employer", summary: { people: 0, compliant: 0, percent_compliant: 0, overdue_rows: 0 }, groups: [], overdue: [] });
+    data.immDue.mockResolvedValue([]);
+    data.immFollowups.mockResolvedValue([]);
+
+    render(<OhHomePage />);
+
+    expect(await screen.findByTestId("oh-home-expiring-lot")).toHaveTextContent("Hepatitis BHB-22918 left26 Nov");
+    expect(screen.getByRole("meter", { name: "Hepatitis B: 60%" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Doses given per week over the last 8 weeks, 11 in all." })).toBeInTheDocument();
+  });
+
+  it("drug and alcohol adds the month, reasons and latest tests by initials only", async () => {
+    nav.search = "module=drug-alcohol";
+    data.daDue.mockResolvedValue({ rows: [], counts: {} });
+    data.daMro.mockResolvedValue([]);
+    data.daRtd.mockResolvedValue([]);
+    data.daRandom.mockResolvedValue([]);
+
+    render(<OhHomePage />);
+
+    const test = await screen.findByTestId("oh-home-da-test");
+    expect(test).toHaveTextContent("Y.C.");
+    expect(test).toHaveTextContent("Reasonable suspicion");
+    expect(test).toHaveTextContent("Positive");
+    expect(screen.getByText("50% of verified results were positive.")).toBeInTheDocument();
+    expect(screen.getByRole("meter", { name: "Random: 3" })).toBeInTheDocument();
+  });
+
+  it("fitness adds clearances expiring, the split by employer and training", async () => {
+    nav.search = "module=fitness";
+    data.fitBoard.mockResolvedValue({ counts: { fit: 1, fit_with_restrictions: 0, not_fit: 0, unknown: 0, due_soon: 0 }, employers: [], sites: [], results: [] });
+
+    render(<OhHomePage />);
+
+    expect(await screen.findByTestId("oh-home-fit-expiring")).toHaveAttribute("href", ROUTES.occupationalHealthEmployee("w9"));
+    expect(screen.getByTestId("oh-home-fit-employer")).toHaveTextContent("80% fit · 10");
+    expect(screen.getAllByTestId("oh-home-todo").at(-1)).toHaveTextContent("2Working at heights");
+  });
+
+  it("health programs adds tests per month, outcomes and referrals", async () => {
+    nav.search = "module=health-programs";
+    data.hpDue.mockResolvedValue({ rows: [], counts: {} });
+
+    render(<OhHomePage />);
+
+    const referral = await screen.findByTestId("oh-home-hp-referral");
+    expect(referral).toHaveAttribute("href", ROUTES.healthProgramsLung);
+    expect(referral).toHaveTextContent("Not fit");
+    expect(screen.getByRole("img", { name: "Outcomes: 8 fit, 1 restricted, 1 not fit, 0 no outcome yet" })).toBeInTheDocument();
+  });
+
+  it("exposure adds latest results against the limit, controls, sampling and incidents", async () => {
+    nav.search = "module=exposure-management";
+    data.exposure.mockResolvedValue({
+      ...exposureDashboard,
+      kpis: { ...exposureDashboard.kpis, plans_overdue: 2, plans_due_soon: 0, calibrations_overdue: 0, calibrations_due_soon: 0, reviews_due: 0 },
+      biological: { open_incidents: 2, urgent: 1, last_90_days: 5, followups_due: 2 },
+    });
+
+    render(<OhHomePage />);
+
+    expect(await screen.findByTestId("oh-home-exposure-result")).toHaveTextContent("126%");
+    expect(screen.getByText("2 overdue.")).toBeInTheDocument();
+    const todos = screen.getAllByTestId("oh-home-todo").map((todo) => todo.textContent);
+    expect(todos).toEqual(expect.arrayContaining([expect.stringContaining("2Sampling plans overdue"), expect.stringContaining("1Need urgent care")]));
+  });
+
+  it("keeps the rest of a module when its OH service summary fails", async () => {
+    data.home.mockRejectedValue(new Error("down"));
+    data.encounters = [{ uuid: "enc-1", visit: "visit-1", customer_name: "Owen Onions", status: "waiting", started_at: new Date().toISOString() }];
+
+    render(<OhHomePage />);
+
+    expect((await screen.findAllByRole("alert")).length).toBeGreaterThan(0);
+    expect(screen.getByTestId("oh-home-queue-row")).toHaveTextContent("Owen Onions");
   });
 
   it("writes the chosen module to the URL", () => {
@@ -146,31 +443,12 @@ describe("OhHomePage", () => {
     expect(nav.replace).toHaveBeenCalledWith("/occupational-health/home?module=fitness", { scroll: false });
   });
 
-  it("searches pages across modules", () => {
-    render(<OhHomePage />);
-
-    fireEvent.change(screen.getByTestId("oh-home-search"), { target: { value: "spirometry" } });
-
-    const links = screen.getAllByTestId("oh-home-page-link");
-    expect(links).toHaveLength(1);
-    expect(links[0]).toHaveAttribute("href", ROUTES.healthProgramsLung);
-    expect(links[0]).toHaveTextContent("Health programs");
-  });
-
-  it("says when no page matches", () => {
-    render(<OhHomePage />);
-
-    fireEvent.change(screen.getByTestId("oh-home-search"), { target: { value: "zzz" } });
-
-    expect(screen.getByTestId("oh-home-no-results")).toBeInTheDocument();
-  });
-
-  it("denies access without OH modules", () => {
+  it("denies access without OH modules", async () => {
     user.value = { userData: { groups: ["Registration"], enabled_modules: ["Registration"] }, isLoading: false };
 
     render(<OhHomePage />);
 
-    expect(screen.getByTestId("oh-access-denied")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId("oh-access-denied")).toBeInTheDocument());
   });
 });
 

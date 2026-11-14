@@ -1,166 +1,157 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { UserIdenticon } from "@/components/UserIdenticon";
-import { Button } from "@/components/ui/button";
-import {
-  ListPageDataTable,
-  ListPageDataTableBody,
-  ListPageDataTableCell,
-  ListPageDataTableHeader,
-  ListPageDataTableHeaderCell,
-  ListPageDataTableHeaderRow,
-  ListPageDataTableRow,
-} from "@/features/app-shell/components/page-layout";
-import { OpdEncounterStatusBadge } from "@/features/clinical-opd/components/OpdEncounterStatusBadge";
-import type { OhVisitEncounter } from "@/features/occupational-health/types";
 import { formatWaitingMinutes } from "@/features/clinical-opd/utils/opd-queue-stage";
-import {
-  isIodVisit,
-  ohQueueEntryHref,
-} from "@/features/occupational-health/lib/oh-queue-route";
+import { isIodVisit, ohQueueEntryHref } from "@/features/occupational-health/lib/oh-queue-route";
+import type { OhVisitEncounter } from "@/features/occupational-health/types";
+import { cn } from "@/lib/utils";
 
-type OhQueueTableProps = {
-  encounters: OhVisitEncounter[];
-  className?: string;
+const ACTIVE_STATUSES = new Set(["waiting", "in_progress"]);
+
+const STATUS: Record<string, { label: string; dot: string }> = {
+  waiting: { label: "Waiting", dot: "bg-amber-500" },
+  in_progress: { label: "In progress", dot: "bg-brand-primary" },
+  completed: { label: "Completed", dot: "bg-brand-slate/50" },
+  cancelled: { label: "Cancelled", dot: "bg-red-600" },
+  no_show: { label: "Did not attend", dot: "bg-dash-border" },
 };
 
-function waitingMinutesFor(encounter: OhVisitEncounter): number | null {
+/** Waiting time colour: calm under an hour, amber up to two, red beyond. */
+export function waitTone(minutes: number | null): { text: string; dot: string } {
+  if (minutes === null || minutes < 60) {
+    return { text: "text-brand-navy", dot: "bg-brand-primary" };
+  }
+  if (minutes < 120) {
+    return { text: "text-amber-700", dot: "bg-amber-500" };
+  }
+  return { text: "text-red-700", dot: "bg-red-600" };
+}
+
+export function queueWaitingMinutes(encounter: OhVisitEncounter): number | null {
   const started = encounter.started_at || encounter.created_at;
   if (!started) {
     return null;
   }
   const ms = Date.now() - new Date(started).getTime();
-  if (Number.isNaN(ms) || ms < 0) {
-    return null;
-  }
-  return Math.floor(ms / 60_000);
+  return Number.isNaN(ms) || ms < 0 ? null : Math.floor(ms / 60_000);
 }
 
-const columns = [
-  { key: "client", label: "Client" },
-  { key: "employer", label: "Employer", className: "hidden md:table-cell" },
-  { key: "riskProfile", label: "Risk profile", className: "hidden lg:table-cell" },
-  { key: "wait", label: "Wait" },
-  { key: "department", label: "Department", className: "hidden xl:table-cell" },
-  { key: "clinician", label: "Clinician", className: "hidden xl:table-cell" },
-  { key: "status", label: "Status" },
-  { key: "actions", label: "Actions", className: "text-right pr-4" },
-] as const;
+function riskTone(profile: string): string {
+  const value = profile.toLowerCase();
+  if (value.includes("high")) return "bg-red-600";
+  if (value.includes("medium") || value.includes("moderate")) return "bg-amber-500";
+  return "bg-brand-primary";
+}
 
-export function OhQueueTable({
-  encounters,
-  className,
-}: OhQueueTableProps) {
+function QueueRow({ encounter, onOpen }: { encounter: OhVisitEncounter; onOpen: (href: string) => void }) {
+  const href = ohQueueEntryHref(encounter);
+  const name = encounter.customer_name?.trim() || encounter.customer_identifier?.trim() || "Unknown client";
+  const context = [encounter.employer_name, encounter.department_name, encounter.location_name]
+    .flatMap((value) => (value?.trim() ? [value.trim()] : []))
+    .join(" · ");
+  const minutes = queueWaitingMinutes(encounter);
+  const isActive = ACTIVE_STATUSES.has(encounter.status);
+  const tone = waitTone(minutes);
+  const status = STATUS[encounter.status] ?? { label: encounter.status.replaceAll("_", " "), dot: "bg-dash-border" };
+  const risk = encounter.hazard_profile_name?.trim();
+
+  return (
+    <tr className="group cursor-pointer border-b border-dash-border/70 transition-colors hover:bg-dash-canvas/60" onClick={() => onOpen(href)}>
+      <td className="py-3.5 pr-4 pl-5 md:pl-8">
+        <div className="flex min-w-0 items-center gap-3">
+          <UserIdenticon seed={encounter.customer_uuid || name} name={name} className="size-9 shrink-0 rounded-lg" />
+          <div className="min-w-0">
+            <div className="flex min-w-0 items-center gap-2">
+              <Link
+                href={href}
+                onClick={(event) => event.stopPropagation()}
+                className="truncate text-[14px] font-semibold text-brand-navy group-hover:text-brand-primary focus-visible:underline focus-visible:outline-none"
+              >
+                {name}
+              </Link>
+              {isIodVisit(encounter) ? (
+                <span data-testid="oh-queue-iod-badge" className="shrink-0 rounded-md bg-amber-100 px-1.5 py-px text-[11px] font-semibold text-amber-900">
+                  Injury on duty
+                </span>
+              ) : null}
+            </div>
+            {context ? <p className="mt-0.5 truncate text-[12.5px] text-dash-muted">{context}</p> : null}
+          </div>
+        </div>
+      </td>
+      <td className="hidden px-4 py-3.5 lg:table-cell">
+        {risk ? (
+          <span className="inline-flex items-center gap-2 text-[13px] text-brand-slate">
+            <span aria-hidden className={cn("size-1.5 rounded-full", riskTone(risk))} />
+            {risk}
+          </span>
+        ) : (
+          <span className="text-[13px] text-dash-muted">—</span>
+        )}
+      </td>
+      <td className="px-4 py-3.5">
+        <span className={cn("text-[14px] font-semibold tabular-nums", isActive ? tone.text : "font-medium text-dash-muted")}>
+          {formatWaitingMinutes(minutes)}
+        </span>
+      </td>
+      <td className="hidden px-4 py-3.5 text-[13px] xl:table-cell">
+        {encounter.clinician_name ? (
+          <span className="text-brand-slate">{encounter.clinician_name}</span>
+        ) : (
+          <span className="text-dash-muted">Unassigned</span>
+        )}
+      </td>
+      <td className="px-4 py-3.5">
+        <span className="inline-flex items-center gap-2 text-[13px] font-medium whitespace-nowrap text-brand-navy" data-testid="oh-queue-status">
+          <span aria-hidden className={cn("size-2 rounded-full", status.dot)} />
+          {status.label}
+        </span>
+      </td>
+      <td className="py-3.5 pr-5 pl-4 text-right md:pr-8">
+        <Link
+          href={href}
+          onClick={(event) => event.stopPropagation()}
+          className="inline-flex items-center gap-1 text-[13px] font-semibold text-brand-primary opacity-70 transition-opacity group-hover:opacity-100 hover:underline focus-visible:opacity-100 focus-visible:underline focus-visible:outline-none"
+        >
+          Open
+          <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden />
+        </Link>
+      </td>
+    </tr>
+  );
+}
+
+const HEAD = "px-4 pb-2.5 pt-4 text-left text-[11.5px] font-semibold tracking-[0.06em] text-dash-muted uppercase";
+
+/** The queue as a list: who, how long they have waited, and where their visit is. */
+export function OhQueueTable({ encounters, className }: { encounters: OhVisitEncounter[]; className?: string }) {
   const router = useRouter();
 
   return (
-    <ListPageDataTable className={className} data-testid="oh-queue-table">
-      <ListPageDataTableHeader>
-        <ListPageDataTableHeaderRow>
-          {columns.map((column) => (
-            <ListPageDataTableHeaderCell
-              key={column.key}
-              className={"className" in column ? column.className : undefined}
-            >
-              {column.label}
-            </ListPageDataTableHeaderCell>
+    <div className={cn("overflow-x-auto", className)}>
+      <table className="w-full min-w-[34rem] border-collapse" data-testid="oh-queue-table">
+        <thead>
+          <tr className="border-b border-dash-border">
+            <th scope="col" className={cn(HEAD, "pl-5 md:pl-8")}>Client</th>
+            <th scope="col" className={cn(HEAD, "hidden lg:table-cell")}>Risk profile</th>
+            <th scope="col" className={HEAD}>Waiting</th>
+            <th scope="col" className={cn(HEAD, "hidden xl:table-cell")}>Clinician</th>
+            <th scope="col" className={HEAD}>Status</th>
+            <th scope="col" className={cn(HEAD, "pr-5 md:pr-8")}>
+              <span className="sr-only">Actions</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {encounters.map((encounter) => (
+            <QueueRow key={encounter.uuid} encounter={encounter} onOpen={(href) => router.push(href)} />
           ))}
-        </ListPageDataTableHeaderRow>
-      </ListPageDataTableHeader>
-      <ListPageDataTableBody>
-        {encounters.map((encounter) => {
-          const href = ohQueueEntryHref(encounter);
-          const iod = isIodVisit(encounter);
-          const clientLabel =
-            encounter.customer_name?.trim() ||
-            encounter.customer_identifier?.trim() ||
-            "Unknown client";
-          const waiting = waitingMinutesFor(encounter);
-
-          return (
-            <ListPageDataTableRow
-              key={encounter.uuid}
-              className="group cursor-pointer"
-              onClick={() => router.push(href)}
-            >
-              <ListPageDataTableCell>
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <UserIdenticon
-                    seed={encounter.customer_uuid || clientLabel}
-                    name={clientLabel}
-                    className="size-6 shrink-0 rounded-md"
-                  />
-                  <div className="min-w-0 space-y-0.5">
-                    <Link
-                      href={href}
-                      className="block truncate text-[13px] font-medium text-brand-navy transition-colors group-hover:text-brand-primary"
-                      onClick={(event) => event.stopPropagation()}
-                    >
-                      {clientLabel}
-                    </Link>
-                    {iod ? (
-                      <span
-                        data-testid="oh-queue-iod-badge"
-                        className="inline-flex items-center rounded-full bg-amber-50 px-1.5 py-px text-[11px] font-medium text-amber-800 ring-1 ring-inset ring-amber-200"
-                      >
-                        Injury on duty
-                      </span>
-                    ) : null}
-                    {encounter.location_name ? (
-                      <p className="truncate text-[12px] text-brand-muted">
-                        {encounter.location_name}
-                      </p>
-                    ) : null}
-                  </div>
-                </div>
-              </ListPageDataTableCell>
-
-              <ListPageDataTableCell className="hidden text-brand-slate md:table-cell">
-                {encounter.employer_name?.trim() || "—"}
-              </ListPageDataTableCell>
-
-              <ListPageDataTableCell className="hidden text-brand-slate lg:table-cell">
-                {encounter.hazard_profile_name?.trim() || "—"}
-              </ListPageDataTableCell>
-
-              <ListPageDataTableCell className="font-medium tabular-nums text-brand-navy">
-                {formatWaitingMinutes(waiting)}
-              </ListPageDataTableCell>
-
-              <ListPageDataTableCell className="hidden text-brand-slate xl:table-cell">
-                {encounter.department_name || "—"}
-              </ListPageDataTableCell>
-
-              <ListPageDataTableCell className="hidden text-brand-slate xl:table-cell">
-                {encounter.clinician_name ?? "—"}
-              </ListPageDataTableCell>
-
-              <ListPageDataTableCell>
-                <OpdEncounterStatusBadge status={encounter.status} />
-              </ListPageDataTableCell>
-
-              <ListPageDataTableCell className="pr-4 text-right">
-                <div
-                  className="inline-flex items-center justify-end"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <Button
-                    asChild
-                    variant="outline"
-                    size="sm"
-                    className="h-7 rounded-md border-dash-border bg-white px-2.5 text-xs font-medium text-brand-navy hover:bg-dash-canvas"
-                  >
-                    <Link href={href}>Open</Link>
-                  </Button>
-                </div>
-              </ListPageDataTableCell>
-            </ListPageDataTableRow>
-          );
-        })}
-      </ListPageDataTableBody>
-    </ListPageDataTable>
+        </tbody>
+      </table>
+    </div>
   );
 }

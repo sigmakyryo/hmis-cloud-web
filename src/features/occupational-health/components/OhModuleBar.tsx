@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { Check, ChevronDown, LayoutGrid } from "lucide-react";
+import { createElement, useEffect } from "react";
 
-import { AppIcon } from "@/components/icons/app-icon";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,53 +13,52 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ROUTES } from "@/constants/routes";
-import { DetailPageTabNavItem } from "@/features/app-shell/components/page-layout";
+import { OH_MODULE_ACCENT, OH_MODULE_ICON } from "@/features/occupational-health/lib/oh-module-visuals";
 import { useOhModules } from "@/features/occupational-health/hooks/use-oh-modules";
 import { resolveOhLocation, type OhModule } from "@/features/occupational-health/lib/oh-modules";
 import { recordOhRecentPage } from "@/features/occupational-health/lib/oh-recent-pages";
 import { appFont } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
 
+function ModuleGlyph({ ohModule, className }: { ohModule: OhModule; className?: string }) {
+  return createElement(OH_MODULE_ICON[ohModule.key], {
+    className: cn("shrink-0", OH_MODULE_ACCENT[ohModule.key].icon, className),
+    "aria-hidden": true,
+  });
+}
+
 function ModuleSwitcher({ modules, current }: { modules: OhModule[]; current: OhModule }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        className="flex h-8 shrink-0 items-center gap-2 rounded-md px-1.5 text-[13px] font-semibold text-brand-navy transition-colors hover:bg-brand-tint/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
+        className="group flex h-9 shrink-0 items-center gap-2 rounded-lg pr-1.5 pl-1 text-[14.5px] font-semibold tracking-tight text-brand-navy transition-colors hover:bg-dash-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
         aria-label={`Switch module, current ${current.label}`}
         data-testid="oh-module-switcher"
       >
-        <span className="flex size-6 items-center justify-center rounded-md bg-brand-primary text-white">
-          <AppIcon name={current.icon} className="size-3.5" />
-        </span>
+        <ModuleGlyph ohModule={current} className="size-[18px]" />
         <span className="hidden sm:inline">{current.label}</span>
-        <AppIcon name="chevronUpDown" className="size-3.5 text-dash-muted" />
+        <ChevronDown className="size-3.5 text-dash-muted transition-transform group-data-[state=open]:rotate-180" aria-hidden />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className={cn(appFont.className, "w-72 p-1")}>
+      <DropdownMenuContent align="start" sideOffset={6} className={cn(appFont.className, "w-80 p-1.5")}>
         {modules.map((module) => {
           const isCurrent = module.key === current.key;
           return (
-            <DropdownMenuItem key={module.key} asChild className="items-start gap-3 py-2">
+            <DropdownMenuItem key={module.key} asChild className="items-start gap-3 rounded-lg px-2.5 py-2.5">
               <Link href={module.pages[0].href} aria-current={isCurrent ? "true" : undefined}>
-                <span
-                  className={cn(
-                    "mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md",
-                    isCurrent ? "bg-brand-primary text-white" : "bg-brand-tint text-brand-primary",
-                  )}
-                >
-                  <AppIcon name={module.icon} className="size-4" />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-[13px] font-semibold text-brand-navy">{module.label}</span>
+                <ModuleGlyph ohModule={module} className="mt-0.5 size-4" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[13.5px] font-semibold text-brand-navy">{module.label}</span>
                   <span className="block text-[12px] leading-snug text-dash-muted">{module.summary}</span>
                 </span>
+                {isCurrent ? <Check className="mt-0.5 size-4 shrink-0 text-brand-primary" aria-hidden /> : null}
               </Link>
             </DropdownMenuItem>
           );
         })}
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild className="gap-2 text-[13px] font-medium text-brand-primary">
+        <DropdownMenuItem asChild className="gap-2 rounded-lg px-2.5 text-[13px] font-medium text-brand-primary">
           <Link href={ROUTES.occupationalHealthHome}>
-            <AppIcon name="grid" className="size-4" />
+            <LayoutGrid className="size-4" aria-hidden />
             All modules
           </Link>
         </DropdownMenuItem>
@@ -86,39 +85,46 @@ export function OhModuleBar() {
   }
 
   const { module, page } = location;
+  const accent = OH_MODULE_ACCENT[module.key];
 
   return (
     <div
       data-testid="oh-module-bar"
-      className="flex h-11 shrink-0 items-center gap-1 border-b border-dash-border bg-white pl-2 pr-3 sm:pl-3"
+      className="flex h-12 shrink-0 items-stretch gap-3 border-b border-dash-border bg-white px-3 md:px-5"
     >
-      <Link
-        href={ROUTES.occupationalHealthHome}
-        className="flex h-8 shrink-0 items-center gap-1.5 rounded-md px-1.5 text-[13px] font-medium text-dash-muted transition-colors hover:bg-brand-tint/40 hover:text-brand-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
-        aria-label="All Occupational Health modules"
-      >
-        <AppIcon name="grid" className="size-4" />
-        <span className="hidden lg:inline">Occupational Health</span>
-      </Link>
-      <span className="text-dash-border" aria-hidden>
-        /
-      </span>
-      <ModuleSwitcher modules={modules} current={module} />
-      <span className="mx-1.5 h-5 w-px shrink-0 bg-dash-border" aria-hidden />
+      <div className="flex shrink-0 items-center gap-1">
+        <Link
+          href={ROUTES.occupationalHealthHome}
+          className="flex size-8 items-center justify-center rounded-lg text-dash-muted transition-colors hover:bg-dash-canvas hover:text-brand-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
+          aria-label="All Occupational Health modules"
+          title="All Occupational Health modules"
+        >
+          <LayoutGrid className="size-4" aria-hidden />
+        </Link>
+        <ModuleSwitcher modules={modules} current={module} />
+      </div>
       <nav
         aria-label={`${module.label} pages`}
-        className="scrollbar-hide -mb-px flex h-full min-w-0 flex-1 items-stretch overflow-x-auto"
+        className="scrollbar-hide flex min-w-0 flex-1 items-stretch gap-6 overflow-x-auto pl-3 md:border-l md:border-dash-border md:pl-6"
       >
-        {module.pages.map((item) => (
-          <DetailPageTabNavItem
-            key={item.href}
-            href={item.href}
-            isActive={item.href === page?.href}
-            className="flex items-center"
-          >
-            {item.name}
-          </DetailPageTabNavItem>
-        ))}
+        {module.pages.map((item) => {
+          const isActive = item.href === page?.href;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-current={isActive ? "page" : undefined}
+              className={cn(
+                "-mb-px flex shrink-0 items-center border-b-2 text-[13.5px] whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:text-brand-primary",
+                isActive
+                  ? cn(accent.rule, "font-semibold text-brand-navy")
+                  : "border-transparent font-medium text-dash-muted hover:text-brand-navy",
+              )}
+            >
+              {item.name}
+            </Link>
+          );
+        })}
       </nav>
     </div>
   );
