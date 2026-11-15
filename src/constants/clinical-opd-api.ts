@@ -129,4 +129,48 @@ export const CLINICAL_OPD_API_PATHS = {
     `/clinical/visits/${visitUuid}/encounters/${encounterUuid}/current-medications/${medicationUuid}/`,
   encounterDisposition: (visitUuid: string, encounterUuid: string) =>
     `/clinical/visits/${visitUuid}/encounters/${encounterUuid}/disposition/`,
+  outsideHospitals: "/clinical/outside-hospitals/",
+  outsideHospital: (hospitalUuid: string) =>
+    `/clinical/outside-hospitals/${hospitalUuid}/`,
+  externalReferenceKinds: "/clinical/external-reference-kinds/",
+  externalReferenceKind: (kindUuid: string) =>
+    `/clinical/external-reference-kinds/${kindUuid}/`,
+  encounterOutsideHospitals: (visitUuid: string, encounterUuid: string) =>
+    `/clinical/visits/${visitUuid}/encounters/${encounterUuid}/outside-hospitals/`,
+  encounterExternalReferenceKinds: (visitUuid: string, encounterUuid: string) =>
+    `/clinical/visits/${visitUuid}/encounters/${encounterUuid}/external-reference-kinds/`,
+  encounterExternalTransfers: (visitUuid: string, encounterUuid: string) =>
+    `/clinical/visits/${visitUuid}/encounters/${encounterUuid}/external-transfers/`,
+  encounterExternalTransferArchive: (
+    visitUuid: string,
+    encounterUuid: string,
+    transferUuid: string,
+  ) =>
+    `/clinical/visits/${visitUuid}/encounters/${encounterUuid}/external-transfers/${transferUuid}/archive/`,
+  encounterExternalTransferDocuments: (
+    visitUuid: string,
+    encounterUuid: string,
+    transferUuid: string,
+  ) =>
+    `/clinical/visits/${visitUuid}/encounters/${encounterUuid}/external-transfers/${transferUuid}/documents/`,
+  encounterExternalReferences: (visitUuid: string, encounterUuid: string) =>
+    `/clinical/visits/${visitUuid}/encounters/${encounterUuid}/external-references/`,
+  encounterExternalReferenceArchive: (
+    visitUuid: string,
+    encounterUuid: string,
+    referenceUuid: string,
+  ) =>
+    `/clinical/visits/${visitUuid}/encounters/${encounterUuid}/external-references/${referenceUuid}/archive/`,
+  encounterExternalReferenceDocuments: (
+    visitUuid: string,
+    encounterUuid: string,
+    referenceUuid: string,
+  ) =>
+    `/clinical/visits/${visitUuid}/encounters/${encounterUuid}/external-references/${referenceUuid}/documents/`,
+  encounterExternalCareDocumentDownload: (
+    visitUuid: string,
+    encounterUuid: string,
+    documentUuid: string,
+  ) =>
+    `/clinical/visits/${visitUuid}/encounters/${encounterUuid}/external-care-documents/${documentUuid}/download/`,
 } as const;

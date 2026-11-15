@@ -20,6 +20,7 @@ import { fetchClinicalClinics } from "@/features/clinical/services/clinical-cata
 import type { ClinicalClinic } from "@/features/clinical/types/clinical-catalog.types";
 import { OpdEncounterTabSkeleton } from "@/features/clinical-opd/components/detail/OpdEncounterTabSkeleton";
 import { useOpdEncounterWorkspace } from "@/features/clinical-opd/components/detail/opd-encounter-workspace-context";
+import { ExternalCareRecords } from "@/features/clinical-opd/components/tabs/ExternalCareRecords";
 import {
   useEncounterDisposition,
   useUpsertEncounterDisposition,
@@ -105,9 +106,9 @@ export function OpdDispositionTabPanel({
   if (disposition.isLoading) return <OpdEncounterTabSkeleton rows={4} />;
 
   return (
+    <div className="max-w-xl space-y-8" data-testid="opd-disposition-tab-panel">
     <form
-      className="max-w-xl space-y-4"
-      data-testid="opd-disposition-tab-panel"
+      className="space-y-4"
       onSubmit={form.handleSubmit(async (values) => {
         try {
           if (values.outcome === "admitted") {
@@ -167,8 +168,9 @@ export function OpdDispositionTabPanel({
         </p>
       </div>
       <div className="space-y-1.5">
-        <Label>Outcome</Label>
+        <Label htmlFor="disposition-outcome">Outcome</Label>
         <select
+          id="disposition-outcome"
           className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
           disabled={!canWrite}
           {...form.register("outcome")}
@@ -187,15 +189,6 @@ export function OpdDispositionTabPanel({
             type="datetime-local"
             disabled={!canWrite}
             {...form.register("follow_up_at")}
-          />
-        </div>
-      ) : null}
-      {outcome === "referred" ? (
-        <div className="space-y-1.5">
-          <Label>Referral destination</Label>
-          <Input
-            disabled={!canWrite}
-            {...form.register("referral_destination")}
           />
         </div>
       ) : null}
@@ -248,5 +241,12 @@ export function OpdDispositionTabPanel({
         </PrimaryButton>
       ) : null}
     </form>
+    <ExternalCareRecords
+      visitUuid={visitUuid}
+      encounterUuid={encounterUuid}
+      canWrite={canWrite}
+      showOutbound={outcome === "referred"}
+    />
+    </div>
   );
 }
