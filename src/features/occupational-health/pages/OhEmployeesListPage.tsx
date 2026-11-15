@@ -306,7 +306,7 @@ export function OhEmployeesListPage() {
     !isLoading && !error && customers.length === 0 && hasActiveQuery;
 
   return (
-    <ListPageLayout data-testid="oh-employees-page">
+    <ListPageLayout fill data-testid="oh-employees-page">
       {hasNoEmployeeRecords ? null : (
         <OhEmployeesPageHeader
           search={search}

@@ -112,7 +112,7 @@ export function PurchaseOrdersListPage() {
   }
 
   return (
-    <ListPageLayout data-testid="inventory-purchase-orders-page">
+    <ListPageLayout fill data-testid="inventory-purchase-orders-page">
       <CreatePurchaseOrderDialog
         open={createOpen}
         onOpenChange={setCreateOpen}

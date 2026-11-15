@@ -221,7 +221,7 @@ export function ClaimsListPage() {
     !isLoading && !error && totalCount === 0 && !hasActiveQuery;
 
   return (
-    <ListPageLayout data-testid="claims-list-page">
+    <ListPageLayout fill data-testid="claims-list-page">
       <ClaimsPageHeader
         search={search}
         filters={filters}

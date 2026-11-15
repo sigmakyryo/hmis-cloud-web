@@ -181,7 +181,7 @@ export function ActiveVisitsListPage() {
 
   return (
     <>
-      <ListPageLayout data-testid="active-visits-page">
+      <ListPageLayout fill data-testid="active-visits-page">
         {hasNoRecords ? null : (
           <ActiveVisitsPageHeader
             search={search}

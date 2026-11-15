@@ -113,7 +113,7 @@ export function IncomingReferralsListPage() {
 
   return (
     <>
-      <ListPageLayout data-testid="incoming-referrals-page">
+      <ListPageLayout fill data-testid="incoming-referrals-page">
         {hasNoRecords ? null : (
           <IncomingReferralsPageHeader
             search={search}

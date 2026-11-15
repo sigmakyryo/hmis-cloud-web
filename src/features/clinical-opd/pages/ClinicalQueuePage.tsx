@@ -153,6 +153,7 @@ export function ClinicalQueuePage({ routing }: ClinicalQueuePageProps) {
 
   return (
     <ListPageLayout
+      fill={viewMode === "table"}
       data-testid="opd-queue-page"
       className={viewMode === "board" ? "overflow-hidden pb-3" : undefined}
     >

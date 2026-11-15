@@ -170,6 +170,7 @@ export function InvoicesListPage() {
 
   return (
     <ListPageLayout
+      fill
       data-testid="invoices-page"
       className="space-y-0 bg-white px-0 pt-0 md:px-0"
     >

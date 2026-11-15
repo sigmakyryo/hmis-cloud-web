@@ -135,7 +135,7 @@ export function PricelistsListPage() {
   }
 
   return (
-    <ListPageLayout data-testid="inventory-pricelists-page">
+    <ListPageLayout fill data-testid="inventory-pricelists-page">
       <AddPricelistDialog
         open={createOpen}
         onOpenChange={setCreateOpen}

@@ -20,6 +20,7 @@ export function ListPageDataTable({
 }: ListPageDataTableProps) {
   return (
     <div
+      data-list-table=""
       className={cn(
         variant === "card"
           ? "overflow-hidden rounded-xl border border-dash-border bg-dash-panel"
@@ -28,7 +29,10 @@ export function ListPageDataTable({
         className,
       )}
     >
-      <div className={cn(scrollRows ? "min-h-0 flex-1 overflow-auto" : "overflow-x-auto")}>
+      <div
+        data-list-table-scroll=""
+        className={cn(scrollRows ? "min-h-0 flex-1 overflow-auto" : "overflow-x-auto")}
+      >
         <table className="min-w-full text-left text-[13px] leading-tight">
           {children}
         </table>

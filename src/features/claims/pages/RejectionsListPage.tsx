@@ -169,7 +169,7 @@ export function RejectionsListPage() {
     !isLoading && !error && totalCount === 0 && !hasActiveQuery;
 
   return (
-    <ListPageLayout data-testid="rejections-list-page">
+    <ListPageLayout fill data-testid="rejections-list-page">
       <RejectionsPageHeader
         search={search}
         filters={filters}

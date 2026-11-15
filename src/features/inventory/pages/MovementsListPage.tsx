@@ -102,7 +102,7 @@ export function MovementsListPage() {
   }
 
   return (
-    <ListPageLayout data-testid="inventory-movements-page">
+    <ListPageLayout fill data-testid="inventory-movements-page">
       <MovementDetailDialog
         movement={selectedMovement}
         open={detailOpen}

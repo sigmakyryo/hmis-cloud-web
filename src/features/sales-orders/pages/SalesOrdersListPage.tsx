@@ -278,7 +278,7 @@ export function SalesOrdersListPage() {
     !isLoading && !error && totalCount === 0 && !hasActiveQuery;
 
   return (
-    <ListPageLayout data-testid="sales-orders-page">
+    <ListPageLayout fill data-testid="sales-orders-page">
       {hasNoRecords ? null : (
       <SalesOrdersPageHeader
         search={search}

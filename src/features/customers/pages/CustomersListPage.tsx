@@ -379,10 +379,7 @@ export function CustomersListPage() {
   );
 
   return (
-    <ListPageLayout
-      data-testid="customers-page"
-      className="h-auto min-h-0 flex-1 overflow-hidden bg-white pb-0 sm:pb-0"
-    >
+    <ListPageLayout fill data-testid="customers-page" className="bg-white">
       {hasNoCustomerRecords ? null : (
         <div data-list-band className="sticky top-0 z-20 shrink-0 bg-white">
           {directoryHeader}

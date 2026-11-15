@@ -115,3 +115,16 @@ export function OhPageGlyph({
 }): ReactElement {
   return createElement(ohPageIcon(href, ohModule), { className, "aria-hidden": true });
 }
+
+/**
+ * Each module's own colour: `icon` for glyphs, `rule` for the selected marker,
+ * `tint` for the soft square behind a section icon, and `chart` for its bars.
+ */
+export const OH_MODULE_ACCENT: Record<OhFamilyModule, { icon: string; rule: string; tint: string; chart: string }> = {
+  OccupationalHealth: { icon: "text-brand-primary", rule: "border-brand-primary", tint: "bg-brand-tint", chart: "bg-brand-primary" },
+  Immunizations: { icon: "text-sky-700", rule: "border-sky-600", tint: "bg-sky-50", chart: "bg-sky-600" },
+  DrugAlcohol: { icon: "text-violet-700", rule: "border-violet-600", tint: "bg-violet-50", chart: "bg-violet-500" },
+  Fitness: { icon: "text-emerald-700", rule: "border-emerald-600", tint: "bg-emerald-50", chart: "bg-emerald-600" },
+  HealthPrograms: { icon: "text-rose-700", rule: "border-rose-600", tint: "bg-rose-50", chart: "bg-rose-500" },
+  ExposureManagement: { icon: "text-amber-700", rule: "border-amber-600", tint: "bg-amber-50", chart: "bg-amber-500" },
+};

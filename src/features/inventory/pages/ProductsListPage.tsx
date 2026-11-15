@@ -138,7 +138,7 @@ export function ProductsListPage() {
   }
 
   return (
-    <ListPageLayout data-testid="inventory-products-page">
+    <ListPageLayout fill data-testid="inventory-products-page">
       <CreateProductDialog
         open={createOpen}
         onOpenChange={setCreateOpen}

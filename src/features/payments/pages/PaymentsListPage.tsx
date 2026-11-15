@@ -233,7 +233,7 @@ export function PaymentsListPage() {
     !isLoading && !error && totalCount === 0 && !hasActiveQuery;
 
   return (
-    <ListPageLayout data-testid="payments-page">
+    <ListPageLayout fill data-testid="payments-page">
       {hasNoRecords ? null : (
       <PaymentsPageHeader
         search={search}

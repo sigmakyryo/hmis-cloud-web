@@ -185,7 +185,7 @@ export function RemittancesListPage() {
     !isLoading && !error && totalCount === 0 && !hasActiveQuery;
 
   return (
-    <ListPageLayout data-testid="remittances-list-page">
+    <ListPageLayout fill data-testid="remittances-list-page">
       <RemittancesPageHeader
         search={search}
         filters={filters}

@@ -312,7 +312,7 @@ export function TherapyVisitsPage({
   }
 
   return (
-    <ListPageLayout data-testid={`therapy-${discipline}-visits`}>
+    <ListPageLayout fill data-testid={`therapy-${discipline}-visits`}>
       <ListPageHeaderSection>
         <ListPageHeaderTopRow>
           <ListPageHeaderTitleBlock
