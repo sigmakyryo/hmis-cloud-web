@@ -130,7 +130,18 @@ export function EmrOutsideCareTab() {
                 <SecondaryButton
                   type="button"
                   disabled={archiveHospital.isPending}
-                  onClick={() => void archiveHospital.mutateAsync(hospital.uuid)}
+                  onClick={() => {
+                    void archiveHospital.mutateAsync(hospital.uuid).catch((error: unknown) => {
+                      toast({
+                        title: "Could not archive the hospital",
+                        description:
+                          error instanceof BffError
+                            ? formatBffErrorMessage(error.message, error.errors)
+                            : "Try again.",
+                        variant: "error",
+                      });
+                    });
+                  }}
                 >
                   Archive
                 </SecondaryButton>
@@ -208,7 +219,18 @@ export function EmrOutsideCareTab() {
                 <SecondaryButton
                   type="button"
                   disabled={archiveKind.isPending}
-                  onClick={() => void archiveKind.mutateAsync(kind.uuid)}
+                  onClick={() => {
+                    void archiveKind.mutateAsync(kind.uuid).catch((error: unknown) => {
+                      toast({
+                        title: "Could not archive the reference kind",
+                        description:
+                          error instanceof BffError
+                            ? formatBffErrorMessage(error.message, error.errors)
+                            : "Try again.",
+                        variant: "error",
+                      });
+                    });
+                  }}
                 >
                   Archive
                 </SecondaryButton>

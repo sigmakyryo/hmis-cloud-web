@@ -41,6 +41,7 @@ export function ReferenceRecordForm({
   const [value, setValue] = useState("");
   const [hospital, setHospital] = useState<HospitalChoiceValue>(EMPTY_HOSPITAL_CHOICE);
   const [files, setFiles] = useState<File[]>([]);
+  const [fileInputKey, setFileInputKey] = useState(0);
 
   async function submit() {
     const number = value.trim();
@@ -49,7 +50,7 @@ export function ReferenceRecordForm({
       return;
     }
     try {
-      await createReference.mutateAsync({
+      const saved = await createReference.mutateAsync({
         input: {
           kind_uuid: kindUuid,
           value: number,
@@ -64,7 +65,15 @@ export function ReferenceRecordForm({
       setValue("");
       setHospital(EMPTY_HOSPITAL_CHOICE);
       setFiles([]);
-      toast({ title: "Reference saved", variant: "success" });
+      setFileInputKey((current) => current + 1);
+      toast({
+        title: "Reference saved",
+        description:
+          saved.failedFileNames.length > 0
+            ? `These files were not attached: ${saved.failedFileNames.join(", ")}`
+            : undefined,
+        variant: saved.failedFileNames.length > 0 ? "error" : "success",
+      });
     } catch (error) {
       toast({
         title: "Could not save the reference",
@@ -119,6 +128,7 @@ export function ReferenceRecordForm({
       <div className="space-y-1.5">
         <Label htmlFor="reference-files">Documents</Label>
         <Input
+          key={fileInputKey}
           id="reference-files"
           type="file"
           accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"

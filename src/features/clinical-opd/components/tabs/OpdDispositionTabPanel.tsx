@@ -123,6 +123,12 @@ export function OpdDispositionTabPanel({
             ...values,
             follow_up_at: values.follow_up_at || null,
             ipd_bed: values.ipd_bed || null,
+            referral_destination:
+              values.outcome === "referred"
+                ? values.referral_destination ||
+                  disposition.data?.referral_destination ||
+                  ""
+                : values.referral_destination,
           });
           if (values.outcome === "admitted" && values.ipd_bed) {
             const stays = await fetchIpdStays({

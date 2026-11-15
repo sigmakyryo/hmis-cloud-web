@@ -43,6 +43,8 @@ vi.mock("@/features/clinical-opd/services/external-care.service", () => ({
   uploadTransferDocument: vi.fn(),
   createExternalReference: vi.fn(),
   uploadReferenceDocument: vi.fn(),
+  archiveExternalTransfer: vi.fn(),
+  archiveExternalReference: vi.fn(),
 }));
 
 afterEach(() => {

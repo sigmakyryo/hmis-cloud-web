@@ -3,6 +3,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
+  archiveExternalReference,
+  archiveExternalTransfer,
   archiveSettingsOutsideHospital,
   archiveSettingsReferenceKind,
   createExternalReference,
@@ -87,10 +89,15 @@ export function useCreateExternalTransfer(visitUuid: string, encounterUuid: stri
       files: File[];
     }) => {
       const transfer = await createExternalTransfer({ visitUuid, encounterUuid }, input);
+      const failedFileNames: string[] = [];
       for (const file of files) {
-        await uploadTransferDocument({ visitUuid, encounterUuid }, transfer.uuid, file);
+        try {
+          await uploadTransferDocument({ visitUuid, encounterUuid }, transfer.uuid, file);
+        } catch {
+          failedFileNames.push(file.name);
+        }
       }
-      return transfer;
+      return { failedFileNames };
     },
     onSuccess: async (_transfer, variables) => {
       await queryClient.invalidateQueries({
@@ -122,14 +129,19 @@ export function useCreateExternalReference(visitUuid: string, encounterUuid: str
         { visitUuid, encounterUuid },
         input,
       );
+      const failedFileNames: string[] = [];
       for (const file of files) {
-        await uploadReferenceDocument(
-          { visitUuid, encounterUuid },
-          reference.uuid,
-          file,
-        );
+        try {
+          await uploadReferenceDocument(
+            { visitUuid, encounterUuid },
+            reference.uuid,
+            file,
+          );
+        } catch {
+          failedFileNames.push(file.name);
+        }
       }
-      return reference;
+      return { failedFileNames };
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
@@ -137,6 +149,64 @@ export function useCreateExternalReference(visitUuid: string, encounterUuid: str
       });
       await queryClient.invalidateQueries({
         queryKey: encounterKey("external-care-hospitals", visitUuid, encounterUuid),
+      });
+    },
+  });
+}
+
+export function useArchiveExternalTransfer(visitUuid: string, encounterUuid: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (transferUuid: string) =>
+      archiveExternalTransfer({ visitUuid, encounterUuid }, transferUuid),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: encounterKey("external-care-transfers", visitUuid, encounterUuid),
+      });
+    },
+  });
+}
+
+export function useUploadExternalTransferDocument(
+  visitUuid: string,
+  encounterUuid: string,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ transferUuid, file }: { transferUuid: string; file: File }) =>
+      uploadTransferDocument({ visitUuid, encounterUuid }, transferUuid, file),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: encounterKey("external-care-transfers", visitUuid, encounterUuid),
+      });
+    },
+  });
+}
+
+export function useArchiveExternalReference(visitUuid: string, encounterUuid: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (referenceUuid: string) =>
+      archiveExternalReference({ visitUuid, encounterUuid }, referenceUuid),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: encounterKey("external-care-references", visitUuid, encounterUuid),
+      });
+    },
+  });
+}
+
+export function useUploadExternalReferenceDocument(
+  visitUuid: string,
+  encounterUuid: string,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ referenceUuid, file }: { referenceUuid: string; file: File }) =>
+      uploadReferenceDocument({ visitUuid, encounterUuid }, referenceUuid, file),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: encounterKey("external-care-references", visitUuid, encounterUuid),
       });
     },
   });

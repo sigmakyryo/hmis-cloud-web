@@ -49,6 +49,7 @@ export function TransferRecordForm({
   const [occurredAt, setOccurredAt] = useState("");
   const [notes, setNotes] = useState("");
   const [files, setFiles] = useState<File[]>([]);
+  const [fileInputKey, setFileInputKey] = useState(0);
   const idPrefix = direction === "inbound" ? "inbound" : "outbound";
 
   async function submit() {
@@ -63,7 +64,7 @@ export function TransferRecordForm({
       return;
     }
     try {
-      await createTransfer.mutateAsync({
+      const saved = await createTransfer.mutateAsync({
         input: {
           direction,
           hospital_uuid: hospital.hospitalUuid || null,
@@ -85,9 +86,14 @@ export function TransferRecordForm({
       setOccurredAt("");
       setNotes("");
       setFiles([]);
+      setFileInputKey((current) => current + 1);
       toast({
         title: direction === "inbound" ? "Arrival recorded" : "Referral recorded",
-        variant: "success",
+        description:
+          saved.failedFileNames.length > 0
+            ? `These files were not attached: ${saved.failedFileNames.join(", ")}`
+            : undefined,
+        variant: saved.failedFileNames.length > 0 ? "error" : "success",
       });
     } catch (error) {
       toast({
@@ -165,6 +171,7 @@ export function TransferRecordForm({
       <div className="space-y-1.5">
         <Label htmlFor={`${idPrefix}-files`}>Documents</Label>
         <Input
+          key={fileInputKey}
           id={`${idPrefix}-files`}
           type="file"
           accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"

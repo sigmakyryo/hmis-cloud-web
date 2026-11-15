@@ -164,3 +164,25 @@ export function uploadReferenceDocument(
     { method: "POST", body },
   );
 }
+
+export function archiveExternalTransfer(scope: EncounterScope, transferUuid: string) {
+  return bffRequest<void>(
+    BFF_CLINICAL_OPD_ROUTES.encounterExternalTransferArchive(
+      scope.visitUuid,
+      scope.encounterUuid,
+      transferUuid,
+    ),
+    { method: "POST", body: {} },
+  );
+}
+
+export function archiveExternalReference(scope: EncounterScope, referenceUuid: string) {
+  return bffRequest<void>(
+    BFF_CLINICAL_OPD_ROUTES.encounterExternalReferenceArchive(
+      scope.visitUuid,
+      scope.encounterUuid,
+      referenceUuid,
+    ),
+    { method: "POST", body: {} },
+  );
+}
