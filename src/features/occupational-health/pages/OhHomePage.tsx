@@ -5,11 +5,13 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
 import { OhAccessDenied } from "@/features/occupational-health/components/OhAccessDenied";
 import { OhHomeModuleNav } from "@/features/occupational-health/components/oh-home/OhHomeModuleNav";
+import { OhHomeQueueView } from "@/features/occupational-health/components/oh-home/views/OhHomeQueueView";
 import { OhModuleView } from "@/features/occupational-health/components/oh-home/OhModuleView";
 import { useOhModules } from "@/features/occupational-health/hooks/use-oh-modules";
 import { findOhModuleBySlug, type OhModule } from "@/features/occupational-health/lib/oh-modules";
 
 const MODULE_PARAM = "module";
+const QUEUE_MODULE = "queue";
 
 function OhHomeSkeleton() {
   return (
@@ -37,7 +39,8 @@ export function OhHomePage() {
     return <OhAccessDenied />;
   }
 
-  const selected = findOhModuleBySlug(modules, searchParams.get(MODULE_PARAM)) ?? modules[0];
+  const queueSelected = searchParams.get(MODULE_PARAM) === QUEUE_MODULE;
+  const selected = findOhModuleBySlug(modules, queueSelected ? null : searchParams.get(MODULE_PARAM)) ?? modules[0];
 
   function selectModule(ohModule: OhModule) {
     const params = new URLSearchParams(searchParams.toString());
@@ -45,12 +48,24 @@ export function OhHomePage() {
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   }
 
+  function selectQueue() {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set(MODULE_PARAM, QUEUE_MODULE);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }
+
   return (
     <div data-testid="oh-home" className="flex min-h-full flex-col bg-white">
       <h1 className="sr-only">Occupational Health</h1>
-      <OhHomeModuleNav modules={modules} selected={selected} onSelect={selectModule} />
+      <OhHomeModuleNav
+        modules={modules}
+        selected={selected}
+        queueSelected={queueSelected}
+        onSelect={selectModule}
+        onSelectQueue={selectQueue}
+      />
       <div className="@container flex-1 px-5 py-7 md:px-8">
-        <OhModuleView ohModule={selected} />
+        {queueSelected ? <OhHomeQueueView /> : <OhModuleView ohModule={selected} />}
       </div>
     </div>
   );

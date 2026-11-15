@@ -67,18 +67,14 @@ describe("OpdDispositionTabPanel", () => {
     renderPanel();
 
     expect(screen.getByTestId("opd-disposition-tab-panel")).toBeInTheDocument();
-    expect(
-      screen.getByText(/Closing the visit does not require a disposition/),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Discharged" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save disposition" })).toBeInTheDocument();
   });
 
   it("shows the outside hospital form when the outcome is referred", () => {
     renderPanel();
 
-    fireEvent.change(screen.getByLabelText("Outcome"), {
-      target: { value: "referred" },
-    });
+    fireEvent.click(screen.getByRole("radio", { name: "Referred" }));
 
     expect(screen.getByTestId("external-care-outbound")).toBeInTheDocument();
     expect(screen.getByTestId("outbound-hospital-name")).toBeInTheDocument();

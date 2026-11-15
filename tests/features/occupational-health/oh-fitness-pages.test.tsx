@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
@@ -184,19 +184,20 @@ it("visit panel leads with the verdict and a merged readiness checklist", async 
   expect(fitTest.textContent).toContain("Missing");
   expect(fitTest.textContent).toContain("Nothing recorded yet");
 
-  expect(screen.getByTestId("oh-fit-restrictions").textContent).toContain("No work at height");
+  expect(screen.queryByTestId("oh-fit-restrictions")).toBeNull();
+  expect(screen.queryByText("No work at height")).toBeNull();
   expect(screen.getByTestId("oh-fit-areas").textContent).toContain("Laboratories");
 
   const exam = screen.getByRole("button", { name: "Exam" });
   fireEvent.click(exam);
   expect(onOpenPanel).toHaveBeenCalledWith("medical-examinations");
-  fireEvent.click(screen.getByTestId("oh-fit-action-issue"));
+  fireEvent.click(within(screen.getByTestId("oh-fit-check-certificate")).getByRole("button", { name: "Open" }));
   expect(onOpenPanel).toHaveBeenCalledWith("certificate");
-  expect(screen.getByTestId("oh-fit-action-board")).toHaveAttribute("href", "/fitness/board");
+  expect(within(screen.getByTestId("oh-fit-check-fit_test")).getByRole("link", { name: /Board/ })).toHaveAttribute("href", "/fitness/board");
   expect(screen.getByRole("link", { name: /Training/ })).toHaveAttribute("href", "/fitness/training");
 });
 
-it("visit panel shows certificate history at the bottom and Renew when it is due", async () => {
+it("visit panel shows certificate history at the bottom and a download when it is issued", async () => {
   mocks.worker.mockResolvedValue({
     ...WORKER,
     overall: "fit",
@@ -249,8 +250,8 @@ it("visit panel shows certificate history at the bottom and Renew when it is due
     />,
   );
   expect(await screen.findByTestId("oh-fit-verdict")).toHaveTextContent("Fit");
-  expect(screen.getByTestId("oh-fit-action-renew")).toHaveTextContent("Renew");
-  fireEvent.click(screen.getByTestId("oh-fit-action-renew"));
+  expect(screen.getByTestId("oh-fit-download-certificate")).toHaveAttribute("href", expect.stringContaining("cert-2"));
+  fireEvent.click(within(screen.getByTestId("oh-fit-check-certificate")).getByRole("button", { name: "Open" }));
   expect(onOpenPanel).toHaveBeenCalledWith("certificate");
   const history = screen.getByTestId("oh-fit-cert-history");
   const hero = screen.getByTestId("oh-fit-hero");
@@ -278,7 +279,7 @@ it("visit panel shows a Go to exam action and empty checklist when nothing is on
   expect(await screen.findByTestId("oh-fit-verdict")).toHaveTextContent("Not yet known");
   expect(screen.getByText("Not enough on file to decide yet.")).toBeTruthy();
   expect(screen.getByTestId("oh-fit-checklist").textContent).toContain("0 of 6 done");
-  fireEvent.click(screen.getByTestId("oh-fit-action-exam"));
+  fireEvent.click(within(screen.getByTestId("oh-fit-check-medical")).getByRole("button", { name: "Exam" }));
   expect(onOpenPanel).toHaveBeenCalledWith("medical-examinations");
   expect(screen.queryByTestId("oh-fit-restrictions")).toBeNull();
   expect(screen.queryByTestId("oh-fit-cert-history")).toBeNull();

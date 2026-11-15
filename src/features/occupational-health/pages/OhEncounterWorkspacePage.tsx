@@ -386,20 +386,22 @@ export function OhEncounterWorkspacePage({
           className="flex min-h-0 flex-1 flex-col lg:flex-row"
           data-testid="oh-encounter-module-layout"
         >
-          <OhVisitJourneyRail
-            steps={formSteps}
-            activeStep={activeStep}
-            liveStep={liveStep}
-            statuses={statuses}
-            activePanel={shownPanel}
-            needsEmployment={needsEmployment}
-            customerUuid={customer?.uuid}
-            encounterUuid={encounter.uuid}
-            encounterId={encounter.id}
-            episodeCount={episodes.length}
-            onSelectStep={handleSelectStep}
-            onSelectModule={handleSelectModule}
-          />
+          {shownPanel === "fitness" ? null : (
+            <OhVisitJourneyRail
+              steps={formSteps}
+              activeStep={activeStep}
+              liveStep={liveStep}
+              statuses={statuses}
+              activePanel={shownPanel}
+              needsEmployment={needsEmployment}
+              customerUuid={customer?.uuid}
+              encounterUuid={encounter.uuid}
+              encounterId={encounter.id}
+              episodeCount={episodes.length}
+              onSelectStep={handleSelectStep}
+              onSelectModule={handleSelectModule}
+            />
+          )}
           <div className="order-3 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:order-2">
             {needsEmployment ? (
               <OhRiskProfileInlinePrompt
@@ -449,6 +451,7 @@ export function OhEncounterWorkspacePage({
           <OhEncounterEdgeRail
             visitUuid={visitUuid}
             encounterUuid={encounter.uuid}
+            customerUuid={customer?.uuid ?? null}
             encounter={encounter}
             examinations={workspace.examinations}
             activeExamUuid={activeExamUuid}

@@ -107,8 +107,15 @@ export function TransferRecordForm({
     }
   }
 
+  const fileLabel =
+    files.length === 0
+      ? "Attach PDF, JPEG, or PNG"
+      : files.length === 1
+        ? files[0]?.name ?? "1 file"
+        : `${files.length} files`;
+
   return (
-    <div className="space-y-3 rounded-md border border-brand-border p-3">
+    <div className="space-y-3">
       <HospitalChoiceFields
         hospitals={hospitals}
         value={hospital}
@@ -117,15 +124,27 @@ export function TransferRecordForm({
         required
         idPrefix={idPrefix}
       />
-      <div className="space-y-1.5">
-        <Label htmlFor={`${idPrefix}-reference`}>Their reference</Label>
-        <Input
-          id={`${idPrefix}-reference`}
-          data-testid={`${idPrefix}-reference`}
-          disabled={disabled}
-          value={theirReference}
-          onChange={(event) => setTheirReference(event.target.value)}
-        />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label htmlFor={`${idPrefix}-reference`}>Their reference</Label>
+          <Input
+            id={`${idPrefix}-reference`}
+            data-testid={`${idPrefix}-reference`}
+            disabled={disabled}
+            value={theirReference}
+            onChange={(event) => setTheirReference(event.target.value)}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor={`${idPrefix}-when`}>When</Label>
+          <Input
+            id={`${idPrefix}-when`}
+            type="datetime-local"
+            disabled={disabled}
+            value={occurredAt}
+            onChange={(event) => setOccurredAt(event.target.value)}
+          />
+        </div>
       </div>
       <div className="space-y-1.5">
         <Label htmlFor={`${idPrefix}-reason`}>
@@ -139,24 +158,35 @@ export function TransferRecordForm({
           onChange={(event) => setReason(event.target.value)}
         />
       </div>
-      <div className="space-y-1.5">
-        <Label htmlFor={`${idPrefix}-contact`}>Department or clinician</Label>
-        <Input
-          id={`${idPrefix}-contact`}
-          disabled={disabled}
-          value={contact}
-          onChange={(event) => setContact(event.target.value)}
-        />
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor={`${idPrefix}-when`}>When</Label>
-        <Input
-          id={`${idPrefix}-when`}
-          type="datetime-local"
-          disabled={disabled}
-          value={occurredAt}
-          onChange={(event) => setOccurredAt(event.target.value)}
-        />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label htmlFor={`${idPrefix}-contact`}>Department or clinician</Label>
+          <Input
+            id={`${idPrefix}-contact`}
+            disabled={disabled}
+            value={contact}
+            onChange={(event) => setContact(event.target.value)}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor={`${idPrefix}-files`}>Documents</Label>
+          <label
+            htmlFor={`${idPrefix}-files`}
+            className="inline-flex cursor-pointer text-sm font-medium text-brand-primary"
+          >
+            {fileLabel}
+          </label>
+          <Input
+            key={fileInputKey}
+            id={`${idPrefix}-files`}
+            className="sr-only"
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+            multiple
+            disabled={disabled}
+            onChange={(event) => setFiles(Array.from(event.target.files ?? []))}
+          />
+        </div>
       </div>
       <div className="space-y-1.5">
         <Label htmlFor={`${idPrefix}-notes`}>Notes</Label>
@@ -168,25 +198,15 @@ export function TransferRecordForm({
           onChange={(event) => setNotes(event.target.value)}
         />
       </div>
-      <div className="space-y-1.5">
-        <Label htmlFor={`${idPrefix}-files`}>Documents</Label>
-        <Input
-          key={fileInputKey}
-          id={`${idPrefix}-files`}
-          type="file"
-          accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
-          multiple
-          disabled={disabled}
-          onChange={(event) => setFiles(Array.from(event.target.files ?? []))}
-        />
+      <div className="flex justify-end">
+        <PrimaryButton
+          type="button"
+          disabled={disabled || createTransfer.isPending}
+          onClick={() => void submit()}
+        >
+          {direction === "inbound" ? "Record arrival" : "Record referral"}
+        </PrimaryButton>
       </div>
-      <PrimaryButton
-        type="button"
-        disabled={disabled || createTransfer.isPending}
-        onClick={() => void submit()}
-      >
-        {direction === "inbound" ? "Record arrival" : "Record referral"}
-      </PrimaryButton>
     </div>
   );
 }

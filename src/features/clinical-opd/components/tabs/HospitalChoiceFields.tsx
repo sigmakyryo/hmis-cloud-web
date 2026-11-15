@@ -46,7 +46,7 @@ export function HospitalChoiceFields({
         </Label>
         <select
           id={`${idPrefix}-hospital`}
-          className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+          className="flex h-10 w-full rounded-lg bg-background px-3 text-sm text-foreground shadow-[0_1px_2px_rgba(16,24,40,0.05)] ring-1 ring-inset ring-dash-border focus:outline-none focus:ring-2 focus:ring-brand-primary disabled:cursor-not-allowed disabled:opacity-50"
           data-testid={`${idPrefix}-hospital-select`}
           disabled={disabled}
           value={value.hospitalUuid}

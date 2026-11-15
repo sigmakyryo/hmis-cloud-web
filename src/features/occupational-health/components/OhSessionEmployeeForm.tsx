@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Copy, ExternalLink, Mail, QrCode } from "lucide-react";
+import { ChevronRight, Copy, ExternalLink, Mail, PenLine, QrCode, type LucideIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useMutation } from "@tanstack/react-query";
 
@@ -26,17 +26,29 @@ import { SendFormEmailDialog } from "@/features/occupational-health/components/S
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { appFont } from "@/lib/fonts";
+import { cn } from "@/lib/utils";
 import { useToast } from "@/providers/toast-provider";
 
 const EmployeeInviteQr = dynamic(() => import("qrcode.react").then((module) => module.QRCodeSVG), {
   loading: () => <p role="status">Loading QR code…</p>,
 });
 
+const SHARE_ACTIONS: ReadonlyArray<{ key: "email" | "link" | "copy" | "qr"; label: string; icon: LucideIcon }> = [
+  { key: "email", label: "Send email", icon: Mail },
+  { key: "link", label: "Create link", icon: ExternalLink },
+  { key: "copy", label: "Copy link", icon: Copy },
+  { key: "qr", label: "Show QR code", icon: QrCode },
+];
+
 type OhSessionEmployeeFormProps = {
   encounter: OhVisitEncounter;
   records: OhTemplateCapture[];
   continueRef?: { current: (() => Promise<boolean>) | null };
   onSaved: () => Promise<unknown>;
+  /** Sheet layout: no second title, and the share actions are not boxed. */
+  embedded?: boolean;
+  /** Fired when the questions open or close, so a sheet can change width. */
+  onEditingChange?: (editing: boolean) => void;
 };
 
 type Mode = "actions" | "manual";
@@ -46,6 +58,8 @@ export function OhSessionEmployeeForm({
   records,
   continueRef,
   onSaved,
+  embedded = false,
+  onEditingChange,
 }: OhSessionEmployeeFormProps) {
   const existing = records.find((row) => row.is_active !== false) ?? null;
   const [created, setCreated] = useState<OhTemplateCapture | null>(null);
@@ -64,6 +78,10 @@ export function OhSessionEmployeeForm({
     [snapshot, envelope?.answers],
   );
   const [editing, setEditing] = useState(false);
+  function setManual(next: boolean) {
+    setEditing(next);
+    onEditingChange?.(next);
+  }
   const mode: Mode = editing ? "manual" : "actions";
   const showSummary = submitted && summaryRows.length > 0 && !editing;
   const [publicLink, setPublicLink] = useState<string | null>(null);
@@ -97,7 +115,7 @@ export function OhSessionEmployeeForm({
   const manual = useMutation({
     mutationFn: ensureRecord,
     onSuccess: () => {
-      setEditing(true);
+      setManual(true);
       setMessage(null);
     },
   });
@@ -118,7 +136,7 @@ export function OhSessionEmployeeForm({
     },
     onSuccess: async (record) => {
       await refresh(record);
-      setEditing(false);
+      setManual(false);
       setMessage(null);
     },
     onError: (error) => {
@@ -136,7 +154,7 @@ export function OhSessionEmployeeForm({
     },
     onSuccess: async (record) => {
       await refresh(record);
-      setEditing(true);
+      setManual(true);
       setMessage(null);
     },
     onError: (error) => {
@@ -202,30 +220,54 @@ export function OhSessionEmployeeForm({
     };
   });
 
-  return (
-    <div className="flex min-h-0 flex-1 flex-col" data-testid="oh-session-employee-form">
-      <div className="flex items-center justify-between gap-3 border-b border-dash-border px-5 py-3">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-brand-primary">Employee form</p>
-          <h2 className="text-sm font-semibold text-brand-navy">
-            {submitted ? "Submitted details" : "Collect employee details"}
-          </h2>
-        </div>
-        {submitted && form ? (
-          <SecondaryButton asChild>
-            <a href={employeeFormExportUrl(form.uuid)} target="_blank" rel="noreferrer">
-              {form.status === "uploaded" ? "Download document" : "Export PDF"}
-            </a>
-          </SecondaryButton>
-        ) : null}
-        {showSummary && encounter.is_active !== false ? (
-          <SecondaryButton type="button" disabled={reopen.isPending} onClick={() => reopen.mutate()}>
-            {reopen.isPending ? "Opening…" : "Edit"}
-          </SecondaryButton>
-        ) : null}
-      </div>
+  const showExport = Boolean(submitted && form);
+  const showEdit = showSummary && encounter.is_active !== false;
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+  return (
+    <div className={cn("flex flex-col", !embedded && "min-h-0 flex-1")} data-testid="oh-session-employee-form">
+      {embedded ? (
+        showExport || showEdit ? (
+          <div className="flex justify-end gap-2 px-5 pt-4">
+            {showExport && form ? (
+              <SecondaryButton asChild>
+                <a href={employeeFormExportUrl(form.uuid)} target="_blank" rel="noreferrer">
+                  {form.status === "uploaded" ? "Download document" : "Export PDF"}
+                </a>
+              </SecondaryButton>
+            ) : null}
+            {showEdit ? (
+              <SecondaryButton type="button" disabled={reopen.isPending} onClick={() => reopen.mutate()}>
+                {reopen.isPending ? "Opening…" : "Edit"}
+              </SecondaryButton>
+            ) : null}
+          </div>
+        ) : null
+      ) : (
+        <div className="flex items-center justify-between gap-3 border-b border-dash-border px-5 py-3">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-brand-primary">Employee form</p>
+            <h2 className="text-sm font-semibold text-brand-navy">
+              {submitted ? "Submitted details" : "Collect employee details"}
+            </h2>
+          </div>
+          <div className="flex gap-2">
+            {showExport && form ? (
+              <SecondaryButton asChild>
+                <a href={employeeFormExportUrl(form.uuid)} target="_blank" rel="noreferrer">
+                  {form.status === "uploaded" ? "Download document" : "Export PDF"}
+                </a>
+              </SecondaryButton>
+            ) : null}
+            {showEdit ? (
+              <SecondaryButton type="button" disabled={reopen.isPending} onClick={() => reopen.mutate()}>
+                {reopen.isPending ? "Opening…" : "Edit"}
+              </SecondaryButton>
+            ) : null}
+          </div>
+        </div>
+      )}
+
+      <div className={cn("px-5 py-5", !embedded && "min-h-0 flex-1 overflow-y-auto")}>
         {message ? <p className="mb-3 text-sm text-red-700" role="alert">{message}</p> : null}
 
         {showSummary ? (
@@ -246,47 +288,84 @@ export function OhSessionEmployeeForm({
         ) : null}
 
         {!showSummary && mode === "actions" ? (
-          <div className="mx-auto flex w-full max-w-xl flex-col gap-2">
-            <Choice
-              title="Enter manually"
-              detail="Fill the questions for this visit here."
-              disabled={manual.isPending || encounter.is_active === false}
-              onClick={() => manual.mutate()}
-            />
-            <section className="mt-2 rounded-xl border border-dash-border bg-dash-canvas p-4" aria-label="Share employee form">
+          <div className={cn("flex w-full flex-col", embedded ? "gap-8" : "mx-auto max-w-xl gap-2")}>
+            {embedded ? (
+              <button
+                type="button"
+                disabled={manual.isPending || encounter.is_active === false}
+                onClick={() => manual.mutate()}
+                className="group flex w-full items-center gap-4 rounded-xl border border-dash-border bg-white px-4 py-4 text-left transition-colors hover:border-brand-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-dash-border bg-white text-brand-navy">
+                  <PenLine className="size-5" aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-brand-navy">Enter manually</span>
+                  <span className="mt-0.5 block text-sm text-dash-muted">Fill the questions for this visit here.</span>
+                </span>
+                <ChevronRight className="size-4 shrink-0 text-dash-muted transition-transform group-hover:translate-x-0.5 group-hover:text-brand-primary" aria-hidden />
+              </button>
+            ) : (
+              <Choice
+                title="Enter manually"
+                detail="Fill the questions for this visit here."
+                disabled={manual.isPending || encounter.is_active === false}
+                onClick={() => manual.mutate()}
+              />
+            )}
+            <section
+              aria-label="Share employee form"
+              className={embedded ? undefined : "mt-2 rounded-xl border border-dash-border bg-dash-canvas p-4"}
+            >
               <h3 className="text-sm font-semibold text-brand-navy">Share employee form</h3>
-              <p className="mt-1 text-[13px] text-dash-muted">Let the employee complete the form on their own device.</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <SecondaryButton type="button" disabled={shareDisabled} onClick={() => setEmailOpen(true)}>
-                  <Mail className="size-4" aria-hidden="true" /> Send email
-                </SecondaryButton>
-                <SendFormEmailDialog
-                  open={emailOpen}
-                  onOpenChange={setEmailOpen}
-                  resolveFormUuid={async () => (await ensureRecord()).uuid}
-                  onSent={({ token, sentTo }) => {
-                    setPublicLink(`${window.location.origin}${ROUTES.workforceForm(token)}`);
-                    setMessage(null);
-                    toast({ variant: "success", title: sentTo ? `Form sent to ${sentTo}` : "Form sent to the employee’s email" });
-                  }}
-                />
-                <SecondaryButton type="button" disabled={shareDisabled || Boolean(publicLink)} onClick={() => share("show")}>
-                  <ExternalLink className="size-4" aria-hidden="true" /> Create link
-                </SecondaryButton>
-                <SecondaryButton type="button" disabled={shareDisabled} onClick={() => share("copy")}>
-                  <Copy className="size-4" aria-hidden="true" /> Copy link
-                </SecondaryButton>
-                <SecondaryButton type="button" disabled={shareDisabled} onClick={() => share("qr")}>
-                  <QrCode className="size-4" aria-hidden="true" /> Show QR code
-                </SecondaryButton>
+              <p className="mt-1 text-sm text-dash-muted">Let the employee complete the form on their own device.</p>
+              <div className={cn("mt-4", embedded ? "grid grid-cols-2 gap-2" : "mt-3 flex flex-wrap gap-2")}>
+                {SHARE_ACTIONS.map((action) => {
+                  const Icon = action.icon;
+                  const disabled =
+                    shareDisabled || (action.key === "link" && Boolean(publicLink));
+                  const onClick = () => {
+                    if (action.key === "email") setEmailOpen(true);
+                    else if (action.key === "link") share("show");
+                    else share(action.key);
+                  };
+                  return embedded ? (
+                    <button
+                      key={action.key}
+                      type="button"
+                      disabled={disabled}
+                      onClick={onClick}
+                      className="flex flex-col items-start gap-3 rounded-xl border border-dash-border bg-white px-3.5 py-3.5 text-left transition-colors hover:border-brand-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <span className="flex size-8 items-center justify-center rounded-lg border border-dash-border bg-white text-brand-navy">
+                        <Icon className="size-4" aria-hidden />
+                      </span>
+                      <span className="text-sm font-medium text-brand-navy">{action.label}</span>
+                    </button>
+                  ) : (
+                    <SecondaryButton key={action.key} type="button" disabled={disabled} onClick={onClick}>
+                      <Icon className="size-4" aria-hidden /> {action.label}
+                    </SecondaryButton>
+                  );
+                })}
               </div>
               {link.isPending ? <p className="mt-3 text-sm text-dash-muted" role="status">Creating link…</p> : null}
               {publicLink ? (
-                <p className="mt-3 select-all break-all rounded-md border border-dash-border bg-white px-3 py-2 text-[13px] text-brand-primary" data-testid="oh-session-employee-link">
+                <p className="mt-3 select-all break-all rounded-xl border border-dash-border bg-white px-3 py-2.5 text-sm text-brand-primary" data-testid="oh-session-employee-link">
                   {publicLink}
                 </p>
               ) : null}
             </section>
+            <SendFormEmailDialog
+              open={emailOpen}
+              onOpenChange={setEmailOpen}
+              resolveFormUuid={async () => (await ensureRecord()).uuid}
+              onSent={({ token, sentTo }) => {
+                setPublicLink(`${window.location.origin}${ROUTES.workforceForm(token)}`);
+                setMessage(null);
+                toast({ variant: "success", title: sentTo ? `Form sent to ${sentTo}` : "Form sent to the employee’s email" });
+              }}
+            />
             <Dialog open={qrOpen && !submitted && encounter.is_active !== false && form?.template_available !== false} onOpenChange={setQrOpen}>
               <DialogContent className={appFont.className}>
                 <DialogHeader>
@@ -334,7 +413,7 @@ export function OhSessionEmployeeForm({
 
       {mode === "manual" ? (
         <div className="flex justify-end gap-2 border-t border-dash-border px-5 py-4">
-          <SecondaryButton type="button" onClick={() => setEditing(false)}>
+          <SecondaryButton type="button" onClick={() => setManual(false)}>
             Back
           </SecondaryButton>
           <SecondaryButton type="button" onClick={() => save.mutate(false)} disabled={save.isPending}>
@@ -354,21 +433,28 @@ function Choice({
   detail,
   disabled,
   onClick,
+  plain = false,
 }: {
   title: string;
   detail: string;
   disabled: boolean;
   onClick: () => void;
+  plain?: boolean;
 }) {
   return (
     <button
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="flex w-full flex-col border-b border-dash-border px-1 py-3 text-left last:border-b-0 hover:bg-brand-tint/30 disabled:cursor-not-allowed disabled:opacity-60"
+      className={cn(
+        "flex w-full flex-col text-left disabled:cursor-not-allowed disabled:opacity-60",
+        plain
+          ? "rounded-md py-1 hover:text-brand-primary"
+          : "border-b border-dash-border px-1 py-3 last:border-b-0 hover:bg-brand-tint/30",
+      )}
     >
-      <span className="text-[13px] font-medium text-brand-navy">{title}</span>
-      <span className="text-[12px] text-dash-muted">{detail}</span>
+      <span className="text-sm font-medium text-brand-navy">{title}</span>
+      <span className="mt-0.5 text-sm text-dash-muted">{detail}</span>
     </button>
   );
 }

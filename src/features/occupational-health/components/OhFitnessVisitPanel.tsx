@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, ClipboardList, FileText } from "lucide-react";
 
 import { ImmStatusBadge, humanize } from "@/app/(app)/immunizations/_components/shared/ImmRecordTable";
 import { LoadError, QuietLoading } from "@/app/(app)/immunizations/_components/shared/QuietLoading";
@@ -21,18 +21,15 @@ import {
   daysUntil,
   relativeDays,
 } from "@/app/(app)/fitness/_components/shared/fit-visual";
-import { PrimaryButton } from "@/components/ui/app-buttons";
 import { ROUTES } from "@/constants/routes";
+import { certificatePdfUrl } from "@/features/occupational-health/services/oh-ext.service";
 import type { OhEncounterPanelId } from "@/features/occupational-health/lib/oh-encounter-modules";
 import {
   VERDICT_BADGE_TONE,
   checklistProgress,
   currentFitnessCertificate,
   fitVisitChecklist,
-  fitVisitPrimaryAction,
-  fitVisitSecondaryActions,
   type FitChecklistRow,
-  type FitVisitAction,
 } from "@/features/occupational-health/lib/oh-fitness-visit";
 import type { FitnessAssessment, FitnessCertificate } from "@/features/occupational-health/types";
 import { formatOhDateRange, newestFirst } from "@/features/occupational-health/utils/oh-format";
@@ -42,7 +39,7 @@ import type { FitOverall, FitWorker } from "@/features/occupational-health/servi
 
 const VERDICT_LINE: Record<FitOverall, string> = {
   fit: "Cleared for duty.",
-  fit_with_restrictions: "Can work within the restrictions below.",
+  fit_with_restrictions: "Can work within the recorded restrictions.",
   not_fit: "Not cleared until the readiness items below are resolved.",
   unknown: "Not enough on file to decide yet.",
 };
@@ -80,9 +77,18 @@ const HREF: Record<"fitnessBoard" | "fitnessTraining", string> = {
   fitnessTraining: ROUTES.fitnessTraining,
 };
 
+/** Employee-form record shown above Medical on a pre-employment visit. */
+export type PreEmploymentRecord = {
+  status: "not_started" | "in_progress" | "submitted" | "uploaded";
+  submittedAt?: string | null;
+  documentName?: string | null;
+  onOpen: () => void;
+};
+
 type OhFitnessVisitPanelProps = {
   customerUuid: string;
   onOpenPanel?: (panel: OhEncounterPanelId) => void;
+  preEmployment?: PreEmploymentRecord | null;
   certificates?: FitnessCertificate[];
   assessments?: FitnessAssessment[];
 };
@@ -91,6 +97,7 @@ type OhFitnessVisitPanelProps = {
 export function OhFitnessVisitPanel({
   customerUuid,
   onOpenPanel,
+  preEmployment = null,
   certificates = [],
   assessments = [],
 }: OhFitnessVisitPanelProps) {
@@ -103,6 +110,7 @@ export function OhFitnessVisitPanel({
         <OhFitnessVisitView
           worker={query.data}
           onOpenPanel={onOpenPanel}
+          preEmployment={preEmployment}
           certificates={certificates}
           assessments={assessments}
         />
@@ -114,11 +122,13 @@ export function OhFitnessVisitPanel({
 export function OhFitnessVisitView({
   worker,
   onOpenPanel,
+  preEmployment = null,
   certificates,
   assessments,
 }: {
   worker: FitWorker;
   onOpenPanel?: (panel: OhEncounterPanelId) => void;
+  preEmployment?: PreEmploymentRecord | null;
   certificates: FitnessCertificate[];
   assessments: FitnessAssessment[];
 }) {
@@ -126,8 +136,6 @@ export function OhFitnessVisitView({
   const rows = fitVisitChecklist(worker);
   const progress = checklistProgress(rows);
   const currentCert = currentFitnessCertificate(certificates);
-  const primary = fitVisitPrimaryAction(worker, certificates);
-  const secondaries = fitVisitSecondaryActions(primary);
   const validUntil = currentCert?.valid_to ?? worker.earliest_expiry;
   const expiryDays = validUntil ? daysUntil(validUntil) : null;
   const roleTitle = worker.role_clearance.job_title || worker.job_title;
@@ -136,7 +144,8 @@ export function OhFitnessVisitView({
 
   return (
     <div className="space-y-8" data-testid="oh-fit-visit">
-      <header className="border-b border-dash-border pb-6" data-testid="oh-fit-hero">
+      <header className="flex items-start justify-between gap-6 border-b border-dash-border pb-4" data-testid="oh-fit-hero">
+        <div className="min-w-0 space-y-1">
         <div className="flex flex-wrap items-center gap-2.5">
           <span className={cn("size-2.5 shrink-0 rounded-full", VERDICT_DOT[overall])} aria-hidden />
           <h2
@@ -147,8 +156,8 @@ export function OhFitnessVisitView({
           </h2>
           <ImmStatusBadge status={VERDICT_BADGE_TONE[overall] ?? "planned"} label={label(OVERALL_LABEL, overall)} />
         </div>
-        <p className="mt-1.5 text-[13px] text-dash-muted">{VERDICT_LINE[overall]}</p>
-        <p className="mt-3 text-[12px] leading-relaxed text-dash-muted" data-testid="oh-fit-hero-meta">
+        <p className="text-sm text-dash-muted">{VERDICT_LINE[overall]}</p>
+        <p className="text-xs leading-snug text-dash-muted" data-testid="oh-fit-hero-meta">
           {validUntil && expiryDays !== null ? (
             <>
               Valid until {fmtDate(validUntil)}
@@ -180,19 +189,18 @@ export function OhFitnessVisitView({
           ) : null}
           {worker.computed_at ? <> · Updated {fmtDateTime(worker.computed_at)}</> : null}
         </p>
-        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
-          {primary ? (
-            <ActionControl action={primary} onOpenPanel={onOpenPanel} primary testId={`oh-fit-action-${primary.key}`} />
-          ) : null}
-          {secondaries.map((action) => (
-            <ActionControl
-              key={action.key}
-              action={action}
-              onOpenPanel={onOpenPanel}
-              testId={`oh-fit-action-${action.key}`}
-            />
-          ))}
         </div>
+        {currentCert ? (
+          <a
+            href={certificatePdfUrl(currentCert.uuid)}
+            target="_blank"
+            rel="noreferrer"
+            data-testid="oh-fit-download-certificate"
+            className="shrink-0 text-sm font-medium text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
+          >
+            Download certificate
+          </a>
+        ) : null}
       </header>
 
       <section aria-label="Readiness" data-testid="oh-fit-checklist">
@@ -217,32 +225,18 @@ export function OhFitnessVisitView({
           />
         </div>
         <ol>
-          {rows.map((row, index) => (
+          {preEmployment ? <PreEmploymentRow record={preEmployment} /> : null}
+          {rows.map((row) => (
             <ChecklistRow
               key={row.source}
               row={row}
-              last={index === rows.length - 1}
+              last={false}
               onOpenPanel={onOpenPanel}
             />
           ))}
+          <CertificateRow current={currentCert} onOpen={onOpenPanel ? () => onOpenPanel("certificate") : undefined} />
         </ol>
       </section>
-
-      {worker.restrictions.length > 0 ? (
-        <section aria-label="Restrictions" data-testid="oh-fit-restrictions">
-          <h3 className="mb-2 text-[13px] font-semibold text-brand-navy">Restrictions</h3>
-          <ul className="flex flex-wrap gap-1.5">
-            {worker.restrictions.map((restriction) => (
-              <li
-                key={restriction}
-                className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[12px] font-medium text-amber-950"
-              >
-                {restriction}
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
 
       {worker.zones.length > 0 ? (
         <section aria-label="Areas" data-testid="oh-fit-areas">
@@ -319,6 +313,88 @@ function isCurrentCert(certificate: FitnessCertificate, current: FitnessCertific
   return current !== null && certificate.uuid === current.uuid;
 }
 
+const PRE_EMPLOYMENT_BADGE: Record<PreEmploymentRecord["status"], { label: string; tone: string; detail: string }> = {
+  not_started: { label: "Not started", tone: "planned", detail: "No form recorded on this visit." },
+  in_progress: { label: "In progress", tone: "expiring", detail: "Started, not submitted." },
+  submitted: { label: "Submitted", tone: "cleared", detail: "Submitted" },
+  uploaded: { label: "Uploaded", tone: "cleared", detail: "Document uploaded" },
+};
+
+function PreEmploymentRow({ record }: { record: PreEmploymentRecord }) {
+  const badge = PRE_EMPLOYMENT_BADGE[record.status];
+  const detail =
+    record.status === "uploaded" && record.documentName
+      ? record.documentName
+      : record.status === "submitted" && record.submittedAt
+        ? `Submitted ${fmtDate(record.submittedAt)}`
+        : badge.detail;
+  return (
+    <li data-testid="oh-fit-check-pre-employment" data-status={record.status} className="flex gap-3">
+      <span className="relative flex w-2.5 shrink-0 flex-col items-center">
+        <span className={cn("mt-3 size-2.5 rounded-full", TONE_DOT[record.status === "not_started" ? "missing" : record.status === "in_progress" ? "warn" : "good"])} aria-hidden />
+        <span className="mt-1 w-px flex-1 bg-dash-border" aria-hidden />
+      </span>
+      <div className="flex min-w-0 flex-1 items-start gap-2.5 py-2.5">
+        <ClipboardList className="mt-0.5 size-3.5 shrink-0 text-brand-navy" aria-hidden />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h4 className="text-[13px] font-semibold text-brand-navy">Pre-employment</h4>
+            <ImmStatusBadge status={badge.tone} label={badge.label} />
+          </div>
+          <p className="mt-0.5 text-[12px] leading-snug text-dash-muted">{detail}</p>
+        </div>
+        <button
+          type="button"
+          onClick={record.onOpen}
+          className="shrink-0 pt-0.5 text-[12px] font-medium text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
+        >
+          Open
+        </button>
+      </div>
+    </li>
+  );
+}
+
+function CertificateRow({
+  current,
+  onOpen,
+}: {
+  current: FitnessCertificate | null;
+  onOpen?: () => void;
+}) {
+  const issued = current !== null;
+  return (
+    <li data-testid="oh-fit-check-certificate" data-status={issued ? "issued" : "not_started"} className="flex gap-3">
+      <span className="relative flex w-2.5 shrink-0 flex-col items-center">
+        <span className={cn("mt-3 size-2.5 rounded-full", TONE_DOT[issued ? "good" : "missing"])} aria-hidden />
+      </span>
+      <div className="flex min-w-0 flex-1 items-start gap-2.5 py-2.5">
+        <FileText className={cn("mt-0.5 size-3.5 shrink-0", issued ? "text-emerald-700" : "text-brand-navy")} aria-hidden />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h4 className="text-[13px] font-semibold text-brand-navy">Certificate of fitness</h4>
+            <ImmStatusBadge status={issued ? "cleared" : "planned"} label={issued ? "Issued" : "Not started"} />
+          </div>
+          <p className="mt-0.5 text-[12px] leading-snug text-dash-muted">
+            {issued
+              ? `Issued ${fmtDate(current.signed_at ?? current.valid_from)}${current.version ? ` · v${current.version}` : ""}`
+              : "Open to fill the certificate."}
+          </p>
+        </div>
+        {onOpen ? (
+          <button
+            type="button"
+            onClick={onOpen}
+            className="shrink-0 pt-0.5 text-[12px] font-medium text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
+          >
+            Open
+          </button>
+        ) : null}
+      </div>
+    </li>
+  );
+}
+
 function ChecklistRow({
   row,
   last,
@@ -390,54 +466,3 @@ function ChecklistJump({
   return null;
 }
 
-function ActionControl({
-  action,
-  onOpenPanel,
-  primary = false,
-  testId,
-}: {
-  action: FitVisitAction;
-  onOpenPanel?: (panel: OhEncounterPanelId) => void;
-  primary?: boolean;
-  testId: string;
-}) {
-  if (action.href) {
-    return (
-      <Link
-        href={HREF[action.href]}
-        data-testid={testId}
-        className="inline-flex items-center gap-0.5 text-[12.5px] font-medium text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
-      >
-        {action.label}
-        <ArrowUpRight className="size-3.5" aria-hidden />
-      </Link>
-    );
-  }
-  if (!action.panel) return null;
-  if (!onOpenPanel && !primary) return null;
-  const onClick = onOpenPanel && action.panel ? () => onOpenPanel(action.panel!) : undefined;
-  if (primary) {
-    return (
-      <PrimaryButton
-        type="button"
-        size="sm"
-        className="h-8 px-3 text-[12.5px]"
-        data-testid={testId}
-        onClick={onClick}
-        disabled={!onClick}
-      >
-        {action.label}
-      </PrimaryButton>
-    );
-  }
-  return (
-    <button
-      type="button"
-      data-testid={testId}
-      onClick={onClick}
-      className="text-[12.5px] font-medium text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
-    >
-      {action.label}
-    </button>
-  );
-}

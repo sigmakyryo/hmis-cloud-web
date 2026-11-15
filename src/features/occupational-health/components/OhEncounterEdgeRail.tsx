@@ -6,6 +6,7 @@ import {
   HistoryIcon,
   InformationCircleIcon,
   Invoice01Icon,
+  ShieldAlertIcon,
 } from "@hugeicons/core-free-icons";
 import type { IconSvgElement } from "@hugeicons/react";
 import { useState } from "react";
@@ -23,6 +24,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useFitWorker } from "@/app/(app)/fitness/_components/shared/FitnessSummary";
 import { OhClinicalHistoryPanel } from "@/features/occupational-health/components/OhClinicalHistoryPanel";
 import {
   OhEncounterSummaryRail,
@@ -39,11 +41,12 @@ import type {
 import { appFont } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
 
-type EdgePanel = "info" | "history" | "examinations" | "bill";
+type EdgePanel = "info" | "history" | "examinations" | "restrictions" | "bill";
 
 type OhEncounterEdgeRailProps = {
   visitUuid: string;
   encounterUuid: string;
+  customerUuid?: string | null;
   /** Kept so callers can pass the encounter; facts now live on the Info sheet and patient chip. */
   encounter?: OhVisitEncounter | null;
   examinations: OhExamination[];
@@ -60,6 +63,7 @@ const ACTIONS: Array<{ id: EdgePanel; label: string; icon: IconSvgElement }> = [
   { id: "info", label: "Info", icon: InformationCircleIcon },
   { id: "history", label: "History", icon: HistoryIcon },
   { id: "examinations", label: "Examinations", icon: ClipboardListIcon },
+  { id: "restrictions", label: "Restrictions", icon: ShieldAlertIcon },
   { id: "bill", label: "Bill", icon: Invoice01Icon },
 ];
 
@@ -74,6 +78,7 @@ function failedChargeCount(charges: OhVisitBillingCharge[]): number {
 function panelTitle(panel: EdgePanel | null): string {
   if (panel === "history") return "History";
   if (panel === "examinations") return "Examinations";
+  if (panel === "restrictions") return "Restrictions";
   if (panel === "bill") return "Bill";
   return "Info";
 }
@@ -82,6 +87,7 @@ function panelDescription(
   panel: EdgePanel | null,
   examinations: OhExamination[],
   charges: OhVisitBillingCharge[],
+  restrictionCount: number,
 ): string {
   if (panel === "history") {
     return "Earlier occupational health visits";
@@ -90,6 +96,12 @@ function panelDescription(
     return examinations.length === 0
       ? "None recorded on this encounter"
       : `${examinations.length} on this encounter`;
+  }
+  if (panel === "restrictions") {
+    if (restrictionCount === 0) return "None on file";
+    return restrictionCount === 1
+      ? "1 limit on this person's work"
+      : `${restrictionCount} limits on this person's work`;
   }
   if (panel === "bill") {
     const failed = failedChargeCount(charges);
@@ -104,7 +116,7 @@ function panelDescription(
 
 type ActionBadge = {
   count: number;
-  tone: "default" | "danger";
+  tone: "default" | "danger" | "caution";
   hint: string;
 };
 
@@ -112,7 +124,18 @@ function actionBadge(
   id: EdgePanel,
   examinations: OhExamination[],
   charges: OhVisitBillingCharge[],
+  restrictionCount: number,
 ): ActionBadge | null {
+  if (id === "restrictions" && restrictionCount > 0) {
+    return {
+      count: restrictionCount,
+      tone: "caution",
+      hint:
+        restrictionCount === 1
+          ? "1 limit on this person's work"
+          : `${restrictionCount} limits on this person's work`,
+    };
+  }
   if (id === "examinations" && examinations.length > 0) {
     return {
       count: examinations.length,
@@ -137,10 +160,11 @@ function actionBadge(
   return null;
 }
 
-/** Right-hand visit tools as a slim icon rail: info, history, examinations, and the bill. */
+/** Right-hand visit tools as a slim icon rail: info, history, examinations, restrictions, and the bill. */
 export function OhEncounterEdgeRail({
   visitUuid,
   encounterUuid,
+  customerUuid = null,
   examinations,
   activeExamUuid = null,
   findingCount,
@@ -152,6 +176,8 @@ export function OhEncounterEdgeRail({
 }: OhEncounterEdgeRailProps) {
   const desktop = useOhDesktopWorkspace();
   const [panel, setPanel] = useState<EdgePanel | null>(null);
+  const workerQuery = useFitWorker(customerUuid);
+  const restrictions = workerQuery.data?.restrictions ?? [];
 
   function toggle(next: EdgePanel) {
     setPanel((current) => (current === next ? null : next));
@@ -169,7 +195,7 @@ export function OhEncounterEdgeRail({
     >
       {ACTIONS.map((action) => {
         const selected = panel === action.id;
-        const badge = actionBadge(action.id, examinations, billingCharges);
+        const badge = actionBadge(action.id, examinations, billingCharges, restrictions.length);
         const tooltip = badge ? `${action.label} · ${badge.hint}` : action.label;
         return (
           <Tooltip key={action.id}>
@@ -196,7 +222,11 @@ export function OhEncounterEdgeRail({
                     data-tone={badge.tone}
                     className={cn(
                       "absolute -top-0.5 -right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-0.5 text-[8px] font-semibold leading-none text-white",
-                      badge.tone === "danger" ? "bg-red-600" : "bg-brand-primary",
+                      badge.tone === "danger"
+                        ? "bg-red-600"
+                        : badge.tone === "caution"
+                          ? "bg-amber-600"
+                          : "bg-brand-primary",
                     )}
                   >
                     {badge.count > 9 ? "9+" : badge.count}
@@ -234,7 +264,7 @@ export function OhEncounterEdgeRail({
             {panelTitle(panel)}
           </SheetTitle>
           <SheetDescription className="text-[13px] text-dash-muted">
-            {panelDescription(panel, examinations, billingCharges)}
+            {panelDescription(panel, examinations, billingCharges, restrictions.length)}
           </SheetDescription>
         </SheetHeader>
         <div className="min-h-0 flex-1 overflow-y-auto">
@@ -270,6 +300,12 @@ export function OhEncounterEdgeRail({
               variant="sheet"
             />
           ) : null}
+          {panel === "restrictions" ? (
+            <RestrictionsList
+              restrictions={restrictions}
+              failed={workerQuery.isError}
+            />
+          ) : null}
           {panel === "bill" ? (
             <OhVisitBillingList charges={billingCharges} />
           ) : null}
@@ -297,5 +333,37 @@ export function OhEncounterEdgeRail({
       )}
       {sheet}
     </TooltipProvider>
+  );
+}
+
+function RestrictionsList({
+  restrictions,
+  failed,
+}: {
+  restrictions: string[];
+  failed: boolean;
+}) {
+  if (failed) {
+    return (
+      <p className="px-5 py-4 text-[13px] text-red-700" role="alert">
+        Could not load restrictions.
+      </p>
+    );
+  }
+  if (restrictions.length === 0) {
+    return (
+      <p className="px-5 py-4 text-[13px] text-dash-muted" data-testid="oh-fit-restrictions-empty">
+        No restrictions on file.
+      </p>
+    );
+  }
+  return (
+    <ul className="divide-y divide-dash-border" data-testid="oh-fit-restrictions">
+      {restrictions.map((restriction) => (
+        <li key={restriction} className="px-5 py-3 text-[13px] font-medium text-brand-navy">
+          {restriction}
+        </li>
+      ))}
+    </ul>
   );
 }

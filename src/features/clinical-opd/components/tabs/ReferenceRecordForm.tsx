@@ -86,37 +86,48 @@ export function ReferenceRecordForm({
     }
   }
 
+  const fileLabel =
+    files.length === 0
+      ? "Attach PDF, JPEG, or PNG"
+      : files.length === 1
+        ? files[0]?.name ?? "1 file"
+        : `${files.length} files`;
+
   return (
-    <div className="space-y-3 rounded-md border border-brand-border p-3">
-      <div className="space-y-1.5">
-        <Label htmlFor="reference-kind">
-          Kind <RequiredFieldMarker />
-        </Label>
-        <select
-          id="reference-kind"
-          className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-          disabled={disabled || kinds.length === 0}
-          value={kindUuid}
-          onChange={(event) => setKindUuid(event.target.value)}
-        >
-          <option value="">Select a kind</option>
-          {kinds.map((kind) => (
-            <option key={kind.uuid} value={kind.uuid}>
-              {kind.label}
+    <div className="space-y-3">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label htmlFor="reference-kind">
+            Kind <RequiredFieldMarker />
+          </Label>
+          <select
+            id="reference-kind"
+            className="flex h-10 w-full rounded-lg bg-background px-3 text-sm text-foreground shadow-[0_1px_2px_rgba(16,24,40,0.05)] ring-1 ring-inset ring-dash-border focus:outline-none focus:ring-2 focus:ring-brand-primary disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={disabled || kinds.length === 0}
+            value={kindUuid}
+            onChange={(event) => setKindUuid(event.target.value)}
+          >
+            <option value="">
+              {kinds.length === 0 ? "No kinds yet" : "Select a kind"}
             </option>
-          ))}
-        </select>
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="reference-value">
-          Number <RequiredFieldMarker />
-        </Label>
-        <Input
-          id="reference-value"
-          disabled={disabled}
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-        />
+            {kinds.map((kind) => (
+              <option key={kind.uuid} value={kind.uuid}>
+                {kind.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="reference-value">
+            Number <RequiredFieldMarker />
+          </Label>
+          <Input
+            id="reference-value"
+            disabled={disabled}
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+          />
+        </div>
       </div>
       <HospitalChoiceFields
         hospitals={hospitals}
@@ -127,9 +138,16 @@ export function ReferenceRecordForm({
       />
       <div className="space-y-1.5">
         <Label htmlFor="reference-files">Documents</Label>
+        <label
+          htmlFor="reference-files"
+          className="inline-flex cursor-pointer text-sm font-medium text-brand-primary"
+        >
+          {fileLabel}
+        </label>
         <Input
           key={fileInputKey}
           id="reference-files"
+          className="sr-only"
           type="file"
           accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
           multiple
@@ -137,13 +155,15 @@ export function ReferenceRecordForm({
           onChange={(event) => setFiles(Array.from(event.target.files ?? []))}
         />
       </div>
-      <PrimaryButton
-        type="button"
-        disabled={disabled || createReference.isPending || kinds.length === 0}
-        onClick={() => void submit()}
-      >
-        Save reference
-      </PrimaryButton>
+      <div className="flex justify-end">
+        <PrimaryButton
+          type="button"
+          disabled={disabled || createReference.isPending || kinds.length === 0}
+          onClick={() => void submit()}
+        >
+          Save reference
+        </PrimaryButton>
+      </div>
     </div>
   );
 }
