@@ -52,6 +52,33 @@ export const CLINICAL_WORKSPACE_TAB_CAPABILITIES: ClinicalRoleCapabilityMeta[] =
     label: "Client",
     description: "Client profile in the visit workspace",
   },
+  {
+    key: "record_chief_complaint",
+    label: "Complaints",
+    description:
+      "Complaints & HPI tab and recording chief complaints (the tab shows if Complaints or HPI is on)",
+  },
+  {
+    key: "record_hpi",
+    label: "History of present illness",
+    description:
+      "Complaints & HPI tab and recording HPI (the tab shows if Complaints or HPI is on)",
+  },
+  {
+    key: "record_allergy",
+    label: "Allergies",
+    description: "Allergies tab and recording allergies",
+  },
+  {
+    key: "manage_problem_list",
+    label: "Problem list",
+    description: "Problem list tab and managing problems",
+  },
+  {
+    key: "record_disposition",
+    label: "Disposition",
+    description: "Disposition tab and recording the visit outcome",
+  },
 ];
 
 export const CLINICAL_ROLE_ACTION_CAPABILITIES: ClinicalRoleCapabilityMeta[] = [

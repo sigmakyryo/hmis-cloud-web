@@ -347,7 +347,11 @@ export function useMyClinicalCapabilities() {
   return useQuery({
     queryKey: ["clinical-my-capabilities"],
     queryFn: fetchMyClinicalCapabilities,
-    staleTime: 60 * 1000,
+    // Role capabilities are edited in settings, so never serve a cached copy
+    // when a workspace mounts or the window regains focus.
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 }
 

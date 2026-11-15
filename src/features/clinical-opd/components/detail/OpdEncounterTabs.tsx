@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Check, MoreHorizontal } from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
 
 import { appFont } from "@/lib/fonts";
 import {
@@ -11,6 +11,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  DetailPageTabNavItem,
+  DetailPageTabsNavSection,
+} from "@/features/app-shell/components/page-layout";
 import { useOpdEncounterWorkspace } from "@/features/clinical-opd/components/detail/opd-encounter-workspace-context";
 import { useOpdEncounterTabCounts } from "@/features/clinical-opd/hooks/use-clinical-opd";
 import { useWorkspaceRouting } from "@/features/clinical-opd/hooks/use-workspace-routing";
@@ -21,6 +25,9 @@ import {
   workspaceTabHref,
 } from "@/features/clinical-workspace/utils/workspace-tabs";
 import { cn } from "@/lib/utils";
+
+const TAB_ITEM_CLASS =
+  "inline-flex items-center justify-start gap-1.5 px-2 py-1.5 text-left text-[13px]";
 
 type OpdEncounterTabsProps = {
   className?: string;
@@ -49,81 +56,51 @@ export function OpdEncounterTabs({ className }: OpdEncounterTabsProps) {
   }
 
   return (
-    <nav
+    <DetailPageTabsNavSection
       aria-label={`${routing.encounterNoun} sections`}
-      className={cn(
-        "flex items-end gap-1 border-b border-dash-border/80 px-4 sm:px-6",
-        className,
-      )}
+      className={className}
+      navClassName="min-w-0 overflow-x-hidden"
     >
-      <div className="scrollbar-hide flex min-w-0 flex-1 gap-1 overflow-x-auto">
-        {tabs.map((tab, index) => {
-          const isActive = activeTab === tab.id;
-          const count = counts[tab.id] ?? 0;
-          // The circle answers "is this step done?"; the pill answers "how many?".
-          const isRecorded = count > 0;
+      <div className="flex w-full min-w-0 items-end justify-start gap-0">
+        <div className="scrollbar-hide flex min-w-0 flex-1 justify-start gap-0 overflow-x-auto">
+          {tabs.map((tab) => {
+            const count = counts[tab.id] ?? 0;
 
-          return (
-            <Link
-              key={tab.id}
-              href={workspaceTabHref(routing, visitUuid, encounterUuid, tab.id)}
-              aria-current={isActive ? "page" : undefined}
-              className={cn(
-                "inline-flex shrink-0 items-center gap-2 border-b-2 px-2.5 py-2.5 text-sm",
-                isActive
-                  ? "border-brand-primary font-semibold text-brand-navy"
-                  : "border-transparent font-medium text-brand-muted hover:text-brand-navy",
-              )}
-            >
-              <span
-                className={cn(
-                  "inline-flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] tabular-nums",
-                  isActive
-                    ? "bg-brand-primary text-white"
-                    : isRecorded
-                      ? "bg-brand-primary/10 text-brand-primary"
-                      : "bg-slate-100 text-brand-muted",
-                )}
-                aria-hidden="true"
+            return (
+              <DetailPageTabNavItem
+                key={tab.id}
+                href={workspaceTabHref(routing, visitUuid, encounterUuid, tab.id)}
+                isActive={activeTab === tab.id}
+                className={TAB_ITEM_CLASS}
               >
-                {isRecorded ? (
-                  <Check className="size-3" strokeWidth={3} />
-                ) : (
-                  index + 1
-                )}
-              </span>
-              <span>{tab.label}</span>
-              {isRecorded ? (
-                <span
-                  className={cn(
-                    "rounded-full px-1.5 py-0.5 text-[11px] font-medium leading-none tabular-nums",
-                    isActive
-                      ? "bg-brand-primary/10 text-brand-primary"
-                      : "bg-slate-100 text-brand-muted",
-                  )}
-                  data-testid={`opd-encounter-tab-count-${tab.id}`}
-                >
-                  {count}
-                </span>
-              ) : null}
-            </Link>
-          );
-        })}
-      </div>
+                {tab.label}
+                {count > 0 ? (
+                  <span
+                    className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium leading-none tabular-nums text-brand-muted"
+                    data-testid={`opd-encounter-tab-count-${tab.id}`}
+                  >
+                    {count}
+                  </span>
+                ) : null}
+              </DetailPageTabNavItem>
+            );
+          })}
+        </div>
 
-      {menuSections.length > 0 ? (
+        {menuSections.length > 0 ? (
         <DropdownMenu>
           <DropdownMenuTrigger
             className={cn(
-              "mb-px inline-flex shrink-0 items-center gap-1.5 border-b-2 px-2.5 py-2.5 text-sm font-medium",
+              "mb-px shrink-0 whitespace-nowrap text-sm font-medium transition-colors",
+              TAB_ITEM_CLASS,
               isMenuActive
-                ? "border-brand-primary text-brand-navy"
-                : "border-transparent text-brand-muted hover:text-brand-navy",
+                ? "text-brand-navy"
+                : "text-brand-muted hover:text-brand-navy",
             )}
             aria-label="More encounter sections"
             data-testid="opd-encounter-more-sections"
           >
-            <MoreHorizontal className="size-4" aria-hidden="true" />
+            <MoreHorizontal className="size-3.5" aria-hidden="true" />
             More
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -146,7 +123,8 @@ export function OpdEncounterTabs({ className }: OpdEncounterTabsProps) {
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-      ) : null}
-    </nav>
+        ) : null}
+      </div>
+    </DetailPageTabsNavSection>
   );
 }

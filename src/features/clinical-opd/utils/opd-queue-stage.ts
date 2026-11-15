@@ -183,9 +183,19 @@ export function formatOpdQueueDemographics(
 export function formatOpdQueueClientMeta(
   encounter: Pick<
     OpdQueueEncounter,
-    "customer_identifier" | "customer_dob" | "customer_gender"
+    | "customer_identifier"
+    | "customer_dob"
+    | "customer_gender"
+    | "employer_name"
+    | "employee_number"
   >,
 ): string {
+  const employer = encounter.employer_name?.trim() || null;
+  const employeeNumber = encounter.employee_number?.trim() || null;
+  if (employer || employeeNumber) {
+    return [employer, employeeNumber].filter(Boolean).join(" · ");
+  }
+
   const identifier = encounter.customer_identifier?.trim() || null;
   const ageLabel = formatAge(encounter.customer_dob);
   const age = ageLabel !== "—" ? ageLabel : null;

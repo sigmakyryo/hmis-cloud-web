@@ -17,6 +17,7 @@ import { CustomerVisitDialog } from "@/features/customers/components/detail/Cust
 import { UpdateCustomerDialog } from "@/features/customers/components/UpdateCustomerDialog";
 import { fetchCustomers } from "@/features/customers/services/customers.service";
 import { fetchOrganizationPayers } from "@/features/settings/services/settings.service";
+import { isEmployeeBasedOrganization } from "@/features/settings/utils/organization-type";
 import { membershipSearchPayers, type MembershipSearchPayer } from "@/features/customers/utils/membership-search-payers";
 import { toCustomerRegistrationDraft, type CustomerRegistrationDraft } from "@/features/customers/utils/membership-registration";
 import type { PayerMember } from "@/features/customers/types/payer-member.types";
@@ -465,7 +466,10 @@ export function CustomersListPage() {
         <>
           <ListPageTableSection className="flex min-h-0 flex-1 flex-col overflow-hidden">
             {isLoading ? (
-              <CustomersTableSkeleton rows={10} />
+              <CustomersTableSkeleton
+                rows={10}
+                employeeBased={isEmployeeBasedOrganization(userData?.tenant)}
+              />
             ) : error ? (
               <ListPageBlankState
                 compact

@@ -41,6 +41,14 @@ export type OpdQueueEncounter = {
   customer_uuid: string;
   customer_name: string;
   customer_identifier?: string | null;
+  /** Employee a dependant is linked to (employee-based organizations only). */
+  associated_employee_name?: string | null;
+  /** Employment role for employee-based organizations. */
+  employment_role?: "employee" | "dependant" | string | null;
+  /** Employer display name (tenant or contractor). */
+  employer_name?: string | null;
+  /** Employee number for the worker (or related employee for dependants). */
+  employee_number?: string | null;
   customer_gender?: string | null;
   customer_dob?: string | null;
   clinic_name?: string | null;

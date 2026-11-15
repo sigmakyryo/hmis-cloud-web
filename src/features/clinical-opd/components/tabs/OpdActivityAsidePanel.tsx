@@ -1,7 +1,7 @@
 "use client";
 
 import { Calendar, ListTodo, NotebookPen } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { AppointmentStatusBadge } from "@/features/appointments/components/AppointmentStatusBadge";
@@ -15,9 +15,11 @@ import {
   DetailPageAsidePanelSection,
   DetailPageAsideSummarySection,
 } from "@/features/app-shell/components/page-layout";
+import { OpdManageAllergiesDialog } from "@/features/clinical-opd/components/detail/OpdManageAllergiesDialog";
 import { OpdVitalSetCard } from "@/features/clinical-opd/components/detail/OpdVitalSetCard";
 import { useOpdEncounterWorkspace } from "@/features/clinical-opd/components/detail/opd-encounter-workspace-context";
 import type {
+  ChartAllergy,
   EncounterClinicalOrder,
   EncounterNursingNote,
   EncounterObservation,
@@ -41,6 +43,90 @@ type OpdActivityAsidePanelProps = {
 
 function AsideEmptyLine({ children }: { children: ReactNode }) {
   return <p className="text-sm text-brand-muted">{children}</p>;
+}
+
+const HIGH_RISK_SEVERITIES = new Set(["severe", "life_threatening"]);
+
+function formatSeverity(severity: string): string {
+  const label = severity.replaceAll("_", " ");
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+function AllergiesSection({ allergies }: { allergies: ChartAllergy[] }) {
+  const {
+    visitUuid,
+    encounterUuid,
+    visibleTabIds,
+    capabilities,
+    isChartLocked,
+  } = useOpdEncounterWorkspace();
+  const [manageOpen, setManageOpen] = useState(false);
+  const canManage =
+    visibleTabIds.includes("allergies") ||
+    (capabilities.includes("record_allergy") && !isChartLocked);
+
+  return (
+    <>
+      <DetailPageAsideSummarySection
+        title="Allergies"
+        data-testid="opd-activity-allergies"
+        action={
+          canManage ? (
+            <button
+              type="button"
+              className="text-xs font-medium text-brand-muted transition-colors hover:text-brand-navy"
+              onClick={() => setManageOpen(true)}
+              data-testid="opd-activity-allergies-manage"
+            >
+              Manage
+            </button>
+          ) : null
+        }
+      >
+        {allergies.length === 0 ? (
+          <AsideEmptyLine>No known allergies</AsideEmptyLine>
+        ) : (
+          <ul className="space-y-2.5">
+            {allergies.map((allergy) => (
+              <li
+                key={allergy.uuid}
+                className="flex items-start justify-between gap-3 text-sm"
+              >
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-brand-navy">
+                    {allergy.allergy_name}
+                  </p>
+                  {allergy.reaction ? (
+                    <p className="mt-0.5 line-clamp-2 text-[11px] text-brand-muted">
+                      {allergy.reaction}
+                    </p>
+                  ) : null}
+                </div>
+                <span
+                  className={cn(
+                    "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium",
+                    HIGH_RISK_SEVERITIES.has(allergy.severity)
+                      ? "bg-red-50 text-red-700"
+                      : "bg-amber-50 text-amber-800",
+                  )}
+                >
+                  {formatSeverity(allergy.severity)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </DetailPageAsideSummarySection>
+      {canManage ? (
+        <OpdManageAllergiesDialog
+          open={manageOpen}
+          onOpenChange={setManageOpen}
+          visitUuid={visitUuid}
+          encounterUuid={encounterUuid}
+        />
+      ) : null}
+    </>
+  );
 }
 
 function OrdersSection({ orders }: { orders: EncounterClinicalOrder[] }) {
@@ -207,7 +293,7 @@ export function OpdActivityAsidePanel({
   isLoading = false,
   className,
 }: OpdActivityAsidePanelProps) {
-  const { customer } = useOpdEncounterWorkspace();
+  const { customer, chartSummary } = useOpdEncounterWorkspace();
   const appointmentsQuery = useCustomerAppointments(customer?.uuid);
 
   return (
@@ -217,7 +303,7 @@ export function OpdActivityAsidePanel({
     >
       <DetailPageAsidePanelHeader
         title="Encounter panel"
-        description="Orders, notes, vital signs, tasks, and appointments"
+        description="Allergies, orders, notes, vital signs, tasks, and appointments"
       />
 
       {isLoading ? (
@@ -231,6 +317,7 @@ export function OpdActivityAsidePanel({
         </div>
       ) : (
         <>
+          <AllergiesSection allergies={chartSummary?.allergies ?? []} />
           <OrdersSection orders={orders} />
           <NotesSection notes={nursingNotes} />
           <VitalSignsSection observations={observations} />

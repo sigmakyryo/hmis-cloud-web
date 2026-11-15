@@ -9,24 +9,37 @@ import {
   ListPageDataTableRow,
 } from "@/features/app-shell/components/page-layout";
 
-const columns = [
-  { key: "client", label: "Client" },
-  { key: "id", label: "Client ID / MRN" },
-  { key: "visit_status", label: "Visit Status" },
-  { key: "demographics", label: "Demographics" },
-  { key: "created", label: "Registered" },
-  { key: "actions", label: "Actions" },
-] as const;
-
 type CustomersTableSkeletonProps = {
   rows?: number;
   className?: string;
+  /** When true, includes the employee-org Type column. */
+  employeeBased?: boolean;
 };
 
 export function CustomersTableSkeleton({
   rows = 8,
   className,
+  employeeBased = false,
 }: CustomersTableSkeletonProps) {
+  const columns = employeeBased
+    ? [
+        { key: "client", label: "Client" },
+        { key: "id", label: "Client ID / MRN" },
+        { key: "type", label: "Type" },
+        { key: "visit_status", label: "Visit Status" },
+        { key: "demographics", label: "Demographics" },
+        { key: "created", label: "Registered" },
+        { key: "actions", label: "Actions" },
+      ]
+    : [
+        { key: "client", label: "Client" },
+        { key: "id", label: "Client ID / MRN" },
+        { key: "visit_status", label: "Visit Status" },
+        { key: "demographics", label: "Demographics" },
+        { key: "created", label: "Registered" },
+        { key: "actions", label: "Actions" },
+      ];
+
   return (
     <ListPageDataTable className={className}>
       <ListPageDataTableHeader>
@@ -59,6 +72,12 @@ export function CustomersTableSkeleton({
             <ListPageDataTableCell>
               <Skeleton className="h-5 w-20 rounded-md" />
             </ListPageDataTableCell>
+
+            {employeeBased ? (
+              <ListPageDataTableCell>
+                <Skeleton className="h-3.5 w-16" />
+              </ListPageDataTableCell>
+            ) : null}
 
             {/* Status */}
             <ListPageDataTableCell>

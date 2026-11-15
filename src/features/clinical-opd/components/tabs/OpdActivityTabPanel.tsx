@@ -41,7 +41,7 @@ export function OpdActivityTabPanel({
           <OpdClinicalTimeline
             events={timeline.data ?? []}
             title="Activity"
-            description="Clinical events recorded for this encounter."
+            description={null}
             emptyTitle="No clinical activity yet"
             emptyDescription="Complaints, exams, orders, diagnoses, and medications will appear here as they are recorded."
             data-testid="opd-activity-log"

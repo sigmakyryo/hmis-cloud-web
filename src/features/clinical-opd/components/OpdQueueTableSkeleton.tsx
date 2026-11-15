@@ -9,25 +9,29 @@ import {
   ListPageDataTableRow,
 } from "@/features/app-shell/components/page-layout";
 
-const columns = [
-  { key: "client", label: "Client" },
-  { key: "demographics", label: "Demographics" },
-  { key: "wait", label: "Wait" },
-  { key: "department", label: "Department" },
-  { key: "stage", label: "Stage" },
-  { key: "status", label: "Status" },
-  { key: "actions", label: "Actions" },
-] as const;
-
 type OpdQueueTableSkeletonProps = {
   rows?: number;
   className?: string;
+  employeeBased?: boolean;
 };
 
 export function OpdQueueTableSkeleton({
   rows = 8,
   className,
+  employeeBased = false,
 }: OpdQueueTableSkeletonProps) {
+  const columns = [
+    { key: "client", label: "Client" },
+    ...(employeeBased ? [{ key: "type", label: "Type" }] : []),
+    { key: "datetime", label: "Date & Time" },
+    { key: "demographics", label: "Demographics" },
+    { key: "wait", label: "Wait" },
+    { key: "department", label: "Department" },
+    { key: "stage", label: "Stage" },
+    { key: "status", label: "Status" },
+    { key: "actions", label: "Actions" },
+  ];
+
   return (
     <ListPageDataTable className={className}>
       <ListPageDataTableHeader>
@@ -51,8 +55,16 @@ export function OpdQueueTableSkeleton({
                 <Skeleton className="h-3.5 w-32" />
               </div>
             </ListPageDataTableCell>
+            {employeeBased ? (
+              <ListPageDataTableCell>
+                <Skeleton className="h-3.5 w-16" />
+              </ListPageDataTableCell>
+            ) : null}
             <ListPageDataTableCell>
               <Skeleton className="h-3.5 w-24" />
+            </ListPageDataTableCell>
+            <ListPageDataTableCell>
+              <Skeleton className="h-3.5 w-14" />
             </ListPageDataTableCell>
             <ListPageDataTableCell>
               <Skeleton className="h-3.5 w-14" />

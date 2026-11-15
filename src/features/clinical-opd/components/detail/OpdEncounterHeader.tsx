@@ -113,29 +113,27 @@ export function OpdEncounterHeader({
   }
 
   return (
-    <DetailPageHeaderSection className="bg-white px-4 py-4 sm:px-6">
+    <DetailPageHeaderSection className="bg-white px-4 py-3 sm:py-3 md:px-6">
       <div
-        className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3"
+        className="flex flex-wrap items-center justify-between gap-3"
         data-testid="opd-encounter-header"
       >
         <div className="flex min-w-0 items-center gap-3">
           <UserIdenticon
             seed={identiconSeed}
             name={fullName}
-            className="size-10 shrink-0 rounded-lg sm:size-12"
+            className="size-10 shrink-0 rounded-lg"
             fallbackClassName="rounded-lg text-sm font-semibold"
           />
-          <div className="min-w-0 space-y-0.5">
+          <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <DetailPageTitle className="text-lg sm:text-xl">
-                {fullName}
-              </DetailPageTitle>
+              <DetailPageTitle className="text-xl">{fullName}</DetailPageTitle>
               {encounter?.status ? (
                 <OpdEncounterStatusBadge status={encounter.status} />
               ) : null}
             </div>
             {identity ? (
-              <p className="truncate font-mono text-[13px] text-brand-muted">
+              <p className="mt-0.5 truncate font-mono text-[12px] tracking-wide text-dash-muted">
                 {identity}
               </p>
             ) : null}

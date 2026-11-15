@@ -36,6 +36,7 @@ import {
 import { useSelectedDepartment } from "@/features/clinical-workspace/hooks/use-selected-department";
 import type { ClinicalWorkspaceRouting } from "@/features/clinical-workspace/types/clinical-workspace.types";
 import { workspaceLandingHref } from "@/features/clinical-workspace/utils/workspace-tabs";
+import { isEmployeeBasedOrganization } from "@/features/settings/utils/organization-type";
 import { useUser } from "@/providers/user-provider";
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -206,7 +207,10 @@ export function ClinicalQueuePage({ routing }: ClinicalQueuePageProps) {
         }
       >
         {isLoading ? (
-          <OpdQueueTableSkeleton rows={8} />
+          <OpdQueueTableSkeleton
+            rows={8}
+            employeeBased={isEmployeeBasedOrganization(userData?.tenant)}
+          />
         ) : error ? (
           isIpd ? (
             <IpdQueueEmptyState

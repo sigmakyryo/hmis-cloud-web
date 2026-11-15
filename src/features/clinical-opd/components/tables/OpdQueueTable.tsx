@@ -23,6 +23,9 @@ import {
   formatWaitingMinutes,
   resolveOpdQueueStage,
 } from "@/features/clinical-opd/utils/opd-queue-stage";
+import { formatEmploymentRoleLabel } from "@/features/customers/utils/employment-display";
+import { isEmployeeBasedOrganization } from "@/features/settings/utils/organization-type";
+import { useUser } from "@/providers/user-provider";
 import { ROUTES } from "@/constants/routes";
 
 type OpdQueueTableProps = {
@@ -42,16 +45,32 @@ function hrefForEncounter(
   );
 }
 
-const columns = [
-  { key: "client", label: "Client" },
-  { key: "datetime", label: "Date & Time" },
-  { key: "demographics", label: "Demographics" },
-  { key: "wait", label: "Wait" },
-  { key: "department", label: "Department" },
-  { key: "stage", label: "Stage" },
-  { key: "status", label: "Status" },
-  { key: "actions", label: "Actions", className: "text-right pr-4" },
-] as const;
+function buildOpdColumns(employeeBased: boolean) {
+  const columns: Array<{ key: string; label: string; className?: string }> = [
+    { key: "client", label: "Client" },
+  ];
+  if (employeeBased) {
+    columns.push({ key: "type", label: "Type" });
+  }
+  columns.push(
+    { key: "datetime", label: "Date & Time" },
+    { key: "demographics", label: "Demographics" },
+    { key: "wait", label: "Wait" },
+    { key: "department", label: "Department" },
+    { key: "stage", label: "Stage" },
+    { key: "status", label: "Status" },
+    { key: "actions", label: "Actions", className: "text-right pr-4" },
+  );
+  return columns;
+}
+
+function formatOpdEmploymentMeta(encounter: OpdQueueEncounter): string | null {
+  const parts = [
+    encounter.employer_name?.trim() || null,
+    encounter.employee_number?.trim() || null,
+  ].filter(Boolean);
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
 
 export function OpdQueueTable({
   encounters,
@@ -60,6 +79,9 @@ export function OpdQueueTable({
   className,
 }: OpdQueueTableProps) {
   const router = useRouter();
+  const { userData } = useUser();
+  const employeeBased = isEmployeeBasedOrganization(userData?.tenant);
+  const columns = buildOpdColumns(employeeBased);
 
   const handleOpen = (encounter: OpdQueueEncounter) => {
     if (onRowClick) {
@@ -77,7 +99,7 @@ export function OpdQueueTable({
           {columns.map((column) => (
             <ListPageDataTableHeaderCell
               key={column.key}
-              className={"className" in column ? column.className : undefined}
+              className={column.className}
             >
               {column.label}
             </ListPageDataTableHeaderCell>
@@ -89,6 +111,19 @@ export function OpdQueueTable({
           const stage = resolveOpdQueueStage(encounter);
           const identifier = encounter.customer_identifier?.trim() || null;
           const demographics = formatOpdQueueDemographics(encounter);
+          const employmentMeta = employeeBased
+            ? formatOpdEmploymentMeta(encounter)
+            : null;
+          const associatedEmployee = employeeBased
+            ? encounter.associated_employee_name?.trim() || null
+            : null;
+          const clientSubline = employeeBased
+            ? employmentMeta
+            : [identifier, associatedEmployee].filter(Boolean).join(" · ") ||
+              null;
+          const typeLabel = employeeBased
+            ? formatEmploymentRoleLabel(encounter.employment_role)
+            : null;
           return (
             <ListPageDataTableRow
               key={encounter.encounter_uuid}
@@ -110,14 +145,22 @@ export function OpdQueueTable({
                     >
                       {encounter.customer_name}
                     </Link>
-                    {identifier ? (
-                      <p className="truncate font-mono text-[12px] text-brand-muted">
-                        {identifier}
+                    {clientSubline ? (
+                      <p className="truncate text-[12px] text-brand-muted">
+                        {clientSubline}
                       </p>
                     ) : null}
                   </div>
                 </div>
               </ListPageDataTableCell>
+
+              {employeeBased ? (
+                <ListPageDataTableCell data-testid="opd-queue-type">
+                  <span className="text-[13px] text-brand-navy">
+                    {typeLabel ?? "—"}
+                  </span>
+                </ListPageDataTableCell>
+              ) : null}
 
               <ListPageDataTableCell
                 className="whitespace-nowrap text-brand-slate"

@@ -50,6 +50,10 @@ import {
   formatDisplayDate,
 } from "@/features/customers/utils/format-customer";
 import {
+  formatEmploymentClientMeta,
+  formatEmploymentRoleLabel,
+} from "@/features/customers/utils/employment-display";
+import {
   isEmployeeBasedOrganization,
 } from "@/features/settings/utils/organization-type";
 import { cn } from "@/lib/utils";
@@ -65,7 +69,7 @@ type CustomersTableProps = {
   className?: string;
 };
 
-const columns = [
+const BASE_COLUMNS = [
   { key: "client", label: "Client" },
   { key: "id", label: "Client ID / MRN" },
   { key: "visit_status", label: "Visit Status" },
@@ -73,6 +77,21 @@ const columns = [
   { key: "created", label: "Registered" },
   { key: "actions", label: "Actions" },
 ] as const;
+
+function buildColumns(employeeBased: boolean) {
+  if (!employeeBased) {
+    return [...BASE_COLUMNS];
+  }
+  return [
+    BASE_COLUMNS[0],
+    BASE_COLUMNS[1],
+    { key: "type", label: "Type" },
+    BASE_COLUMNS[2],
+    BASE_COLUMNS[3],
+    BASE_COLUMNS[4],
+    BASE_COLUMNS[5],
+  ] as const;
+}
 
 function CustomerHoverPreview({ customer }: { customer: Customer }) {
   const name = formatCustomerName(customer);
@@ -169,6 +188,8 @@ export function CustomersTable({
   const { toast } = useToast();
   const { userData } = useUser();
   const employeeBased = isEmployeeBasedOrganization(userData?.tenant);
+  const organizationName = userData?.tenant?.name?.trim() || null;
+  const columns = buildColumns(employeeBased);
   const [copiedUuid, setCopiedUuid] = useState<string | null>(null);
 
   const handleCopyMrn = (event: React.MouseEvent, customer: Customer) => {
@@ -227,6 +248,16 @@ export function CustomersTable({
             const isVisitActive = isCustomerVisitActive(customer.visit_status);
             const isCopied = copiedUuid === customer.uuid;
             const listAge = formatCustomerListAge(customer);
+            const employmentMeta = employeeBased
+              ? formatEmploymentClientMeta({
+                  employment: customer.employment,
+                  internal_reference: customer.internal_reference,
+                  organizationName,
+                })
+              : null;
+            const employmentTypeLabel = employeeBased
+              ? formatEmploymentRoleLabel(customer.employment?.role)
+              : null;
 
             return (
               <ListPageDataTableRow
@@ -256,12 +287,12 @@ export function CustomersTable({
                           </Link>
                           <div className="mt-0.5 flex items-center gap-2 truncate text-[11px] text-dash-muted">
                             {employeeBased ? (
-                              customer.internal_reference?.trim() ? (
-                                <span className="font-mono">
-                                  {customer.internal_reference.trim()}
-                                </span>
+                              employmentMeta ? (
+                                <span className="truncate">{employmentMeta}</span>
                               ) : (
-                                <span className="text-dash-muted">No employee number</span>
+                                <span className="text-dash-muted">
+                                  No employer / employee number
+                                </span>
                               )
                             ) : customer.phone_number ? (
                               <span>{customer.phone_number}</span>
@@ -307,6 +338,14 @@ export function CustomersTable({
                     ) : null}
                   </div>
                 </ListPageDataTableCell>
+
+                {employeeBased ? (
+                  <ListPageDataTableCell>
+                    <span className="text-[13px] text-brand-navy">
+                      {employmentTypeLabel ?? "—"}
+                    </span>
+                  </ListPageDataTableCell>
+                ) : null}
 
                 <ListPageDataTableCell>
                   <CustomerVisitStatusBadge
