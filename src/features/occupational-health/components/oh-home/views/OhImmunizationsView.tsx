@@ -95,7 +95,7 @@ export function OhImmunizationsView() {
       </ViewGrid>
       <ViewGrid>
         <ViewSection
-          title="Coverage by employer" icon={Building2}
+          title="Coverage by employer" count={summary && summary.people > 0 ? Math.round(summary.percent_compliant) : undefined} countLabel="% of workers covered" icon={Building2}
           href={ROUTES.immunizationsCompliance}
           linkLabel="Full report"
         >

@@ -13,7 +13,7 @@ type SummaryQuery = { data?: OhHomeFitness; isLoading: boolean; isError: boolean
 export function OhFitExpiringSection({ summary }: { summary: SummaryQuery }) {
   const expiring = summary.data?.expiring;
   return (
-    <ViewSection title="Clearances expiring" icon={CalendarClock} count={expiring?.count} href={ROUTES.fitnessBoard} linkLabel="Board">
+    <ViewSection title="Clearances expiring" icon={CalendarClock} countLabel="in the next 30 days" count={expiring?.count} href={ROUTES.fitnessBoard} linkLabel="Board">
       <QueryState isLoading={summary.isLoading} isError={summary.isError} onRetry={() => void summary.refetch()} rows={4}>
         <p className="mb-1 text-[12.5px] text-dash-muted">Next 30 days, soonest first</p>
         {!expiring || expiring.rows.length === 0 ? (
@@ -76,7 +76,7 @@ export function OhFitEmployerSection({ summary }: { summary: SummaryQuery }) {
 export function OhFitTrainingSection({ summary }: { summary: SummaryQuery }) {
   const training = summary.data?.training_expiring;
   return (
-    <ViewSection title="Training expiring" icon={GraduationCap} count={training?.count} href={ROUTES.fitnessTraining} linkLabel="Training">
+    <ViewSection title="Training expiring" icon={GraduationCap} countLabel="in the next 30 days" count={training?.count} href={ROUTES.fitnessTraining} linkLabel="Training">
       <QueryState isLoading={summary.isLoading} isError={summary.isError} onRetry={() => void summary.refetch()} rows={3}>
         {!training || training.by_course.length === 0 ? (
           <p className="text-[13.5px] text-dash-muted">No training expires in the next 30 days.</p>

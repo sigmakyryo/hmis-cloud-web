@@ -49,7 +49,7 @@ export function OhHealthProgramsView() {
   return (
     <div className="space-y-10" data-testid="oh-home-view-health-programs">
       <ViewSection
-        title="Due for screening" icon={CalendarClock}
+        title="Due for screening" icon={CalendarClock} countLabel="workers due"
         count={due.isSuccess ? (counts.total ?? 0) : undefined}
         href={ROUTES.healthProgramsDue}
         linkLabel="Everyone due"

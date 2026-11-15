@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { createContext, createElement, useContext, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
+import { createContext, createElement, useContext, type ReactNode } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import type { OhFamilyModule } from "@/features/app-shell/constants/navigation-config";
@@ -12,10 +12,11 @@ import { cn } from "@/lib/utils";
 /** Which module a view belongs to, so its panels pick up the module's colour. */
 export const OhViewModuleContext = createContext<OhFamilyModule>("OccupationalHealth");
 
-/** A panel in a module view: icon on the module's tint, a plain heading with an optional count, one link. */
+/** A block of a module view: a small inline heading (module-coloured icon, name, count) and one link. */
 export function ViewSection({
   title,
   count,
+  countLabel,
   href,
   linkLabel,
   action,
@@ -25,6 +26,8 @@ export function ViewSection({
 }: {
   title: string;
   count?: number;
+  /** What the count is, read out after the number (e.g. "open cases"). */
+  countLabel?: string;
   href?: string;
   linkLabel?: string;
   action?: ReactNode;
@@ -33,26 +36,28 @@ export function ViewSection({
   testId?: string;
 }) {
   const ohModule = useContext(OhViewModuleContext);
-  const accent = OH_MODULE_ACCENT[ohModule];
 
   return (
     <section className="min-w-0" data-testid={testId}>
-      <div className="flex min-h-11 items-center justify-between gap-4 border-b border-dash-border pb-2.5">
-        <h3 className="flex min-w-0 items-center gap-2.5 text-[14.5px] font-semibold text-brand-navy">
-          <span aria-hidden className={cn("flex size-7 shrink-0 items-center justify-center rounded-lg", accent.tint, accent.icon)}>
-            {createElement(icon ?? OH_MODULE_ICON[ohModule], { className: "size-[15px]" })}
-          </span>
+      <div className="mb-3 flex min-h-8 flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <h3 className="flex min-w-0 items-center gap-2 text-[14.5px] font-semibold text-brand-navy">
+          {createElement(icon ?? OH_MODULE_ICON[ohModule], { className: cn("size-4 shrink-0", OH_MODULE_ACCENT[ohModule].icon), "aria-hidden": true })}
           <span className="truncate">{title}</span>
-          {count !== undefined ? <span className="font-normal text-dash-muted tabular-nums">{count}</span> : null}
+          {count !== undefined ? (
+            <span className="font-normal text-dash-muted tabular-nums" data-testid="oh-home-section-count">
+              {count}
+              {countLabel ? <span className="sr-only"> {countLabel}</span> : null}
+            </span>
+          ) : null}
         </h3>
         {action ??
           (href ? (
-            <Link href={href} className="shrink-0 text-[13px] font-medium text-brand-primary hover:underline">
+            <Link href={href} className="text-[13px] font-medium text-brand-primary hover:underline">
               {linkLabel ?? "Open"}
             </Link>
           ) : null)}
       </div>
-      <div className="@container pt-4">{children}</div>
+      <div className="@container">{children}</div>
     </section>
   );
 }

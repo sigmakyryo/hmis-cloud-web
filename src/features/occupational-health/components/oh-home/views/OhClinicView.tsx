@@ -1,15 +1,16 @@
 "use client";
 
-import { ShieldCheck, Stethoscope } from "lucide-react";
+import { Stethoscope } from "lucide-react";
 import Link from "next/link";
 
 import { UserIdenticon } from "@/components/UserIdenticon";
 import { ROUTES } from "@/constants/routes";
 import { formatWaitingMinutes } from "@/features/clinical-opd/utils/opd-queue-stage";
-import { OhHomeComplianceBar } from "@/features/occupational-health/components/oh-home/OhHomeLive";
-import { OhClinicInjuriesSection, OhClinicVisitsSection } from "@/features/occupational-health/components/oh-home/views/OhClinicSections";
+import { OhClinicCompliance } from "@/features/occupational-health/components/oh-home/views/OhClinicCompliance";
+import { OhClinicInjuries } from "@/features/occupational-health/components/oh-home/views/OhClinicInjuries";
+import { OhClinicVisits } from "@/features/occupational-health/components/oh-home/views/OhClinicVisits";
 import { ViewGrid } from "@/features/occupational-health/components/oh-home/views/OhViewCharts";
-import { QueryState, TodoRow, ViewSection } from "@/features/occupational-health/components/oh-home/views/OhViewParts";
+import { QueryState, ViewSection } from "@/features/occupational-health/components/oh-home/views/OhViewParts";
 import { useOhHomeSummary } from "@/features/occupational-health/components/oh-home/views/useOhHomeSummary";
 import { queueWaitingMinutes, waitTone } from "@/features/occupational-health/components/OhQueueTable";
 import { OhStartVisitEntry } from "@/features/occupational-health/components/OhStartVisitEntry";
@@ -60,16 +61,15 @@ export function OhClinicView() {
   const shown = ordered.slice(0, QUEUE_PREVIEW);
   const counts = compliance.data;
   const summary = useOhHomeSummary("clinic");
-  const certificates = summary.data?.certificates;
 
   return (
     <>
       <ViewSection
-        title="In the clinic" icon={Stethoscope}
+        title="In the clinic" icon={Stethoscope} countLabel="here now"
         count={queue.isSuccess ? active.length : undefined}
         testId="oh-home-queue"
         action={
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-3 @3xl:flex-col @3xl:items-start">
             <Link href={ROUTES.occupationalHealth} className="text-[13px] font-medium text-brand-primary hover:underline">
               Open queue
             </Link>
@@ -94,34 +94,17 @@ export function OhClinicView() {
           )}
         </QueryState>
       </ViewSection>
+      <OhClinicCompliance
+        counts={counts}
+        certificates={summary.data?.certificates}
+        isLoading={compliance.isLoading}
+        isError={compliance.isError}
+        onRetry={() => void compliance.refetch()}
+      />
       <ViewGrid>
-        <ViewSection title="Compliance" icon={ShieldCheck} href={ROUTES.occupationalHealthCompliance} linkLabel="Compliance">
-          <QueryState
-            isLoading={compliance.isLoading}
-            isError={compliance.isError || (!compliance.isLoading && !counts)}
-            onRetry={() => void compliance.refetch()}
-          >
-            {counts ? (
-              <>
-                <OhHomeComplianceBar />
-                <ul className="mt-3">
-                  <TodoRow value={counts.overdue} label="Checks overdue" hint="Past due" href={ROUTES.occupationalHealthCompliance} alert />
-                  <TodoRow value={counts.due} label="Checks due now" href={ROUTES.occupationalHealthCompliance} />
-                  <TodoRow value={counts.due_within_30_days ?? 0} label="Coming due" hint="30 days" href={ROUTES.occupationalHealthCompliance} />
-                  {certificates ? (
-                    <>
-                      <TodoRow value={certificates.expiring_30d} label="Certificates expiring" hint="30 days" href={ROUTES.occupationalHealthCompliance} />
-                      <TodoRow value={certificates.expired_30d} label="Certificates lapsed" hint="Last 30 days" href={ROUTES.occupationalHealthCompliance} alert />
-                    </>
-                  ) : null}
-                </ul>
-              </>
-            ) : null}
-          </QueryState>
-        </ViewSection>
-        <OhClinicInjuriesSection summary={summary} />
+        <OhClinicInjuries summary={summary} />
+        <OhClinicVisits summary={summary} />
       </ViewGrid>
-      <OhClinicVisitsSection summary={summary} />
     </>
   );
 }

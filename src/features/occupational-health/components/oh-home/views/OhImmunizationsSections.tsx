@@ -36,7 +36,7 @@ export function OhImmDosesSection({ summary }: { summary: SummaryQuery }) {
   const total = weeks.reduce((sum, week) => sum + week.doses, 0);
   const thisWeek = weeks.at(-1)?.doses ?? 0;
   return (
-    <ViewSection title="Doses given, last 8 weeks" icon={ChartColumn} count={summary.data ? total : undefined}>
+    <ViewSection title="Doses given, last 8 weeks" icon={ChartColumn} countLabel="doses in 8 weeks" count={summary.data ? total : undefined}>
       <QueryState isLoading={summary.isLoading} isError={summary.isError} onRetry={() => void summary.refetch()} rows={3}>
         <p className="mb-3 text-[13.5px] text-dash-muted">
           <span className="font-semibold text-brand-navy tabular-nums">{thisWeek}</span> this week, about{" "}
@@ -56,7 +56,7 @@ export function OhImmDosesSection({ summary }: { summary: SummaryQuery }) {
 export function OhImmStockSection({ summary }: { summary: SummaryQuery }) {
   const stock = summary.data?.stock;
   return (
-    <ViewSection title="Vaccine stock" icon={Package} count={stock?.lots} href={ROUTES.immunizationsVaccines} linkLabel="Vaccines & lots">
+    <ViewSection title="Vaccine stock" icon={Package} countLabel="usable lots" count={stock?.lots} href={ROUTES.immunizationsVaccines} linkLabel="Vaccines & lots">
       <QueryState isLoading={summary.isLoading} isError={summary.isError} onRetry={() => void summary.refetch()} rows={4}>
         {stock ? (
           <>

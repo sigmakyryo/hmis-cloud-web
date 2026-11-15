@@ -209,10 +209,12 @@ describe("OhHomePage", () => {
     const row = screen.getByTestId("oh-home-queue-row");
     expect(row).toHaveAttribute("href", ROUTES.occupationalHealthEncounter("visit-1", "enc-1"));
     expect(row).toHaveTextContent("Owen Onions");
-    expect(screen.getByRole("img", { name: "Compliance: 4 overdue, 2 due, 10 up to date" })).toBeInTheDocument();
-    const todos = screen.getAllByTestId("oh-home-todo");
-    expect(todos[0]).toHaveTextContent("4Checks overdue");
-    expect(todos[0]).toHaveAttribute("href", ROUTES.occupationalHealthCompliance);
+    expect(screen.getByTestId("oh-home-runway-behind")).toHaveTextContent("4checks overdue");
+    expect(screen.getByTestId("oh-home-runway-now")).toHaveTextContent("2checks due");
+    expect(screen.getAllByTestId("oh-home-runway-item")[0]).toHaveAttribute("href", ROUTES.occupationalHealthCompliance);
+    const compliance = screen.getByTestId("oh-home-compliance");
+    expect(compliance).toHaveTextContent("10 of 16 checks up to date");
+    expect(within(compliance).getByTestId("oh-home-section-count")).toHaveTextContent("63% of checks up to date");
   });
 
   it("immunizations leads with coverage, lowest first, and what needs a dose", async () => {
@@ -348,11 +350,15 @@ describe("OhHomePage", () => {
 
     const injury = await screen.findByTestId("oh-home-iod-case");
     expect(injury).toHaveAttribute("href", ROUTES.occupationalHealthRecord("iod", "iod-1"));
-    expect(injury).toHaveTextContent("Left hand · Caught in roller");
-    expect(screen.getByText(/days lost on open cases/)).toBeInTheDocument();
-    const todos = screen.getAllByTestId("oh-home-todo").map((todo) => todo.textContent);
-    expect(todos).toEqual(expect.arrayContaining([expect.stringContaining("17Certificates expiring"), expect.stringContaining("3Certificates lapsed")]));
-    expect(screen.getByRole("img", { name: "Visits per day over the last 14 days, 91 in all." })).toBeInTheDocument();
+    expect(injury).toHaveTextContent("Left hand");
+    expect(injury).toHaveTextContent("Caught in roller");
+    expect(injury).toHaveTextContent(/Day \d+/);
+    expect(injury).toHaveTextContent("Serious");
+    expect(await screen.findByTestId("oh-home-runway-behind")).toHaveTextContent("3certificates lapsed");
+    expect(screen.getByTestId("oh-home-runway-next")).toHaveTextContent("17certificates expiring");
+    const visits = screen.getByTestId("oh-home-visits");
+    expect(within(visits).getAllByTestId("oh-home-visit-day")).toHaveLength(14);
+    expect(visits).toHaveTextContent("Busiest");
     expect(data.home).toHaveBeenCalledWith("clinic");
   });
 

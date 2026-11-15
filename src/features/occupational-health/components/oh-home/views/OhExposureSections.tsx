@@ -60,7 +60,7 @@ export function OhExpControlsSection({ summary }: { summary: SummaryQuery }) {
   const controls = summary.data?.controls;
   const max = Math.max(1, ...(controls?.by_hierarchy ?? []).map((row) => row.open));
   return (
-    <ViewSection title="Open controls" icon={ShieldCheck} count={controls?.open} href={ROUTES.exposureManagementEvents} linkLabel="Events">
+    <ViewSection title="Open controls" icon={ShieldCheck} countLabel="open controls" count={controls?.open} href={ROUTES.exposureManagementEvents} linkLabel="Events">
       <QueryState isLoading={summary.isLoading} isError={summary.isError} onRetry={() => void summary.refetch()} rows={4}>
         {controls ? (
           <>
@@ -100,7 +100,7 @@ export function OhExpBiologicalSection({ dashboard }: { dashboard?: ExposureDash
   const bio = dashboard?.biological;
   if (!bio) return null;
   return (
-    <ViewSection title="Needle-stick and splash incidents" icon={Syringe} count={bio.open_incidents} href={ROUTES.exposureManagementIncidents} linkLabel="Incidents">
+    <ViewSection title="Needle-stick and splash incidents" icon={Syringe} countLabel="open incidents" count={bio.open_incidents} href={ROUTES.exposureManagementIncidents} linkLabel="Incidents">
       <p className="mb-1 text-[12.5px] text-dash-muted">{bio.last_90_days} reported in the last 90 days</p>
       <ul>
         <TodoRow value={bio.urgent} label="Need urgent care" hint="Post-exposure treatment" href={ROUTES.exposureManagementIncidents} alert />

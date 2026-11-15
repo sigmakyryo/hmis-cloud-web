@@ -59,7 +59,7 @@ export function OhFitnessView() {
   return (
     <div className="space-y-10" data-testid="oh-home-view-fitness">
       <ViewSection
-        title="Fit for work today" icon={BadgeCheck}
+        title="Fit for work today" count={counts && total > 0 ? Math.round(((counts.fit ?? 0) / total) * 100) : undefined} countLabel="% fit for work" icon={BadgeCheck}
         href={ROUTES.fitnessBoard}
         linkLabel="Fitness board"
       >
@@ -126,7 +126,7 @@ export function OhFitnessView() {
       <ViewGrid>
         {attention.length > 0 ? (
           <ViewSection
-            title="Not fit or restricted" icon={TriangleAlert}
+            title="Not fit or restricted" icon={TriangleAlert} countLabel="workers"
             count={attention.length}
             href={ROUTES.fitnessBoard}
             linkLabel="See all"

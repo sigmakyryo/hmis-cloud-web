@@ -17,7 +17,7 @@ const reasonLabel = (reason: string) => REASON_LABEL[reason] ?? reason.replaceAl
 export function OhDaMonthSection({ summary }: { summary: SummaryQuery }) {
   const month = summary.data?.month;
   return (
-    <ViewSection title="This month" icon={CalendarDays} href={ROUTES.drugAlcoholReports} linkLabel="Reports">
+    <ViewSection title="This month" icon={CalendarDays} count={month?.tests} countLabel="tests this month" href={ROUTES.drugAlcoholReports} linkLabel="Reports">
       <QueryState isLoading={summary.isLoading} isError={summary.isError} onRetry={() => void summary.refetch()} rows={2}>
         {month ? (
           <>
@@ -43,7 +43,7 @@ export function OhDaReasonSection({ summary }: { summary: SummaryQuery }) {
   const rows = summary.data?.by_reason ?? [];
   const max = Math.max(1, ...rows.map((row) => row.tests));
   return (
-    <ViewSection title="Why people were tested" icon={ListFilter} count={summary.data ? rows.reduce((sum, row) => sum + row.tests, 0) : undefined}>
+    <ViewSection title="Why people were tested" icon={ListFilter} countLabel="tests in 90 days" count={summary.data ? rows.reduce((sum, row) => sum + row.tests, 0) : undefined}>
       <QueryState isLoading={summary.isLoading} isError={summary.isError} onRetry={() => void summary.refetch()} rows={3}>
         <p className="mb-1 text-[12.5px] text-dash-muted">Last 90 days</p>
         {rows.length === 0 ? (
