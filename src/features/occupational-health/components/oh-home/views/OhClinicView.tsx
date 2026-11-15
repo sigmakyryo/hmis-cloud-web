@@ -9,7 +9,7 @@ import { formatWaitingMinutes } from "@/features/clinical-opd/utils/opd-queue-st
 import { OhClinicCompliance } from "@/features/occupational-health/components/oh-home/views/OhClinicCompliance";
 import { OhClinicInjuries } from "@/features/occupational-health/components/oh-home/views/OhClinicInjuries";
 import { OhClinicVisits } from "@/features/occupational-health/components/oh-home/views/OhClinicVisits";
-import { ViewGrid } from "@/features/occupational-health/components/oh-home/views/OhViewCharts";
+import { shortDate } from "@/features/occupational-health/components/oh-home/views/OhViewCharts";
 import { QueryState, ViewSection } from "@/features/occupational-health/components/oh-home/views/OhViewParts";
 import { useOhHomeSummary } from "@/features/occupational-health/components/oh-home/views/useOhHomeSummary";
 import { queueWaitingMinutes, waitTone } from "@/features/occupational-health/components/OhQueueTable";
@@ -21,6 +21,8 @@ import { cn } from "@/lib/utils";
 
 const QUEUE_PREVIEW = 6;
 const ACTIVE = new Set(["waiting", "in_progress"]);
+/** Past this, a visit was most likely left open rather than still waiting. */
+const STALE_MINUTES = 12 * 60;
 
 function QueueRow({ encounter }: { encounter: OhVisitEncounter }) {
   const name = encounter.customer_name?.trim() || encounter.customer_identifier?.trim() || "Unknown client";
@@ -41,6 +43,10 @@ function QueueRow({ encounter }: { encounter: OhVisitEncounter }) {
         </span>
         {inProgress ? (
           <span className="shrink-0 text-[12.5px] font-medium text-brand-primary">With {encounter.clinician_name?.trim() || "a clinician"}</span>
+        ) : minutes !== null && minutes >= STALE_MINUTES ? (
+          <span className="shrink-0 text-[12.5px] font-medium text-amber-700" title={`Waiting ${formatWaitingMinutes(minutes)}`}>
+            Open since {shortDate(encounter.started_at || encounter.created_at)}
+          </span>
         ) : (
           <span className={cn("shrink-0 text-[13px] font-semibold tabular-nums", ACTIVE.has(encounter.status) ? waitTone(minutes).text : "text-dash-muted")}>
             {formatWaitingMinutes(minutes)}
@@ -63,48 +69,52 @@ export function OhClinicView() {
   const summary = useOhHomeSummary("clinic");
 
   return (
-    <>
-      <ViewSection
-        title="In the clinic" icon={Stethoscope} countLabel="here now"
-        count={queue.isSuccess ? active.length : undefined}
-        testId="oh-home-queue"
-        action={
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-3 @3xl:flex-col @3xl:items-start">
-            <Link href={ROUTES.occupationalHealth} className="text-[13px] font-medium text-brand-primary hover:underline">
-              Open queue
-            </Link>
-            <OhStartVisitEntry />
-          </div>
-        }
-      >
-        <QueryState isLoading={queue.isLoading} isError={queue.isError} onRetry={() => void queue.refetch()} rows={4}>
-          {shown.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-dash-border px-4 py-6 text-[13.5px] text-dash-muted">No visits in the queue.</p>
-          ) : (
-            <>
-              <ul>
-                {shown.map((encounter) => (
-                  <QueueRow key={encounter.uuid} encounter={encounter} />
-                ))}
-              </ul>
-              {active.length > shown.length ? (
-                <p className="pt-2 text-[13px] text-dash-muted">and {active.length - shown.length} more in the queue</p>
-              ) : null}
-            </>
-          )}
-        </QueryState>
-      </ViewSection>
-      <OhClinicCompliance
-        counts={counts}
-        certificates={summary.data?.certificates}
-        isLoading={compliance.isLoading}
-        isError={compliance.isError}
-        onRetry={() => void compliance.refetch()}
-      />
-      <ViewGrid>
-        <OhClinicInjuries summary={summary} />
+    <div className="grid items-start gap-x-12 gap-y-10 @4xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
+      <div className="min-w-0 space-y-10">
+        <ViewSection
+          title="In the clinic"
+          icon={Stethoscope}
+          countLabel="here now"
+          count={queue.isSuccess ? active.length : undefined}
+          testId="oh-home-queue"
+          action={
+            <div className="flex items-center gap-4">
+              <Link href={ROUTES.occupationalHealth} className="text-[13px] font-medium text-brand-primary hover:underline">
+                Open queue
+              </Link>
+              <OhStartVisitEntry />
+            </div>
+          }
+        >
+          <QueryState isLoading={queue.isLoading} isError={queue.isError} onRetry={() => void queue.refetch()} rows={4}>
+            {shown.length === 0 ? (
+              <p className="border-y border-dash-border/70 py-5 text-[13.5px] text-dash-muted">No visits in the queue.</p>
+            ) : (
+              <>
+                <ul className="border-t border-dash-border/70">
+                  {shown.map((encounter) => (
+                    <QueueRow key={encounter.uuid} encounter={encounter} />
+                  ))}
+                </ul>
+                {active.length > shown.length ? (
+                  <p className="pt-2 text-[13px] text-dash-muted">and {active.length - shown.length} more in the queue</p>
+                ) : null}
+              </>
+            )}
+          </QueryState>
+        </ViewSection>
         <OhClinicVisits summary={summary} />
-      </ViewGrid>
-    </>
+      </div>
+      <div className="min-w-0 space-y-10">
+        <OhClinicCompliance
+          counts={counts}
+          certificates={summary.data?.certificates}
+          isLoading={compliance.isLoading}
+          isError={compliance.isError}
+          onRetry={() => void compliance.refetch()}
+        />
+        <OhClinicInjuries summary={summary} />
+      </div>
+    </div>
   );
 }

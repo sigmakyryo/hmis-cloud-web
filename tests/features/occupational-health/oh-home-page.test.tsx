@@ -209,12 +209,23 @@ describe("OhHomePage", () => {
     const row = screen.getByTestId("oh-home-queue-row");
     expect(row).toHaveAttribute("href", ROUTES.occupationalHealthEncounter("visit-1", "enc-1"));
     expect(row).toHaveTextContent("Owen Onions");
-    expect(screen.getByTestId("oh-home-runway-behind")).toHaveTextContent("4checks overdue");
-    expect(screen.getByTestId("oh-home-runway-now")).toHaveTextContent("2checks due");
+    expect(screen.getByTestId("oh-home-runway-behind")).toHaveTextContent("Behind4checks overdue");
+    expect(screen.getByTestId("oh-home-runway-now")).toHaveTextContent("Due today2checks due");
     expect(screen.getAllByTestId("oh-home-runway-item")[0]).toHaveAttribute("href", ROUTES.occupationalHealthCompliance);
-    const compliance = screen.getByTestId("oh-home-compliance");
-    expect(compliance).toHaveTextContent("10 of 16 checks up to date");
-    expect(within(compliance).getByTestId("oh-home-section-count")).toHaveTextContent("63% of checks up to date");
+    expect(screen.getByTestId("oh-home-compliance")).toHaveTextContent("10 of 16 checks up to date (63%)");
+  });
+
+  it("says plainly when nothing is tracked, and flags visits left open since an earlier day", () => {
+    data.compliance = { overdue: 0, due: 0, completed: 0 };
+    data.home.mockImplementation(async () => new Promise(() => undefined));
+    const yesterday = new Date(Date.now() - 26 * 3_600_000).toISOString();
+    data.encounters = [{ uuid: "enc-9", visit: "visit-9", customer_name: "Owen Onions", status: "waiting", started_at: yesterday, created_at: yesterday }];
+
+    render(<OhHomePage />);
+
+    expect(screen.getByTestId("oh-home-compliance-empty")).toHaveTextContent("No checks are scheduled yet.");
+    expect(screen.queryByTestId("oh-home-runway-behind")).not.toBeInTheDocument();
+    expect(screen.getByTestId("oh-home-queue-row")).toHaveTextContent("Open since");
   });
 
   it("immunizations leads with coverage, lowest first, and what needs a dose", async () => {
@@ -351,6 +362,7 @@ describe("OhHomePage", () => {
     const injury = await screen.findByTestId("oh-home-iod-case");
     expect(injury).toHaveAttribute("href", ROUTES.occupationalHealthRecord("iod", "iod-1"));
     expect(injury).toHaveTextContent("Left hand");
+    expect(injury).toHaveTextContent("reported");
     expect(injury).toHaveTextContent("Caught in roller");
     expect(injury).toHaveTextContent(/Day \d+/);
     expect(injury).toHaveTextContent("Serious");
