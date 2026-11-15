@@ -196,7 +196,7 @@ export function CanvasSection({ attachment, isFirst, isLast }: CanvasSectionProp
                 ? `${fieldCount} field${fieldCount === 1 ? "" : "s"}`
                 : "No fields yet."}
             </p>
-          ) : itemsQuery.isPending ? (
+          ) : itemsQuery.isPending || (itemsQuery.isFetching && !itemsQuery.data) ? (
             <ItemsSkeleton />
           ) : itemsQuery.isError ? (
             <p className={cn(CANVAS_ITEM_INDENT, "py-1.5 text-[13px] text-red-600")}>

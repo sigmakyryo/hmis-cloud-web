@@ -36,7 +36,7 @@ export function EmploymentCategoryChoice({
     <div
       role="radiogroup"
       aria-label="Employment category"
-      className="overflow-hidden rounded-xl border border-brand-border divide-y divide-brand-border"
+      className="divide-y divide-brand-border overflow-hidden rounded-xl border border-brand-border px-4"
       data-testid="employment-category-choice"
     >
       {CATEGORY_OPTIONS.map((option) => (

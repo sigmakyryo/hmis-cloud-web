@@ -36,7 +36,7 @@ export function EmploymentRoleChoice({
     <div
       role="radiogroup"
       aria-label="Employee or dependant"
-      className="overflow-hidden rounded-xl border border-brand-border divide-y divide-brand-border"
+      className="divide-y divide-brand-border overflow-hidden rounded-xl border border-brand-border px-4"
       data-testid="employment-role-choice"
     >
       {ROLE_OPTIONS.map((option) => (
