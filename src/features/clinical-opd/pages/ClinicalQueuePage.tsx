@@ -11,6 +11,7 @@ import {
 } from "@/features/app-shell/components/page-layout";
 import { OpdQueueBoard } from "@/features/clinical-opd/components/OpdQueueBoard";
 import { OpdQueueEmptyState } from "@/features/clinical-opd/components/OpdQueueEmptyState";
+import { IpdQueueEmptyState } from "@/features/clinical-ipd/components/IpdQueueEmptyState";
 import { OpdQueueList } from "@/features/clinical-opd/components/OpdQueueList";
 import { OpdQueuePageHeader } from "@/features/clinical-opd/components/OpdQueuePageHeader";
 import { OpdQueuePageSkeleton } from "@/features/clinical-opd/components/OpdQueuePageSkeleton";
@@ -87,6 +88,7 @@ export function ClinicalQueuePage({ routing }: ClinicalQueuePageProps) {
 
   const hasAccess = (userData?.groups ?? []).includes(specialty.accessGroup);
   const isLoading = departmentsQuery.isLoading || isQueueLoading;
+  const isIpd = specialty.code === "ipd";
 
   const sortedEncounters = sortOpdQueueNewestFirst(data);
   const totalCount = sortedEncounters.length;
@@ -131,6 +133,16 @@ export function ClinicalQueuePage({ routing }: ClinicalQueuePageProps) {
   }
 
   if (!hasAccess) {
+    if (isIpd) {
+      return (
+        <ListPageLayout fill data-testid="opd-queue-page">
+          <IpdQueueEmptyState
+            title="Access denied"
+            description={`You do not have access to the ${specialty.label} module.`}
+          />
+        </ListPageLayout>
+      );
+    }
     return (
       <ListPageLayout data-testid="opd-queue-page">
         <ListPageBlankState
@@ -144,6 +156,16 @@ export function ClinicalQueuePage({ routing }: ClinicalQueuePageProps) {
   }
 
   if (departmentsQuery.isSuccess && departments.length === 0) {
+    if (isIpd) {
+      return (
+        <ListPageLayout fill data-testid="opd-queue-page">
+          <IpdQueueEmptyState
+            title="You are not assigned to an IPD ward"
+            description="Ask an administrator to add you to the ward in Settings, under User management, then Departments. You only see encounters for wards you belong to."
+          />
+        </ListPageLayout>
+      );
+    }
     return (
       <ListPageLayout data-testid="opd-queue-page">
         <ClinicalNoDepartmentsState specialtyLabel={specialty.label} />
@@ -151,9 +173,11 @@ export function ClinicalQueuePage({ routing }: ClinicalQueuePageProps) {
     );
   }
 
+  const ipdBlank = isIpd && !isLoading && (Boolean(error) || hasNoRecords || isFilteredEmpty);
+
   return (
     <ListPageLayout
-      fill={viewMode === "table"}
+      fill={viewMode === "table" || ipdBlank}
       data-testid="opd-queue-page"
       className={viewMode === "board" ? "overflow-hidden pb-3" : undefined}
     >
@@ -178,12 +202,19 @@ export function ClinicalQueuePage({ routing }: ClinicalQueuePageProps) {
 
       <ListPageTableSection
         className={
-          viewMode === "board" ? "flex min-h-0 flex-1 flex-col" : undefined
+          viewMode === "board" || ipdBlank ? "flex min-h-0 flex-1 flex-col" : undefined
         }
       >
         {isLoading ? (
           <OpdQueueTableSkeleton rows={8} />
         ) : error ? (
+          isIpd ? (
+            <IpdQueueEmptyState
+              title="Could not load the IPD queue"
+              description="The ward queue did not load. Check again in a moment."
+              action={<IpdQueueEmptyAction label="Try again" onClick={() => void refetch()} />}
+            />
+          ) : (
           <ListPageBlankState
   compact
   tone="error"
@@ -201,13 +232,29 @@ export function ClinicalQueuePage({ routing }: ClinicalQueuePageProps) {
     </Button>
   }
 />
+          )
         ) : hasNoRecords ? (
+          isIpd ? (
+            <IpdQueueEmptyState
+              title="Nobody on the ward queue"
+              description="Inpatient encounters appear here after a patient is admitted to a ward you belong to."
+              action={<IpdQueueEmptyAction label="Check again" onClick={() => void refetch()} />}
+            />
+          ) : (
           <OpdQueueEmptyState
             onRefresh={() => void refetch()}
             title={`No ${specialty.label} encounters in queue`}
             description={specialty.queueEmptyDescription}
           />
+          )
         ) : isFilteredEmpty ? (
+          isIpd ? (
+            <IpdQueueEmptyState
+              title="No encounters match"
+              description="Nothing on this ward queue matches that search."
+              action={<IpdQueueEmptyAction label="Clear search" onClick={handleClearSearch} />}
+            />
+          ) : (
           <ListPageBlankState
   compact
   icon="search"
@@ -224,6 +271,7 @@ export function ClinicalQueuePage({ routing }: ClinicalQueuePageProps) {
     </Button>
   }
 />
+          )
         ) : (
           <>
             {viewMode === "board" ? (
@@ -254,5 +302,13 @@ export function ClinicalQueuePage({ routing }: ClinicalQueuePageProps) {
         )}
       </ListPageTableSection>
     </ListPageLayout>
+  );
+}
+
+function IpdQueueEmptyAction({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button type="button" className="text-[13.5px] font-semibold text-brand-primary hover:underline" onClick={onClick}>
+      {label}
+    </button>
   );
 }

@@ -1,292 +1,382 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { StatusDotBadge } from "@/components/ui/status-dot-badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ROUTES } from "@/constants/routes";
 import {
-  ListPageHeaderSection,
-  ListPageHeaderTitleBlock,
-  ListPageHeaderTopRow,
+  ListPageBlankState,
   ListPageLayout,
+  ListPageTableSection,
 } from "@/features/app-shell/components/page-layout";
+import { IpdBedsTable } from "@/features/clinical-ipd/components/IpdBedsTable";
 import { IpdClinicSelect } from "@/features/clinical-ipd/components/IpdClinicSelect";
-import { IpdDepartmentSelect } from "@/features/clinical-ipd/components/IpdDepartmentSelect";
+import { IpdCreateBedDialog } from "@/features/clinical-ipd/components/IpdCreateBedDialog";
+import { IpdCreateWardDialog } from "@/features/clinical-ipd/components/IpdCreateWardDialog";
 import { IpdWardSelect } from "@/features/clinical-ipd/components/IpdWardSelect";
-import {
-  createIpdBed,
-  createIpdWard,
-  fetchIpdBeds,
-  fetchIpdWards,
-  updateIpdBed,
-} from "@/features/clinical-ipd/services/clinical-ipd.service";
-import type {
-  IpdBedStatus,
-  IpdWard,
-} from "@/features/clinical-ipd/types/clinical-ipd.types";
+import { IpdWardsTable } from "@/features/clinical-ipd/components/IpdWardsTable";
+import { fetchIpdBeds, fetchIpdWards, updateIpdBed } from "@/features/clinical-ipd/services/clinical-ipd.service";
+import type { IpdBed, IpdBedStatus, IpdWard } from "@/features/clinical-ipd/types/clinical-ipd.types";
 import { fetchClinicalClinics } from "@/features/clinical/services/clinical-catalog.service";
-import type {
-  ClinicalClinic,
-  ClinicalDepartment,
-} from "@/features/clinical/types/clinical-catalog.types";
+import { cn } from "@/lib/utils";
 import { useUser } from "@/providers/user-provider";
 
-const EDITABLE_STATUSES: IpdBedStatus[] = [
-  "available",
-  "reserved",
-  "cleaning",
-  "blocked",
-  "maintenance",
-];
+const BED_STATUSES: IpdBedStatus[] = ["available", "occupied", "reserved", "cleaning", "blocked", "maintenance"];
 
-function bedTone(
-  status: IpdBedStatus,
-): "success" | "primary" | "warning" | "danger" | "neutral" {
-  switch (status) {
-    case "available":
-      return "success";
-    case "occupied":
-      return "primary";
-    case "reserved":
-    case "cleaning":
-      return "warning";
-    case "blocked":
-    case "maintenance":
-      return "danger";
-    default:
-      return "neutral";
+const BED_STATUS_LABEL: Record<IpdBedStatus, string> = {
+  available: "Available",
+  occupied: "Occupied",
+  reserved: "Reserved",
+  cleaning: "Cleaning",
+  blocked: "Blocked",
+  maintenance: "Maintenance",
+};
+
+function countByStatus(beds: IpdBed[]): Record<IpdBedStatus, number> {
+  const counts = Object.fromEntries(BED_STATUSES.map((status) => [status, 0])) as Record<IpdBedStatus, number>;
+  for (const bed of beds) {
+    if (bed.status in counts) counts[bed.status] += 1;
   }
+  return counts;
 }
 
 export function IpdBedManagementPage() {
   const queryClient = useQueryClient();
   const { userData } = useUser();
-  const [clinic, setClinic] = useState<ClinicalClinic | null>(null);
-  const [department, setDepartment] = useState<ClinicalDepartment | null>(null);
-  const [wardName, setWardName] = useState("");
-  const [wardCode, setWardCode] = useState("");
-  const [selectedWard, setSelectedWard] = useState<IpdWard | null>(null);
-  const [bedCode, setBedCode] = useState("");
+  const [clinicUuid, setClinicUuid] = useState<string | null>(null);
+  const [ward, setWard] = useState<IpdWard | null>(null);
+  const [status, setStatus] = useState<IpdBedStatus | "">("");
+  const [creatingWard, setCreatingWard] = useState(false);
+  const [creatingBed, setCreatingBed] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
 
   const clinicsQuery = useQuery({
     queryKey: ["clinical-clinics"],
     queryFn: fetchClinicalClinics,
   });
 
-  useEffect(() => {
-    const clinics = clinicsQuery.data ?? [];
-    if (!clinics.length || clinic) return;
-    const primary = userData?.primary_clinic;
-    if (!primary) return;
-    const matched = clinics.find((item) => item.id === primary.id);
-    if (matched) setClinic(matched);
-  }, [clinicsQuery.data, clinic, userData?.primary_clinic]);
+  const clinics = clinicsQuery.data;
+  const clinic = useMemo(() => {
+    const list = clinics ?? [];
+    if (clinicUuid) return list.find((item) => item.uuid === clinicUuid) ?? null;
+    const primaryId = userData?.primary_clinic?.id;
+    if (primaryId == null) return null;
+    return list.find((item) => item.id === primaryId) ?? null;
+  }, [clinicUuid, clinics, userData?.primary_clinic?.id]);
 
   const wardsQuery = useQuery({
     queryKey: ["ipd-wards", clinic?.uuid],
-    queryFn: () => fetchIpdWards(clinic ? { clinic: clinic.uuid } : {}),
+    queryFn: () => fetchIpdWards({ clinic: clinic?.uuid }),
+    enabled: Boolean(clinic?.uuid),
   });
 
   const bedsQuery = useQuery({
-    queryKey: ["ipd-beds", selectedWard?.uuid],
-    queryFn: () =>
-      fetchIpdBeds(selectedWard ? { ward: selectedWard.uuid } : {}),
-    enabled: Boolean(selectedWard?.uuid),
-  });
-
-  const createWardMutation = useMutation({
-    mutationFn: () =>
-      createIpdWard({
-        name: wardName,
-        code: wardCode,
-        clinic: clinic!.uuid,
-        department: department!.uuid,
-      }),
-    onSuccess: () => {
-      setWardName("");
-      setWardCode("");
-      void queryClient.invalidateQueries({ queryKey: ["ipd-wards"] });
-    },
-  });
-
-  const createBedMutation = useMutation({
-    mutationFn: () =>
-      createIpdBed({
-        ward: selectedWard!.uuid,
-        code: bedCode,
-      }),
-    onSuccess: () => {
-      setBedCode("");
-      void queryClient.invalidateQueries({ queryKey: ["ipd-beds"] });
-    },
+    queryKey: ["ipd-beds", ward?.uuid],
+    queryFn: () => fetchIpdBeds({ ward: ward?.uuid }),
+    enabled: Boolean(ward?.uuid),
   });
 
   const updateStatusMutation = useMutation({
-    mutationFn: ({
-      uuid,
-      status,
-      code,
-    }: {
-      uuid: string;
-      status: IpdBedStatus;
-      code: string;
-    }) => updateIpdBed(uuid, { status, code }),
+    mutationFn: ({ uuid, next }: { uuid: string; next: IpdBedStatus }) => updateIpdBed(uuid, { status: next }),
     onSuccess: () => {
+      setStatusError(null);
       void queryClient.invalidateQueries({ queryKey: ["ipd-beds"] });
       void queryClient.invalidateQueries({ queryKey: ["ipd-census"] });
     },
+    onError: (error) => {
+      setStatusError(error instanceof Error ? error.message : "Could not change the bed status.");
+    },
   });
+
+  const wards = wardsQuery.data ?? [];
+  const beds = bedsQuery.data ?? [];
+  const statusCounts = useMemo(() => countByStatus(bedsQuery.data ?? []), [bedsQuery.data]);
+  const rows = beds.filter((bed) => status === "" || bed.status === status);
+
+  function selectWard(next: IpdWard | null) {
+    setWard(next);
+    setStatus("");
+    setStatusError(null);
+  }
 
   return (
     <ListPageLayout data-testid="ipd-bed-management">
-      <ListPageHeaderSection>
-        <ListPageHeaderTopRow>
-          <ListPageHeaderTitleBlock
-            title="Bed management"
-            description="Maintain wards and beds for inpatient admissions."
-          />
-        </ListPageHeaderTopRow>
-      </ListPageHeaderSection>
+      <div data-list-band className="px-5 pt-7 md:px-8">
+        <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
+          <div className="min-w-0">
+            <h1 className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+              <IpdClinicSelect
+                appearance="title"
+                clinics={clinics ?? []}
+                value={clinic}
+                isLoading={clinicsQuery.isLoading}
+                onChange={(next) => {
+                  setClinicUuid(next?.uuid ?? null);
+                  selectWard(null);
+                }}
+              />
+              <span className="text-[22px] font-medium text-dash-muted" aria-hidden>
+                /
+              </span>
+              <IpdWardSelect
+                appearance="title"
+                clinicUuid={clinic?.uuid}
+                value={ward}
+                onChange={selectWard}
+                placeholder={clinic ? "All wards" : "Ward"}
+              />
+            </h1>
+            <p className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13.5px] text-dash-muted">
+              {ward && bedsQuery.isSuccess ? (
+                <>
+                  <Count label="available" value={statusCounts.available} />
+                  <Count label="occupied" value={statusCounts.occupied} />
+                  <Count label={beds.length === 1 ? "bed" : "beds"} value={beds.length} />
+                </>
+              ) : null}
+              {!ward && wardsQuery.isSuccess ? <Count label={wards.length === 1 ? "ward" : "wards"} value={wards.length} /> : null}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" className="h-8" asChild>
+              <Link href={ROUTES.clinicalIpdBoard}>Ward board</Link>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8"
+              disabled={!clinic}
+              onClick={() => setCreatingWard(true)}
+            >
+              New ward
+            </Button>
+            {ward ? (
+              <Button type="button" variant="primary" className="h-8 px-3 text-[13px]" onClick={() => setCreatingBed(true)}>
+                Add bed
+              </Button>
+            ) : null}
+          </div>
+        </div>
 
-      <div className="grid gap-8 lg:grid-cols-2">
-        <section className="space-y-3">
-          <h2 className="text-sm font-medium">Create ward</h2>
-          <IpdClinicSelect
-            clinics={clinicsQuery.data ?? []}
-            value={clinic}
-            onChange={(next) => {
-              setClinic(next);
-              setDepartment(null);
-              setSelectedWard(null);
-            }}
-            isLoading={clinicsQuery.isLoading}
-          />
-          <IpdDepartmentSelect
-            clinicId={clinic?.id}
-            value={department}
-            onChange={setDepartment}
-          />
-          <div className="space-y-1.5">
-            <Label htmlFor="ward-name">Ward name</Label>
-            <Input
-              id="ward-name"
-              placeholder="General A"
-              value={wardName}
-              onChange={(event) => setWardName(event.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="ward-code">Ward code</Label>
-            <Input
-              id="ward-code"
-              placeholder="GEN-A"
-              value={wardCode}
-              onChange={(event) => setWardCode(event.target.value)}
-            />
-          </div>
-          <Button
-            type="button"
-            disabled={
-              !clinic ||
-              !department ||
-              !wardName.trim() ||
-              !wardCode.trim() ||
-              createWardMutation.isPending
-            }
-            onClick={() => createWardMutation.mutate()}
-          >
-            Create ward
-          </Button>
-          <div className="pt-4">
-            <IpdWardSelect
-              clinicUuid={clinic?.uuid}
-              value={selectedWard}
-              onChange={setSelectedWard}
-              label="Selected ward"
-            />
-          </div>
-          <ul className="space-y-2 pt-2 text-sm">
-            {(wardsQuery.data ?? []).map((ward) => (
-              <li key={ward.uuid}>
-                <button
-                  type="button"
-                  className={
-                    selectedWard?.uuid === ward.uuid
-                      ? "font-medium underline"
-                      : "text-muted-foreground underline-offset-2 hover:underline"
-                  }
-                  onClick={() => setSelectedWard(ward)}
-                >
-                  {ward.name} ({ward.code}) · {ward.ward_class}
-                </button>
-              </li>
+        {ward ? (
+          <div role="group" aria-label="Filter by bed status" className="scrollbar-hide mt-6 -mb-px flex gap-5 overflow-x-auto border-b border-dash-border">
+            <StatusTab label="All" count={beds.length} selected={status === ""} onSelect={() => setStatus("")} />
+            {BED_STATUSES.map((value) => (
+              <StatusTab
+                key={value}
+                label={BED_STATUS_LABEL[value]}
+                count={statusCounts[value]}
+                selected={status === value}
+                onSelect={() => setStatus(value)}
+              />
             ))}
-          </ul>
-        </section>
-        <section className="space-y-3">
-          <h2 className="text-sm font-medium">Beds</h2>
-          <div className="space-y-1.5">
-            <Label htmlFor="bed-code">Bed code</Label>
-            <Input
-              id="bed-code"
-              placeholder="B01"
-              value={bedCode}
-              onChange={(event) => setBedCode(event.target.value)}
-              disabled={!selectedWard}
-            />
           </div>
-          <Button
-            type="button"
-            disabled={
-              !selectedWard || !bedCode.trim() || createBedMutation.isPending
-            }
-            onClick={() => createBedMutation.mutate()}
-          >
+        ) : (
+          <div className="mt-6 border-b border-dash-border" />
+        )}
+      </div>
+
+      <ListPageTableSection>
+        {statusError ? <p className="px-5 pt-4 text-sm text-destructive md:px-8">{statusError}</p> : null}
+        {!clinic ? (
+          <ListPageBlankState
+            compact
+            icon="hospital"
+            title={clinicsQuery.isLoading ? "Loading clinics" : "Choose a clinic"}
+            description="Beds belong to a ward. Pick the clinic first."
+          />
+        ) : ward ? (
+          <BedsBody
+            isLoading={bedsQuery.isLoading}
+            error={bedsQuery.error}
+            beds={beds}
+            rows={rows}
+            filtered={status !== ""}
+            pendingBedUuid={updateStatusMutation.isPending ? updateStatusMutation.variables?.uuid ?? null : null}
+            onClearFilter={() => setStatus("")}
+            onAddBed={() => setCreatingBed(true)}
+            onStatusChange={(bed, next) => updateStatusMutation.mutate({ uuid: bed.uuid, next })}
+          />
+        ) : (
+          <WardsBody
+            isLoading={wardsQuery.isLoading}
+            error={wardsQuery.error}
+            wards={wards}
+            onOpen={selectWard}
+            onCreate={() => setCreatingWard(true)}
+          />
+        )}
+      </ListPageTableSection>
+
+      {creatingWard && clinic ? (
+        <IpdCreateWardDialog
+          clinic={clinic}
+          onClose={() => setCreatingWard(false)}
+          onCreated={(created) => {
+            selectWard(created);
+            setCreatingWard(false);
+          }}
+        />
+      ) : null}
+      {creatingBed && ward ? <IpdCreateBedDialog ward={ward} onClose={() => setCreatingBed(false)} /> : null}
+    </ListPageLayout>
+  );
+}
+
+function Count({ value, label }: { value: number; label: string }) {
+  return (
+    <span>
+      <span className="font-semibold text-brand-navy tabular-nums">{value}</span> {label}
+    </span>
+  );
+}
+
+function StatusTab({
+  label,
+  count,
+  selected,
+  onSelect,
+}: {
+  label: string;
+  count: number;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={onSelect}
+      className={cn(
+        "flex shrink-0 items-baseline gap-1.5 border-b-2 pb-2.5 text-[13.5px] whitespace-nowrap transition-colors focus-visible:text-brand-primary focus-visible:outline-none",
+        selected ? "border-brand-primary font-semibold text-brand-navy" : "border-transparent font-medium text-dash-muted hover:text-brand-navy",
+      )}
+    >
+      {label}
+      <span className={cn("text-[12px] tabular-nums", selected ? "text-brand-primary" : "text-dash-muted/80")}>{count}</span>
+    </button>
+  );
+}
+
+function WardsBody({
+  isLoading,
+  error,
+  wards,
+  onOpen,
+  onCreate,
+}: {
+  isLoading: boolean;
+  error: unknown;
+  wards: IpdWard[];
+  onOpen: (ward: IpdWard) => void;
+  onCreate: () => void;
+}) {
+  if (isLoading) return <RowSkeleton />;
+  if (error) {
+    return (
+      <ListPageBlankState
+        compact
+        tone="error"
+        icon="file"
+        title="Could not load wards"
+        description={error instanceof Error ? error.message : "The ward list did not load."}
+      />
+    );
+  }
+  if (wards.length === 0) {
+    return (
+      <ListPageBlankState
+        compact
+        icon="hospital"
+        title="No wards yet"
+        description="Add a ward for this clinic, then add the beds that belong in it."
+        action={
+          <Button type="button" variant="primary" className="h-8 px-3 text-[13px]" onClick={onCreate}>
+            New ward
+          </Button>
+        }
+      />
+    );
+  }
+  return <IpdWardsTable wards={wards} onOpen={onOpen} />;
+}
+
+function BedsBody({
+  isLoading,
+  error,
+  beds,
+  rows,
+  filtered,
+  pendingBedUuid,
+  onClearFilter,
+  onAddBed,
+  onStatusChange,
+}: {
+  isLoading: boolean;
+  error: unknown;
+  beds: IpdBed[];
+  rows: IpdBed[];
+  filtered: boolean;
+  pendingBedUuid: string | null;
+  onClearFilter: () => void;
+  onAddBed: () => void;
+  onStatusChange: (bed: IpdBed, status: IpdBedStatus) => void;
+}) {
+  if (isLoading) return <RowSkeleton />;
+  if (error) {
+    return (
+      <ListPageBlankState
+        compact
+        tone="error"
+        icon="file"
+        title="Could not load beds"
+        description={error instanceof Error ? error.message : "The bed list did not load."}
+      />
+    );
+  }
+  if (beds.length === 0) {
+    return (
+      <ListPageBlankState
+        compact
+        icon="hospital"
+        title="No beds in this ward"
+        description="Add the first bed. Occupied beds can only change when the patient is discharged or transferred."
+        action={
+          <Button type="button" variant="primary" className="h-8 px-3 text-[13px]" onClick={onAddBed}>
             Add bed
           </Button>
-          <ul className="space-y-2 pt-4 text-sm">
-            {(bedsQuery.data ?? []).map((bed) => (
-              <li
-                key={bed.uuid}
-                className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-2"
-              >
-                <span>
-                  {bed.code}
-                  {bed.label ? ` · ${bed.label}` : ""}
-                </span>
-                <div className="flex items-center gap-2">
-                  <StatusDotBadge tone={bedTone(bed.status)}>
-                    {bed.status}
-                  </StatusDotBadge>
-                  {bed.status !== "occupied" ? (
-                    <select
-                      className="h-8 rounded-md border border-input bg-background px-2 text-xs"
-                      value={bed.status}
-                      disabled={updateStatusMutation.isPending}
-                      onChange={(event) =>
-                        updateStatusMutation.mutate({
-                          uuid: bed.uuid,
-                          code: bed.code,
-                          status: event.target.value as IpdBedStatus,
-                        })
-                      }
-                    >
-                      {EDITABLE_STATUSES.map((status) => (
-                        <option key={status} value={status}>
-                          {status}
-                        </option>
-                      ))}
-                    </select>
-                  ) : null}
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
-      </div>
-    </ListPageLayout>
+        }
+      />
+    );
+  }
+  if (rows.length === 0 && filtered) {
+    return (
+      <ListPageBlankState
+        compact
+        icon="search"
+        title="No beds match"
+        description="Nothing in this ward has that status."
+        action={
+          <Button type="button" variant="outline" className="h-8 rounded-lg text-[13px]" onClick={onClearFilter}>
+            Show every bed
+          </Button>
+        }
+      />
+    );
+  }
+  return <IpdBedsTable beds={rows} pendingBedUuid={pendingBedUuid} onStatusChange={onStatusChange} />;
+}
+
+function RowSkeleton() {
+  return (
+    <div className="space-y-2 px-5 py-4 md:px-8" aria-hidden>
+      {Array.from({ length: 6 }, (_, index) => (
+        <Skeleton key={index} className="h-12 w-full" />
+      ))}
+    </div>
   );
 }

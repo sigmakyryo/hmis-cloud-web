@@ -13,7 +13,19 @@ type IpdClinicSelectProps = {
   disabled?: boolean;
   isLoading?: boolean;
   label?: string;
+  placeholder?: string;
+  /** Hide the visible label. The control stays named for assistive tech. */
+  compact?: boolean;
+  /** Draw the trigger as a page title instead of a form field. */
+  appearance?: "field" | "title";
 };
+
+const TITLE_TRIGGER_CLASS =
+  "h-auto w-fit max-w-full gap-1.5 border-0 bg-transparent px-0 py-0 text-[26px] leading-8 font-semibold tracking-tight text-brand-navy shadow-none ring-0 hover:text-brand-primary focus:ring-0 data-[placeholder]:font-medium data-[placeholder]:text-dash-muted [&_svg]:size-4";
+
+/** The closed title stays compact. The open list is wide enough for names and codes. */
+const TITLE_MENU_CLASS =
+  "w-96! min-w-96! max-w-[min(28rem,calc(100vw-2rem))]!";
 
 export function IpdClinicSelect({
   clinics,
@@ -22,6 +34,9 @@ export function IpdClinicSelect({
   disabled = false,
   isLoading = false,
   label = "Clinic",
+  placeholder = "Select clinic",
+  compact = false,
+  appearance = "field",
 }: IpdClinicSelectProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -35,9 +50,11 @@ export function IpdClinicSelect({
     );
   }, [clinics, search]);
 
+  const isTitle = appearance === "title";
+
   return (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
+    <div className={isTitle ? "min-w-0" : "space-y-1.5"}>
+      <Label className={compact || isTitle ? "sr-only" : undefined}>{label}</Label>
       <SearchableSelect
         value={value?.uuid}
         onValueChange={(uuid) => {
@@ -46,8 +63,10 @@ export function IpdClinicSelect({
         open={open}
         onOpenChange={setOpen}
         disabled={disabled}
-        placeholder="Select clinic"
-        displayValue={value ? `${value.name} (${value.code})` : undefined}
+        placeholder={placeholder}
+        displayValue={value ? (isTitle ? value.name : `${value.name} (${value.code})`) : undefined}
+        triggerClassName={isTitle ? TITLE_TRIGGER_CLASS : undefined}
+        contentClassName={isTitle ? TITLE_MENU_CLASS : undefined}
         searchValue={search}
         onSearchChange={setSearch}
         searchPlaceholder="Search clinics…"

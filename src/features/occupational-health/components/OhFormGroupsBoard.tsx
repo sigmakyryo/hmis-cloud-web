@@ -15,13 +15,14 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { ArrowDown, ArrowUp, Check, FolderPlus, GripVertical, Pencil, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, GripVertical, X } from "lucide-react";
 import { AlertDialog } from "radix-ui";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { PrimaryButton } from "@/components/ui/app-buttons";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { appFont } from "@/lib/fonts";
 import {
   buildBoard,
   groupOf,
@@ -50,15 +51,24 @@ type Props = {
 };
 
 const groupDropId = (uuid: string | null) => `group:${uuid ?? UNGROUPED_ID}`;
+const railDropId = (uuid: string | null) => `rail:${uuid ?? UNGROUPED_ID}`;
 const itemDropId = (key: string) => `item:${key}`;
 
-/** Prefer a card under the pointer (insert before it), then the group under it (append). */
+/** Insert before the form under the pointer. A group name in the rail, or the open list, appends. */
 const collision: CollisionDetection = (args) => {
   const hits = pointerWithin(args);
   const card = hits.find((hit) => String(hit.id).startsWith("item:"));
   if (card) return [card];
+  const rail = hits.find((hit) => String(hit.id).startsWith("rail:"));
+  if (rail) return [rail];
   return hits.length > 0 ? hits : rectIntersection(args);
 };
+
+function groupIdFromDrop(overId: string): string | null {
+  if (overId.startsWith("group:")) return overId.slice("group:".length);
+  if (overId.startsWith("rail:")) return overId.slice("rail:".length);
+  return null;
+}
 
 export function OhFormGroupsBoard({ items, groups, onChanged }: Props) {
   const queryClient = useQueryClient();
@@ -69,6 +79,7 @@ export function OhFormGroupsBoard({ items, groups, onChanged }: Props) {
   const board = draft ?? saved;
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [newGroup, setNewGroup] = useState("");
+  const [picked, setPicked] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<BoardGroup | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -90,8 +101,9 @@ export function OhFormGroupsBoard({ items, groups, onChanged }: Props) {
   });
   const create = useMutation({
     mutationFn: (name: string) => createFormGroup(name),
-    onSuccess: async () => {
+    onSuccess: async (created) => {
       setNewGroup("");
+      setPicked(created.uuid);
       setError(null);
       toast({ variant: "success", title: "Group created" });
       await refresh();
@@ -135,53 +147,36 @@ export function OhFormGroupsBoard({ items, groups, onChanged }: Props) {
     const overId = event.over ? String(event.over.id) : null;
     if (!overId) return;
     if (overId.startsWith("item:")) {
-      const overKey = overId.slice(5);
+      const overKey = overId.slice("item:".length);
       if (overKey === key) return;
       const target = groupOf(board, overKey);
       if (!target) return;
-      // Inserts before the hovered card (moveItem removes the dragged card first).
+      // Inserts before the hovered row (moveItem removes the dragged row first).
       const without = target.keys.filter((k) => k !== key);
+      setPicked(target.uuid ?? UNGROUPED_ID);
       apply(moveItem(board, key, target.uuid, without.indexOf(overKey)));
       return;
     }
-    const groupId = overId.slice(6);
+    const groupId = groupIdFromDrop(overId);
+    if (!groupId) return;
     const uuid = groupId === UNGROUPED_ID ? null : groupId;
     const target = board.find((group) => group.uuid === uuid);
     if (!target) return;
+    setPicked(groupId);
     if (groupOf(board, key)?.uuid === uuid && target.keys.at(-1) === key) return;
     apply(moveItem(board, key, uuid, target.keys.length));
   };
 
   const named = board.filter((group) => group.uuid !== null);
   const active = activeKey ? byKey.get(activeKey) : undefined;
+  const fallbackId = (board[0]?.uuid ?? UNGROUPED_ID);
+  const selectedId = picked !== null && board.some((group) => (group.uuid ?? UNGROUPED_ID) === picked) ? picked : fallbackId;
+  const selected = board.find((group) => (group.uuid ?? UNGROUPED_ID) === selectedId) ?? board[0];
 
   return (
-    <section className="space-y-4" data-testid="oh-form-groups-board" aria-label="Organise form groups">
-      <div className="flex justify-end border-b border-dash-border pb-3">
-        <form
-          className="flex max-w-full items-center gap-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const name = newGroup.trim();
-            if (name) create.mutate(name);
-          }}
-        >
-          <Input
-            value={newGroup}
-            onChange={(event) => setNewGroup(event.target.value)}
-            placeholder="New group name"
-            aria-label="New group name"
-            maxLength={120}
-            className="h-8 w-52 min-w-0 text-[13px]"
-          />
-          <PrimaryButton type="submit" disabled={create.isPending || !newGroup.trim()} data-testid="oh-form-group-create">
-            <FolderPlus className="size-4" aria-hidden="true" />
-            Add group
-          </PrimaryButton>
-        </form>
-      </div>
+    <section data-testid="oh-form-groups-board" aria-label="Organise form groups">
       {error ? (
-        <p className="text-[13px] text-red-700" role="alert">
+        <p className="mb-4 text-[13px] text-red-700" role="alert">
           {error}
         </p>
       ) : null}
@@ -195,36 +190,76 @@ export function OhFormGroupsBoard({ items, groups, onChanged }: Props) {
         onDragCancel={() => setActiveKey(null)}
         onDragEnd={onDragEnd}
       >
-        <div className="space-y-6">
-          {board.map((group) => (
-            <GroupPanel
-              key={group.uuid ?? UNGROUPED_ID}
-              group={group}
+        <div className="grid items-start gap-8 md:grid-cols-[15rem_minmax(0,1fr)] md:gap-12">
+          <div>
+            <p className="text-[11.5px] font-semibold tracking-[0.06em] text-dash-muted uppercase">Groups</p>
+            <p className="mt-1 text-[12.5px] leading-5 text-dash-muted">Drop a form on a name.</p>
+            <ul className="mt-3" aria-label="Groups">
+              {board.map((group) => (
+                <GroupRailItem
+                  key={group.uuid ?? UNGROUPED_ID}
+                  group={group}
+                  selected={selected !== undefined && (group.uuid ?? UNGROUPED_ID) === selectedId}
+                  separated={group.uuid === null && named.length > 0}
+                  onSelect={() => setPicked(group.uuid ?? UNGROUPED_ID)}
+                />
+              ))}
+            </ul>
+            <form
+              className="mt-4 space-y-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const name = newGroup.trim();
+                if (name) create.mutate(name);
+              }}
+            >
+              <Input
+                value={newGroup}
+                onChange={(event) => setNewGroup(event.target.value)}
+                placeholder="New group name"
+                aria-label="New group name"
+                maxLength={120}
+                className="h-9 w-full text-[13.5px]"
+              />
+              <Button type="submit" variant="primary" className="h-9 w-full text-[13px]" disabled={create.isPending || !newGroup.trim()} data-testid="oh-form-group-create">
+                Add group
+              </Button>
+            </form>
+          </div>
+          {selected ? (
+            <GroupDetail
+              key={selected.uuid ?? UNGROUPED_ID}
+              group={selected}
               groups={board}
               byKey={byKey}
               busy={busy}
-              position={group.uuid ? named.findIndex((g) => g.uuid === group.uuid) : -1}
+              position={selected.uuid ? named.findIndex((group) => group.uuid === selected.uuid) : -1}
               namedCount={named.length}
-              dragging={activeKey !== null}
-              onMoveGroup={(delta) => group.uuid && apply(moveGroup(board, group.uuid, delta))}
-              onRename={(name) => group.uuid && rename.mutate({ uuid: group.uuid, name })}
-              onDelete={() => setDeleting(group)}
+              onMoveGroup={(delta) => selected.uuid && apply(moveGroup(board, selected.uuid, delta))}
+              onRename={(name) => selected.uuid && rename.mutate({ uuid: selected.uuid, name })}
+              onDelete={() => setDeleting(selected)}
               onNudge={(key, delta) => apply(nudgeItem(board, key, delta))}
               onMoveTo={(key, uuid) => {
-                const target = board.find((g) => g.uuid === uuid);
-                if (target) apply(moveItem(board, key, uuid, target.keys.length));
+                const target = board.find((group) => group.uuid === uuid);
+                if (!target) return;
+                setPicked(uuid ?? UNGROUPED_ID);
+                apply(moveItem(board, key, uuid, target.keys.length));
               }}
             />
-          ))}
+          ) : null}
         </div>
         <DragOverlay dropAnimation={null}>
-          {active ? <FormCardBody item={active} className="bg-white shadow-lg ring-2 ring-brand-primary/40" /> : null}
+          {active ? (
+            <div className="border-l-2 border-brand-primary bg-white px-3 py-2 text-[14px] font-semibold text-brand-navy shadow-sm">
+              {active.name}
+            </div>
+          ) : null}
         </DragOverlay>
       </DndContext>
       <AlertDialog.Root open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>
         <AlertDialog.Portal>
-          <AlertDialog.Overlay className="fixed inset-0 z-50 bg-black/30" />
-          <AlertDialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white p-6 shadow-xl">
+          <AlertDialog.Overlay className="dialog-overlay fixed inset-0 z-50 bg-brand-navy/40" />
+          <AlertDialog.Content className={cn("dialog-content fixed left-1/2 top-1/2 z-50 w-[95vw] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-dash-border bg-white p-6 shadow-xl", appFont.className)}>
             <AlertDialog.Title className="text-base font-semibold text-brand-navy">Delete {deleting?.name}?</AlertDialog.Title>
             <AlertDialog.Description className="mt-2 text-sm text-dash-muted">
               {deleting?.keys.length
@@ -252,14 +287,52 @@ export function OhFormGroupsBoard({ items, groups, onChanged }: Props) {
   );
 }
 
-function GroupPanel({
+function GroupRailItem({
+  group,
+  selected,
+  separated,
+  onSelect,
+}: {
+  group: BoardGroup;
+  selected: boolean;
+  separated: boolean;
+  onSelect: () => void;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: railDropId(group.uuid) });
+  return (
+    <li
+      ref={setNodeRef}
+      data-testid="oh-form-group-panel"
+      data-group={group.uuid ?? UNGROUPED_ID}
+      className={cn(separated && "mt-2 border-t border-dash-border pt-2")}
+    >
+      <button
+        type="button"
+        aria-label={group.name}
+        aria-pressed={selected}
+        onClick={onSelect}
+        className={cn(
+          "flex w-full items-baseline gap-3 border-l-2 py-2 pr-2 pl-3 text-left",
+          selected ? "border-brand-primary bg-brand-tint/70" : "border-transparent hover:bg-dash-canvas/70",
+          isOver && "border-brand-primary bg-brand-tint",
+        )}
+      >
+        <span className={cn("min-w-0 flex-1 truncate text-[14px] text-brand-navy", selected && "font-semibold")} data-testid="oh-form-group-name">
+          {group.name}
+        </span>
+        <span className="text-[12px] tabular-nums text-dash-muted" aria-hidden="true">{group.keys.length}</span>
+      </button>
+    </li>
+  );
+}
+
+function GroupDetail({
   group,
   groups,
   byKey,
   busy,
   position,
   namedCount,
-  dragging,
   onMoveGroup,
   onRename,
   onDelete,
@@ -272,7 +345,6 @@ function GroupPanel({
   busy: boolean;
   position: number;
   namedCount: number;
-  dragging: boolean;
   onMoveGroup: (delta: -1 | 1) => void;
   onRename: (name: string) => void;
   onDelete: () => void;
@@ -283,21 +355,17 @@ function GroupPanel({
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(group.name);
   const isUngrouped = group.uuid === null;
+  const rows = group.keys.flatMap((key) => {
+    const item = byKey.get(key);
+    return item ? [item] : [];
+  });
 
   return (
-    <div
-      ref={setNodeRef}
-      data-testid="oh-form-group-panel"
-      data-group={group.uuid ?? UNGROUPED_ID}
-      className={cn(
-        "flex flex-col border-b border-dash-border transition-colors",
-        isOver && "ring-1 ring-brand-primary",
-      )}
-    >
-      <header className="flex items-center gap-2 border-b border-dash-border px-2 py-2.5">
+    <div ref={setNodeRef} className={cn("min-h-72", isOver && rows.length === 0 && "bg-brand-tint/40")}>
+      <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-b border-dash-border pb-4">
         {editing ? (
           <form
-            className="flex flex-1 items-center gap-1"
+            className="flex min-w-0 flex-1 items-center gap-1"
             onSubmit={(event) => {
               event.preventDefault();
               const next = name.trim();
@@ -317,7 +385,7 @@ function GroupPanel({
               }}
               aria-label={`Rename ${group.name}`}
               maxLength={120}
-              className="h-7 text-[13px]"
+              className="h-9 text-[15px]"
             />
             <IconButton label="Save name" type="submit">
               <Check className="size-3.5" />
@@ -327,61 +395,62 @@ function GroupPanel({
             </IconButton>
           </form>
         ) : (
-          <>
-            <h3 className="flex-1 truncate text-[13px] font-semibold text-brand-navy" data-testid="oh-form-group-name">
-              {group.name}
-            </h3>
-            <span className="text-xs tabular-nums text-dash-muted">
-              {group.keys.length}
-            </span>
-            {!isUngrouped ? (
-              <div className="flex items-center">
-                <IconButton label={`Move ${group.name} up`} disabled={busy || position <= 0} onClick={() => onMoveGroup(-1)}>
-                  <ArrowUp className="size-3.5" />
-                </IconButton>
-                <IconButton label={`Move ${group.name} down`} disabled={busy || position >= namedCount - 1} onClick={() => onMoveGroup(1)}>
-                  <ArrowDown className="size-3.5" />
-                </IconButton>
-                <IconButton label={`Rename ${group.name}`} onClick={() => { setName(group.name); setEditing(true); }}>
-                  <Pencil className="size-3.5" />
-                </IconButton>
-                <IconButton label={`Delete ${group.name}`} disabled={busy} onClick={onDelete} className="hover:text-red-700">
-                  <Trash2 className="size-3.5" />
-                </IconButton>
-              </div>
-            ) : null}
-          </>
+          <div className="min-w-0">
+            <h2 className="truncate text-[22px] font-semibold tracking-tight text-brand-navy">{group.name}</h2>
+            <p className="mt-1 text-[13px] text-dash-muted">
+              {group.keys.length} {group.keys.length === 1 ? "form" : "forms"}
+            </p>
+          </div>
         )}
-      </header>
-      <ul className="min-h-12 divide-y divide-dash-border" aria-label={`Forms in ${group.name}`}>
-        {group.keys.map((key, index) => {
-          const item = byKey.get(key);
-          if (!item) return null;
-          return (
-            <FormCard
-              key={key}
-              item={item}
-              groups={groups}
-              currentGroup={group.uuid}
-              busy={busy}
-              first={index === 0}
-              last={index === group.keys.length - 1}
-              onNudge={(delta) => onNudge(key, delta)}
-              onMoveTo={(uuid) => onMoveTo(key, uuid)}
-            />
-          );
-        })}
-        {group.keys.length === 0 ? (
-          <li className={cn("px-3 py-4 text-[12px] text-dash-muted", dragging && "border-brand-primary text-brand-primary")}>
-            {dragging ? "Drop here" : isUngrouped ? "Every form is in a group." : "No forms in this group."}
-          </li>
+        {!isUngrouped && !editing ? (
+          <div className="flex items-center gap-1">
+            <TextAction label={`Move ${group.name} up`} disabled={busy || position <= 0} onClick={() => onMoveGroup(-1)}>Up</TextAction>
+            <TextAction label={`Move ${group.name} down`} disabled={busy || position >= namedCount - 1} onClick={() => onMoveGroup(1)}>Down</TextAction>
+            <TextAction label={`Rename ${group.name}`} onClick={() => { setName(group.name); setEditing(true); }}>Rename</TextAction>
+            <TextAction label={`Delete ${group.name}`} disabled={busy} onClick={onDelete} className="hover:text-red-700">Delete</TextAction>
+          </div>
         ) : null}
-      </ul>
+      </header>
+      {rows.length === 0 ? (
+        <p className={cn("flex min-h-56 items-center justify-center px-6 text-center text-[13.5px]", isOver ? "text-brand-primary" : "text-dash-muted")}>
+          {isOver ? "Drop here" : isUngrouped ? "Every form is in a group." : "No forms in this group."}
+        </p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[36rem] border-collapse text-left">
+            <thead>
+              <tr className="border-b border-dash-border text-[11.5px] font-semibold tracking-[0.06em] text-dash-muted uppercase">
+                <th className="w-10 px-2 pt-4 pb-2.5 font-semibold"><span className="sr-only">Drag</span></th>
+                <th className="px-3 pt-4 pb-2.5 font-semibold">Form</th>
+                <th className="px-3 pt-4 pb-2.5 font-semibold">Type</th>
+                <th className="px-3 pt-4 pb-2.5 font-semibold">Status</th>
+                <th className="w-16 px-2 pt-4 pb-2.5 font-semibold"><span className="sr-only">Order</span></th>
+                <th className="w-48 px-3 pt-4 pb-2.5 font-semibold">Move to</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((item, index) => (
+                <FormRow
+                  key={item.key}
+                  item={item}
+                  groups={groups}
+                  currentGroup={group.uuid}
+                  busy={busy}
+                  first={index === 0}
+                  last={index === rows.length - 1}
+                  onNudge={(delta) => onNudge(item.key, delta)}
+                  onMoveTo={(uuid) => onMoveTo(item.key, uuid)}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
 
-function FormCard({
+function FormRow({
   item,
   groups,
   currentGroup,
@@ -403,77 +472,82 @@ function FormCard({
   const { attributes, listeners, setNodeRef: setDragRef, transform, isDragging } = useDraggable({ id: item.key, disabled: busy });
   const { setNodeRef: setDropRef, isOver } = useDroppable({ id: itemDropId(item.key) });
   return (
-    <li
+    <tr
       ref={setDropRef}
-      className={cn("relative", isOver && !isDragging && "before:absolute before:-top-1 before:left-2 before:right-2 before:h-0.5 before:rounded before:bg-brand-primary")}
       data-testid="oh-form-group-item"
       data-key={item.key}
+      className={cn(
+        "border-b border-dash-border/70 hover:bg-dash-canvas/60",
+        isDragging && "opacity-40",
+        isOver && !isDragging && "shadow-[inset_0_2px_0_0_var(--color-brand-primary)]",
+      )}
     >
-      <div ref={setDragRef} style={{ transform: CSS.Translate.toString(transform) }} className={cn(isDragging && "opacity-40")}>
-        <FormCardBody
-          item={item}
-          handle={
-            <button
-              type="button"
-              className="cursor-grab touch-none rounded p-1 text-dash-muted hover:bg-slate-100 hover:text-brand-navy active:cursor-grabbing"
-              aria-label={`Drag ${item.name}`}
-              {...listeners}
-              {...attributes}
-            >
-              <GripVertical className="size-4" aria-hidden="true" />
-            </button>
-          }
-          actions={
-            <div className="flex items-center">
-              <IconButton label={`Move ${item.name} up`} disabled={busy || first} onClick={() => onNudge(-1)}>
-                <ArrowUp className="size-3.5" />
-              </IconButton>
-              <IconButton label={`Move ${item.name} down`} disabled={busy || last} onClick={() => onNudge(1)}>
-                <ArrowDown className="size-3.5" />
-              </IconButton>
-              <select
-                aria-label={`Move ${item.name} to group`}
-                value={currentGroup ?? UNGROUPED_ID}
-                disabled={busy}
-                onChange={(event) => onMoveTo(event.target.value === UNGROUPED_ID ? null : event.target.value)}
-                className="ml-1 max-w-32 rounded-md border border-dash-border bg-white px-1.5 py-1 text-[11px] text-dash-muted"
-              >
-                {groups.map((group) => (
-                  <option key={group.uuid ?? UNGROUPED_ID} value={group.uuid ?? UNGROUPED_ID}>
-                    {group.uuid ? group.name : "Ungrouped"}
-                  </option>
-                ))}
-              </select>
-            </div>
-          }
-        />
-      </div>
-    </li>
+      <td className="px-2 py-2.5">
+        <div ref={setDragRef} style={{ transform: CSS.Translate.toString(transform) }}>
+          <button
+            type="button"
+            className="cursor-grab touch-none rounded-md p-1 text-dash-muted hover:bg-dash-canvas hover:text-brand-navy active:cursor-grabbing"
+            aria-label={`Drag ${item.name}`}
+            {...listeners}
+            {...attributes}
+          >
+            <GripVertical className="size-4" aria-hidden="true" />
+          </button>
+        </div>
+      </td>
+      <td className="px-3 py-3 text-[14px] font-semibold text-brand-navy">{item.name}</td>
+      <td className="px-3 py-3 text-[13px] text-dash-muted">{item.typeLabel}</td>
+      <td className="px-3 py-3 text-[13px] text-dash-muted">{item.statusLabel}</td>
+      <td className="px-1 py-2.5">
+        <div className="flex items-center">
+          <IconButton label={`Move ${item.name} up`} disabled={busy || first} onClick={() => onNudge(-1)}>
+            <ArrowUp className="size-3.5" />
+          </IconButton>
+          <IconButton label={`Move ${item.name} down`} disabled={busy || last} onClick={() => onNudge(1)}>
+            <ArrowDown className="size-3.5" />
+          </IconButton>
+        </div>
+      </td>
+      <td className="px-3 py-2.5">
+        <select
+          aria-label={`Move ${item.name} to group`}
+          value={currentGroup ?? UNGROUPED_ID}
+          disabled={busy}
+          onChange={(event) => onMoveTo(event.target.value === UNGROUPED_ID ? null : event.target.value)}
+          className="h-8 w-full max-w-48 cursor-pointer truncate rounded-md border border-dash-border bg-white px-2 text-[13px] text-brand-navy outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
+        >
+          {groups.map((group) => (
+            <option key={group.uuid ?? UNGROUPED_ID} value={group.uuid ?? UNGROUPED_ID}>
+              {group.uuid ? group.name : "Ungrouped"}
+            </option>
+          ))}
+        </select>
+      </td>
+    </tr>
   );
 }
 
-function FormCardBody({
-  item,
-  handle,
-  actions,
+function TextAction({
+  label,
+  children,
   className,
+  ...props
 }: {
-  item: BoardItem;
-  handle?: React.ReactNode;
-  actions?: React.ReactNode;
+  label: string;
+  children: ReactNode;
   className?: string;
+  disabled?: boolean;
+  onClick?: () => void;
 }) {
   return (
-    <div className={cn("flex flex-wrap items-center gap-x-2 gap-y-1 px-2 py-2.5", className)}>
-      {handle ?? <GripVertical className="size-4 text-dash-muted" aria-hidden="true" />}
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[13px] font-medium text-brand-navy">{item.name}</p>
-        <p className="text-[11px] text-dash-muted">
-          {item.typeLabel} · {item.statusLabel}
-        </p>
-      </div>
-      {actions}
-    </div>
+    <button
+      type="button"
+      aria-label={label}
+      className={cn("px-2 py-1 text-[13px] font-medium text-dash-muted hover:text-brand-navy disabled:opacity-30", className)}
+      {...props}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -485,7 +559,7 @@ function IconButton({
   ...props
 }: {
   label: string;
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
   type?: "button" | "submit";
   disabled?: boolean;
@@ -496,7 +570,7 @@ function IconButton({
       type={type}
       aria-label={label}
       title={label}
-      className={cn("rounded p-1 text-dash-muted hover:bg-slate-100 hover:text-brand-navy disabled:opacity-30 disabled:hover:bg-transparent", className)}
+      className={cn("rounded-md p-1.5 text-dash-muted hover:bg-dash-canvas hover:text-brand-navy disabled:opacity-30 disabled:hover:bg-transparent", className)}
       {...props}
     >
       {children}

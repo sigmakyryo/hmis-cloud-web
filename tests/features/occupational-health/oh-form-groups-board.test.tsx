@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { OhFormGroupsBoard } from "@/features/occupational-health/components/OhFormGroupsBoard";
@@ -85,16 +85,14 @@ describe("OhFormGroupsBoard", () => {
   it("renders a panel per group with drag handles", () => {
     renderBoard();
     const panels = screen.getAllByTestId("oh-form-group-panel");
-    expect(panels.map((panel) => within(panel).getAllByRole("heading")[0].textContent)).toEqual([
-      "Pre-employment",
-      "Certificates",
-      "Ungrouped",
-    ]);
+    expect(panels.map((panel) => panel.getAttribute("data-group"))).toEqual(["g1", "g2", "__ungrouped__"]);
+    expect(screen.getByRole("button", { name: "Pre-employment" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Drag Audiometry" })).toBeInTheDocument();
   });
 
   it("keyboard fallback: move to another group saves the whole layout", async () => {
     renderBoard();
+    fireEvent.click(screen.getByRole("button", { name: "Ungrouped" }));
     fireEvent.change(screen.getByLabelText("Move Intake questionnaire to group"), { target: { value: "g1" } });
     await waitFor(() => expect(service.saveFormLayout).toHaveBeenCalledTimes(1));
     expect(service.saveFormLayout).toHaveBeenCalledWith([
@@ -111,6 +109,7 @@ describe("OhFormGroupsBoard", () => {
     fireEvent.click(screen.getByRole("button", { name: "Move Spirometry down" }));
     await waitFor(() => expect(service.saveFormLayout).toHaveBeenCalledTimes(1));
     expect(service.saveFormLayout.mock.calls[0][0][0].items).toEqual([{ form_uuid: "a" }, { form_uuid: "b" }]);
+    fireEvent.click(screen.getByRole("button", { name: "Certificates" }));
     await waitFor(() => expect(screen.getByRole("button", { name: "Move Certificates up" })).not.toBeDisabled());
     fireEvent.click(screen.getByRole("button", { name: "Move Certificates up" }));
     await waitFor(() => expect(service.saveFormLayout).toHaveBeenCalledTimes(2));
@@ -123,12 +122,14 @@ describe("OhFormGroupsBoard", () => {
     fireEvent.click(screen.getByTestId("oh-form-group-create"));
     await waitFor(() => expect(service.createFormGroup).toHaveBeenCalledWith("Night shift"));
 
+    fireEvent.click(screen.getByRole("button", { name: "Certificates" }));
     fireEvent.click(screen.getByRole("button", { name: "Rename Certificates" }));
     const input = screen.getByLabelText("Rename Certificates");
     fireEvent.change(input, { target: { value: "Fitness certificates" } });
     fireEvent.submit(input.closest("form")!);
     await waitFor(() => expect(service.renameFormGroup).toHaveBeenCalledWith("g2", "Fitness certificates"));
 
+    fireEvent.click(screen.getByRole("button", { name: "Pre-employment" }));
     fireEvent.click(screen.getByRole("button", { name: "Delete Pre-employment" }));
     expect(await screen.findByText(/Its 2 forms will move to Ungrouped/)).toBeInTheDocument();
     fireEvent.click(screen.getByTestId("oh-form-group-delete-confirm"));
@@ -140,7 +141,6 @@ describe("OhFormGroupsBoard", () => {
     renderBoard();
     fireEvent.click(screen.getByRole("button", { name: "Move Spirometry down" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Could not save the new order");
-    const first = screen.getAllByTestId("oh-form-group-panel")[0];
-    expect(within(first).getAllByTestId("oh-form-group-item").map((el) => el.getAttribute("data-key"))).toEqual(["form:b", "form:a"]);
+    expect(screen.getAllByTestId("oh-form-group-item").map((el) => el.getAttribute("data-key"))).toEqual(["form:b", "form:a"]);
   });
 });

@@ -60,64 +60,58 @@ export function IpdWardHandoverPanel({
   });
 
   return (
-    <section className="space-y-4 rounded-md border border-border/70 p-4">
+    <section className="space-y-6">
       <div>
-        <h2 className="text-sm font-medium">Ward handover · {wardName}</h2>
-        <p className="text-xs text-muted-foreground">
-          Active patients and shift notes for this ward.
-        </p>
+        <h2 className="text-[15px] font-semibold text-brand-navy">Handover · {wardName}</h2>
+        <p className="mt-0.5 text-[13px] text-dash-muted">Active patients and shift notes for this ward.</p>
       </div>
 
       <div>
-        <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Patients ({patientsQuery.data?.length ?? 0})
-        </h3>
+        <h3 className="mb-2 text-[13px] font-medium text-brand-navy">Patients ({patientsQuery.data?.length ?? 0})</h3>
         <ul className="space-y-2 text-sm">
           {(patientsQuery.data ?? []).map((row) => (
-            <li key={row.stay_uuid} className="flex justify-between gap-2">
-              <span>
+            <li key={row.stay_uuid} className="flex items-baseline justify-between gap-3 border-b border-dash-border/70 py-2 text-[13.5px]">
+              <span className="text-brand-navy">
                 {row.customer.display_name}
                 {row.bed_code ? ` · ${row.bed_code}` : ""}
-                <span className="text-muted-foreground">
-                  {" "}
-                  · {row.hours_since_admission}h
-                </span>
+                <span className="text-dash-muted"> · {row.hours_since_admission}h</span>
               </span>
               <Link
-                href={ROUTES.clinicalIpdEncounter(
-                  row.visit_uuid,
-                  row.encounter_uuid,
-                )}
-                className="underline"
+                href={ROUTES.clinicalIpdEncounter(row.visit_uuid, row.encounter_uuid)}
+                className="shrink-0 font-semibold text-brand-primary hover:underline"
               >
                 Open
               </Link>
             </li>
           ))}
           {!patientsQuery.isLoading && (patientsQuery.data?.length ?? 0) === 0 ? (
-            <li className="text-muted-foreground">No active patients.</li>
+            <li className="py-2 text-[13px] text-dash-muted">No active patients.</li>
           ) : null}
         </ul>
       </div>
 
-      <div className="space-y-2">
-        <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          New handover
-        </h3>
+      <div className="max-w-xl space-y-3">
+        <h3 className="text-[13px] font-medium text-brand-navy">New handover</h3>
         <div className="space-y-1.5">
           <Label htmlFor="handover-shift">Shift</Label>
-          <select
-            id="handover-shift"
-            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-            value={shift}
-            onChange={(event) =>
-              setShift(event.target.value as "morning" | "afternoon" | "night")
-            }
-          >
-            <option value="morning">Morning</option>
-            <option value="afternoon">Afternoon</option>
-            <option value="night">Night</option>
-          </select>
+          <div className="flex gap-2" role="group" aria-label="Shift">
+            {(["morning", "afternoon", "night"] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                id={value === "morning" ? "handover-shift" : undefined}
+                aria-pressed={shift === value}
+                onClick={() => setShift(value)}
+                className={
+                  shift === value
+                    ? "h-8 rounded-lg bg-brand-tint px-3 text-[13px] font-semibold text-brand-primary"
+                    : "h-8 rounded-lg px-3 text-[13px] font-medium text-dash-muted hover:bg-dash-canvas hover:text-brand-navy"
+                }
+              >
+                {value[0].toUpperCase() + value.slice(1)}
+              </button>
+            ))}
+          </div>
         </div>
         <Textarea
           rows={3}
@@ -154,31 +148,21 @@ export function IpdWardHandoverPanel({
       </div>
 
       <div>
-        <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Recent handovers
-        </h3>
+        <h3 className="mb-2 text-[13px] font-medium text-brand-navy">Recent handovers</h3>
         <ul className="space-y-3 text-sm">
           {(handoversQuery.data ?? []).slice(0, 5).map((row) => (
-            <li key={row.uuid} className="border-b border-border/50 pb-2">
-              <p className="font-medium capitalize">
+            <li key={row.uuid} className="border-b border-dash-border/70 py-2.5 text-[13.5px]">
+              <p className="font-medium text-brand-navy capitalize">
                 {row.shift} · {new Date(row.handed_over_at).toLocaleString()}
               </p>
-              <p>{row.summary}</p>
-              {row.outstanding_tasks ? (
-                <p className="text-muted-foreground">
-                  Tasks: {row.outstanding_tasks}
-                </p>
-              ) : null}
-              {row.alerts ? (
-                <p className="text-amber-700 dark:text-amber-400">
-                  Alerts: {row.alerts}
-                </p>
-              ) : null}
+              <p className="mt-0.5 text-brand-slate">{row.summary}</p>
+              {row.outstanding_tasks ? <p className="mt-0.5 text-dash-muted">Tasks: {row.outstanding_tasks}</p> : null}
+              {row.alerts ? <p className="mt-0.5 text-amber-800">Alerts: {row.alerts}</p> : null}
             </li>
           ))}
           {!handoversQuery.isLoading &&
           (handoversQuery.data?.length ?? 0) === 0 ? (
-            <li className="text-muted-foreground">No handovers yet.</li>
+            <li className="py-2 text-[13px] text-dash-muted">No handovers yet.</li>
           ) : null}
         </ul>
       </div>

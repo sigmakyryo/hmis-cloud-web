@@ -384,14 +384,6 @@ export const navigation: NavigationItem[] = [
     enabledInWebNew: true,
   },
   {
-    name: "Admit patient",
-    href: ROUTES.clinicalIpdAdmit,
-    icon: "hospital",
-    requiredGroup: "IPD",
-    moduleName: "IPD",
-    enabledInWebNew: true,
-  },
-  {
     name: "Active stays",
     href: ROUTES.clinicalIpdStays,
     icon: "hospital",

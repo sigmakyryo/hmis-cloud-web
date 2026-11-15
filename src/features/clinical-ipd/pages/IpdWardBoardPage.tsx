@@ -2,324 +2,242 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { StatusDotBadge } from "@/components/ui/status-dot-badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ROUTES } from "@/constants/routes";
 import {
-  ListPageHeaderActions,
-  ListPageHeaderSection,
-  ListPageHeaderTitleBlock,
-  ListPageHeaderTopRow,
+  ListPageBlankState,
   ListPageLayout,
+  ListPageTableSection,
 } from "@/features/app-shell/components/page-layout";
+import { IpdAdmitSheet, type IpdAdmitDefaults } from "@/features/clinical-ipd/components/IpdAdmitSheet";
 import { IpdClinicSelect } from "@/features/clinical-ipd/components/IpdClinicSelect";
 import { IpdStayDischargeDialog } from "@/features/clinical-ipd/components/IpdStayDischargeDialog";
 import { IpdStayTransferDialog } from "@/features/clinical-ipd/components/IpdStayTransferDialog";
+import { IpdWardBoardTable } from "@/features/clinical-ipd/components/IpdWardBoardTable";
 import { IpdWardHandoverPanel } from "@/features/clinical-ipd/components/IpdWardHandoverPanel";
 import { IpdWardSelect } from "@/features/clinical-ipd/components/IpdWardSelect";
-import {
-  fetchIpdCensus,
-  fetchIpdCensusStats,
-} from "@/features/clinical-ipd/services/clinical-ipd.service";
-import type {
-  IpdBedStatus,
-  IpdCensusRow,
-  IpdWard,
-  IpdWardClass,
-} from "@/features/clinical-ipd/types/clinical-ipd.types";
+import { fetchIpdCensus, fetchIpdCensusStats } from "@/features/clinical-ipd/services/clinical-ipd.service";
+import type { IpdBedStatus, IpdCensusRow, IpdWard, IpdWardClass } from "@/features/clinical-ipd/types/clinical-ipd.types";
 import { fetchClinicalClinics } from "@/features/clinical/services/clinical-catalog.service";
-import type { ClinicalClinic } from "@/features/clinical/types/clinical-catalog.types";
+import { cn } from "@/lib/utils";
 import { useUser } from "@/providers/user-provider";
 
-const STATUS_TONE: Record<
-  IpdBedStatus,
-  "success" | "primary" | "warning" | "danger" | "neutral"
-> = {
-  available: "success",
-  occupied: "primary",
-  blocked: "warning",
-  maintenance: "danger",
-  reserved: "warning",
-  cleaning: "warning",
+const BED_STATUSES: IpdBedStatus[] = ["available", "occupied", "reserved", "cleaning", "blocked", "maintenance"];
+
+const BED_STATUS_LABEL: Record<IpdBedStatus, string> = {
+  available: "Available",
+  occupied: "Occupied",
+  reserved: "Reserved",
+  cleaning: "Cleaning",
+  blocked: "Blocked",
+  maintenance: "Maintenance",
 };
 
-const BED_STATUSES: Array<IpdBedStatus | ""> = [
-  "",
-  "available",
-  "occupied",
-  "reserved",
-  "cleaning",
-  "blocked",
-  "maintenance",
-];
+const WARD_CLASSES: IpdWardClass[] = ["general", "icu", "maternity", "other"];
 
-const WARD_CLASSES: Array<IpdWardClass | ""> = [
-  "",
-  "general",
-  "icu",
-  "maternity",
-  "other",
-];
+const WARD_CLASS_LABEL: Record<IpdWardClass, string> = {
+  general: "General",
+  icu: "ICU",
+  maternity: "Maternity",
+  other: "Other",
+};
+
+function countBy<T extends string>(rows: IpdCensusRow[], value: (row: IpdCensusRow) => T, keys: T[]): Record<T, number> {
+  const counts = Object.fromEntries(keys.map((key) => [key, 0])) as Record<T, number>;
+  for (const row of rows) {
+    const key = value(row);
+    if (key in counts) counts[key] += 1;
+  }
+  return counts;
+}
 
 export function IpdWardBoardPage() {
   const { userData } = useUser();
-  const [clinic, setClinic] = useState<ClinicalClinic | null>(null);
+  const [clinicUuid, setClinicUuid] = useState<string | null>(null);
   const [ward, setWard] = useState<IpdWard | null>(null);
   const [wardClass, setWardClass] = useState<IpdWardClass | "">("");
   const [status, setStatus] = useState<IpdBedStatus | "">("");
   const [transferStay, setTransferStay] = useState<IpdCensusRow | null>(null);
   const [dischargeStay, setDischargeStay] = useState<IpdCensusRow | null>(null);
+  const [admit, setAdmit] = useState<IpdAdmitDefaults | null>(null);
 
   const clinicsQuery = useQuery({
     queryKey: ["clinical-clinics"],
     queryFn: fetchClinicalClinics,
   });
 
-  useEffect(() => {
-    const clinics = clinicsQuery.data ?? [];
-    if (!clinics.length || clinic) return;
-    const primary = userData?.primary_clinic;
-    if (!primary) return;
-    const matched = clinics.find((item) => item.id === primary.id);
-    if (matched) setClinic(matched);
-  }, [clinicsQuery.data, clinic, userData?.primary_clinic]);
-
-  const filters = useMemo(
-    () => ({
-      clinic: clinic?.uuid,
-      ward: ward?.uuid,
-      ward_class: wardClass || undefined,
-      status: status || undefined,
-    }),
-    [clinic?.uuid, ward?.uuid, wardClass, status],
-  );
+  const clinics = clinicsQuery.data;
+  const clinic = useMemo(() => {
+    const list = clinics ?? [];
+    if (clinicUuid) return list.find((item) => item.uuid === clinicUuid) ?? null;
+    const primaryId = userData?.primary_clinic?.id;
+    if (primaryId == null) return null;
+    return list.find((item) => item.id === primaryId) ?? null;
+  }, [clinicUuid, clinics, userData?.primary_clinic?.id]);
 
   const censusQuery = useQuery({
-    queryKey: ["ipd-census", filters],
-    queryFn: () => fetchIpdCensus(filters),
+    queryKey: ["ipd-census", clinic?.uuid, ward?.uuid],
+    queryFn: () => fetchIpdCensus({ clinic: clinic?.uuid, ward: ward?.uuid }),
   });
 
   const statsQuery = useQuery({
     queryKey: ["ipd-census-stats", clinic?.uuid, ward?.uuid],
-    queryFn: () =>
-      fetchIpdCensusStats({
-        clinic: clinic?.uuid,
-        ward: ward?.uuid,
-      }),
+    queryFn: () => fetchIpdCensusStats({ clinic: clinic?.uuid, ward: ward?.uuid }),
   });
 
-  const boardCounts = useMemo(() => {
-    const rows = censusQuery.data ?? [];
-    return {
-      available: rows.filter((row) => row.bed_status === "available").length,
-      occupied: rows.filter((row) => row.bed_status === "occupied").length,
-      blocked: rows.filter(
-        (row) =>
-          row.bed_status === "blocked" ||
-          row.bed_status === "maintenance" ||
-          row.bed_status === "reserved" ||
-          row.bed_status === "cleaning",
-      ).length,
-    };
-  }, [censusQuery.data]);
+  const census = censusQuery.data;
+  const beds = census ?? [];
+  const statusCounts = useMemo(() => countBy(census ?? [], (row) => row.bed_status, BED_STATUSES), [census]);
+  const classCounts = useMemo(() => countBy(census ?? [], (row) => row.ward_class, WARD_CLASSES), [census]);
+  const rows = beds.filter(
+    (row) => (status === "" || row.bed_status === status) && (wardClass === "" || row.ward_class === wardClass),
+  );
+  const filtered = status !== "" || wardClass !== "";
 
   return (
     <ListPageLayout data-testid="ipd-ward-board">
-      <ListPageHeaderSection>
-        <ListPageHeaderTopRow>
-          <ListPageHeaderTitleBlock
-            title="Ward board"
-            description="Live bed occupancy across IPD wards."
-          />
-          <ListPageHeaderActions>
-            <div className="flex gap-3 text-sm">
-              <Link href={ROUTES.clinicalIpdAdmit} className="underline">
-                Admit patient
-              </Link>
-              <Link href={ROUTES.clinicalIpdStays} className="underline">
-                Active stays
-              </Link>
-              <Link href={ROUTES.clinicalIpdBeds} className="underline">
-                Manage beds
-              </Link>
-            </div>
-          </ListPageHeaderActions>
-        </ListPageHeaderTopRow>
-      </ListPageHeaderSection>
-
-      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <IpdClinicSelect
-          clinics={clinicsQuery.data ?? []}
-          value={clinic}
-          onChange={(next) => {
-            setClinic(next);
-            setWard(null);
-          }}
-          isLoading={clinicsQuery.isLoading}
-        />
-        <IpdWardSelect
-          clinicUuid={clinic?.uuid}
-          value={ward}
-          onChange={setWard}
-        />
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium" htmlFor="ward-class-filter">
-            Ward class
-          </label>
-          <select
-            id="ward-class-filter"
-            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-            value={wardClass}
-            onChange={(event) =>
-              setWardClass(event.target.value as IpdWardClass | "")
-            }
-          >
-            {WARD_CLASSES.map((value) => (
-              <option key={value || "all"} value={value}>
-                {value || "All classes"}
-              </option>
-            ))}
-          </select>
+      <div data-list-band className="px-5 pt-7 md:px-8">
+        <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
+          <div className="min-w-0">
+            <h1 className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+              <IpdClinicSelect
+                appearance="title"
+                clinics={clinics ?? []}
+                value={clinic}
+                onChange={(next) => {
+                  setClinicUuid(next?.uuid ?? null);
+                  setWard(null);
+                }}
+                isLoading={clinicsQuery.isLoading}
+              />
+              <span className="text-[22px] font-medium text-dash-muted" aria-hidden>
+                /
+              </span>
+              <IpdWardSelect
+                appearance="title"
+                clinicUuid={clinic?.uuid}
+                value={ward}
+                onChange={setWard}
+                placeholder={clinic ? "All wards" : "Ward"}
+              />
+            </h1>
+            <p className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13.5px] text-dash-muted">
+              <span>
+                <span className="font-semibold text-brand-navy tabular-nums">{statusCounts.available}</span> available
+              </span>
+              <span>
+                <span className="font-semibold text-brand-navy tabular-nums">{statusCounts.occupied}</span> occupied
+              </span>
+              {statsQuery.data ? (
+                <>
+                  <span>
+                    <span className="font-semibold text-brand-navy tabular-nums">{statsQuery.data.active_stays}</span> active stays
+                  </span>
+                  <span>
+                    <span className="font-semibold text-brand-navy tabular-nums">{statsQuery.data.admitted_today}</span> admitted today
+                  </span>
+                </>
+              ) : null}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" className="h-8" asChild>
+              <Link href={ROUTES.clinicalIpdStays}>Active stays</Link>
+            </Button>
+            <Button variant="outline" size="sm" className="h-8" asChild>
+              <Link href={ROUTES.clinicalIpdBeds}>Beds</Link>
+            </Button>
+            <Button variant="primary" className="h-8 px-3 text-[13px]" onClick={() => setAdmit({ clinicUuid: clinic?.uuid, wardUuid: ward?.uuid })}>
+              Admit patient
+            </Button>
+          </div>
         </div>
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium" htmlFor="bed-status-filter">
-            Bed status
-          </label>
-          <select
-            id="bed-status-filter"
-            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-            value={status}
-            onChange={(event) =>
-              setStatus(event.target.value as IpdBedStatus | "")
-            }
-          >
+
+        <div className="mt-6 flex flex-col gap-y-3 border-b border-dash-border lg:flex-row lg:items-end lg:justify-between">
+          <div role="group" aria-label="Filter by bed status" className="scrollbar-hide -mb-px flex gap-5 overflow-x-auto">
+            <StatusTab label="All" count={beds.length} selected={status === ""} onSelect={() => setStatus("")} />
             {BED_STATUSES.map((value) => (
-              <option key={value || "all"} value={value}>
-                {value || "All statuses"}
-              </option>
+              <StatusTab
+                key={value}
+                label={BED_STATUS_LABEL[value]}
+                count={statusCounts[value]}
+                selected={status === value}
+                onSelect={() => setStatus(value)}
+              />
             ))}
-          </select>
+          </div>
+          <div role="group" aria-label="Filter by ward class" className="scrollbar-hide -mb-px flex gap-4 overflow-x-auto">
+            <StatusTab label="All classes" count={beds.length} selected={wardClass === ""} onSelect={() => setWardClass("")} />
+            {WARD_CLASSES.map((value) => (
+              <StatusTab
+                key={value}
+                label={WARD_CLASS_LABEL[value]}
+                count={classCounts[value]}
+                selected={wardClass === value}
+                onSelect={() => setWardClass(value)}
+              />
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-4 text-sm">
-        <span>
-          Available: <strong>{boardCounts.available}</strong>
-        </span>
-        <span>
-          Occupied: <strong>{boardCounts.occupied}</strong>
-        </span>
-        <span>
-          Other: <strong>{boardCounts.blocked}</strong>
-        </span>
-        {statsQuery.data ? (
-          <>
-            <span className="text-muted-foreground">·</span>
-            <span>
-              Active stays: <strong>{statsQuery.data.active_stays}</strong>
-            </span>
-            <span>
-              Admitted today: <strong>{statsQuery.data.admitted_today}</strong>
-            </span>
-          </>
-        ) : null}
-      </div>
-
-      {censusQuery.isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading census…</p>
-      ) : null}
-      {censusQuery.error ? (
-        <p className="text-sm text-destructive">
-          {censusQuery.error instanceof Error
-            ? censusQuery.error.message
-            : "Failed to load census."}
-        </p>
-      ) : null}
-
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {(censusQuery.data ?? []).map((row) => {
-            const href =
-              row.stay?.visit_uuid && row.stay.encounter_uuid
-                ? ROUTES.clinicalIpdEncounter(
-                    row.stay.visit_uuid,
-                    row.stay.encounter_uuid,
-                  )
-                : null;
-            const admitHref = `${ROUTES.clinicalIpdAdmit}?clinic=${encodeURIComponent(row.clinic_uuid)}&ward=${encodeURIComponent(row.ward_uuid)}&bed=${encodeURIComponent(row.bed_uuid)}`;
-
-            return (
-              <div
-                key={row.bed_uuid}
-                className="space-y-2 rounded-md border border-border/70 p-3 text-sm"
+      <ListPageTableSection>
+        {censusQuery.isLoading ? (
+          <div className="space-y-2 px-5 py-4 md:px-8" aria-hidden>
+            {Array.from({ length: 6 }, (_, index) => (
+              <Skeleton key={index} className="h-12 w-full" />
+            ))}
+          </div>
+        ) : censusQuery.error ? (
+          <ListPageBlankState
+            compact
+            tone="error"
+            icon="file"
+            title="Could not load the ward board"
+            description={censusQuery.error instanceof Error ? censusQuery.error.message : "The census did not load."}
+          />
+        ) : beds.length === 0 ? (
+          <ListPageBlankState compact icon="hospital" title="No beds on this board" description="Choose another clinic or ward, or add beds for this ward." />
+        ) : rows.length === 0 && filtered ? (
+          <ListPageBlankState
+            compact
+            icon="search"
+            title="No beds match"
+            description="Nothing on this board has that status or ward class."
+            action={
+              <Button
+                type="button"
+                variant="outline"
+                className="h-8 rounded-lg text-[13px]"
+                onClick={() => {
+                  setStatus("");
+                  setWardClass("");
+                }}
               >
-                <div className="flex items-center justify-between gap-2">
-                  <p className="font-medium">
-                    {row.ward_code}-{row.bed_code}
-                  </p>
-                  <StatusDotBadge tone={STATUS_TONE[row.bed_status]}>
-                    {row.bed_status}
-                  </StatusDotBadge>
-                </div>
-                <p className="text-muted-foreground">
-                  {row.ward_name} · {row.ward_class}
-                </p>
-                {row.stay?.customer ? (
-                  <>
-                    <p>
-                      {row.stay.customer.display_name}
-                      {row.stay.customer.file_number
-                        ? ` · ${row.stay.customer.file_number}`
-                        : ""}
-                    </p>
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      {href ? (
-                        <Link href={href} className="underline">
-                          Open encounter
-                        </Link>
-                      ) : null}
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => setTransferStay(row)}
-                      >
-                        Transfer
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => setDischargeStay(row)}
-                      >
-                        Discharge
-                      </Button>
-                    </div>
-                  </>
-                ) : row.bed_status === "available" ? (
-                  <Link href={admitHref} className="inline-block underline">
-                    Admit here
-                  </Link>
-                ) : (
-                  <p className="text-muted-foreground">Empty</p>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {ward ? (
-          <IpdWardHandoverPanel wardUuid={ward.uuid} wardName={ward.name} />
+                Show every bed
+              </Button>
+            }
+          />
         ) : (
-          <p className="text-sm text-muted-foreground">
-            Select a ward to view patients and record handovers.
-          </p>
+          <IpdWardBoardTable
+            rows={rows}
+            onTransfer={setTransferStay}
+            onDischarge={setDischargeStay}
+            onAdmit={(row) =>
+              setAdmit({ clinicUuid: row.clinic_uuid, wardUuid: row.ward_uuid, bedUuid: row.bed_uuid })
+            }
+          />
         )}
-      </div>
+      </ListPageTableSection>
+
+      {ward ? (
+        <div data-list-band className="border-t border-dash-border px-5 py-6 md:px-8">
+          <IpdWardHandoverPanel wardUuid={ward.uuid} wardName={ward.name} />
+        </div>
+      ) : null}
 
       {transferStay?.stay ? (
         <IpdStayTransferDialog
@@ -330,12 +248,44 @@ export function IpdWardBoardPage() {
         />
       ) : null}
       {dischargeStay?.stay ? (
-        <IpdStayDischargeDialog
-          stayUuid={dischargeStay.stay.uuid}
+        <IpdStayDischargeDialog stayUuid={dischargeStay.stay.uuid} open onClose={() => setDischargeStay(null)} />
+      ) : null}
+      {admit ? (
+        <IpdAdmitSheet
           open
-          onClose={() => setDischargeStay(null)}
+          defaults={admit}
+          onOpenChange={(open) => {
+            if (!open) setAdmit(null);
+          }}
         />
       ) : null}
     </ListPageLayout>
+  );
+}
+
+function StatusTab({
+  label,
+  count,
+  selected,
+  onSelect,
+}: {
+  label: string;
+  count: number;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={onSelect}
+      className={cn(
+        "flex shrink-0 items-baseline gap-1.5 border-b-2 pb-2.5 text-[13.5px] whitespace-nowrap transition-colors focus-visible:text-brand-primary focus-visible:outline-none",
+        selected ? "border-brand-primary font-semibold text-brand-navy" : "border-transparent font-medium text-dash-muted hover:text-brand-navy",
+      )}
+    >
+      {label}
+      <span className={cn("text-[12px] tabular-nums", selected ? "text-brand-primary" : "text-dash-muted/80")}>{count}</span>
+    </button>
   );
 }
