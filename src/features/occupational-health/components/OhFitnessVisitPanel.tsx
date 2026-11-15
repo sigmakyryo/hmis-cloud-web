@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowUpRight, ClipboardList, FileText } from "lucide-react";
+import { ArrowUpRight, ClipboardList, FileText, HardHat } from "lucide-react";
 
 import { ImmStatusBadge, humanize } from "@/app/(app)/immunizations/_components/shared/ImmRecordTable";
 import { LoadError, QuietLoading } from "@/app/(app)/immunizations/_components/shared/QuietLoading";
@@ -85,12 +85,18 @@ export type PreEmploymentRecord = {
   onOpen: () => void;
 };
 
+/** Injury-on-duty row. Null status means no case has been recorded on this visit. */
+export type FitnessIodRecord = {
+  status: string | null;
+};
+
 type OhFitnessVisitPanelProps = {
   customerUuid: string;
   onOpenPanel?: (panel: OhEncounterPanelId) => void;
   preEmployment?: PreEmploymentRecord | null;
   certificates?: FitnessCertificate[];
   assessments?: FitnessAssessment[];
+  iod?: FitnessIodRecord | null;
 };
 
 /** Fit-for-duty panel on an OH visit: verdict first, then a single readiness checklist. */
@@ -100,6 +106,7 @@ export function OhFitnessVisitPanel({
   preEmployment = null,
   certificates = [],
   assessments = [],
+  iod = null,
 }: OhFitnessVisitPanelProps) {
   const query = useFitWorker(customerUuid);
   return (
@@ -113,6 +120,7 @@ export function OhFitnessVisitPanel({
           preEmployment={preEmployment}
           certificates={certificates}
           assessments={assessments}
+          iod={iod}
         />
       ) : null}
     </div>
@@ -125,12 +133,14 @@ export function OhFitnessVisitView({
   preEmployment = null,
   certificates,
   assessments,
+  iod = null,
 }: {
   worker: FitWorker;
   onOpenPanel?: (panel: OhEncounterPanelId) => void;
   preEmployment?: PreEmploymentRecord | null;
   certificates: FitnessCertificate[];
   assessments: FitnessAssessment[];
+  iod?: FitnessIodRecord | null;
 }) {
   const overall: FitOverall = worker.overall in VERDICT_LINE ? worker.overall : "unknown";
   const rows = fitVisitChecklist(worker);
@@ -234,6 +244,12 @@ export function OhFitnessVisitView({
               onOpenPanel={onOpenPanel}
             />
           ))}
+          {iod ? (
+            <IodRow
+              record={iod}
+              onOpen={onOpenPanel ? () => onOpenPanel("injuries") : undefined}
+            />
+          ) : null}
           <CertificateRow current={currentCert} onOpen={onOpenPanel ? () => onOpenPanel("certificate") : undefined} />
         </ol>
       </section>
@@ -350,6 +366,45 @@ function PreEmploymentRow({ record }: { record: PreEmploymentRecord }) {
         >
           Open
         </button>
+      </div>
+    </li>
+  );
+}
+
+function IodRow({
+  record,
+  onOpen,
+}: {
+  record: FitnessIodRecord;
+  onOpen?: () => void;
+}) {
+  const recorded = record.status !== null && record.status !== "";
+  return (
+    <li data-testid="oh-fit-check-iod" data-status={recorded ? "recorded" : "not_started"} className="flex gap-3">
+      <span className="relative flex w-2.5 shrink-0 flex-col items-center">
+        <span className={cn("mt-3 size-2.5 rounded-full", TONE_DOT[recorded ? "good" : "missing"])} aria-hidden />
+        <span className="mt-1 w-px flex-1 bg-dash-border" aria-hidden />
+      </span>
+      <div className="flex min-w-0 flex-1 items-start gap-2.5 py-2.5">
+        <HardHat className={cn("mt-0.5 size-3.5 shrink-0", recorded ? "text-emerald-700" : "text-brand-navy")} aria-hidden />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h4 className="text-[13px] font-semibold text-brand-navy">Injury on duty</h4>
+            <ImmStatusBadge status={recorded ? "cleared" : "planned"} label={recorded ? "Recorded" : "Not started"} />
+          </div>
+          <p className="mt-0.5 text-[12px] leading-snug text-dash-muted">
+            {recorded ? humanize(record.status ?? "") : "Open to record the injury."}
+          </p>
+        </div>
+        {onOpen ? (
+          <button
+            type="button"
+            onClick={onOpen}
+            className="shrink-0 pt-0.5 text-[12px] font-medium text-brand-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30"
+          >
+            Open
+          </button>
+        ) : null}
       </div>
     </li>
   );

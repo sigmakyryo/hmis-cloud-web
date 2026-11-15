@@ -93,7 +93,7 @@ function EditorSection({ attachment, index, total }: { attachment: BuilderAttach
       </div>
       <div className="space-y-2 pt-2 pl-7">
         {section?.contentMode === "direct" ? <SampleFields fields={section.defaultResponseFields} onSelect={chooseSection} /> : <>
-          {itemsQuery.isPending ? <p role="status" className="py-3 text-xs text-dash-muted">Loading form items…</p> : itemsQuery.isError ? <div role="alert" className="text-sm text-red-700">Items could not be loaded. <button type="button" className="underline" onClick={() => void itemsQuery.refetch()}>Retry</button></div> : items.length === 0 ? <p className="py-3 text-sm text-dash-muted">No items yet. Add an item below to start this section.</p> : null}
+          {itemsQuery.isPending || (itemsQuery.isFetching && !itemsQuery.data) ? <p role="status" className="py-3 text-xs text-dash-muted">Loading form items…</p> : itemsQuery.isError ? <div role="alert" className="text-sm text-red-700">Items could not be loaded. <button type="button" className="underline" onClick={() => void itemsQuery.refetch()}>Retry</button></div> : items.length === 0 ? <p className="py-3 text-sm text-dash-muted">No items yet. Add an item below to start this section.</p> : null}
           {items.map((item) => {
             const selected = selection.type === "item" && selection.attachmentUuid === attachment.uuid && selection.itemUuid === item.uuid;
             const chooseItem = () => select({ type: "item", attachmentUuid: attachment.uuid, itemUuid: item.uuid });

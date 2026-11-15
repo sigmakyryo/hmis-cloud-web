@@ -15,6 +15,7 @@ import {
   type FormReviewSnapshot,
 } from "@/features/oh-template-builder/lib/dedicatedOhRecordPages";
 import { useTemplateBuilder } from "@/features/oh-template-builder/hooks/useTemplateBuilder";
+import { getTemplateAdapter } from "@/features/oh-template-builder/lib/templateAdapters";
 import { templateQueryKeys } from "@/features/oh-template-builder/lib/templateKinds";
 import type { BuilderAttachment, BuilderItem } from "@/features/oh-template-builder/template-builder.types";
 
@@ -63,9 +64,13 @@ function buildSnapshot(
 
 function useTemplateFormReviewState(): ReviewValue {
   const { kind = "certificate", templateUuid, attachments } = useTemplateBuilder();
+  const adapter = getTemplateAdapter(kind);
   const itemQueries = useQueries({
     queries: attachments.map((attachment) => ({
       queryKey: templateQueryKeys.items(kind, attachment.sectionUuid),
+      // Same loader as the canvas. A subscriber without queryFn rejects with
+      // "Missing queryFn", which paints the section error before the real fetch.
+      queryFn: () => adapter.listItems(attachment.sectionUuid),
       enabled: Boolean(attachment.sectionUuid),
     })),
   });
