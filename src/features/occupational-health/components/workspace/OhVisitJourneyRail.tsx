@@ -26,6 +26,8 @@ import {
 } from "@/features/occupational-health/lib/oh-visit-workspace";
 import type { OhEncounterPanelId } from "@/features/occupational-health/lib/oh-encounter-modules";
 import { useOhDesktopWorkspace } from "@/features/occupational-health/hooks/use-oh-desktop-workspace";
+import { useOhWorkspaceLayout } from "@/features/occupational-health/hooks/use-oh-workspace-layout";
+import { visibleClinicalModules } from "@/features/occupational-health/lib/oh-workspace-layout";
 import {
   useVisitRecordSummaries,
   type VisitRecordBadge,
@@ -56,8 +58,17 @@ type OhVisitJourneyRailProps = {
   onSelectModule: (panel: OhClinicalModuleId) => void;
 };
 
+type JourneyModule = (typeof OH_CLINICAL_MODULES)[number];
+
+type JourneyChromeProps = OhVisitJourneyRailProps & {
+  summaries: Record<OhClinicalModuleId, VisitRecordBadge | null>;
+  modules: readonly JourneyModule[];
+};
+
 export function OhVisitJourneyRail(props: OhVisitJourneyRailProps) {
   const desktop = useOhDesktopWorkspace();
+  const layout = useOhWorkspaceLayout();
+  const modules = layout.isReady ? visibleClinicalModules(layout.included) : OH_CLINICAL_MODULES;
   const summaries = useVisitRecordSummaries({
     customerUuid: props.customerUuid,
     encounterUuid: props.encounterUuid,
@@ -69,9 +80,9 @@ export function OhVisitJourneyRail(props: OhVisitJourneyRailProps) {
   return (
     <div data-testid="oh-visit-journey" className="contents">
       {desktop ? (
-        <JourneyRail {...props} summaries={summaries} />
+        <JourneyRail {...props} summaries={summaries} modules={modules} />
       ) : (
-        <JourneyStrip {...props} summaries={summaries} />
+        <JourneyStrip {...props} summaries={summaries} modules={modules} />
       )}
     </div>
   );
@@ -86,9 +97,8 @@ function JourneyRail({
   onSelectStep,
   onSelectModule,
   summaries,
-}: OhVisitJourneyRailProps & {
-  summaries: Record<OhClinicalModuleId, VisitRecordBadge | null>;
-}) {
+  modules,
+}: JourneyChromeProps) {
   return (
     <aside
       className="hidden min-h-0 w-56 shrink-0 overflow-y-auto border-r border-dash-border/70 bg-white lg:block lg:order-1"
@@ -137,7 +147,7 @@ function JourneyRail({
             Records
           </p>
           <ul className="flex flex-col gap-px">
-            {OH_CLINICAL_MODULES.map((module) => {
+            {modules.map((module) => {
               const active = activePanel === module.id;
               const Icon = MODULE_ICONS[module.id];
               const badge = summaries[module.id];
@@ -185,9 +195,8 @@ function JourneyStrip({
   onSelectStep,
   onSelectModule,
   summaries,
-}: OhVisitJourneyRailProps & {
-  summaries: Record<OhClinicalModuleId, VisitRecordBadge | null>;
-}) {
+  modules,
+}: JourneyChromeProps) {
   return (
     <nav
       aria-label="Consult"
@@ -218,7 +227,7 @@ function JourneyStrip({
             );
           })}
           <span aria-hidden className="mx-1 h-4 w-px bg-dash-border" />
-          {OH_CLINICAL_MODULES.map((module) => {
+          {modules.map((module) => {
             const active = activePanel === module.id;
             const Icon = MODULE_ICONS[module.id];
             const badge = summaries[module.id];

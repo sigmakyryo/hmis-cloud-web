@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { AlertTriangle, BellRing, Download, RefreshCw } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -12,13 +13,12 @@ import { CreateAppointmentDialog } from "@/features/appointments/components/Crea
 import type { Customer } from "@/features/customers/types/customer.types";
 import { OhAccessDenied } from "@/features/occupational-health/components/OhAccessDenied";
 import { OhSurveillanceRecallsCard } from "@/features/occupational-health/components/OhSurveillanceRecallsCard";
-import { OhBreakdownBars, OhColumnChart } from "@/features/occupational-health/components/dashboard/OhCharts";
 import { OhExportDialog } from "@/features/occupational-health/components/dashboard/OhExportDialog";
-import { OhKpiStat, OhKpiStrip } from "@/features/occupational-health/components/dashboard/OhKpiStrip";
-import { OhPanel, OhPanelState } from "@/features/occupational-health/components/dashboard/OhPanel";
+import { OhSection } from "@/features/occupational-health/components/dashboard/OhSection";
 import { OhSegmented } from "@/features/occupational-health/components/dashboard/OhSegmented";
-import { OH_COLORS } from "@/features/occupational-health/components/dashboard/oh-dashboard-colors";
 import { downloadText, toCsv } from "@/features/occupational-health/components/dashboard/oh-table";
+import { OhClinicDayPlanner } from "@/features/occupational-health/components/surveillance/OhClinicDayPlanner";
+import { OhDueRunway, type OhRunwayCounts } from "@/features/occupational-health/components/surveillance/OhDueRunway";
 import { OhRequirementSheet } from "@/features/occupational-health/components/surveillance/OhRequirementSheet";
 import { OhSendRecallDialog } from "@/features/occupational-health/components/surveillance/OhSendRecallDialog";
 import {
@@ -27,7 +27,7 @@ import {
   filterWorkRows,
   type OhWorklistFilters,
 } from "@/features/occupational-health/components/surveillance/OhSurveillanceWorklist";
-import { toWorkRows, type OhWorkRow } from "@/features/occupational-health/components/surveillance/oh-surveillance-utils";
+import { linkFromParams, toWorkRows, type OhWorkRow } from "@/features/occupational-health/components/surveillance/oh-surveillance-utils";
 import {
   useOhCampaignQueue,
   useOhFitnessValidityAlerts,
@@ -67,14 +67,19 @@ function customerStub(row: OhWorkRow): Customer {
   } as Customer;
 }
 
-const WINDOW_BARS = [
-  { key: "overdue_30_plus", label: "30d+ late", color: OH_COLORS.overdue },
-  { key: "overdue", label: "Late", color: "#d9534f" },
-  { key: "next_7", label: "≤7d", color: OH_COLORS.due },
-  { key: "next_30", label: "8–30d", color: "#d9a066" },
-  { key: "next_90", label: "31–90d", color: OH_COLORS.info },
-  { key: "later", label: "Later", color: OH_COLORS.waived },
-] as const;
+/** Due windows counted from the worklist, for when the service has not answered. */
+function countWindows(rows: OhWorkRow[]): OhRunwayCounts {
+  const counts: OhRunwayCounts = { overdue_30_plus: 0, overdue: 0, next_7: 0, next_30: 0, next_90: 0, later: 0 };
+  for (const row of rows) {
+    const d = row.days;
+    if (row.overdue) counts[d !== null && d <= -30 ? "overdue_30_plus" : "overdue"] += 1;
+    else if (d === null || d > 90) counts.later += 1;
+    else if (d <= 7) counts.next_7 += 1;
+    else if (d <= 30) counts.next_30 += 1;
+    else counts.next_90 += 1;
+  }
+  return counts;
+}
 
 type Tab = "worklist" | "recalls";
 
@@ -96,12 +101,26 @@ export function OhSurveillancePage() {
   const { userData, isLoading: isUserLoading } = useUser();
   const { toast } = useToast();
   const [tab, setTab] = useState<Tab>("worklist");
-  const [filters, setFilters] = useState<OhWorklistFilters>(EMPTY_WORKLIST_FILTERS);
+  const searchParams = useSearchParams();
+  // Why: other pages (compliance) link here with filters in the URL; they set where the worklist starts.
+  const [filters, setFilters] = useState<OhWorklistFilters>(() => {
+    const link = linkFromParams(searchParams);
+    return {
+      ...EMPTY_WORKLIST_FILTERS,
+      status: link.status ?? "all",
+      due: link.due ?? "any",
+      exam: link.exam ?? "",
+      hazard: link.hazard ?? "",
+      site: link.site ?? "",
+      search: link.q ?? "",
+    };
+  });
   const [openRow, setOpenRow] = useState<OhWorkRow | null>(null);
   const [scheduleCustomer, setScheduleCustomer] = useState<Customer | null>(null);
   const [recallRows, setRecallRows] = useState<OhWorkRow[] | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const [alertsExpanded, setAlertsExpanded] = useState(false);
+
 
   const campaignQuery = useOhCampaignQueue();
   const fitnessAlertsQuery = useOhFitnessValidityAlerts();
@@ -125,8 +144,7 @@ export function OhSurveillancePage() {
   const isRefreshing = campaignQuery.isFetching || fitnessAlertsQuery.isFetching || insights.isFetching;
   const i = insights.data;
   const alerts = fitnessAlertsQuery.data ?? [];
-  const overdueCount = i?.totals.overdue ?? rows.filter((r) => r.overdue).length;
-  const next30 = i ? i.due_windows.next_7 + i.due_windows.next_30 : rows.filter((r) => !r.overdue && r.days !== null && r.days <= 30).length;
+  const windows = i?.due_windows ?? countWindows(rows);
   const completedDelta = i ? i.completed.last_30_days - i.completed.previous_30_days : null;
   const rateDelta = i && i.compliance.rate_3m !== null && i.compliance.rate_prev_3m !== null ? i.compliance.rate_3m - i.compliance.rate_prev_3m : null;
 
@@ -151,7 +169,7 @@ export function OhSurveillancePage() {
   }
 
   const updatedAt = campaignQuery.dataUpdatedAt ? format(new Date(campaignQuery.dataUpdatedAt), "HH:mm") : null;
-  const chartColumn = "lg:px-6 lg:first:pl-0 lg:last:pr-0";
+  const showWorklist = () => document.getElementById("oh-worklist")?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   return (
     <ListPageLayout data-testid="oh-surveillance-page">
@@ -190,56 +208,41 @@ export function OhSurveillancePage() {
           </div>
         </div>
 
-        <OhKpiStrip>
-          <OhKpiStat
-            label="Open requirements"
-            value={i?.totals.open ?? rows.length}
-            hint="due or overdue"
-            isLoading={campaignQuery.isLoading && insights.isLoading}
-            onClick={() => applyQuick({})}
-            active={filters.status === "all" && filters.due === "any" && tab === "worklist"}
-            data-testid="oh-kpi-open"
-          />
-          <OhKpiStat
-            label="Overdue"
-            value={overdueCount}
-            hint={i ? `${i.due_windows.overdue_30_plus} over 30 days` : undefined}
-            tone={overdueCount > 0 ? "danger" : "success"}
-            isLoading={campaignQuery.isLoading && insights.isLoading}
-            onClick={() => applyQuick({ status: "overdue" })}
-            active={filters.status === "overdue"}
-            data-testid="oh-kpi-overdue"
-          />
-          <OhKpiStat
-            label="Due in 30 days"
-            value={next30}
-            hint={i ? `${i.due_windows.next_7} in the next 7` : undefined}
-            tone="warning"
-            isLoading={campaignQuery.isLoading && insights.isLoading}
-            onClick={() => applyQuick({ due: "next_30" })}
-            active={filters.due === "next_30"}
-            data-testid="oh-kpi-due30"
-          />
-          <OhKpiStat
-            label="Completed, 30 days"
-            value={i?.completed.last_30_days ?? "—"}
-            delta={{ value: completedDelta, goodWhen: "up", label: "vs previous 30" }}
-            isLoading={insights.isLoading}
-            data-testid="oh-kpi-completed"
-          />
-          <OhKpiStat
-            label="Compliance, 3 months"
-            value={i?.compliance.rate_3m !== null && i?.compliance.rate_3m !== undefined ? `${Math.round(i.compliance.rate_3m)}%` : "—"}
-            delta={{ value: rateDelta, suffix: " pts", goodWhen: "up", label: "vs prior 3 months" }}
-            hint={i && i.compliance.rate_3m === null ? "nothing fell due" : undefined}
-            isLoading={insights.isLoading}
-            data-testid="oh-kpi-compliance"
-          />
-        </OhKpiStrip>
+        <OhDueRunway
+          counts={windows}
+          filters={filters}
+          onFilter={(patch) => applyQuick(patch)}
+          onShowAll={() => applyQuick({})}
+          stats={
+            insights.isError ? (
+              <span role="alert" className="text-amber-800">
+                Trends could not be loaded, so these counts come from the worklist.{" "}
+                <button type="button" className="font-medium text-brand-primary hover:underline" onClick={() => void insights.refetch()}>
+                  Try again
+                </button>
+              </span>
+            ) : (
+            <>
+              <span data-testid="oh-kpi-completed">
+                <span className="font-semibold text-brand-navy tabular-nums">{i?.completed.last_30_days ?? "—"}</span> done in 30 days
+                {completedDelta !== null ? (
+                  <span className={completedDelta >= 0 ? "text-brand-primary" : "text-red-700"}> ({completedDelta >= 0 ? `+${completedDelta}` : completedDelta})</span>
+                ) : null}
+              </span>
+              <span data-testid="oh-kpi-compliance">
+                <span className="font-semibold text-brand-navy tabular-nums">{i?.compliance.rate_3m != null ? `${Math.round(i.compliance.rate_3m)}%` : "—"}</span> compliance, 3 months
+                {rateDelta !== null ? (
+                  <span className={rateDelta >= 0 ? "text-brand-primary" : "text-red-700"}> ({rateDelta >= 0 ? "+" : ""}{Math.round(rateDelta * 10) / 10} pts)</span>
+                ) : null}
+              </span>
+            </>
+            )
+          }
+        />
 
         {alerts.length > 0 ? (
           <section
-            className="flex flex-col gap-2 border-b border-dash-border/70 py-3 sm:flex-row sm:items-start sm:gap-4"
+            className="flex flex-col gap-2 border-b border-dash-border/70 border-l-[3px] border-l-amber-500 py-3 pl-4 sm:flex-row sm:items-start sm:gap-4"
             data-testid="oh-fitness-validity-alerts"
             aria-label="Fitness certificate alerts"
           >
@@ -268,43 +271,21 @@ export function OhSurveillancePage() {
           </section>
         ) : null}
 
-        <div className="grid gap-10 border-b border-dash-border/70 py-7 lg:grid-cols-3 lg:gap-0 lg:divide-x lg:divide-dash-border/70">
-          <OhPanel className={chartColumn} title="When work falls due" description="Open requirements by due window">
-            <OhPanelState
-              isLoading={insights.isLoading}
-              error={insights.error}
-              onRetry={() => void insights.refetch()}
-              isEmpty={!i || i.totals.open === 0}
-              emptyText="No open requirements."
-              height={220}
-            >
-              {i ? (
-                <OhColumnChart
-                  label="Open requirements by due window"
-                  data={WINDOW_BARS.map((w) => ({ key: w.key, label: w.label, value: i.due_windows[w.key], color: w.color }))}
-                  height={220}
-                />
-              ) : null}
-            </OhPanelState>
-          </OhPanel>
-          <OhPanel className={chartColumn} title="Open work by exam" description="Due and overdue, top exams">
-            <OhPanelState isLoading={insights.isLoading} error={insights.error} onRetry={() => void insights.refetch()} isEmpty={!i?.by_exam.length} emptyText="No open requirements." height={220}>
-              {i ? <OhBreakdownBars data={i.by_exam} label="Open requirements by exam" max={6} /> : null}
-            </OhPanelState>
-          </OhPanel>
-          <OhPanel className={chartColumn} title="Open work by site" description="Where to plan clinic days">
-            <OhPanelState isLoading={insights.isLoading} error={insights.error} onRetry={() => void insights.refetch()} isEmpty={!i?.by_site.length} emptyText="No open requirements." height={220}>
-              {i ? <OhBreakdownBars data={i.by_site} label="Open requirements by site" max={6} /> : null}
-            </OhPanelState>
-          </OhPanel>
-        </div>
+        <OhClinicDayPlanner
+          rows={rows}
+          selected={{ site: filters.site, exam: filters.exam }}
+          onSelect={(site, exam) => {
+            applyQuick({ site, exam });
+            showWorklist();
+          }}
+        />
 
-        <div className="pt-7">
+        <div className="pt-7" id="oh-worklist">
           {tab === "worklist" ? (
-            <OhPanel
-              title="Due & overdue requirements"
-              description="Click a row for details. Select rows to send recalls or export."
-              actions={<SurveillanceTabs tab={tab} onChange={setTab} count={rows.length} />}
+            <OhSection
+              title="Due and overdue checks"
+              description="Open a row for details. Select rows to send recalls or export them."
+              action={<SurveillanceTabs tab={tab} onChange={setTab} count={rows.length} />}
             >
               <OhSurveillanceWorklist
                 rows={rows}
@@ -317,7 +298,7 @@ export function OhSurveillancePage() {
                 onSchedule={(row) => setScheduleCustomer(customerStub(row))}
                 onRecall={(list) => setRecallRows(list.filter((r) => r.uuid))}
               />
-            </OhPanel>
+            </OhSection>
           ) : (
             <OhSurveillanceRecallsCard tabs={<SurveillanceTabs tab={tab} onChange={setTab} count={rows.length} />} />
           )}

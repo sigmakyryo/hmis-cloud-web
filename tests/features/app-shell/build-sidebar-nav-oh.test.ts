@@ -45,6 +45,35 @@ describe("buildSidebarNavItems occupational health", () => {
     expect(items.find((item) => item.title === "Forms")?.isActive).toBe(true);
   });
 
+  it("drops a switched-off module and the injuries page from the OH links", () => {
+    const items = buildSidebarNavItems(
+      OH_GROUPS,
+      ROUTES.overview,
+      false,
+      false,
+      ENABLED,
+      ["immunizations", "drug-alcohol", "health-programs", "injuries", "employment", "exposure"],
+    );
+    const urls = items.find((item) => item.title === "Occupational Health")?.items?.map((item) => item.url) ?? [];
+
+    expect(urls).not.toContain(ROUTES.fitnessBoard);
+    expect(urls).toContain(ROUTES.occupationalHealth);
+    expect(urls).toContain(ROUTES.occupationalHealthInjuries);
+
+    const withoutInjuries = buildSidebarNavItems(
+      OH_GROUPS,
+      ROUTES.overview,
+      false,
+      false,
+      ENABLED,
+      ["immunizations", "drug-alcohol", "health-programs", "fitness", "employment", "exposure"],
+    );
+    const injuryUrls =
+      withoutInjuries.find((item) => item.title === "Occupational Health")?.items?.map((item) => item.url) ?? [];
+    expect(injuryUrls).not.toContain(ROUTES.occupationalHealthInjuries);
+    expect(injuryUrls).toContain(ROUTES.fitnessBoard);
+  });
+
   it("omits the OH link for users without OH access", () => {
     const items = build(ROUTES.overview, ["Registration"]);
 

@@ -612,6 +612,16 @@ export type IodCase = {
   id: number;
   uuid: string;
   customer: number;
+  /** Who the case is about and where they work, from the saved employment record. Blank when not saved. */
+  worker_name?: string;
+  employer_name?: string;
+  reported_by?: string;
+  witnesses?: string;
+  immediate_action?: string;
+  treatment_given?: string;
+  root_cause?: string;
+  return_to_work_on?: string | null;
+  closed_on?: string | null;
   employment_episode: number | null;
   encounter: number | null;
   she_reference: string;

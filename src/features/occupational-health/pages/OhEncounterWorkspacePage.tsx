@@ -26,6 +26,8 @@ import { OhVisitJourneyRail } from "@/features/occupational-health/components/wo
 import { OhRiskProfileInlinePrompt } from "@/features/occupational-health/components/workspace/OhRiskProfileInlinePrompt";
 import { buildSessionStepStatuses } from "@/features/occupational-health/components/OhSessionForms";
 import { useOhEncounterModuleParam } from "@/features/occupational-health/hooks/use-oh-encounter-module-param";
+import { useOhWorkspaceLayout } from "@/features/occupational-health/hooks/use-oh-workspace-layout";
+import { isRecordPanelIncluded } from "@/features/occupational-health/lib/oh-workspace-layout";
 import {
   isLastSessionStep,
   nextSessionStep,
@@ -94,6 +96,7 @@ export function OhEncounterWorkspacePage({
   const { userData, isLoading: isUserLoading } = useUser();
   const hasAccess = canAccessOccupationalHealth(userData);
   const [activePanel, setActivePanel] = useOhEncounterModuleParam();
+  const workspaceLayout = useOhWorkspaceLayout();
   useEffect(() => {
     const openImm = () => setActivePanel("immunizations");
     window.addEventListener("oh-open-immunizations", openImm);
@@ -170,14 +173,21 @@ export function OhEncounterWorkspacePage({
   const formSteps = sessionFormSteps(encounter.visit_type ?? null);
   const statuses = buildSessionStepStatuses(formSteps, workspace);
   const liveStep = resolveLiveSessionStep(formSteps, statuses);
-  const activeStep = activeSessionStep(formSteps, chosenStep, activePanel);
+  const hiddenRecord =
+    workspaceLayout.isReady && !isRecordPanelIncluded(activePanel, workspaceLayout.included);
+  // Why: a worker with no risk profile still has to open Employment, even when that record is off the rail.
+  const shownPanel =
+    hiddenRecord && !(activePanel === "employment" && needsEmployment)
+      ? panelForSessionStep(liveStep)
+      : activePanel;
+  const activeStep = activeSessionStep(formSteps, chosenStep, shownPanel);
   const liveTitle =
     formSteps.find((step) => sessionFormStepKey(step) === liveStep)?.title ??
     "Examination";
   const native = isNativeOhVisit(encounter);
   const showJump =
     encounter.is_active &&
-    !isViewingLiveSessionStep(activePanel, activeStep, liveStep);
+    !isViewingLiveSessionStep(shownPanel, activeStep, liveStep);
   const last = isLastSessionStep(formSteps, activeStep);
   const primaryAction =
     native && encounter.is_active
@@ -381,7 +391,7 @@ export function OhEncounterWorkspacePage({
             activeStep={activeStep}
             liveStep={liveStep}
             statuses={statuses}
-            activePanel={activePanel}
+            activePanel={shownPanel}
             needsEmployment={needsEmployment}
             customerUuid={customer?.uuid}
             encounterUuid={encounter.uuid}
@@ -413,7 +423,7 @@ export function OhEncounterWorkspacePage({
                 cofCompletionRef={cofCompletionRef}
                 employeeContinueRef={employeeContinueRef}
                 completing={completing}
-                activePanel={activePanel}
+                activePanel={shownPanel}
                 activeStep={activeStep}
                 encounter={encounter}
                 customer={customer}

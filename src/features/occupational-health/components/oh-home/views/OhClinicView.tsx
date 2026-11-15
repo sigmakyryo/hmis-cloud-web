@@ -1,15 +1,14 @@
 "use client";
 
-import { ShieldCheck, Stethoscope } from "lucide-react";
+import { Stethoscope } from "lucide-react";
 import Link from "next/link";
 
 import { UserIdenticon } from "@/components/UserIdenticon";
 import { ROUTES } from "@/constants/routes";
 import { formatWaitingMinutes } from "@/features/clinical-opd/utils/opd-queue-stage";
-import { OhHomeComplianceBar } from "@/features/occupational-health/components/oh-home/OhHomeLive";
-import { OhClinicInjuriesSection, OhClinicVisitsSection } from "@/features/occupational-health/components/oh-home/views/OhClinicSections";
-import { ViewGrid } from "@/features/occupational-health/components/oh-home/views/OhViewCharts";
-import { QueryState, TodoRow, ViewSection } from "@/features/occupational-health/components/oh-home/views/OhViewParts";
+import { OhClinicCompliance } from "@/features/occupational-health/components/oh-home/views/OhClinicCompliance";
+import { OhClinicVisits } from "@/features/occupational-health/components/oh-home/views/OhClinicVisits";
+import { QueryState, ViewSection } from "@/features/occupational-health/components/oh-home/views/OhViewParts";
 import { useOhHomeSummary } from "@/features/occupational-health/components/oh-home/views/useOhHomeSummary";
 import { queueWaitingMinutes, waitTone } from "@/features/occupational-health/components/OhQueueTable";
 import { OhStartVisitEntry } from "@/features/occupational-health/components/OhStartVisitEntry";
@@ -60,12 +59,11 @@ export function OhClinicView() {
   const shown = ordered.slice(0, QUEUE_PREVIEW);
   const counts = compliance.data;
   const summary = useOhHomeSummary("clinic");
-  const certificates = summary.data?.certificates;
 
   return (
     <>
       <ViewSection
-        title="In the clinic" icon={Stethoscope}
+        title="In the clinic" icon={Stethoscope} countLabel="here now"
         count={queue.isSuccess ? active.length : undefined}
         testId="oh-home-queue"
         action={
@@ -79,7 +77,7 @@ export function OhClinicView() {
       >
         <QueryState isLoading={queue.isLoading} isError={queue.isError} onRetry={() => void queue.refetch()} rows={4}>
           {shown.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-dash-border px-4 py-6 text-[13.5px] text-dash-muted">No visits in the queue.</p>
+            <p className="border-y border-dash-border/70 py-5 text-[13.5px] text-dash-muted">No visits in the queue.</p>
           ) : (
             <>
               <ul>
@@ -94,34 +92,14 @@ export function OhClinicView() {
           )}
         </QueryState>
       </ViewSection>
-      <ViewGrid>
-        <ViewSection title="Compliance" icon={ShieldCheck} href={ROUTES.occupationalHealthCompliance} linkLabel="Compliance">
-          <QueryState
-            isLoading={compliance.isLoading}
-            isError={compliance.isError || (!compliance.isLoading && !counts)}
-            onRetry={() => void compliance.refetch()}
-          >
-            {counts ? (
-              <>
-                <OhHomeComplianceBar />
-                <ul className="mt-3">
-                  <TodoRow value={counts.overdue} label="Checks overdue" hint="Past due" href={ROUTES.occupationalHealthCompliance} alert />
-                  <TodoRow value={counts.due} label="Checks due now" href={ROUTES.occupationalHealthCompliance} />
-                  <TodoRow value={counts.due_within_30_days ?? 0} label="Coming due" hint="30 days" href={ROUTES.occupationalHealthCompliance} />
-                  {certificates ? (
-                    <>
-                      <TodoRow value={certificates.expiring_30d} label="Certificates expiring" hint="30 days" href={ROUTES.occupationalHealthCompliance} />
-                      <TodoRow value={certificates.expired_30d} label="Certificates lapsed" hint="Last 30 days" href={ROUTES.occupationalHealthCompliance} alert />
-                    </>
-                  ) : null}
-                </ul>
-              </>
-            ) : null}
-          </QueryState>
-        </ViewSection>
-        <OhClinicInjuriesSection summary={summary} />
-      </ViewGrid>
-      <OhClinicVisitsSection summary={summary} />
+      <OhClinicCompliance
+        counts={counts}
+        certificates={summary.data?.certificates}
+        isLoading={compliance.isLoading}
+        isError={compliance.isError}
+        onRetry={() => void compliance.refetch()}
+      />
+      <OhClinicVisits summary={summary} />
     </>
   );
 }

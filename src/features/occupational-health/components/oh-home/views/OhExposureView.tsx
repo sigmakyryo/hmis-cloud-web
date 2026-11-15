@@ -42,7 +42,7 @@ export function OhExposureView() {
   return (
     <div className="space-y-10" data-testid="oh-home-view-exposure-management">
       <ViewSection
-        title="Open events" icon={Siren}
+        title="Open events" icon={Siren} countLabel="open now"
         count={dashboard.isSuccess ? open.length : undefined}
         href={ROUTES.exposureManagementEvents}
         linkLabel="All events"

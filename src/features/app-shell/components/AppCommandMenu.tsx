@@ -22,6 +22,7 @@ import {
   type CommandPaletteItem,
 } from "@/features/app-shell/utils/build-command-palette-items";
 import { buildSidebarNavItems } from "@/features/app-shell/utils/build-sidebar-nav";
+import { useOhWorkspaceLayout } from "@/features/occupational-health/hooks/use-oh-workspace-layout";
 import {
   COMMAND_PALETTE_MIN_QUERY_LENGTH,
   COMMAND_PALETTE_SEARCH_DEBOUNCE_MS,
@@ -85,6 +86,7 @@ export function AppCommandMenu() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
+  const layout = useOhWorkspaceLayout();
   const userGroups = useMemo(() => userData?.groups ?? [], [userData?.groups]);
   const enabledModules = userData?.enabled_modules ?? [];
   const isTenantAdmin = Boolean(userData?.is_admin);
@@ -119,6 +121,7 @@ export function AppCommandMenu() {
       isTenantAdmin,
       isPlatformAdmin,
       userData?.enabled_modules ?? [],
+      layout.isReady ? layout.included : undefined,
     );
 
     return filterCommandPaletteItems(
@@ -128,6 +131,8 @@ export function AppCommandMenu() {
   }, [
     isPlatformAdmin,
     isTenantAdmin,
+    layout.included,
+    layout.isReady,
     pathname,
     search,
     userData?.enabled_modules,

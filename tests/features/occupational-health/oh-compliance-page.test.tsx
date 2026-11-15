@@ -2,6 +2,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
+import { axisFloor } from "@/features/occupational-health/components/compliance/OhComplianceHero";
+import { rankHotspots } from "@/features/occupational-health/components/compliance/OhComplianceHotspots";
+import { linkFromParams, surveillanceHref } from "@/features/occupational-health/components/surveillance/oh-surveillance-utils";
 import { OhCompliancePage } from "@/features/occupational-health/pages/OhCompliancePage";
 
 const ext = vi.hoisted(() => ({
@@ -79,14 +82,17 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-it("shows KPIs from the dashboard and insights with the compliance delta", async () => {
+it("leads with the rate against the target, the change, and every check by status", async () => {
   renderPage();
   expect(screen.getByTestId("oh-compliance-page")).toBeInTheDocument();
   expect(within(screen.getByTestId("oh-compliance-metric-overdue")).getByText("3")).toBeInTheDocument();
   expect(within(screen.getByTestId("oh-compliance-metric-open_episodes")).getByText("120")).toBeInTheDocument();
-  const rate = screen.getByTestId("oh-compliance-metric-rate");
-  expect(await within(rate).findByText("84%")).toBeInTheDocument();
-  expect(within(rate).getByLabelText(/\+4\.2 pts vs prior 3/)).toBeInTheDocument();
+  const rate = await screen.findByTestId("oh-compliance-metric-rate");
+  expect(rate).toHaveTextContent("84%");
+  expect(rate).toHaveTextContent("6 points under target.");
+  expect(rate).toHaveTextContent("+4.2 pts on the 3 months before.");
+  expect(screen.getByRole("img", { name: "All checks: 40 done, 6 due, 3 overdue, 1 waived" })).toBeInTheDocument();
+  expect(screen.getByRole("img", { name: "Monthly compliance against a 90% target: Oct 2026 80%" })).toBeInTheDocument();
   expect(ext.fetchComplianceInsights).toHaveBeenCalledWith(12);
   expect(screen.getByText("Exam battery rules")).toBeInTheDocument();
   expect(screen.getByTestId("oh-cancellations-report")).toBeInTheDocument();
@@ -100,19 +106,56 @@ it("has no page header and keeps refresh, rules and export in a toolbar", async 
   expect(within(toolbar).getByRole("button", { name: "Refresh" })).toBeInTheDocument();
   expect(within(toolbar).getByRole("link", { name: /Rules/ }).getAttribute("href")).toBe("#oh-exam-battery-rules");
   expect(within(toolbar).getByRole("button", { name: /Export/ })).toBeInTheDocument();
-  expect(screen.getByTestId("oh-compliance-metric-overdue").className).not.toMatch(/\bborder\b|rounded-xl|shadow/);
+  expect(screen.getByTestId("oh-compliance-metric-overdue").className).not.toMatch(/rounded-xl|shadow/);
   expect(document.getElementById("oh-exam-battery-rules")).not.toBeNull();
 });
 
 it("switches the trend period and the breakdown dimension", async () => {
   renderPage();
-  await screen.findByText("84%");
+  await screen.findByTestId("oh-compliance-metric-rate");
   fireEvent.click(screen.getByRole("radio", { name: "24 mo" }));
   await waitFor(() => expect(ext.fetchComplianceInsights).toHaveBeenCalledWith(24));
   const breakdown = screen.getByTestId("oh-compliance-breakdown");
   expect(within(breakdown).getByText(/Noise zone/)).toBeInTheDocument();
+  expect(within(breakdown).getByTestId("oh-compliance-hotspot").getAttribute("href")).toBe("/occupational-health/surveillance?hazard=Noise+zone");
   fireEvent.click(within(breakdown).getByRole("radio", { name: "Employer" }));
   expect(await within(breakdown).findByText(/Acme/)).toBeInTheDocument();
+  expect(within(breakdown).getByTestId("oh-compliance-hotspot").getAttribute("href")).toBe("/occupational-health/surveillance?q=Acme");
+});
+
+it("opens the filtered worklist from each line that needs attention", async () => {
+  renderPage();
+  const link = (key: string) => within(screen.getByTestId(`oh-compliance-metric-${key}`)).getByRole("link").getAttribute("href");
+
+  expect(link("overdue")).toBe("/occupational-health/surveillance?status=overdue");
+  expect(link("due_within_30_days")).toBe("/occupational-health/surveillance?due=next_30");
+  expect(await screen.findByText("1 more than 30 days late")).toBeInTheDocument();
+  expect(within(screen.getByTestId("oh-compliance-metric-completed30")).queryByRole("link")).toBeNull();
+  expect(screen.getByTestId("oh-compliance-metric-completed30")).toHaveTextContent("+3 on the 30 days before");
+});
+
+it("ranks hotspots by overdue, then by open checks", () => {
+  const ranked = rankHotspots([
+    { key: "B", due: 9, overdue: 0, total: 9 },
+    { key: "A", due: 1, overdue: 2, total: 3 },
+    { key: "C", due: 4, overdue: 2, total: 6 },
+  ]);
+  expect(ranked.map((row) => row.key)).toEqual(["C", "A", "B"]);
+});
+
+it("starts the month axis just below the lowest month, never above 50%", () => {
+  expect(axisFloor([79, 83, 89])).toBe(50);
+  expect(axisFloor([42, 90])).toBe(30);
+  expect(axisFloor([3])).toBe(0);
+  expect(axisFloor([])).toBe(0);
+});
+
+it("builds and reads surveillance links, ignoring unknown values", () => {
+  const href = surveillanceHref("/s", { status: "overdue", site: "Plant A", q: "  " });
+  expect(href).toBe("/s?status=overdue&site=Plant+A");
+  expect(linkFromParams(new URLSearchParams("status=overdue&due=next_30&site=Plant%20A"))).toEqual({ status: "overdue", due: "next_30", site: "Plant A", exam: undefined, hazard: undefined, q: undefined });
+  expect(linkFromParams(new URLSearchParams("status=everything&due=tomorrow"))).toMatchObject({ status: undefined, due: undefined });
+  expect(linkFromParams(null)).toEqual({});
 });
 
 it("downloads the compliance extract from the export dialog", async () => {

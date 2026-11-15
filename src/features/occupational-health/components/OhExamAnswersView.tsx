@@ -21,6 +21,7 @@ import {
   formatCompletedAt,
   sectionAnswerRows,
 } from "@/features/occupational-health/lib/exam-answers-display";
+import { useOhWorkspaceLayout } from "@/features/occupational-health/hooks/use-oh-workspace-layout";
 import type { OhEncounterPanelId } from "@/features/occupational-health/lib/oh-encounter-modules";
 import {
   pdfExportSections,
@@ -316,6 +317,7 @@ export function OhExamAnswersView({
   const { filled, total } = sectionTotal(sections);
   const hasSignature =
     sections.some((section) => sectionAnswerRows(section).some((row) => Boolean(row.previewSrc))) || Boolean(signed);
+  const layout = useOhWorkspaceLayout();
   const hasFitness = Boolean(summary?.outcome) || (summary?.restrictions.length ?? 0) > 0;
   const exportSections = pdfExportSections({
     family: kind,
@@ -323,6 +325,7 @@ export function OhExamAnswersView({
     hasFitness,
     hasSignature,
     evidence: evidence ?? [],
+    included: layout.isReady ? layout.included : undefined,
   });
   const title = heading ?? (kind === "cof" ? "Certificate of fitness" : "Examination");
   const showOutcome = kind === "cof" && Boolean(summary?.outcome || validity || (summary?.restrictions.length ?? 0) || signed);

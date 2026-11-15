@@ -24,7 +24,7 @@ export function OhHpMonthlySection({ summary }: { summary: SummaryQuery }) {
   const months = summary.data?.by_month ?? [];
   const total = months.reduce((sum, month) => sum + month.total, 0);
   return (
-    <ViewSection title="Tests per month" icon={ChartColumn} count={summary.data ? total : undefined} href={ROUTES.healthProgramsReports} linkLabel="Reports">
+    <ViewSection title="Tests per month" icon={ChartColumn} countLabel="tests in 6 months" count={summary.data ? total : undefined} href={ROUTES.healthProgramsReports} linkLabel="Reports">
       <QueryState isLoading={summary.isLoading} isError={summary.isError} onRetry={() => void summary.refetch()} rows={3}>
         <ColumnChart
           tone="bg-rose-500"
@@ -46,7 +46,7 @@ export function OhHpOutcomesSection({ summary }: { summary: SummaryQuery }) {
   const outcomes = summary.data?.outcomes_12m;
   const total = outcomes ? outcomes.fit + outcomes.restricted + outcomes.unfit + outcomes.pending : 0;
   return (
-    <ViewSection title="Outcomes, last 12 months" icon={ChartPie} count={summary.data ? total : undefined}>
+    <ViewSection title="Outcomes, last 12 months" icon={ChartPie} countLabel="results in 12 months" count={summary.data ? total : undefined}>
       <QueryState isLoading={summary.isLoading} isError={summary.isError} onRetry={() => void summary.refetch()} rows={2}>
         {outcomes && total > 0 ? (
           <>
@@ -74,7 +74,7 @@ export function OhHpOutcomesSection({ summary }: { summary: SummaryQuery }) {
 export function OhHpReferralsSection({ summary }: { summary: SummaryQuery }) {
   const referrals = summary.data?.referrals;
   return (
-    <ViewSection title="Referred on" icon={Forward} count={referrals?.count_60d}>
+    <ViewSection title="Referred on" icon={Forward} countLabel="in 60 days" count={referrals?.count_60d}>
       <QueryState isLoading={summary.isLoading} isError={summary.isError} onRetry={() => void summary.refetch()} rows={3}>
         <p className="mb-1 text-[12.5px] text-dash-muted">Results referred for follow-up in the last 60 days</p>
         {!referrals || referrals.rows.length === 0 ? (

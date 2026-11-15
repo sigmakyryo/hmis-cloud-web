@@ -25,6 +25,25 @@ describe("buildOhModules", () => {
     expect(modules.every((module) => module.pages.every((page) => page.description.length > 0))).toBe(true);
   });
 
+  it("drops a home tab whose area is off, and the injuries page with it", () => {
+    const included = buildOhModules(
+      ["OccupationalHealth"],
+      { enabledModules: ["OccupationalHealth"] },
+      ["immunizations", "drug-alcohol", "health-programs", "injuries", "employment", "exposure"],
+    );
+
+    expect(included.map((module) => module.slug)).not.toContain("fitness");
+    expect(included.map((module) => module.slug)).toContain("clinic");
+
+    const withoutInjuries = buildOhModules(
+      ["OccupationalHealth"],
+      { enabledModules: ["OccupationalHealth"] },
+      ["immunizations", "drug-alcohol", "health-programs", "fitness", "employment", "exposure"],
+    );
+    const clinic = findOhModuleBySlug(withoutInjuries, "clinic");
+    expect(clinic?.pages.map((page) => page.href)).not.toContain(ROUTES.occupationalHealthInjuries);
+  });
+
   it("returns nothing without OH access", () => {
     expect(buildOhModules(["Registration"], { enabledModules: ["Registration"] })).toEqual([]);
   });

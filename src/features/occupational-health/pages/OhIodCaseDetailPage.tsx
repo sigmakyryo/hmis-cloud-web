@@ -15,13 +15,14 @@ import {
 } from "@/features/app-shell/components/page-layout";
 import { IodCaseAside } from "@/features/occupational-health/iod-case/components/IodCaseAside";
 import { IodCaseCloseDialog } from "@/features/occupational-health/iod-case/components/IodCaseCloseDialog";
-import { IodCaseEditSheet } from "@/features/occupational-health/iod-case/components/IodCaseEditSheet";
+import { IodCaseActionSheet } from "@/features/occupational-health/iod-case/components/IodCaseActionSheet";
 import { IodCaseFactsStrip } from "@/features/occupational-health/iod-case/components/IodCaseFactsStrip";
 import { IodCaseFollowUpTab } from "@/features/occupational-health/iod-case/components/IodCaseFollowUpTab";
 import { IodCaseHeader } from "@/features/occupational-health/iod-case/components/IodCaseHeader";
 import { IodCaseNotificationsTab } from "@/features/occupational-health/iod-case/components/IodCaseNotificationsTab";
 import { IodCaseOverviewTab } from "@/features/occupational-health/iod-case/components/IodCaseOverviewTab";
 import { IodCaseTimelineTab } from "@/features/occupational-health/iod-case/components/IodCaseTimelineTab";
+import { stillToRecord, type IodActionId } from "@/features/occupational-health/iod-case/iod-case.actions";
 import { countActions, summariseNotices } from "@/features/occupational-health/iod-case/iod-case.utils";
 import { useDraftIodFromVisit, useIodCase, useUpdateIodCase } from "@/features/occupational-health/iod-case/use-iod-case";
 import { useToast } from "@/providers/toast-provider";
@@ -80,7 +81,7 @@ export function OhIodCaseDetailPage({ uuid }: { uuid: string }) {
   const update = useUpdateIodCase(uuid);
   const draft = useDraftIodFromVisit(uuid);
   const [tab, setTab] = useCaseTab();
-  const [editing, setEditing] = useState(false);
+  const [action, setAction] = useState<IodActionId | null>(null);
   const [closing, setClosing] = useState(false);
   const [today] = useState(() => new Date());
 
@@ -97,6 +98,7 @@ export function OhIodCaseDetailPage({ uuid }: { uuid: string }) {
   const timeline = entries.data ?? [];
   const notices = summariseNotices(pack.data?.notifications ?? []);
   const actions = countActions(timeline, today);
+  const todo = stillToRecord(item, notices.needAttention);
 
   async function copyLink() {
     try {
@@ -113,7 +115,8 @@ export function OhIodCaseDetailPage({ uuid }: { uuid: string }) {
         item={item}
         pack={pack.data}
         isSaving={update.isPending}
-        onEdit={() => setEditing(true)}
+        onEdit={() => setAction("edit")}
+        onRecord={setAction}
         onAddNote={() => setTab("timeline")}
         onClose={() => setClosing(true)}
         onReopen={() => update.mutate({ status: "open" })}
@@ -138,7 +141,7 @@ export function OhIodCaseDetailPage({ uuid }: { uuid: string }) {
 
         <DetailPageMainAsideGrid className="flex-1">
           <DetailPageMainSection className="py-6">
-            {tab === "overview" ? <IodCaseOverviewTab item={item} onEdit={() => setEditing(true)} /> : null}
+            {tab === "overview" ? <IodCaseOverviewTab item={item} todo={todo} onAction={setAction} onOpenTab={setTab} /> : null}
             {tab === "notifications" ? <IodCaseNotificationsTab item={item} pack={pack.data} packFailed={pack.isError} /> : null}
             {tab === "follow-up" ? <IodCaseFollowUpTab caseUuid={uuid} entries={timeline} today={today} /> : null}
             {tab === "timeline" ? <IodCaseTimelineTab caseUuid={uuid} entries={timeline} isLoading={entries.isLoading} /> : null}
@@ -147,12 +150,12 @@ export function OhIodCaseDetailPage({ uuid }: { uuid: string }) {
         </DetailPageMainAsideGrid>
       </DetailPageTabsSection>
 
-      <IodCaseEditSheet
+      <IodCaseActionSheet
         item={item}
-        open={editing}
+        actionId={action}
         isSaving={update.isPending}
-        onOpenChange={setEditing}
-        onSave={(changes) => update.mutate(changes, { onSuccess: () => setEditing(false) })}
+        onClose={() => setAction(null)}
+        onSave={(changes) => update.mutate(changes, { onSuccess: () => setAction(null) })}
       />
       <IodCaseCloseDialog
         item={item}

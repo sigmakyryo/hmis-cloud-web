@@ -8,14 +8,16 @@ import { OhEmployerSettingsPage } from "@/features/settings/components/modules/o
 import { OhEmployersSettingsTab } from "@/features/settings/components/modules/occupational-health/OhEmployersSettingsTab";
 import { OhVisitTypesSettingsTab } from "@/features/settings/components/modules/occupational-health/OhVisitTypesSettingsTab";
 import { OhDispensingSettingsTab } from "@/features/settings/components/modules/occupational-health/OhDispensingSettingsTab";
+import { OhWorkspaceSettingsTab } from "@/features/settings/components/modules/occupational-health/OhWorkspaceSettingsTab";
 import { cn } from "@/lib/utils";
 
-export type OhModuleTabId = "employers" | "visit-types" | "dispensing";
+export type OhModuleTabId = "employers" | "visit-types" | "dispensing" | "workspace";
 
 export const OH_MODULE_TABS: Array<{ id: OhModuleTabId; label: string }> = [
   { id: "employers", label: "Employers" },
   { id: "visit-types", label: "Visit services" },
   { id: "dispensing", label: "Dispensing" },
+  { id: "workspace", label: "Workspace" },
 ];
 
 function parseTab(value: string | null): OhModuleTabId {
@@ -78,6 +80,7 @@ function OhModuleSettingsTabsInner() {
         <OhEmployersSettingsTab isActive={activeTab === "employers"} />
         <OhVisitTypesSettingsTab isActive={activeTab === "visit-types"} />
         <OhDispensingSettingsTab isActive={activeTab === "dispensing"} />
+        <OhWorkspaceSettingsTab isActive={activeTab === "workspace"} />
       </div>
     </div>
   );

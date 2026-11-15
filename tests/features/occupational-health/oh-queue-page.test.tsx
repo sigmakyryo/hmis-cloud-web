@@ -4,6 +4,16 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { OhQueuePage } from "@/features/occupational-health/pages/OhQueuePage";
 
+// Why: Radix Select relies on pointer capture, which jsdom does not implement.
+Element.prototype.hasPointerCapture ??= () => false;
+Element.prototype.releasePointerCapture ??= () => undefined;
+
+/** Opens a filter select from the keyboard and picks an option, as a keyboard user would. */
+function choose(testId: string, option: RegExp) {
+  fireEvent.keyDown(screen.getByTestId(testId), { key: "Enter" });
+  fireEvent.keyDown(screen.getByRole("option", { name: option }), { key: "Enter" });
+}
+
 const AUTHORIZED_USER = {
   isLoading: false,
   userData: {
@@ -14,12 +24,16 @@ const AUTHORIZED_USER = {
 
 const useUserMock = vi.fn(() => AUTHORIZED_USER);
 
+const nav = vi.hoisted(() => ({ search: "view=list", replace: vi.fn() }));
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: vi.fn(),
-    replace: vi.fn(),
+    replace: nav.replace,
     prefetch: vi.fn(),
   }),
+  usePathname: () => "/occupational-health",
+  useSearchParams: () => new URLSearchParams(nav.search),
 }));
 
 vi.mock("@/providers/user-provider", () => ({
@@ -85,6 +99,8 @@ vi.mock("@/features/occupational-health/hooks/use-occupational-health", () => ({
 afterEach(() => {
   cleanup();
   useUserMock.mockReturnValue(AUTHORIZED_USER);
+  nav.search = "view=list";
+  nav.replace.mockReset();
 });
 
 function renderPage() {
@@ -112,18 +128,36 @@ describe("OhQueuePage", () => {
     );
   });
 
-  it("counts visits per status and filters by status", () => {
+  it("has no page heading, just search and filters, and counts each status in the list view", () => {
     renderPage();
 
-    expect(screen.getByTestId("oh-queue-status-all")).toHaveTextContent("All2");
-    expect(screen.getByTestId("oh-queue-status-waiting")).toHaveTextContent("Waiting1");
-    expect(screen.getByTestId("oh-queue-status-in_progress")).toHaveTextContent("In progress1");
-    expect(screen.getByTestId("oh-queue-summary")).toHaveTextContent("Longest wait");
+    expect(screen.queryByText("Queue", { selector: "h1:not(.sr-only)" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "OHS queue" })).toHaveClass("sr-only");
+    expect(screen.getByTestId("oh-queue-status-filter")).toHaveTextContent("All statuses2");
 
-    fireEvent.click(screen.getByTestId("oh-queue-status-in_progress"));
+    choose("oh-queue-status-filter", /^In progress/);
+
+    expect(screen.getByTestId("oh-queue-status-filter")).toHaveTextContent("In progress1");
+    expect(screen.queryByText("Jane Doe")).not.toBeInTheDocument();
+    expect(screen.getByText("Sam Banda")).toBeInTheDocument();
+  });
+
+  it("filters by employer on both views, and lists each employer once", () => {
+    renderPage();
+
+    fireEvent.keyDown(screen.getByTestId("oh-queue-employer-filter"), { key: "Enter" });
+    expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual(["All employers", "Illovo"]);
+    fireEvent.keyDown(screen.getByRole("option", { name: "Illovo" }), { key: "Enter" });
 
     expect(screen.queryByText("Jane Doe")).not.toBeInTheDocument();
     expect(screen.getByText("Sam Banda")).toBeInTheDocument();
+
+    cleanup();
+    nav.search = "";
+    renderPage();
+    choose("oh-queue-employer-filter", /^Illovo$/);
+    expect(screen.getByTestId("oh-queue-left-open")).toHaveTextContent("1 visit left open");
+    expect(screen.getByTestId("oh-queue-left-open")).not.toHaveTextContent("Jane Doe");
   });
 
   it("filters as you type, and offers a way back when nobody matches", () => {
@@ -137,6 +171,35 @@ describe("OhQueuePage", () => {
     expect(screen.getByText("Nobody matches")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Show everyone" }));
     expect(screen.getByText("Jane Doe")).toBeInTheDocument();
+  });
+
+  it("opens on the board, with visits from an earlier day set apart", () => {
+    nav.search = "";
+
+    renderPage();
+
+    expect(screen.getByTestId("oh-queue-board")).toBeInTheDocument();
+    expect(screen.getByTestId("oh-queue-view-board")).toHaveAttribute("aria-pressed", "true");
+    const leftOpen = screen.getByTestId("oh-queue-left-open");
+    expect(leftOpen).toHaveTextContent("2 visits left open");
+    expect(leftOpen).toHaveTextContent("Jane Doe");
+    expect(screen.getByTestId("oh-queue-lane-waiting")).toHaveTextContent("Nobody is waiting.");
+    expect(screen.queryByTestId("oh-queue-status-filter")).not.toBeInTheDocument();
+    expect(screen.getByTestId("oh-queue-employer-filter")).toBeInTheDocument();
+  });
+
+  it("switches between board and list in the URL", () => {
+    nav.search = "";
+    renderPage();
+
+    fireEvent.click(screen.getByTestId("oh-queue-view-list"));
+    expect(nav.replace).toHaveBeenCalledWith("/occupational-health?view=list", { scroll: false });
+
+    cleanup();
+    nav.search = "view=list";
+    renderPage();
+    fireEvent.click(screen.getByTestId("oh-queue-view-board"));
+    expect(nav.replace).toHaveBeenLastCalledWith("/occupational-health", { scroll: false });
   });
 
   it("shows a modern access denied blank state without OccupationalHealth", () => {

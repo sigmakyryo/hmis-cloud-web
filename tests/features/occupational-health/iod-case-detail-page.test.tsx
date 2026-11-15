@@ -106,7 +106,10 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockApi();
 });
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 describe("IOD case detail page", () => {
   it("shows the case title, status, worker and the actions at the top", async () => {
@@ -124,6 +127,9 @@ describe("IOD case detail page", () => {
   });
 
   it("summarises notices and follow-ups in the facts strip and tab badges", async () => {
+    // Why: "open for" counts days since the incident, so the clock is pinned. Only Date is faked, so waiting still works.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 10, 14, 12, 0));
     renderPage();
     const facts = within(await screen.findByTestId("oh-iod-case-facts"));
     expect(facts.getByText("1 of 2 ready")).toBeTruthy();
@@ -308,5 +314,102 @@ describe("IOD case recorded from an OPD visit", () => {
     const menu = await screen.findByRole("menu");
 
     expect(within(menu).queryByRole("menuitem", { name: "Draft from visit record" })).toBeNull();
+  });
+});
+
+describe("IOD case actions", () => {
+  async function openAction(name: RegExp) {
+    fireEvent.click(await screen.findByRole("button", { name }));
+    return screen.findByRole("dialog");
+  }
+
+  it("keeps Edit case to what happened, and leaves the rest to their own actions", async () => {
+    renderPage();
+
+    const sheet = await openAction(/^Edit case/);
+
+    for (const label of [/^Incident date/, /^Time/, /^Severity/, /^Location/, /^Body part/, /^Mechanism/, /^Description/]) {
+      expect(within(sheet).getByLabelText(label)).toBeTruthy();
+    }
+    for (const label of [/^Root cause/, /^Witnesses/, /^Treatment given/, /^Lost days/, /^SHE reference/, /^Status/]) {
+      expect(within(sheet).queryByLabelText(label)).toBeNull();
+    }
+  });
+
+  it("lists what is still to record, and each step opens only its own fields", async () => {
+    renderPage();
+
+    const list = await screen.findByTestId("oh-iod-still-to-record");
+    expect(within(list).getAllByTestId("oh-iod-todo").map((row) => row.textContent)).toEqual([
+      expect.stringContaining("Root cause"),
+      expect.stringContaining("Outcome"),
+      expect.stringContaining("Reporting details"),
+      expect.stringContaining("1 notice needs details"),
+    ]);
+
+    fireEvent.click(within(list).getAllByTestId("oh-iod-todo")[0]);
+    const sheet = await screen.findByRole("dialog");
+    expect(within(sheet).getByRole("heading", { name: "Root cause" })).toBeTruthy();
+    fireEvent.change(within(sheet).getByLabelText("Root cause"), { target: { value: "No guard on the press" } });
+    fireEvent.click(within(sheet).getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(callsTo(BASE, "PATCH")[0]?.[1]).toEqual({ method: "PATCH", body: { root_cause: "No guard on the press" } }));
+  });
+
+  it("sends the outcome as a number, and the reporting details as text", async () => {
+    renderPage();
+
+    const outcome = await openAction(/^Edit outcome/);
+    fireEvent.change(within(outcome).getByLabelText("Lost days"), { target: { value: "6" } });
+    fireEvent.change(within(outcome).getByLabelText("Returned to work"), { target: { value: "2026-11-16" } });
+    fireEvent.click(within(outcome).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(callsTo(BASE, "PATCH")[0]?.[1]).toEqual({ method: "PATCH", body: { lost_days: 6, return_to_work_on: "2026-11-16" } }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    const reporting = await openAction(/^Edit reporting details/);
+    fireEvent.change(within(reporting).getByLabelText("Claim reference"), { target: { value: "CLM-204" } });
+    fireEvent.click(within(reporting).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(callsTo(BASE, "PATCH")[1]?.[1]).toEqual({ method: "PATCH", body: { claim_reference: "CLM-204" } }));
+  });
+
+  it("closes an action without saving when nothing changed", async () => {
+    renderPage();
+
+    const sheet = await openAction(/^Edit outcome/);
+    fireEvent.click(within(sheet).getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(callsTo(BASE, "PATCH")).toHaveLength(0);
+  });
+
+  it("offers every record action from the more menu", async () => {
+    renderPage();
+
+    fireEvent.keyDown(await screen.findByRole("button", { name: "More actions" }), { key: "Enter" });
+    const menu = await screen.findByRole("menu");
+    expect(within(menu).getAllByRole("menuitem").slice(0, 4).map((item) => item.textContent)).toEqual([
+      "Record response and treatment",
+      "Root cause",
+      "Record outcome",
+      "Reporting details",
+    ]);
+    fireEvent.click(within(menu).getByRole("menuitem", { name: "Record response and treatment" }));
+
+    const sheet = await screen.findByRole("dialog");
+    expect(within(sheet).getByLabelText("Immediate action")).toBeTruthy();
+    expect(within(sheet).getByLabelText("Witnesses")).toBeTruthy();
+  });
+
+  it("shows no still-to-record list on a closed case", async () => {
+    mocks.bffRequest.mockImplementation(async (path: string) => {
+      if (path === `${BASE}/statutory-pack`) return pack;
+      if (path === `${BASE}/entries`) return entries;
+      if (path === BASE) return { ...caseRecord, status: "closed", closed_on: "2026-11-13", closure_summary: "Healed" };
+      throw new Error(`Unexpected request ${path}`);
+    });
+    renderPage();
+
+    await screen.findByText("Healed");
+    expect(screen.queryByTestId("oh-iod-still-to-record")).toBeNull();
   });
 });

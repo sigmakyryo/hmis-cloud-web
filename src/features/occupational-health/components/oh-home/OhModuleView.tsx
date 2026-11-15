@@ -35,7 +35,7 @@ export function OhModuleView({ ohModule }: { ohModule: OhModule }) {
     <section
       aria-label={ohModule.label}
       data-testid="oh-home-module-detail"
-      className="mx-auto grid w-full max-w-6xl items-start gap-x-12 gap-y-10 @5xl:grid-cols-[minmax(0,1fr)_15rem]"
+      className="mx-auto grid w-full max-w-7xl items-start gap-x-12 gap-y-10 @5xl:grid-cols-[minmax(0,1fr)_14rem]"
     >
       <h2 className="sr-only">{ohModule.label}</h2>
       <div className="@container min-w-0 space-y-10">

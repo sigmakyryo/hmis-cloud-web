@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useDeferredValue, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -11,9 +12,13 @@ import {
 } from "@/features/app-shell/components/page-layout";
 import { OhAccessDenied } from "@/features/occupational-health/components/OhAccessDenied";
 import { OhQueueEmptyState } from "@/features/occupational-health/components/OhQueueEmptyState";
-import { OhQueuePageHeader } from "@/features/occupational-health/components/OhQueuePageHeader";
+import { ALL_EMPLOYERS } from "@/features/occupational-health/components/OhQueueFilters";
+import { OhQueueBoard } from "@/features/occupational-health/components/OhQueueBoard";
+import { OhQueueLeftOpen } from "@/features/occupational-health/components/OhQueueLeftOpen";
+import { OhQueuePageHeader, type OhQueueView } from "@/features/occupational-health/components/OhQueuePageHeader";
 import { OhQueuePageSkeleton, OhQueueTableSkeleton } from "@/features/occupational-health/components/OhQueuePageSkeleton";
-import { OhQueueTable, queueWaitingMinutes } from "@/features/occupational-health/components/OhQueueTable";
+import { OhQueueTable } from "@/features/occupational-health/components/OhQueueTable";
+import { buildQueueBoard } from "@/features/occupational-health/lib/oh-queue-board";
 import { useOhEncounters } from "@/features/occupational-health/hooks/use-occupational-health";
 import {
   encounterMatchesQueue,
@@ -37,21 +42,39 @@ function countByStatus(rows: OhVisitEncounter[]): Record<OhQueueStatusFilter, nu
   return counts;
 }
 
-function longestWait(rows: OhVisitEncounter[]): number | null {
-  const waits = rows.filter((row) => row.status === "waiting").flatMap((row) => queueWaitingMinutes(row) ?? []);
-  return waits.length > 0 ? Math.max(...waits) : null;
-}
-
 export function OhQueuePage() {
   const { userData, isLoading: isUserLoading } = useUser();
   const [search, setSearch] = useState("");
   const query = useDeferredValue(search.trim());
   const [status, setStatus] = useState<OhQueueStatusFilter>("all");
+  const [employer, setEmployer] = useState(ALL_EMPLOYERS);
   const [page, setPage] = useState(1);
   const { data = [], isLoading, isFetching, error, refetch } = useOhEncounters();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const view: OhQueueView = searchParams.get("view") === "list" ? "list" : "board";
+  const employers = useMemo(
+    () => [...new Set(data.flatMap((row) => (row.employer_name?.trim() ? [row.employer_name.trim()] : [])))].sort((a, b) => a.localeCompare(b)),
+    [data],
+  );
+  const forEmployer = useMemo(
+    () => (employer === ALL_EMPLOYERS ? data : data.filter((row) => row.employer_name?.trim() === employer)),
+    [data, employer],
+  );
+  const searched = useMemo(() => forEmployer.filter((row) => encounterMatchesQueue(row, query, "all")), [forEmployer, query]);
+  const board = useMemo(() => buildQueueBoard(searched), [searched]);
 
-  const counts = useMemo(() => countByStatus(data), [data]);
-  const rows = useMemo(() => data.filter((row) => encounterMatchesQueue(row, query, status)), [data, query, status]);
+  function changeView(next: OhQueueView) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (next === "board") params.delete("view");
+    else params.set("view", next);
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }
+
+  const counts = useMemo(() => countByStatus(forEmployer), [forEmployer]);
+  const rows = useMemo(() => forEmployer.filter((row) => encounterMatchesQueue(row, query, status)), [forEmployer, query, status]);
 
   if (isUserLoading || isLoading) {
     return <OhQueuePageSkeleton />;
@@ -64,20 +87,28 @@ export function OhQueuePage() {
   const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const shown = rows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-  const isFiltered = query.length > 0 || status !== "all";
+  const isFiltered = query.length > 0 || employer !== ALL_EMPLOYERS || (view === "list" && status !== "all");
+  const nothingMatches = isFiltered && (view === "board" ? searched.length === 0 : rows.length === 0);
 
   function clearFilters() {
     setSearch("");
     setStatus("all");
+    setEmployer(ALL_EMPLOYERS);
     setPage(1);
   }
 
   return (
     <ListPageLayout data-testid="oh-queue-page">
       <OhQueuePageHeader
-        total={data.length}
-        longestWait={longestWait(data)}
+        view={view}
+        onViewChange={changeView}
         counts={counts}
+        employers={employers}
+        employer={employer}
+        onEmployerChange={(next) => {
+          setEmployer(next);
+          setPage(1);
+        }}
         search={search}
         status={status}
         isRefreshing={isFetching}
@@ -114,18 +145,23 @@ export function OhQueuePage() {
           />
         ) : data.length === 0 ? (
           <OhQueueEmptyState onRefresh={() => void refetch()} />
-        ) : rows.length === 0 && isFiltered ? (
+        ) : nothingMatches ? (
           <ListPageBlankState
             compact
             icon="search"
             title="Nobody matches"
-            description="No visit matches this search or status."
+            description="No visit matches this search and these filters."
             action={
               <Button type="button" variant="outline" className="h-8 rounded-lg text-[13px]" onClick={clearFilters}>
                 Show everyone
               </Button>
             }
           />
+        ) : view === "board" ? (
+          <div className="space-y-6 px-5 pt-5 pb-10 md:px-8">
+            <OhQueueLeftOpen rows={board.stale} />
+            <OhQueueBoard board={board} />
+          </div>
         ) : (
           <>
             <OhQueueTable encounters={shown} />

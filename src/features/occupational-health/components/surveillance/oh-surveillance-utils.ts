@@ -76,3 +76,41 @@ export function relativeDue(days: number | null): string {
 export function uniqueSorted(values: Array<string | null | undefined>): string[] {
   return [...new Set(values.map((v) => (v ?? "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
 }
+
+/** Worklist filters a link can carry. Kept here so other pages can point at a filtered worklist. */
+export type OhSurveillanceLink = {
+  status?: "overdue" | "due";
+  due?: Exclude<OhDueFilter, "any">;
+  exam?: string;
+  hazard?: string;
+  site?: string;
+  q?: string;
+};
+
+const DUE_VALUES: OhDueFilter[] = ["overdue", "overdue_30", "next_7", "next_30", "next_90"];
+
+/** A link to the surveillance worklist with these filters already set. */
+export function surveillanceHref(base: string, link: OhSurveillanceLink = {}): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(link)) {
+    if (typeof value === "string" && value.trim()) params.set(key, value.trim());
+  }
+  const qs = params.toString();
+  return qs ? `${base}?${qs}` : base;
+}
+
+/** Reads worklist filters from the URL, ignoring anything that is not a known value. */
+export function linkFromParams(params: Pick<URLSearchParams, "get"> | null | undefined): OhSurveillanceLink {
+  if (!params) return {};
+  const status = params.get("status");
+  const due = params.get("due") as OhDueFilter | null;
+  const text = (key: string) => params.get(key)?.trim().slice(0, 120) || undefined;
+  return {
+    status: status === "overdue" || status === "due" ? status : undefined,
+    due: due && DUE_VALUES.includes(due) ? (due as Exclude<OhDueFilter, "any">) : undefined,
+    exam: text("exam"),
+    hazard: text("hazard"),
+    site: text("site"),
+    q: text("q"),
+  };
+}

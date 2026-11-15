@@ -12,12 +12,14 @@ import { ListPageLayout } from "@/features/app-shell/components/page-layout";
 import { OhAccessDenied } from "@/features/occupational-health/components/OhAccessDenied";
 import { OhExamBatteryRulesPanel } from "@/features/occupational-health/components/OhExamBatteryRulesPanel";
 import { OhVisitCancellationsReport } from "@/features/occupational-health/components/OhVisitCancellationsReport";
-import { OhBreakdownBars, OhComplianceTrendChart, OhDonutChart } from "@/features/occupational-health/components/dashboard/OhCharts";
 import { OhExportDialog } from "@/features/occupational-health/components/dashboard/OhExportDialog";
-import { OhKpiStat, OhKpiStrip } from "@/features/occupational-health/components/dashboard/OhKpiStrip";
-import { OhPanel, OhPanelState } from "@/features/occupational-health/components/dashboard/OhPanel";
-import { OhSegmented } from "@/features/occupational-health/components/dashboard/OhSegmented";
-import { OH_COLORS } from "@/features/occupational-health/components/dashboard/oh-dashboard-colors";
+import { Skeleton } from "@/components/ui/skeleton";
+import { OhComplianceAttention, type OhAttentionItem } from "@/features/occupational-health/components/compliance/OhComplianceAttention";
+import { OhComplianceHero, type OhCompliancePeriod } from "@/features/occupational-health/components/compliance/OhComplianceHero";
+import { OhComplianceHotspots, type OhComplianceDimension } from "@/features/occupational-health/components/compliance/OhComplianceHotspots";
+import { OhSection } from "@/features/occupational-health/components/dashboard/OhSection";
+import { surveillanceHref } from "@/features/occupational-health/components/surveillance/oh-surveillance-utils";
+import { ROUTES } from "@/constants/routes";
 import { openFile } from "@/features/occupational-health/components/dashboard/oh-table";
 import { useOhComplianceDashboard } from "@/features/occupational-health/hooks/use-occupational-health";
 import { cancellationReportCsvUrl, fetchComplianceInsights } from "@/features/occupational-health/services/oh-ext.service";
@@ -25,14 +27,6 @@ import { downloadOhComplianceExtract } from "@/features/occupational-health/serv
 import { canAccessOccupationalHealth } from "@/features/occupational-health/utils/oh-access";
 import { useUser } from "@/providers/user-provider";
 import { useToast } from "@/providers/toast-provider";
-
-type Breakdown = "by_hazard_profile" | "by_department" | "by_employer" | "by_site";
-const BREAKDOWN_LABEL: Record<Breakdown, string> = {
-  by_hazard_profile: "Hazard profile",
-  by_department: "Department",
-  by_employer: "Employer",
-  by_site: "Site",
-};
 
 function isoDaysAgo(days: number): string {
   const d = new Date();
@@ -44,14 +38,14 @@ export function OhCompliancePage() {
   const { userData, isLoading: isUserLoading } = useUser();
   const { toast } = useToast();
   const dashboard = useOhComplianceDashboard();
-  const [months, setMonths] = useState<"6" | "12" | "24">("12");
+  const [months, setMonths] = useState<OhCompliancePeriod>("12");
   const insights = useQuery({
     queryKey: ["oh-compliance-insights", Number(months)],
     queryFn: () => fetchComplianceInsights(Number(months)),
     placeholderData: keepPreviousData,
     retry: false,
   });
-  const [breakdown, setBreakdown] = useState<Breakdown>("by_hazard_profile");
+  const [breakdown, setBreakdown] = useState<OhComplianceDimension>("by_hazard_profile");
   const [exportOpen, setExportOpen] = useState(false);
   const [exportFrom, setExportFrom] = useState(() => isoDaysAgo(90));
   const [exportTo, setExportTo] = useState(() => isoDaysAgo(0));
@@ -95,17 +89,45 @@ export function OhCompliancePage() {
 
   const d = dashboard.data;
   const i = insights.data;
-  const rate = i?.compliance.rate_3m ?? null;
-  const rateDelta = i && rate !== null && i.compliance.rate_prev_3m !== null ? rate - i.compliance.rate_prev_3m : null;
-  const statusData = i
-    ? [
-        { key: "completed", label: "Completed", value: i.totals.completed, color: OH_COLORS.completed },
-        { key: "due", label: "Due", value: i.totals.due, color: OH_COLORS.due },
-        { key: "overdue", label: "Overdue", value: i.totals.overdue, color: OH_COLORS.overdue },
-        { key: "waived", label: "Waived", value: i.totals.waived, color: OH_COLORS.waived },
-      ]
-    : [];
-  const statusTotal = statusData.reduce((s, x) => s + x.value, 0);
+  const surveillance = (link: Parameters<typeof surveillanceHref>[1]) => surveillanceHref(ROUTES.occupationalHealthSurveillance, link);
+  const completedDelta = i ? i.completed.last_30_days - i.completed.previous_30_days : null;
+  const attention: OhAttentionItem[] = [
+    {
+      key: "overdue",
+      value: d?.overdue ?? null,
+      label: "checks overdue",
+      hint: i && i.due_windows.overdue_30_plus > 0 ? `${i.due_windows.overdue_30_plus} more than 30 days late` : undefined,
+      href: surveillance({ status: "overdue" }),
+      tone: "danger",
+    },
+    {
+      key: "due_within_30_days",
+      value: d?.due_within_30_days ?? null,
+      label: "due in the next 30 days",
+      hint: d ? `${d.due} due in all` : undefined,
+      href: surveillance({ due: "next_30" }),
+      tone: "warning",
+    },
+    {
+      key: "fitness_validity_alerts",
+      value: d?.fitness_validity_alerts ?? null,
+      label: "fitness certificates expire within 30 days",
+      href: surveillance({}),
+      tone: "warning",
+    },
+    {
+      key: "completed30",
+      value: i?.completed.last_30_days ?? null,
+      label: "checks done in the last 30 days",
+      hint:
+        completedDelta === null ? undefined : (
+          <span className={completedDelta >= 0 ? "text-brand-primary" : "text-red-700"}>
+            {completedDelta >= 0 ? `+${completedDelta}` : completedDelta} on the 30 days before
+          </span>
+        ),
+    },
+    { key: "open_episodes", value: d?.open_episodes ?? null, label: "workers on file", hint: "with open employment", href: ROUTES.occupationalHealthEmployees },
+  ];
   const refreshing = dashboard.isFetching || insights.isFetching;
 
   const updatedAt = dashboard.dataUpdatedAt ? format(new Date(dashboard.dataUpdatedAt), "HH:mm") : null;
@@ -158,111 +180,35 @@ export function OhCompliancePage() {
           </div>
         ) : null}
 
-        <OhKpiStrip>
-          <OhKpiStat
-            label="Compliance, 3 mo"
-            value={rate !== null ? `${Math.round(rate)}%` : "—"}
-            delta={{ value: rateDelta, suffix: " pts", goodWhen: "up", label: "vs prior 3" }}
-            tone={rate === null ? "default" : rate >= 90 ? "success" : rate >= 75 ? "warning" : "danger"}
-            isLoading={insights.isLoading}
-            data-testid="oh-compliance-metric-rate"
-          />
-          <OhKpiStat label="Overdue" value={d?.overdue ?? "—"} tone={(d?.overdue ?? 0) > 0 ? "danger" : "success"} isLoading={dashboard.isLoading} data-testid="oh-compliance-metric-overdue" />
-          <OhKpiStat label="Due in 30 days" value={d?.due_within_30_days ?? "—"} hint={d ? `${d.due} due in total` : undefined} tone="warning" isLoading={dashboard.isLoading} data-testid="oh-compliance-metric-due_within_30_days" />
-          <OhKpiStat
-            label="Completed, 30 d"
-            value={i?.completed.last_30_days ?? "—"}
-            delta={{ value: i ? i.completed.last_30_days - i.completed.previous_30_days : null, goodWhen: "up", label: "vs previous 30" }}
-            isLoading={insights.isLoading}
-            data-testid="oh-compliance-metric-completed30"
-          />
-          <OhKpiStat label="Certs expiring" value={d?.fitness_validity_alerts ?? "—"} hint="within 30 days" isLoading={dashboard.isLoading} data-testid="oh-compliance-metric-fitness_validity_alerts" />
-          <OhKpiStat label="Workers on file" value={d?.open_episodes ?? "—"} hint="open employment" isLoading={dashboard.isLoading} data-testid="oh-compliance-metric-open_episodes" />
-        </OhKpiStrip>
-
-        <div className="grid gap-10 border-b border-dash-border/70 py-7 lg:grid-cols-3 lg:gap-0 lg:divide-x lg:divide-dash-border/70">
-          <OhPanel
-            className="lg:col-span-2 lg:pr-8"
-            title="Compliance over time"
-            description="Requirements by the month they fell due: completed vs still open, and the share completed."
-            actions={
-              <OhSegmented
-                label="Period"
-                role="radiogroup"
-                value={months}
-                onChange={setMonths}
-                options={[
-                  { value: "6", label: "6 mo" },
-                  { value: "12", label: "12 mo" },
-                  { value: "24", label: "24 mo" },
-                ]}
-              />
-            }
-            data-testid="oh-compliance-trend"
-          >
-            <OhPanelState
-              isLoading={insights.isLoading}
-              error={insights.error}
-              onRetry={() => void insights.refetch()}
-              isEmpty={!i || i.trend.every((p) => p.due === 0)}
-              emptyText="Nothing fell due in this period."
-              height={260}
-            >
-              {i ? <OhComplianceTrendChart data={i.trend} /> : null}
-            </OhPanelState>
-          </OhPanel>
-          <OhPanel className="lg:pl-8" title="Status breakdown" description="All surveillance requirements" data-testid="oh-compliance-status">
-            <OhPanelState
-              isLoading={insights.isLoading}
-              error={insights.error}
-              onRetry={() => void insights.refetch()}
-              isEmpty={statusTotal === 0}
-              emptyText="No requirements yet."
-              height={220}
-            >
-              <OhDonutChart
-                label="Requirements by status"
-                data={statusData}
-                centerValue={String(statusTotal)}
-                centerLabel="requirements"
-                size={168}
-                stacked
-              />
-            </OhPanelState>
-          </OhPanel>
+        <div className="border-b border-dash-border/70 py-8">
+          {insights.isLoading ? (
+            <div className="grid gap-8 lg:grid-cols-[17rem_minmax(0,1fr)]" aria-busy="true">
+              <Skeleton className="h-40 w-full" />
+              <Skeleton className="h-40 w-full" />
+            </div>
+          ) : i ? (
+            <OhComplianceHero insights={i} period={months} onPeriodChange={setMonths} />
+          ) : (
+            <p className="text-[13.5px] text-dash-muted" role="alert">
+              The compliance trend could not be loaded.{" "}
+              <button type="button" className="font-medium text-brand-primary hover:underline" onClick={() => void insights.refetch()}>
+                Try again
+              </button>
+            </p>
+          )}
         </div>
 
-        <OhPanel
-          className="border-b border-dash-border/70 py-7"
-          title="Where open work sits"
-          description="Due and overdue requirements grouped by the selected dimension (top 8)."
-          actions={
-            <OhSegmented
-              label="Group by"
-              role="radiogroup"
-              value={breakdown}
-              onChange={setBreakdown}
-              options={(Object.keys(BREAKDOWN_LABEL) as Breakdown[]).map((k) => ({ value: k, label: BREAKDOWN_LABEL[k] }))}
-            />
-          }
-          data-testid="oh-compliance-breakdown"
-        >
-          <OhPanelState
-            isLoading={insights.isLoading}
-            error={insights.error}
-            onRetry={() => void insights.refetch()}
-            isEmpty={!i || i[breakdown].length === 0}
-            emptyText="No open requirements."
-            height={200}
-          >
-            {i ? <OhBreakdownBars data={i[breakdown]} label={`Open requirements by ${BREAKDOWN_LABEL[breakdown].toLowerCase()}`} /> : null}
-          </OhPanelState>
-        </OhPanel>
+        <div className="grid gap-x-14 gap-y-10 border-b border-dash-border/70 py-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)]">
+          <OhSection title="Needs attention" description="Each line opens the work behind it.">
+            <OhComplianceAttention items={attention} isLoading={dashboard.isLoading} />
+          </OhSection>
+          <OhComplianceHotspots insights={i} dimension={breakdown} onDimensionChange={setBreakdown} />
+        </div>
 
-        <div className="border-b border-dash-border/70 py-7">
+        <div className="border-b border-dash-border/70 py-8">
           <OhExamBatteryRulesPanel />
         </div>
-        <div className="pt-7">
+        <div className="pt-8">
           <OhVisitCancellationsReport />
         </div>
       </div>

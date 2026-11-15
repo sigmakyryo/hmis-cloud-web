@@ -5,6 +5,10 @@ import type { OhEncounterPanelId } from "@/features/occupational-health/lib/oh-e
 import type { DaVisitPanel } from "@/features/occupational-health/services/drug-alcohol.service";
 import { HP_PROGRAMS, type HpResult } from "@/features/occupational-health/services/health-programs.service";
 import type { OhImmPatientRecord } from "@/features/occupational-health/services/immunisation.service";
+import {
+  filterPdfExportSections,
+  type OhWorkspaceArea,
+} from "@/features/occupational-health/lib/oh-workspace-layout";
 import type { OhExamination } from "@/features/occupational-health/types";
 
 export const PDF_INCLUDE_KEYS = [
@@ -157,6 +161,7 @@ export function pdfExportSections(args: {
   hasFitness: boolean;
   hasSignature: boolean;
   evidence: VisitEvidenceLine[];
+  included?: readonly OhWorkspaceArea[];
 }): PdfExportSection[] {
   const sections: PdfExportSection[] = [
     { key: "worker", label: "Worker details", available: true },
@@ -221,7 +226,7 @@ export function pdfExportSections(args: {
       note: args.hasSignature ? undefined : "Not recorded",
     });
   }
-  return sections;
+  return filterPdfExportSections(sections, args.included);
 }
 
 function healthEvidenceLine(program: (typeof HP_PROGRAMS)[number], result: HpResult | undefined): VisitEvidenceLine {

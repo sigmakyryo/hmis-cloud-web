@@ -15,6 +15,7 @@ export const iodCaseFormSchema = z.object({
   incident_location: shortText,
   reported_by: shortText,
   she_reference: shortText,
+  claim_reference: shortText,
   work_related: z.boolean(),
   description: z.string().trim().min(1, "Describe what happened").max(2000, "Keep this under 2,000 characters"),
   witnesses: longText,
@@ -31,6 +32,11 @@ export const iodCaseFormSchema = z.object({
 
 export type IodCaseFormValues = z.infer<typeof iodCaseFormSchema>;
 
+/** The rules for just the fields one action shows, so an untouched field elsewhere can never block a save. */
+export function schemaForFields(names: ReadonlyArray<keyof IodCaseFormValues>) {
+  return iodCaseFormSchema.pick(Object.fromEntries(names.map((name) => [name, true])) as Record<keyof IodCaseFormValues, true>);
+}
+
 export function toFormValues(item: IodCaseDetail): IodCaseFormValues {
   return {
     onset_date: item.onset_date ?? "",
@@ -42,6 +48,7 @@ export function toFormValues(item: IodCaseDetail): IodCaseFormValues {
     incident_location: item.incident_location,
     reported_by: item.reported_by,
     she_reference: item.she_reference,
+    claim_reference: item.claim_reference,
     work_related: item.work_related,
     description: item.description,
     witnesses: item.witnesses,
