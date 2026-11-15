@@ -7,6 +7,11 @@ import {
   type NavAccessOptions,
   type OhFamilyModule,
 } from "@/features/app-shell/constants/navigation-config";
+import {
+  ohFamilyModuleAllowed,
+  ohNavHrefAllowed,
+  type OhWorkspaceArea,
+} from "@/features/occupational-health/lib/oh-workspace-layout";
 
 export type OhPageGroup = "daily" | "programs" | "records" | "oversight";
 
@@ -165,13 +170,23 @@ const PAGE_META: Record<string, { description: string; group: OhPageGroup }> = {
 
 const UUID_SEGMENT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** OH-family modules and pages the user can open, in sidebar order. */
-export function buildOhModules(userGroups: string[], options: NavAccessOptions = {}): OhModule[] {
+/**
+ * OH-family modules and pages the user can open, in sidebar order.
+ * Omit `included` until the clinic layout has loaded; a list then drops areas that are off.
+ */
+export function buildOhModules(
+  userGroups: string[],
+  options: NavAccessOptions = {},
+  included?: readonly OhWorkspaceArea[],
+): OhModule[] {
   const allowed = filterNavigation(userGroups, options);
 
   return OH_FAMILY_MODULES.flatMap((key) => {
+    if (!ohFamilyModuleAllowed(key, included)) {
+      return [];
+    }
     const pages = allowed
-      .filter((item) => item.moduleName === key)
+      .filter((item) => item.moduleName === key && ohNavHrefAllowed(item.href, included))
       .map((item) => ({
         name: item.name,
         href: item.href,

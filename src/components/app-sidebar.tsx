@@ -16,6 +16,7 @@ import {
 import { AppHeaderNotifications } from "@/features/app-shell/components/AppHeaderNotifications";
 import { MemberVisitAutomationStatus } from "@/features/customers/components/MemberVisitAutomationStatus";
 import { buildSidebarNavItems } from "@/features/app-shell/utils/build-sidebar-nav";
+import { useOhWorkspaceLayout } from "@/features/occupational-health/hooks/use-oh-workspace-layout";
 import { useUser } from "@/providers/user-provider";
 
 const SidebarTeamSwitcher = memo(function SidebarTeamSwitcher() {
@@ -44,12 +45,14 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
   const userGroups = useMemo(() => userData?.groups ?? [], [userData?.groups]);
   const isPlatformAdmin = Boolean(userData?.is_superuser && userData.tenant === null);
 
+  const layout = useOhWorkspaceLayout();
   const navItems = buildSidebarNavItems(
     userGroups,
     pathname,
     Boolean(userData?.is_admin),
     isPlatformAdmin,
     userData?.enabled_modules ?? [],
+    layout.isReady ? layout.included : undefined,
   );
 
   return (

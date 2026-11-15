@@ -15,6 +15,11 @@ import {
   type NavigationItem,
 } from "@/features/app-shell/constants/navigation-config";
 import { ROUTES } from "@/constants/routes";
+import {
+  ohFamilyModuleAllowed,
+  ohNavHrefAllowed,
+  type OhWorkspaceArea,
+} from "@/features/occupational-health/lib/oh-workspace-layout";
 
 export type SidebarNavSection = "workspace" | "admin";
 
@@ -48,9 +53,13 @@ function buildOhNavItem(
   modules: Record<string, NavigationItem[]>,
   allItems: NavigationItem[],
   pathname: string,
+  included?: readonly OhWorkspaceArea[],
 ): SidebarNavItem | null {
   const entries = OH_FAMILY_MODULES.flatMap((moduleName) =>
     (modules[moduleName] ?? []).map((item) => ({ moduleName, item })),
+  ).filter(
+    ({ moduleName, item }) =>
+      ohFamilyModuleAllowed(moduleName, included) && ohNavHrefAllowed(item.href, included),
   );
   if (entries.length === 0) {
     return null;
@@ -86,6 +95,7 @@ export function buildSidebarNavItems(
   isTenantAdmin = false,
   isPlatformAdmin = false,
   enabledModules: string[] = [],
+  includedAreas?: readonly OhWorkspaceArea[],
 ): SidebarNavItem[] {
   const filtered = isPlatformAdmin
     ? []
@@ -108,7 +118,7 @@ export function buildSidebarNavItems(
     if (isOhFamilyModule(moduleName)) {
       if (!ohNavAdded) {
         ohNavAdded = true;
-        const ohItem = buildOhNavItem(modules, filtered, pathname);
+        const ohItem = buildOhNavItem(modules, filtered, pathname, includedAreas);
         if (ohItem) {
           items.push(ohItem);
         }

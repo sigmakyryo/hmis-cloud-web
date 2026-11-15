@@ -182,6 +182,19 @@ it("lists export sections with available records ticked by default and builds an
   expect(visionSection?.note).toBe("Not recorded");
   expect(sections.find((section) => section.key === "answers")?.label).toBe("COF answers");
 
+  const withoutFitness = pdfExportSections({
+    family: "exam",
+    hasAnswers: true,
+    hasFitness: true,
+    hasSignature: true,
+    evidence: [hearing, vision],
+    included: ["immunizations", "drug-alcohol", "health-programs", "injuries", "employment", "exposure"],
+  });
+  expect(withoutFitness.map((section) => section.key)).not.toContain("fitness");
+  expect(withoutFitness.map((section) => section.key)).toEqual(
+    expect.arrayContaining(["worker", "answers", "hearing", "signature"]),
+  );
+
   expect(withPdfInclude("/pdf", ["worker", "hearing"])).toBe("/pdf?include=worker,hearing");
   expect(withPdfInclude("/pdf?x=1", ["answers"])).toBe("/pdf?x=1&include=answers");
 });
