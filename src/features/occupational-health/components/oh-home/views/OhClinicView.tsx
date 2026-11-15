@@ -7,9 +7,7 @@ import { UserIdenticon } from "@/components/UserIdenticon";
 import { ROUTES } from "@/constants/routes";
 import { formatWaitingMinutes } from "@/features/clinical-opd/utils/opd-queue-stage";
 import { OhClinicCompliance } from "@/features/occupational-health/components/oh-home/views/OhClinicCompliance";
-import { OhClinicInjuries } from "@/features/occupational-health/components/oh-home/views/OhClinicInjuries";
 import { OhClinicVisits } from "@/features/occupational-health/components/oh-home/views/OhClinicVisits";
-import { ViewGrid } from "@/features/occupational-health/components/oh-home/views/OhViewCharts";
 import { QueryState, ViewSection } from "@/features/occupational-health/components/oh-home/views/OhViewParts";
 import { useOhHomeSummary } from "@/features/occupational-health/components/oh-home/views/useOhHomeSummary";
 import { queueWaitingMinutes, waitTone } from "@/features/occupational-health/components/OhQueueTable";
@@ -69,7 +67,7 @@ export function OhClinicView() {
         count={queue.isSuccess ? active.length : undefined}
         testId="oh-home-queue"
         action={
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-3 @3xl:flex-col @3xl:items-start">
+          <div className="flex items-center gap-4">
             <Link href={ROUTES.occupationalHealth} className="text-[13px] font-medium text-brand-primary hover:underline">
               Open queue
             </Link>
@@ -79,7 +77,7 @@ export function OhClinicView() {
       >
         <QueryState isLoading={queue.isLoading} isError={queue.isError} onRetry={() => void queue.refetch()} rows={4}>
           {shown.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-dash-border px-4 py-6 text-[13.5px] text-dash-muted">No visits in the queue.</p>
+            <p className="border-y border-dash-border/70 py-5 text-[13.5px] text-dash-muted">No visits in the queue.</p>
           ) : (
             <>
               <ul>
@@ -101,10 +99,7 @@ export function OhClinicView() {
         isError={compliance.isError}
         onRetry={() => void compliance.refetch()}
       />
-      <ViewGrid>
-        <OhClinicInjuries summary={summary} />
-        <OhClinicVisits summary={summary} />
-      </ViewGrid>
+      <OhClinicVisits summary={summary} />
     </>
   );
 }

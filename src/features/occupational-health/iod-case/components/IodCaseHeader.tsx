@@ -8,6 +8,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -16,6 +17,7 @@ import {
   DetailPageHeaderSection,
   DetailPageTitle,
 } from "@/features/app-shell/components/page-layout";
+import { IOD_ACTIONS, IOD_RECORD_ACTIONS, type IodActionId } from "@/features/occupational-health/iod-case/iod-case.actions";
 import { OhStatusChip } from "@/features/occupational-health/components/OhStatusChip";
 import type { IodCaseDetail, IodStatutoryPack } from "@/features/occupational-health/iod-case/iod-case.types";
 import {
@@ -35,6 +37,7 @@ type IodCaseHeaderProps = {
   pack: IodStatutoryPack | undefined;
   isSaving: boolean;
   onEdit: () => void;
+  onRecord: (action: IodActionId) => void;
   onAddNote: () => void;
   onClose: () => void;
   onReopen: () => void;
@@ -50,6 +53,7 @@ export function IodCaseHeader({
   pack,
   isSaving,
   onEdit,
+  onRecord,
   onAddNote,
   onClose,
   onReopen,
@@ -131,6 +135,13 @@ export function IodCaseHeader({
               </SecondaryButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className={appFont.className}>
+              <DropdownMenuLabel className="text-xs font-medium text-brand-muted">Record</DropdownMenuLabel>
+              {IOD_RECORD_ACTIONS.map((id) => (
+                <DropdownMenuItem key={id} onSelect={() => onRecord(id)}>
+                  {IOD_ACTIONS[id].title}
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
               {item.status === "open" ? (
                 <DropdownMenuItem onSelect={onMarkUnderReview}>Mark as under review</DropdownMenuItem>
               ) : null}

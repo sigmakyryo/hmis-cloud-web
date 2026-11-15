@@ -112,6 +112,11 @@ const HOME: Record<string, unknown> = {
     stock: { lots: 4, expiring_60d: 1, low_stock: 1, quarantined: 1, recalled: 0, expiring: [{ uuid: "lot-1", vaccine: "Hepatitis B", lot_number: "HB-2291", expiry_date: "2026-11-26", quantity_on_hand: 8 }] },
     doses_by_week: [{ week_start: "2026-11-09", doses: 11 }],
     coverage_by_vaccine: [{ code: "HEPB", name: "Hepatitis B", people: 10, up_to_date: 6, percent: 60 }],
+    coverage_matrix: {
+      vaccines: [{ code: "HEPB", name: "Hepatitis B" }, { code: "FLU", name: "Influenza" }],
+      employers: [{ employer: "Illovo", people: 8, cells: [{ code: "HEPB", people: 8, up_to_date: 4, percent: 50 }, null] }],
+    },
+    lots_timeline: { window_days: 120, lots: [{ uuid: "lot-1", vaccine: "Hepatitis B", lot_number: "HB-2291", expiry_date: "2026-11-26", days_left: 11, quantity_on_hand: 8 }] },
   },
   "drug-alcohol": {
     month: { tests: 4, verified: 2, positive: 1, refusals: 0, cancelled: 0, positivity_rate: 50 },
@@ -121,6 +126,11 @@ const HOME: Record<string, unknown> = {
   fitness: {
     expiring: { count: 1, rows: [{ customer_uuid: "w9", worker_label: "Esther Nkhoma", employer_name: "Illovo", earliest_expiry: "2026-11-20" }] },
     by_employer: [{ employer: "Illovo", workers: 10, fit: 8, restricted: 1, not_fit: 1, unknown: 0 }],
+    blockers_by_source: [
+      { source: "medical", workers: 3, not_fit: 1, restricted: 2 },
+      { source: "programme", workers: 0, not_fit: 0, restricted: 0 },
+    ],
+    expiring_by_week: [{ week_start: "2026-11-15", count: 1 }, { week_start: "2026-11-22", count: 2 }],
     training_expiring: { count: 2, by_course: [{ course: "Working at heights", count: 2 }] },
   },
   "health-programs": {
@@ -214,10 +224,10 @@ describe("OhHomePage", () => {
     expect(screen.getAllByTestId("oh-home-runway-item")[0]).toHaveAttribute("href", ROUTES.occupationalHealthCompliance);
     const compliance = screen.getByTestId("oh-home-compliance");
     expect(compliance).toHaveTextContent("10 of 16 checks up to date");
-    expect(within(compliance).getByTestId("oh-home-section-count")).toHaveTextContent("63% of checks up to date");
+    expect(within(compliance).getByTestId("oh-home-section-count")).toHaveTextContent(/63\s?% of checks up to date/);
   });
 
-  it("immunizations leads with coverage, lowest first, and what needs a dose", async () => {
+  it("immunizations leads with overall coverage and what needs a dose", async () => {
     nav.search = "module=immunizations";
     data.immCompliance.mockResolvedValue({
       group_by: "employer",
@@ -234,15 +244,11 @@ describe("OhHomePage", () => {
     render(<OhHomePage />);
 
     const view = await screen.findByTestId("oh-home-view-immunizations");
-    await waitFor(() => expect(view).toHaveTextContent("10 of 15 workers are up to date (67%)"));
-    const employerMeters = within(view)
-      .getAllByRole("meter")
-      .map((meter) => meter.getAttribute("aria-label"))
-      .filter((name) => name?.startsWith("Mill") || name?.startsWith("Illovo"));
-    expect(employerMeters).toEqual(["Mill: 40%", "Illovo: 80%"]);
+    await waitFor(() => expect(view).toHaveTextContent("10 of 15 workers have every vaccine their job needs."));
+    expect(within(view).getByRole("img", { name: "67% of workers are fully covered" })).toBeInTheDocument();
     const todos = within(view).getAllByTestId("oh-home-todo");
-    expect(todos[0]).toHaveTextContent("5Doses overdue");
-    expect(todos[1]).toHaveTextContent("3Doses due this week");
+    expect(todos[0]).toHaveTextContent("5doses overdue");
+    expect(todos[1]).toHaveTextContent("3doses due this week");
     expect(todos[2]).toHaveAttribute("href", ROUTES.exposureManagementIncidents);
     expect(within(screen.getByTestId("oh-home-module-detail")).getByRole("link", { name: /^Due/ })).toHaveAttribute("href", ROUTES.immunizationsDue);
   });
@@ -279,7 +285,7 @@ describe("OhHomePage", () => {
     expect(await screen.findByText(/3 of 10 drug tests · behind/)).toBeInTheDocument();
   });
 
-  it("fitness shows the split and puts the workers who are not fit first", async () => {
+  it("fitness leads with a roll call and puts the workers who are not fit first", async () => {
     nav.search = "module=fitness";
     data.fitBoard.mockResolvedValue({
       counts: { fit: 6, fit_with_restrictions: 2, not_fit: 1, unknown: 1, due_soon: 3 },
@@ -295,7 +301,8 @@ describe("OhHomePage", () => {
     render(<OhHomePage />);
 
     const view = await screen.findByTestId("oh-home-view-fitness");
-    await waitFor(() => expect(view).toHaveTextContent("6 of 10 workers are fit for work, and 3 have a clearance expiring soon."));
+    await waitFor(() => expect(screen.getByTestId("oh-home-fit-rollcall")).toHaveTextContent("6of 10 can work without limits today"));
+    expect(screen.getByTestId("oh-home-fit-rollcall")).toHaveTextContent("3 clearances expire soon");
     const workers = within(view).getAllByTestId("oh-home-fit-worker");
     expect(workers.map((worker) => worker.textContent)).toEqual([
       expect.stringContaining("Worker B"),
@@ -343,18 +350,14 @@ describe("OhHomePage", () => {
     expect(screen.getByRole("link", { name: /MRO review/ })).toHaveAttribute("href", ROUTES.drugAlcoholMro);
   });
 
-  it("clinic adds injury cases, certificates and a fortnight of visits from the OH service", async () => {
+  it("clinic adds certificates and a fortnight of visits from the OH service, without an injuries section", async () => {
     data.compliance = { overdue: 4, due: 2, completed: 10 };
 
     render(<OhHomePage />);
 
-    const injury = await screen.findByTestId("oh-home-iod-case");
-    expect(injury).toHaveAttribute("href", ROUTES.occupationalHealthRecord("iod", "iod-1"));
-    expect(injury).toHaveTextContent("Left hand");
-    expect(injury).toHaveTextContent("Caught in roller");
-    expect(injury).toHaveTextContent(/Day \d+/);
-    expect(injury).toHaveTextContent("Serious");
-    expect(await screen.findByTestId("oh-home-runway-behind")).toHaveTextContent("3certificates lapsed");
+    await waitFor(() => expect(screen.getByTestId("oh-home-runway-behind")).toHaveTextContent("3certificates lapsed"));
+    expect(screen.queryByTestId("oh-home-iod-case")).not.toBeInTheDocument();
+    expect(screen.queryByText("Injuries on duty", { selector: "h3 *" })).not.toBeInTheDocument();
     expect(screen.getByTestId("oh-home-runway-next")).toHaveTextContent("17certificates expiring");
     const visits = screen.getByTestId("oh-home-visits");
     expect(within(visits).getAllByTestId("oh-home-visit-day")).toHaveLength(14);
@@ -362,7 +365,7 @@ describe("OhHomePage", () => {
     expect(data.home).toHaveBeenCalledWith("clinic");
   });
 
-  it("immunizations adds stock, coverage by vaccine and doses per week", async () => {
+  it("immunizations shows coverage by employer and vaccine, shelf life and doses per week", async () => {
     nav.search = "module=immunizations";
     data.immCompliance.mockResolvedValue({ group_by: "employer", summary: { people: 0, compliant: 0, percent_compliant: 0, overdue_rows: 0 }, groups: [], overdue: [] });
     data.immDue.mockResolvedValue([]);
@@ -370,8 +373,12 @@ describe("OhHomePage", () => {
 
     render(<OhHomePage />);
 
-    expect(await screen.findByTestId("oh-home-expiring-lot")).toHaveTextContent("Hepatitis BHB-22918 left26 Nov");
-    expect(screen.getByRole("meter", { name: "Hepatitis B: 60%" })).toBeInTheDocument();
+    const cell = await screen.findByTestId("oh-home-imm-cell");
+    expect(cell).toHaveTextContent("50%");
+    expect(cell).toHaveAttribute("title", "Illovo, Hepatitis B: 4 of 8 covered");
+    expect(within(screen.getByTestId("oh-home-imm-grid")).getByTitle("Not required")).toBeInTheDocument();
+    expect(screen.getByTestId("oh-home-imm-lot")).toHaveTextContent("Hepatitis BHB-229111 days8 doses");
+    expect(screen.getByTestId("oh-home-imm-shelf")).toHaveTextContent("1 lot in quarantine");
     expect(screen.getByRole("img", { name: "Doses given per week over the last 8 weeks, 11 in all." })).toBeInTheDocument();
   });
 
@@ -392,15 +399,21 @@ describe("OhHomePage", () => {
     expect(screen.getByRole("meter", { name: "Random: 3" })).toBeInTheDocument();
   });
 
-  it("fitness adds clearances expiring, the split by employer and training", async () => {
+  it("fitness shows a dot per worker by employer, what keeps people off, expiries ahead and training", async () => {
     nav.search = "module=fitness";
     data.fitBoard.mockResolvedValue({ counts: { fit: 1, fit_with_restrictions: 0, not_fit: 0, unknown: 0, due_soon: 0 }, employers: [], sites: [], results: [] });
 
     render(<OhHomePage />);
 
     expect(await screen.findByTestId("oh-home-fit-expiring")).toHaveAttribute("href", ROUTES.occupationalHealthEmployee("w9"));
-    expect(screen.getByTestId("oh-home-fit-employer")).toHaveTextContent("80% fit · 10");
-    expect(screen.getAllByTestId("oh-home-todo").at(-1)).toHaveTextContent("2Working at heights");
+    const employer = screen.getByTestId("oh-home-fit-employer");
+    expect(employer).toHaveTextContent("80% fit · 10");
+    expect(within(employer).getByRole("img", { name: "Illovo: 8 fit, 1 restricted, 1 not fit, 0 not assessed" })).toBeInTheDocument();
+    const blockers = screen.getAllByTestId("oh-home-fit-blocker");
+    expect(blockers[0]).toHaveTextContent("Medical1 not fit · 2 restricted");
+    expect(blockers[1]).toHaveTextContent("none");
+    expect(screen.getByRole("img", { name: "Clearances running out per week over the next eight weeks, 3 in all." })).toBeInTheDocument();
+    expect(screen.getByTestId("oh-home-fit-course")).toHaveTextContent("Working at heights2");
   });
 
   it("health programs adds tests per month, outcomes and referrals", async () => {

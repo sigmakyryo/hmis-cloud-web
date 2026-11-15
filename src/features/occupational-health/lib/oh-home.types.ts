@@ -31,6 +31,18 @@ export type OhHomeImmunizations = {
   };
   doses_by_week: Array<{ week_start: string; doses: number }>;
   coverage_by_vaccine: Array<{ code: string; name: string; people: number; up_to_date: number; percent: number }>;
+  coverage_matrix: {
+    vaccines: Array<{ code: string; name: string }>;
+    employers: Array<{
+      employer: string;
+      people: number;
+      cells: Array<{ code: string; people: number; up_to_date: number; percent: number } | null>;
+    }>;
+  };
+  lots_timeline: {
+    window_days: number;
+    lots: Array<{ uuid: string; vaccine: string; lot_number: string; expiry_date: string | null; days_left: number; quantity_on_hand: number }>;
+  };
 };
 
 export type OhHomeDrugAlcohol = {
@@ -50,6 +62,8 @@ export type OhHomeDrugAlcohol = {
 export type OhHomeFitness = {
   expiring: { count: number; rows: Array<{ customer_uuid: string; worker_label: string; employer_name: string; earliest_expiry: string | null }> };
   by_employer: Array<{ employer: string; workers: number; fit: number; restricted: number; not_fit: number; unknown: number }>;
+  blockers_by_source: Array<{ source: string; workers: number; not_fit: number; restricted: number }>;
+  expiring_by_week: Array<{ week_start: string; count: number }>;
   training_expiring: { count: number; by_course: Array<{ course: string; count: number }> };
 };
 
