@@ -392,6 +392,101 @@ describe("OhEncounterWorkspacePage", () => {
     expect(await screen.findByTestId("oh-fitness-visit-panel")).toBeInTheDocument();
     expect(window.location.search).toBe("?panel=fitness");
     expect(screen.queryByTestId("oh-session-forms")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("oh-visit-journey-rail")).not.toBeInTheDocument();
+  });
+
+  it("keeps fitness on the page and opens exam and pre-employment in sheets", async () => {
+    const { fetchFitWorker } = await import(
+      "@/features/occupational-health/services/fitness.service"
+    );
+    vi.mocked(fetchFitWorker).mockResolvedValue({
+      customer_uuid: "cust-1",
+      worker_label: "Jane Doe",
+      employee_number: "",
+      employer_uuid: null,
+      employer_name: "",
+      site: "",
+      department: "",
+      job_title: "",
+      overall: "unknown",
+      reasons: [],
+      restrictions: ["No work at height"],
+      earliest_expiry: null,
+      items: [],
+      zones: [],
+      role_clearance: { job_title: "", status: "unknown" },
+      computed_at: "2026-11-13T12:00:00Z",
+    });
+    ohService.fetchOhEncounter.mockResolvedValue({
+      ...ENCOUNTER,
+      visit_type: {
+        uuid: "vt-1",
+        code: "pre_employment",
+        name: "Pre-employment",
+        forms: [],
+      },
+    });
+    renderPage({ panel: "fitness" });
+
+    const checklist = await screen.findByTestId("oh-fit-checklist");
+    const preEmployment = within(checklist).getByTestId("oh-fit-check-pre-employment");
+    const medicalRow = within(checklist).getByTestId("oh-fit-check-medical");
+    expect(preEmployment.compareDocumentPosition(medicalRow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(preEmployment).toHaveTextContent("Not started");
+    expect(preEmployment).toHaveTextContent("No form recorded on this visit.");
+    expect(preEmployment).not.toHaveTextContent("Enter manually");
+    expect(screen.queryByTestId("oh-visit-journey-rail")).not.toBeInTheDocument();
+
+    fireEvent.click(within(checklist).getByRole("button", { name: "Exam" }));
+    const medical = await screen.findByRole("dialog", { name: "Medical" });
+    expect(medical).toHaveAttribute("data-width", "half");
+    expect(within(medical).getByTestId("oh-session-forms")).toBeInTheDocument();
+    expect(screen.getByTestId("oh-fitness-visit-panel")).toBeInTheDocument();
+    expect(window.location.search).toBe("?panel=fitness");
+
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    expect(screen.queryByText("No work at height")).not.toBeInTheDocument();
+    expect(screen.getByTestId("oh-toolbar-badge-restrictions")).toHaveTextContent("1");
+    fireEvent.click(screen.getByRole("button", { name: "Restrictions" }));
+    const restrictions = await screen.findByRole("dialog", { name: "Restrictions" });
+    expect(within(restrictions).getByTestId("oh-fit-restrictions")).toHaveTextContent("No work at height");
+    fireEvent.click(within(restrictions).getByRole("button", { name: "Close" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    fireEvent.click(within(preEmployment).getByRole("button", { name: "Open" }));
+    const sheet = await screen.findByRole("dialog", { name: "Pre-employment" });
+    expect(sheet).not.toHaveTextContent("Collect employee details");
+    expect(sheet).not.toHaveTextContent("Employee form");
+    expect(sheet).toHaveTextContent("Enter manually");
+    expect(sheet).toHaveTextContent("Fill the questions for this visit here.");
+    expect(sheet).toHaveTextContent("Share employee form");
+    expect(sheet).toHaveTextContent("Let the employee complete the form on their own device.");
+    expect(within(sheet).getByRole("button", { name: "Send email" })).toBeInTheDocument();
+    expect(within(sheet).getByRole("button", { name: "Create link" })).toBeInTheDocument();
+    expect(within(sheet).getByRole("button", { name: "Copy link" })).toBeInTheDocument();
+    expect(within(sheet).getByRole("button", { name: "Show QR code" })).toBeInTheDocument();
+    expect(sheet).toHaveAttribute("data-width", "regular");
+    expect(screen.getByTestId("oh-fit-check-pre-employment")).toBeInTheDocument();
+
+    ohService.createOhEmployeeFormResponse.mockResolvedValue({
+      id: 3,
+      uuid: "form-1",
+      encounter: 7,
+      status: "not_started",
+      row_version: 1,
+      template_snapshot: { schema_version: 3, sections: [] },
+      responses_json: { __employee_form__: { answers: { picks: {}, fields: {} } } },
+    });
+    fireEvent.click(within(sheet).getByRole("button", { name: /Enter manually/ }));
+    await waitFor(() => expect(sheet).toHaveAttribute("data-width", "half"));
+    fireEvent.click(within(sheet).getByRole("button", { name: "Back" }));
+    await waitFor(() => expect(sheet).toHaveAttribute("data-width", "regular"));
   });
 
   it("loads the OH encounter directly without a Django visit lookup", async () => {

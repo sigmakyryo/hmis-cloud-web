@@ -20,6 +20,7 @@ import { fetchClinicalClinics } from "@/features/clinical/services/clinical-cata
 import type { ClinicalClinic } from "@/features/clinical/types/clinical-catalog.types";
 import { OpdEncounterTabSkeleton } from "@/features/clinical-opd/components/detail/OpdEncounterTabSkeleton";
 import { useOpdEncounterWorkspace } from "@/features/clinical-opd/components/detail/opd-encounter-workspace-context";
+import { ExternalCareRecords } from "@/features/clinical-opd/components/tabs/ExternalCareRecords";
 import {
   useEncounterDisposition,
   useUpsertEncounterDisposition,
@@ -28,6 +29,7 @@ import { dispositionSchema } from "@/features/clinical-opd/schemas/clinical-opd.
 import { assertClinicalFormsClear } from "@/features/occupational-health/services/oh.service";
 import { BffError } from "@/lib/bff-client";
 import { formatBffErrorMessage } from "@/lib/bff-field-errors";
+import { cn } from "@/lib/utils";
 import { useToast } from "@/providers/toast-provider";
 import { useUser } from "@/providers/user-provider";
 
@@ -105,9 +107,9 @@ export function OpdDispositionTabPanel({
   if (disposition.isLoading) return <OpdEncounterTabSkeleton rows={4} />;
 
   return (
+    <div className="space-y-6" data-testid="opd-disposition-tab-panel">
     <form
-      className="max-w-xl space-y-4"
-      data-testid="opd-disposition-tab-panel"
+      className="space-y-4"
       onSubmit={form.handleSubmit(async (values) => {
         try {
           if (values.outcome === "admitted") {
@@ -122,6 +124,12 @@ export function OpdDispositionTabPanel({
             ...values,
             follow_up_at: values.follow_up_at || null,
             ipd_bed: values.ipd_bed || null,
+            referral_destination:
+              values.outcome === "referred"
+                ? values.referral_destination ||
+                  disposition.data?.referral_destination ||
+                  ""
+                : values.referral_destination,
           });
           if (values.outcome === "admitted" && values.ipd_bed) {
             const stays = await fetchIpdStays({
@@ -160,93 +168,108 @@ export function OpdDispositionTabPanel({
         }
       })}
     >
-      <div>
-        <h2 className="text-base font-semibold text-brand-navy">Disposition</h2>
-        <p className="mt-1 text-sm text-dash-muted">
-          Optional. Closing the visit does not require a disposition.
-        </p>
-      </div>
-      <div className="space-y-1.5">
-        <Label>Outcome</Label>
-        <select
-          className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-          disabled={!canWrite}
-          {...form.register("outcome")}
-        >
-          {OUTCOMES.map((item) => (
-            <option key={item.value} value={item.value}>
+      <div
+        role="radiogroup"
+        aria-label="Outcome"
+        className="flex flex-wrap gap-x-4 gap-y-2"
+      >
+        {OUTCOMES.map((item) => {
+          const selected = outcome === item.value;
+          return (
+            <button
+              key={item.value}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              disabled={!canWrite}
+              className={cn(
+                "text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                selected
+                  ? "text-brand-primary underline decoration-2 underline-offset-[6px]"
+                  : "text-dash-muted hover:text-brand-navy",
+              )}
+              onClick={() =>
+                form.setValue("outcome", item.value, { shouldDirty: true })
+              }
+            >
               {item.label}
-            </option>
-          ))}
-        </select>
+            </button>
+          );
+        })}
       </div>
-      {outcome === "follow_up" ? (
+      <div className="space-y-4">
+        {outcome === "follow_up" ? (
+          <div className="max-w-sm space-y-1.5">
+            <Label htmlFor="disposition-follow-up">Follow-up at</Label>
+            <Input
+              id="disposition-follow-up"
+              type="datetime-local"
+              disabled={!canWrite}
+              {...form.register("follow_up_at")}
+            />
+          </div>
+        ) : null}
+        {outcome === "admitted" ? (
+          <div className="grid gap-3 sm:grid-cols-3">
+            <IpdClinicSelect
+              clinics={clinicsQuery.data ?? []}
+              value={clinic}
+              onChange={(next) => {
+                setClinic(next);
+                setWard(null);
+                setBed(null);
+              }}
+              disabled={!canWrite}
+              isLoading={clinicsQuery.isLoading}
+            />
+            <IpdWardSelect
+              clinicUuid={clinic?.uuid}
+              value={ward}
+              onChange={(next) => {
+                setWard(next);
+                setBed(null);
+              }}
+              disabled={!canWrite}
+            />
+            <IpdBedSelect
+              wardUuid={ward?.uuid}
+              value={bed}
+              onChange={setBed}
+              disabled={!canWrite}
+              availableOnly
+              label="Available IPD bed"
+            />
+          </div>
+        ) : null}
         <div className="space-y-1.5">
-          <Label>Follow-up at</Label>
-          <Input
-            type="datetime-local"
+          <Label htmlFor="disposition-notes">Notes</Label>
+          <Textarea
+            id="disposition-notes"
+            rows={3}
             disabled={!canWrite}
-            {...form.register("follow_up_at")}
+            {...form.register("notes")}
           />
         </div>
-      ) : null}
-      {outcome === "referred" ? (
-        <div className="space-y-1.5">
-          <Label>Referral destination</Label>
-          <Input
-            disabled={!canWrite}
-            {...form.register("referral_destination")}
-          />
-        </div>
-      ) : null}
-      {outcome === "admitted" ? (
-        <div className="space-y-3">
-          <IpdClinicSelect
-            clinics={clinicsQuery.data ?? []}
-            value={clinic}
-            onChange={(next) => {
-              setClinic(next);
-              setWard(null);
-              setBed(null);
-            }}
-            disabled={!canWrite}
-            isLoading={clinicsQuery.isLoading}
-          />
-          <IpdWardSelect
-            clinicUuid={clinic?.uuid}
-            value={ward}
-            onChange={(next) => {
-              setWard(next);
-              setBed(null);
-            }}
-            disabled={!canWrite}
-          />
-          <IpdBedSelect
-            wardUuid={ward?.uuid}
-            value={bed}
-            onChange={setBed}
-            disabled={!canWrite}
-            availableOnly
-            label="Available IPD bed"
-          />
-        </div>
-      ) : null}
-      <div className="space-y-1.5">
-        <Label>Notes</Label>
-        <Textarea rows={3} disabled={!canWrite} {...form.register("notes")} />
+        {ipdLink ? (
+          <p className="text-sm">
+            <Link href={ipdLink} className="font-medium text-brand-primary underline">
+              Open IPD encounter
+            </Link>
+          </p>
+        ) : null}
       </div>
-      {ipdLink ? (
-        <p className="text-sm">
-          <Link href={ipdLink} className="underline">
-            Open IPD encounter
-          </Link>
-        </p>
-      ) : null}
       {canWrite ? (
         <PrimaryButton type="submit" disabled={upsert.isPending}>
           Save disposition
         </PrimaryButton>
       ) : null}
     </form>
+    <ExternalCareRecords
+      visitUuid={visitUuid}
+      encounterUuid={encounterUuid}
+      canWrite={canWrite}
+      showOutbound={outcome === "referred"}
+    />
+    </div>
   );
 }

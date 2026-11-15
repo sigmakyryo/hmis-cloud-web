@@ -1,0 +1,508 @@
+"use client";
+
+import { useState, type ReactNode } from "react";
+
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ExternalCareDocumentList } from "@/features/clinical-opd/components/tabs/ExternalCareDocumentList";
+import { ReferenceRecordForm } from "@/features/clinical-opd/components/tabs/ReferenceRecordForm";
+import { TransferRecordForm } from "@/features/clinical-opd/components/tabs/TransferRecordForm";
+import {
+  useArchiveExternalReference,
+  useArchiveExternalTransfer,
+  useEncounterOutsideHospitals,
+  useEncounterReferenceKinds,
+  useExternalReferences,
+  useExternalTransfers,
+  useUploadExternalReferenceDocument,
+  useUploadExternalTransferDocument,
+} from "@/features/clinical-opd/hooks/use-external-care";
+import type {
+  ExternalHospitalTransfer,
+  ExternalReference,
+  ExternalReferenceKind,
+  OutsideHospital,
+} from "@/features/clinical-opd/types/external-care.types";
+import { formatDisplayDateTime } from "@/features/customers/utils/format-customer";
+import { BffError } from "@/lib/bff-client";
+import { formatBffErrorMessage } from "@/lib/bff-field-errors";
+import { useToast } from "@/providers/toast-provider";
+
+type ExternalCareRecordsProps = {
+  visitUuid: string;
+  encounterUuid: string;
+  canWrite: boolean;
+  showOutbound: boolean;
+};
+
+function RecordActions({
+  canWrite,
+  pending,
+  inputId,
+  onRemove,
+  onFile,
+}: {
+  canWrite: boolean;
+  pending: boolean;
+  inputId: string;
+  onRemove: () => void;
+  onFile: (file: File) => void;
+}) {
+  if (!canWrite) return null;
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
+      <Label htmlFor={inputId} className="sr-only">
+        Add document
+      </Label>
+      <label
+        htmlFor={inputId}
+        className="cursor-pointer font-medium text-brand-primary"
+      >
+        Add document
+      </label>
+      <Input
+        id={inputId}
+        className="sr-only"
+        type="file"
+        accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+        disabled={pending}
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          if (file) onFile(file);
+        }}
+      />
+      <button
+        type="button"
+        className="text-dash-muted hover:text-brand-navy disabled:opacity-50"
+        disabled={pending}
+        onClick={onRemove}
+      >
+        Remove
+      </button>
+    </div>
+  );
+}
+
+function TransferRows({
+  visitUuid,
+  encounterUuid,
+  rows,
+  canWrite,
+}: {
+  visitUuid: string;
+  encounterUuid: string;
+  rows: ExternalHospitalTransfer[];
+  canWrite: boolean;
+}) {
+  const { toast } = useToast();
+  const archive = useArchiveExternalTransfer(visitUuid, encounterUuid);
+  const upload = useUploadExternalTransferDocument(visitUuid, encounterUuid);
+
+  async function remove(transferUuid: string) {
+    try {
+      await archive.mutateAsync(transferUuid);
+    } catch (error) {
+      toast({
+        title: "Could not remove the transfer",
+        description:
+          error instanceof BffError
+            ? formatBffErrorMessage(error.message, error.errors)
+            : "Try again.",
+        variant: "error",
+      });
+    }
+  }
+
+  async function addFile(transferUuid: string, file: File) {
+    try {
+      await upload.mutateAsync({ transferUuid, file });
+    } catch (error) {
+      toast({
+        title: "Could not attach the document",
+        description:
+          error instanceof BffError
+            ? formatBffErrorMessage(error.message, error.errors)
+            : "Try again.",
+        variant: "error",
+      });
+    }
+  }
+
+  if (rows.length === 0) {
+    return <EmptyRow label="None recorded." />;
+  }
+
+  return (
+    <div className="space-y-4">
+      {rows.map((row, index) => {
+        const when = formatDisplayDateTime(row.occurred_at);
+        const meta = [row.hospital.town, when !== "—" ? when : ""]
+          .filter(Boolean)
+          .join(" · ");
+        return (
+          <article
+            key={row.uuid}
+            className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-3"
+            data-testid={`${row.direction}-transfer-row`}
+          >
+            <span className="pt-1 font-mono text-xs text-brand-primary">
+              {String(index + 1).padStart(2, "0")}
+            </span>
+            <div>
+              <p className="text-sm font-medium text-brand-navy">
+                {row.hospital.name}
+              </p>
+              {meta ? <p className="mt-0.5 text-sm text-dash-muted">{meta}</p> : null}
+              {row.their_reference ? (
+                <p
+                  className="mt-3 text-sm text-brand-navy"
+                  data-testid={`${row.direction}-transfer-reference`}
+                >
+                  {row.their_reference}
+                </p>
+              ) : null}
+              <p className="mt-1 text-sm text-brand-navy">{row.reason}</p>
+              {row.contact ? (
+                <p className="mt-1 text-sm text-dash-muted">{row.contact}</p>
+              ) : null}
+              {row.notes ? (
+                <p className="mt-1 text-sm text-dash-muted">{row.notes}</p>
+              ) : null}
+              <ExternalCareDocumentList
+                visitUuid={visitUuid}
+                encounterUuid={encounterUuid}
+                documents={row.documents}
+              />
+              <RecordActions
+                canWrite={canWrite}
+                pending={archive.isPending || upload.isPending}
+                inputId={`transfer-file-${row.uuid}`}
+                onRemove={() => void remove(row.uuid)}
+                onFile={(file) => void addFile(row.uuid, file)}
+              />
+            </div>
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
+function ReferenceRows({
+  visitUuid,
+  encounterUuid,
+  rows,
+  canWrite,
+}: {
+  visitUuid: string;
+  encounterUuid: string;
+  rows: ExternalReference[];
+  canWrite: boolean;
+}) {
+  const { toast } = useToast();
+  const archive = useArchiveExternalReference(visitUuid, encounterUuid);
+  const upload = useUploadExternalReferenceDocument(visitUuid, encounterUuid);
+
+  async function remove(referenceUuid: string) {
+    try {
+      await archive.mutateAsync(referenceUuid);
+    } catch (error) {
+      toast({
+        title: "Could not remove the reference",
+        description:
+          error instanceof BffError
+            ? formatBffErrorMessage(error.message, error.errors)
+            : "Try again.",
+        variant: "error",
+      });
+    }
+  }
+
+  async function addFile(referenceUuid: string, file: File) {
+    try {
+      await upload.mutateAsync({ referenceUuid, file });
+    } catch (error) {
+      toast({
+        title: "Could not attach the document",
+        description:
+          error instanceof BffError
+            ? formatBffErrorMessage(error.message, error.errors)
+            : "Try again.",
+        variant: "error",
+      });
+    }
+  }
+
+  if (rows.length === 0) {
+    return <EmptyRow label="None recorded." />;
+  }
+
+  return (
+    <div className="space-y-4">
+      {rows.map((row, index) => (
+        <article
+          key={row.uuid}
+          className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-3"
+        >
+          <span className="pt-1 font-mono text-xs text-brand-primary">
+            {String(index + 1).padStart(2, "0")}
+          </span>
+          <div>
+            <p className="text-sm font-medium text-brand-navy">
+              {row.value}
+            </p>
+            <p className="mt-0.5 text-sm text-dash-muted">{row.kind.label}</p>
+            {row.hospital ? (
+              <p className="mt-2 text-sm text-brand-navy">{row.hospital.name}</p>
+            ) : null}
+            <ExternalCareDocumentList
+              visitUuid={visitUuid}
+              encounterUuid={encounterUuid}
+              documents={row.documents}
+            />
+            <RecordActions
+              canWrite={canWrite}
+              pending={archive.isPending || upload.isPending}
+              inputId={`reference-file-${row.uuid}`}
+              onRemove={() => void remove(row.uuid)}
+              onFile={(file) => void addFile(row.uuid, file)}
+            />
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function EmptyRow({ label }: { label: string }) {
+  return <p className="text-sm text-dash-muted">{label}</p>;
+}
+
+function CareSection({
+  title,
+  description,
+  testId,
+  canWrite,
+  addLabel,
+  startOpen,
+  form,
+  children,
+}: {
+  title: string;
+  description: string;
+  testId: string;
+  canWrite: boolean;
+  addLabel: string;
+  startOpen: boolean;
+  form: ReactNode;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(startOpen);
+
+  return (
+    <section className="space-y-3 border-t border-dash-border/70 pt-4" data-testid={testId}>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold text-brand-navy">{title}</h3>
+          <p className="mt-0.5 text-xs text-dash-muted">{description}</p>
+        </div>
+        {canWrite && !startOpen ? (
+          <button
+            type="button"
+            className="text-sm font-medium text-brand-primary"
+            onClick={() => setOpen((current) => !current)}
+          >
+            {open ? "Close" : addLabel}
+          </button>
+        ) : null}
+      </div>
+      {children}
+      {open && canWrite ? form : null}
+    </section>
+  );
+}
+
+export function ExternalCareRecords({
+  visitUuid,
+  encounterUuid,
+  canWrite,
+  showOutbound,
+}: ExternalCareRecordsProps) {
+  const hospitals = useEncounterOutsideHospitals(visitUuid, encounterUuid);
+  const transfers = useExternalTransfers(visitUuid, encounterUuid);
+  const references = useExternalReferences(visitUuid, encounterUuid);
+  const kinds = useEncounterReferenceKinds(visitUuid, encounterUuid);
+  const hospitalRows = hospitals.data ?? [];
+  const transferRows = transfers.data ?? [];
+  const inbound = transferRows.filter((row) => row.direction === "inbound");
+  const outbound = transferRows.filter((row) => row.direction === "outbound");
+  const referenceRows = references.data ?? [];
+  const kindRows = kinds.data ?? [];
+
+  return (
+    <div>
+      {showOutbound ? (
+        <CareSection
+          title="Sent to another hospital"
+          description="Saving this sets the outcome to referred."
+          testId="external-care-outbound"
+          canWrite={canWrite}
+          addLabel="Record referral"
+          startOpen
+          form={
+            <TransferForm
+              visitUuid={visitUuid}
+              encounterUuid={encounterUuid}
+              direction="outbound"
+              hospitals={hospitalRows}
+              disabled={hospitals.isLoading}
+            />
+          }
+        >
+          <TransferBody
+            visitUuid={visitUuid}
+            encounterUuid={encounterUuid}
+            rows={outbound}
+            canWrite={canWrite}
+            isLoading={transfers.isLoading}
+            isError={transfers.isError}
+          />
+        </CareSection>
+      ) : null}
+
+      <CareSection
+          title="Came from another hospital"
+          description="Record where this attendance started, if they were sent to us."
+          testId="external-care-inbound"
+          canWrite={canWrite}
+          addLabel="Record arrival"
+          startOpen={false}
+          form={
+            <TransferForm
+              visitUuid={visitUuid}
+              encounterUuid={encounterUuid}
+              direction="inbound"
+              hospitals={hospitalRows}
+              disabled={hospitals.isLoading}
+            />
+          }
+        >
+          <TransferBody
+            visitUuid={visitUuid}
+            encounterUuid={encounterUuid}
+            rows={inbound}
+            canWrite={canWrite}
+            isLoading={transfers.isLoading}
+            isError={transfers.isError}
+          />
+        </CareSection>
+
+        <CareSection
+          title="References"
+          description="Numbers this clinic quotes from somewhere else."
+          testId="external-care-references"
+          canWrite={canWrite}
+          addLabel="Add reference"
+          startOpen={false}
+          form={
+            <ReferenceForm
+              visitUuid={visitUuid}
+              encounterUuid={encounterUuid}
+              hospitals={hospitalRows}
+              kinds={kindRows}
+              disabled={kinds.isLoading}
+            />
+          }
+        >
+          {references.isLoading ? (
+            <EmptyRow label="Loading…" />
+          ) : references.isError ? (
+            <EmptyRow label="Could not load these records." />
+          ) : (
+            <ReferenceRows
+              visitUuid={visitUuid}
+              encounterUuid={encounterUuid}
+              rows={referenceRows}
+              canWrite={canWrite}
+            />
+          )}
+        </CareSection>
+      </div>
+  );
+}
+
+function TransferBody({
+  visitUuid,
+  encounterUuid,
+  rows,
+  canWrite,
+  isLoading,
+  isError,
+}: {
+  visitUuid: string;
+  encounterUuid: string;
+  rows: ExternalHospitalTransfer[];
+  canWrite: boolean;
+  isLoading: boolean;
+  isError: boolean;
+}) {
+  if (isLoading) return <EmptyRow label="Loading…" />;
+  if (isError) return <EmptyRow label="Could not load these records." />;
+  return (
+    <TransferRows
+      visitUuid={visitUuid}
+      encounterUuid={encounterUuid}
+      rows={rows}
+      canWrite={canWrite}
+    />
+  );
+}
+
+function TransferForm({
+  visitUuid,
+  encounterUuid,
+  direction,
+  hospitals,
+  disabled,
+}: {
+  visitUuid: string;
+  encounterUuid: string;
+  direction: "inbound" | "outbound";
+  hospitals: OutsideHospital[];
+  disabled: boolean;
+}) {
+  return (
+    <TransferRecordForm
+      visitUuid={visitUuid}
+      encounterUuid={encounterUuid}
+      direction={direction}
+      hospitals={hospitals}
+      disabled={disabled}
+    />
+  );
+}
+
+function ReferenceForm({
+  visitUuid,
+  encounterUuid,
+  hospitals,
+  kinds,
+  disabled,
+}: {
+  visitUuid: string;
+  encounterUuid: string;
+  hospitals: OutsideHospital[];
+  kinds: ExternalReferenceKind[];
+  disabled: boolean;
+}) {
+  return (
+    <ReferenceRecordForm
+      visitUuid={visitUuid}
+      encounterUuid={encounterUuid}
+      hospitals={hospitals}
+      kinds={kinds}
+      disabled={disabled}
+    />
+  );
+}

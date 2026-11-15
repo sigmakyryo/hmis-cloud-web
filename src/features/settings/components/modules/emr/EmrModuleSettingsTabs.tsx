@@ -22,16 +22,19 @@ import {
   useUpdateRoleCapabilities,
 } from "@/features/clinical-opd/hooks/use-clinical-opd";
 import { SettingsContentSkeleton } from "@/features/settings/components/SettingsContentSkeleton";
+import { EmrOutsideCareTab } from "@/features/settings/components/modules/emr/EmrOutsideCareTab";
 
-export type EmrModuleTabId = "providers" | "capabilities";
+export type EmrModuleTabId = "providers" | "capabilities" | "outside-care";
 
 const TABS: Array<{ id: EmrModuleTabId; label: string }> = [
   { id: "providers", label: "Providers" },
   { id: "capabilities", label: "Role capabilities" },
+  { id: "outside-care", label: "Outside hospitals" },
 ];
 
 function parseTab(value: string | null): EmrModuleTabId {
-  return value === "capabilities" ? "capabilities" : "providers";
+  if (value === "capabilities" || value === "outside-care") return value;
+  return "providers";
 }
 
 export function EmrModuleSettingsTabs() {
@@ -66,6 +69,7 @@ export function EmrModuleSettingsTabs() {
       <div className="pt-6">
         {activeTab === "providers" ? <ClinicalStaffRolesSection /> : null}
         {activeTab === "capabilities" ? <RoleCapabilitiesTab /> : null}
+        {activeTab === "outside-care" ? <EmrOutsideCareTab /> : null}
       </div>
     </div>
   );

@@ -314,6 +314,50 @@ export const BFF_CLINICAL_OPD_ROUTES = {
     `/api/clinical/opd/visits/${visitUuid}/encounters/${encounterUuid}/current-medications/${medicationUuid}`,
   encounterDisposition: (visitUuid: string, encounterUuid: string) =>
     `/api/clinical/opd/visits/${visitUuid}/encounters/${encounterUuid}/disposition`,
+  outsideHospitals: "/api/clinical/outside-hospitals",
+  outsideHospital: (hospitalUuid: string) =>
+    `/api/clinical/outside-hospitals/${hospitalUuid}`,
+  externalReferenceKinds: "/api/clinical/external-reference-kinds",
+  externalReferenceKind: (kindUuid: string) =>
+    `/api/clinical/external-reference-kinds/${kindUuid}`,
+  encounterOutsideHospitals: (visitUuid: string, encounterUuid: string) =>
+    `/api/clinical/opd/visits/${visitUuid}/encounters/${encounterUuid}/outside-hospitals`,
+  encounterExternalReferenceKinds: (visitUuid: string, encounterUuid: string) =>
+    `/api/clinical/opd/visits/${visitUuid}/encounters/${encounterUuid}/external-reference-kinds`,
+  encounterExternalTransfers: (visitUuid: string, encounterUuid: string) =>
+    `/api/clinical/opd/visits/${visitUuid}/encounters/${encounterUuid}/external-transfers`,
+  encounterExternalTransferArchive: (
+    visitUuid: string,
+    encounterUuid: string,
+    transferUuid: string,
+  ) =>
+    `/api/clinical/opd/visits/${visitUuid}/encounters/${encounterUuid}/external-transfers/${transferUuid}/archive`,
+  encounterExternalTransferDocuments: (
+    visitUuid: string,
+    encounterUuid: string,
+    transferUuid: string,
+  ) =>
+    `/api/clinical/opd/visits/${visitUuid}/encounters/${encounterUuid}/external-transfers/${transferUuid}/documents`,
+  encounterExternalReferences: (visitUuid: string, encounterUuid: string) =>
+    `/api/clinical/opd/visits/${visitUuid}/encounters/${encounterUuid}/external-references`,
+  encounterExternalReferenceArchive: (
+    visitUuid: string,
+    encounterUuid: string,
+    referenceUuid: string,
+  ) =>
+    `/api/clinical/opd/visits/${visitUuid}/encounters/${encounterUuid}/external-references/${referenceUuid}/archive`,
+  encounterExternalReferenceDocuments: (
+    visitUuid: string,
+    encounterUuid: string,
+    referenceUuid: string,
+  ) =>
+    `/api/clinical/opd/visits/${visitUuid}/encounters/${encounterUuid}/external-references/${referenceUuid}/documents`,
+  encounterExternalCareDocumentDownload: (
+    visitUuid: string,
+    encounterUuid: string,
+    documentUuid: string,
+  ) =>
+    `/api/clinical/opd/visits/${visitUuid}/encounters/${encounterUuid}/external-care-documents/${documentUuid}/download`,
 } as const;
 
 /** Browser-facing BFF occupational health routes (same origin). */

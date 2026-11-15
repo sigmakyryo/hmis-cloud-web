@@ -191,7 +191,10 @@ describe("OhHomePage", () => {
 
     const detail = screen.getByTestId("oh-home-module-detail");
     expect(within(detail).getByRole("heading", { name: "OHS clinic" })).toBeInTheDocument();
-    expect(within(detail).getByRole("link", { name: "Open queue" })).toHaveAttribute("href", ROUTES.occupationalHealth);
+    expect(within(detail).getByRole("link", { name: "Open queue" })).toHaveAttribute(
+      "href",
+      `${ROUTES.occupationalHealthHome}?module=queue`,
+    );
     expect(within(detail).getByText("No visits in the queue.")).toBeInTheDocument();
     expect(within(detail).getByRole("link", { name: /^Employees/ })).toHaveAttribute("href", ROUTES.occupationalHealthEmployees);
     expect(screen.getByTestId("oh-home-module-clinic")).toHaveAttribute("aria-pressed", "true");
@@ -225,6 +228,37 @@ describe("OhHomePage", () => {
     const compliance = screen.getByTestId("oh-home-compliance");
     expect(compliance).toHaveTextContent("10 of 16 checks up to date");
     expect(within(compliance).getByTestId("oh-home-section-count")).toHaveTextContent(/63\s?% of checks up to date/);
+  });
+
+  it("shows three people in the clinic and the whole queue on its own tab", () => {
+    data.encounters = Array.from({ length: 4 }, (_, index) => ({
+      uuid: `enc-${index}`,
+      visit: `visit-${index}`,
+      customer_name: `Person ${index}`,
+      status: "waiting",
+      started_at: new Date(Date.now() - (index + 1) * 60_000).toISOString(),
+      created_at: new Date().toISOString(),
+    }));
+
+    const { unmount } = render(<OhHomePage />);
+
+    expect(screen.getAllByTestId("oh-home-queue-row")).toHaveLength(3);
+    expect(screen.getByText(/and 1 more in the queue/)).toBeInTheDocument();
+    const tabs = screen.getByRole("navigation", { name: "Modules" });
+    const labels = within(tabs).getAllByRole("button").map((button) => button.textContent);
+    const clinicIndex = labels.findIndex((label) => label?.includes("OHS clinic"));
+    expect(labels[clinicIndex + 1]).toContain("Queue");
+
+    fireEvent.click(screen.getByTestId("oh-home-module-queue"));
+    expect(nav.replace).toHaveBeenCalledWith("/occupational-health/home?module=queue", { scroll: false });
+
+    unmount();
+    nav.search = "module=queue";
+    render(<OhHomePage />);
+
+    expect(screen.getByTestId("oh-home-module-queue")).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByTestId("oh-home-module-clinic")).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getAllByTestId("oh-queue-board-row")).toHaveLength(4);
   });
 
   it("immunizations leads with overall coverage and what needs a dose", async () => {

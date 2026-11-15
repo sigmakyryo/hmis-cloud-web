@@ -4,7 +4,7 @@ import { OhEmploymentForm } from "@/features/occupational-health/components/OhEm
 import { OhEmploymentRecords } from "@/features/occupational-health/components/OhEmploymentRecords";
 import { OhEmployeeImmunizationsPanel } from "@/features/occupational-health/components/OhEmployeeImmunizationsPanel";
 import { OhDrugAlcoholVisitPanel } from "@/features/occupational-health/components/OhDrugAlcoholVisitPanel";
-import { OhFitnessVisitPanel } from "@/features/occupational-health/components/OhFitnessVisitPanel";
+import { OhFitnessWorkspace } from "@/features/occupational-health/components/OhFitnessWorkspace";
 import { OhHealthChecksVisitPanel } from "@/features/occupational-health/components/OhHealthChecksVisitPanel";
 import { OhIodVisitPanel } from "@/features/occupational-health/components/OhIodVisitPanel";
 import { OhFormSetupRequired } from "@/features/occupational-health/components/OhFormSetupRequired";
@@ -129,11 +129,20 @@ export function OhEncounterContextPanel({
             }}
           />
         ) : customer?.uuid ? (
-          <OhFitnessVisitPanel
-            customerUuid={customer.uuid}
-            onOpenPanel={onOpenPanel}
-            certificates={workspace.fitnessCertificates}
-            assessments={workspace.fitness}
+          <OhFitnessWorkspace
+            encounter={encounter}
+            customer={customer}
+            episodes={episodes}
+            workspace={workspace}
+            completionRef={completionRef}
+            cofCompletionRef={cofCompletionRef}
+            employeeContinueRef={employeeContinueRef}
+            completing={completing}
+            focusedExamUuid={focusedExamUuid}
+            examFocusRequest={examFocusRequest}
+            onActiveExamChange={onActiveExamChange}
+            onManageEmployment={onManageEmployment}
+            navSlot={navSlot}
           />
         ) : (
           <p className="text-[13px] text-dash-muted">Customer is required to show fitness for duty.</p>

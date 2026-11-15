@@ -17,7 +17,7 @@ import { isIodVisit, ohQueueEntryHref } from "@/features/occupational-health/lib
 import type { OhVisitEncounter } from "@/features/occupational-health/types";
 import { cn } from "@/lib/utils";
 
-const QUEUE_PREVIEW = 6;
+const QUEUE_PREVIEW = 3;
 const ACTIVE = new Set(["waiting", "in_progress"]);
 
 function QueueRow({ encounter }: { encounter: OhVisitEncounter }) {
@@ -68,7 +68,7 @@ export function OhClinicView() {
         testId="oh-home-queue"
         action={
           <div className="flex items-center gap-4">
-            <Link href={ROUTES.occupationalHealth} className="text-[13px] font-medium text-brand-primary hover:underline">
+            <Link href={`${ROUTES.occupationalHealthHome}?module=queue`} className="text-[13px] font-medium text-brand-primary hover:underline">
               Open queue
             </Link>
             <OhStartVisitEntry />
