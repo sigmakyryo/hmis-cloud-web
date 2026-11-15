@@ -11,6 +11,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { OhEncounterWorkspacePage } from "@/features/occupational-health/pages/OhEncounterWorkspacePage";
 
+const fetchOhIodApplicability = vi.hoisted(() =>
+  vi.fn(async () => ({ cof: false, exam: false, visit_type_codes: [] as string[] })),
+);
+
+vi.mock("@/features/occupational-health/services/oh-iod-applicability.service", () => ({
+  fetchOhIodApplicability,
+  updateOhIodApplicability: vi.fn(),
+}));
+
 const ohService = vi.hoisted(() => ({
   fetchOhEncounters: vi.fn(),
   fetchOhEncounter: vi.fn(),
@@ -176,6 +185,12 @@ function renderPage(options?: { panel?: string | null }) {
 }
 
 beforeEach(() => {
+  fetchOhIodApplicability.mockReset();
+  fetchOhIodApplicability.mockResolvedValue({
+    cof: false,
+    exam: false,
+    visit_type_codes: [],
+  });
   useUserMock.mockReturnValue({
     isLoading: false,
     userData: {
@@ -487,6 +502,52 @@ describe("OhEncounterWorkspacePage", () => {
     await waitFor(() => expect(sheet).toHaveAttribute("data-width", "half"));
     fireEvent.click(within(sheet).getByRole("button", { name: "Back" }));
     await waitFor(() => expect(sheet).toHaveAttribute("data-width", "regular"));
+  });
+
+  it("opens injury on duty from readiness when the visit type is allowed", async () => {
+    const { fetchFitWorker } = await import(
+      "@/features/occupational-health/services/fitness.service"
+    );
+    vi.mocked(fetchFitWorker).mockResolvedValue({
+      customer_uuid: "cust-1",
+      worker_label: "Jane Doe",
+      employee_number: "",
+      employer_uuid: null,
+      employer_name: "",
+      site: "",
+      department: "",
+      job_title: "",
+      overall: "unknown",
+      reasons: [],
+      restrictions: [],
+      earliest_expiry: null,
+      items: [],
+      zones: [],
+      role_clearance: { job_title: "", status: "unknown" },
+      computed_at: "2026-11-13T12:00:00Z",
+    });
+    fetchOhIodApplicability.mockResolvedValue({
+      cof: false,
+      exam: false,
+      visit_type_codes: ["return_to_work"],
+    });
+    ohService.fetchOhEncounter.mockResolvedValue({
+      ...ENCOUNTER,
+      visit_type: {
+        uuid: "vt-rtw",
+        code: "return_to_work",
+        name: "Return to work",
+        forms: [],
+      },
+    });
+    renderPage({ panel: "fitness" });
+
+    const iod = await screen.findByTestId("oh-fit-check-iod");
+    expect(iod).toHaveTextContent("Not started");
+    fireEvent.click(within(iod).getByRole("button", { name: "Open" }));
+    const sheet = await screen.findByRole("dialog", { name: "Injury on duty" });
+    expect(within(sheet).getByTestId("oh-iod-visit-empty")).toBeInTheDocument();
+    expect(window.location.search).toBe("?panel=fitness");
   });
 
   it("loads the OH encounter directly without a Django visit lookup", async () => {

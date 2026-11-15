@@ -8,16 +8,18 @@ import { OhEmployerSettingsPage } from "@/features/settings/components/modules/o
 import { OhEmployersSettingsTab } from "@/features/settings/components/modules/occupational-health/OhEmployersSettingsTab";
 import { OhVisitTypesSettingsTab } from "@/features/settings/components/modules/occupational-health/OhVisitTypesSettingsTab";
 import { OhDispensingSettingsTab } from "@/features/settings/components/modules/occupational-health/OhDispensingSettingsTab";
+import { OhIodSettingsTab } from "@/features/settings/components/modules/occupational-health/OhIodSettingsTab";
 import { OhWorkspaceSettingsTab } from "@/features/settings/components/modules/occupational-health/OhWorkspaceSettingsTab";
 import { cn } from "@/lib/utils";
 
-export type OhModuleTabId = "employers" | "visit-types" | "dispensing" | "workspace";
+export type OhModuleTabId = "employers" | "visit-types" | "dispensing" | "workspace" | "iod";
 
 export const OH_MODULE_TABS: Array<{ id: OhModuleTabId; label: string }> = [
   { id: "employers", label: "Employers" },
   { id: "visit-types", label: "Visit services" },
   { id: "dispensing", label: "Dispensing" },
   { id: "workspace", label: "Workspace" },
+  { id: "iod", label: "Injury on duty" },
 ];
 
 function parseTab(value: string | null): OhModuleTabId {
@@ -81,6 +83,7 @@ function OhModuleSettingsTabsInner() {
         <OhVisitTypesSettingsTab isActive={activeTab === "visit-types"} />
         <OhDispensingSettingsTab isActive={activeTab === "dispensing"} />
         <OhWorkspaceSettingsTab isActive={activeTab === "workspace"} />
+        <OhIodSettingsTab isActive={activeTab === "iod"} />
       </div>
     </div>
   );

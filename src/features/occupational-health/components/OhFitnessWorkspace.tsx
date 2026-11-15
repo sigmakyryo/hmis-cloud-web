@@ -16,9 +16,12 @@ import {
   type PreEmploymentRecord,
 } from "@/features/occupational-health/components/OhFitnessVisitPanel";
 import { OhHealthChecksVisitPanel } from "@/features/occupational-health/components/OhHealthChecksVisitPanel";
+import { OhIodVisitPanel } from "@/features/occupational-health/components/OhIodVisitPanel";
 import { OhSessionEmployeeForm } from "@/features/occupational-health/components/OhSessionEmployeeForm";
 import { OhSessionForms } from "@/features/occupational-health/components/OhSessionForms";
 import type { useOhEncounterWorkspaceData } from "@/features/occupational-health/hooks/use-occupational-health";
+import { useOhIodApplicability } from "@/features/occupational-health/hooks/use-oh-iod-applicability";
+import { iodApplies } from "@/features/occupational-health/lib/oh-iod-applicability";
 import type { OhEncounterPanelId } from "@/features/occupational-health/lib/oh-encounter-modules";
 import { employeeFormStatus } from "@/features/occupational-health/lib/oh-session-forms";
 import type { Customer } from "@/features/customers/types/customer.types";
@@ -33,7 +36,8 @@ type FitnessSheet =
   | "certificate"
   | "immunizations"
   | "drug-alcohol"
-  | "health-checks";
+  | "health-checks"
+  | "injuries";
 
 const SHEET_TITLE: Record<FitnessSheet, string> = {
   medical: "Medical",
@@ -42,6 +46,7 @@ const SHEET_TITLE: Record<FitnessSheet, string> = {
   immunizations: "Immunizations",
   "drug-alcohol": "Drug & alcohol",
   "health-checks": "Health checks",
+  injuries: "Injury on duty",
 };
 
 type OhFitnessWorkspaceProps = {
@@ -78,6 +83,10 @@ export function OhFitnessWorkspace({
 }: OhFitnessWorkspaceProps) {
   const [sheet, setSheet] = useState<FitnessSheet | null>(null);
   const [employeeManual, setEmployeeManual] = useState(false);
+  const iodSetting = useOhIodApplicability();
+  const showIod =
+    iodSetting.isReady && iodApplies(iodSetting.setting, encounter.visit_type?.code);
+  const iodCase = workspace.iodCases[0] ?? null;
   const wide = sheet === "medical" || (sheet === "employee" && employeeManual);
   const examDownload = sheet === "medical" ? filledExamination(workspace.examinations) : null;
   const preEmployment = encounter.visit_type?.code === "pre_employment";
@@ -99,6 +108,7 @@ export function OhFitnessWorkspace({
         }
         certificates={workspace.fitnessCertificates}
         assessments={workspace.fitness}
+        iod={showIod ? { status: iodCase?.status ?? null } : null}
       />
       <Sheet
         open={sheet !== null}
@@ -130,7 +140,9 @@ export function OhFitnessWorkspace({
                     ? "Examination for this visit. Fitness stays open beside it."
                     : sheet === "employee"
                       ? "Answer the questions in clinic, or send them to the employee."
-                      : "Closes back to fitness."}
+                      : sheet === "injuries"
+                        ? "Record the workplace injury for this visit."
+                        : "Closes back to fitness."}
                 </SheetDescription>
               </div>
               {examDownload ? (
@@ -191,6 +203,18 @@ export function OhFitnessWorkspace({
             {sheet === "health-checks" ? (
               <div className="px-5 py-4">
                 <OhHealthChecksVisitPanel customerUuid={customer.uuid} encounterUuid={encounter.uuid} />
+              </div>
+            ) : null}
+            {sheet === "injuries" ? (
+              <div className="px-5 py-4">
+                <OhIodVisitPanel
+                  customer={customer}
+                  encounter={encounter}
+                  iodCases={workspace.iodCases}
+                  onRefresh={() => {
+                    void workspace.refetchAll();
+                  }}
+                />
               </div>
             ) : null}
           </div>
@@ -268,6 +292,8 @@ function sheetForPanel(panel: OhEncounterPanelId): FitnessSheet | null {
       return "drug-alcohol";
     case "health-checks":
       return "health-checks";
+    case "injuries":
+      return "injuries";
     default:
       return null;
   }

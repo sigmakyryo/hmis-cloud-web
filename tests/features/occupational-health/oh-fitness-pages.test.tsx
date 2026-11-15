@@ -282,7 +282,36 @@ it("visit panel shows a Go to exam action and empty checklist when nothing is on
   fireEvent.click(within(screen.getByTestId("oh-fit-check-medical")).getByRole("button", { name: "Exam" }));
   expect(onOpenPanel).toHaveBeenCalledWith("medical-examinations");
   expect(screen.queryByTestId("oh-fit-restrictions")).toBeNull();
+  expect(screen.queryByTestId("oh-fit-check-iod")).toBeNull();
   expect(screen.queryByTestId("oh-fit-cert-history")).toBeNull();
+});
+
+it("visit panel shows injury on duty before the certificate when the visit allows it", async () => {
+  const onOpenPanel = vi.fn();
+  renderWith(
+    <OhFitnessVisitPanel
+      customerUuid={CU}
+      onOpenPanel={onOpenPanel}
+      iod={{ status: null }}
+    />,
+  );
+  const checklist = await screen.findByTestId("oh-fit-checklist");
+  const iod = within(checklist).getByTestId("oh-fit-check-iod");
+  const certificate = within(checklist).getByTestId("oh-fit-check-certificate");
+  expect(iod.compareDocumentPosition(certificate) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(iod).toHaveTextContent("Not started");
+  expect(iod).toHaveTextContent("Open to record the injury.");
+  expect(checklist).toHaveTextContent("1 of 6 done");
+  fireEvent.click(within(iod).getByRole("button", { name: "Open" }));
+  expect(onOpenPanel).toHaveBeenCalledWith("injuries");
+});
+
+it("visit panel marks injury on duty recorded when a case exists", async () => {
+  renderWith(<OhFitnessVisitPanel customerUuid={CU} iod={{ status: "under_review" }} />);
+  const iod = await screen.findByTestId("oh-fit-check-iod");
+  expect(iod).toHaveAttribute("data-status", "recorded");
+  expect(iod).toHaveTextContent("Recorded");
+  expect(iod).toHaveTextContent("Under review");
 });
 
 it("visit panel shows an error state when fitness cannot be loaded", async () => {
