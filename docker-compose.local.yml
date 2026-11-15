@@ -1,0 +1,56 @@
+# Production-parity smoke stack for the web frontend (no public TLS).
+# Usage:
+#   cp .envs/.production/.web.example .envs/.local/.web
+#   # point HMIS_API_URL at a reachable API (host.docker.internal or LAN)
+#   docker compose -f docker-compose.local.yml up --build
+name: hmis-web-local
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: ./compose/production/nextjs/Dockerfile
+      args:
+        NEXT_PUBLIC_APP_HOST: ${NEXT_PUBLIC_APP_HOST:-app.localhost}
+        NEXT_PUBLIC_MARKETING_HOST: ${NEXT_PUBLIC_MARKETING_HOST:-localhost}
+        NEXT_PUBLIC_ASSET_PREFIX: ${NEXT_PUBLIC_ASSET_PREFIX:-}
+        NEXT_PUBLIC_DISABLE_HOST_ROUTING: ${NEXT_PUBLIC_DISABLE_HOST_ROUTING:-}
+    image: hmis_web_local
+    restart: unless-stopped
+    init: true
+    env_file:
+      - path: ./.envs/.local/.web
+        required: false
+      - path: ./.envs/.production/.web
+        required: false
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+      NEXT_TELEMETRY_DISABLED: "1"
+      # Default to the host machine API when no env file is present.
+      HMIS_API_URL: ${HMIS_API_URL:-http://host.docker.internal:8000/api/v1}
+      OH_SERVICE_URL: ${OH_SERVICE_URL:-}
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 45s
+      retries: 5
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+      - /app/.next/cache:size=256m,uid=1001,gid=1001,mode=1777
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"

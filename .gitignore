@@ -37,3 +37,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .env
+
+# Docker Compose secrets (keep *.example tracked)
+.envs/*
+!.envs/.local/
+!.envs/.local/.web.example
+!.envs/.production/
+!.envs/.production/.web.example

@@ -1,0 +1,19 @@
+#!/bin/sh
+set -eu
+
+# Fail fast when the BFF cannot reach Django. Optional OH_SERVICE_URL is
+# checked only when occupational-health routes are hit at runtime.
+if [ -z "${HMIS_API_URL:-}" ]; then
+  echo "HMIS_API_URL is required (e.g. https://api.sigmahmis.com/api/v1)" >&2
+  exit 1
+fi
+
+case "${HMIS_API_URL}" in
+  */api/v1|*/api/v1/) ;;
+  *)
+    echo "HMIS_API_URL must include the /api/v1 prefix: got '${HMIS_API_URL}'" >&2
+    exit 1
+    ;;
+esac
+
+exec node server.js

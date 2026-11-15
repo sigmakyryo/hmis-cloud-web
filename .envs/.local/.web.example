@@ -1,0 +1,6 @@
+# Local production-parity smoke test.
+#   mkdir -p .envs/.local && cp .envs/.local/.web.example .envs/.local/.web
+#
+# host.docker.internal reaches the API on the developer machine.
+HMIS_API_URL=http://host.docker.internal:8000/api/v1
+OH_SERVICE_URL=

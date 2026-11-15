@@ -1,0 +1,91 @@
+log:
+  level: INFO
+
+api:
+  dashboard: false
+  insecure: false
+
+ping: {}
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: web-secure
+          scheme: https
+          permanent: true
+
+  web-secure:
+    address: ":443"
+    http:
+      middlewares:
+        - security-headers@file
+        - compress@file
+    transport:
+      respondingTimeouts:
+        readTimeout: 0s
+        writeTimeout: 0s
+        idleTimeout: 180s
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: owen@sigmagroupmw.com
+      storage: /etc/traefik/acme/acme.json
+      httpChallenge:
+        entryPoint: web
+
+http:
+  middlewares:
+    security-headers:
+      headers:
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+        forceSTSHeader: true
+        contentTypeNosniff: true
+        browserXssFilter: true
+        referrerPolicy: strict-origin-when-cross-origin
+        frameDeny: true
+        customResponseHeaders:
+          Permissions-Policy: "camera=(), microphone=(), geolocation=()"
+          X-Permitted-Cross-Domain-Policies: none
+
+    compress:
+      compress: {}
+
+  routers:
+    # Clinic app host
+    app-secure:
+      rule: Host(`app.sigmahmis.com`)
+      entryPoints:
+        - web-secure
+      service: nextjs
+      tls:
+        certResolver: letsencrypt
+
+    # Marketing apex + www
+    marketing-secure:
+      rule: Host(`sigmahmis.com`) || Host(`www.sigmahmis.com`)
+      entryPoints:
+        - web-secure
+      service: nextjs
+      tls:
+        certResolver: letsencrypt
+
+  services:
+    nextjs:
+      loadBalancer:
+        healthCheck:
+          path: /api/health
+          interval: 15s
+          timeout: 5s
+        servers:
+          - url: http://web:3000
+
+providers:
+  file:
+    filename: /etc/traefik/traefik.yml
+    watch: true

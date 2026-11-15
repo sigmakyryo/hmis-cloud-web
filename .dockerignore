@@ -1,0 +1,49 @@
+# Git / IDE / CI
+.git
+.github
+.agents
+.claude
+.idea
+.vscode
+**/.DS_Store
+
+# Env and secrets — never bake into the image
+.env
+.env.*
+!.env.example
+.envs
+
+# Dependencies and build output (rebuilt in-image)
+node_modules
+.next
+out
+build
+coverage
+test-results
+playwright-report
+blob-report
+playwright/.cache
+
+# Tests and local tooling
+tests
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+playwright.config.ts
+playwright.*.config.ts
+vitest.config.ts
+eslint.config.mjs
+.pre-commit-config.yaml
+tsconfig.tsbuildinfo
+
+# Docs and non-runtime assets
+docs
+font_docs
+README.md
+AGENTS.md
+skills-lock.json
+
+# Compose files themselves are not needed in the Next build context,
+# but start/traefik assets under compose/production are COPY'd into images.
+docker-compose*.yml

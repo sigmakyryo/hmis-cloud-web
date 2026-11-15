@@ -1,0 +1,11 @@
+# Copy to .web (not committed) before `docker compose -f docker-compose.production.yml up`.
+#   cp .envs/.production/.web.example .envs/.production/.web
+
+# ---------------------------------------------------------------------------
+# Server-only upstreams (BFF). Never expose these as NEXT_PUBLIC_*.
+# ---------------------------------------------------------------------------
+HMIS_API_URL=https://api.sigmahmis.com/api/v1
+OH_SERVICE_URL=https://ohs.sigmahmis.com
+
+# Optional Node tuning
+# NODE_OPTIONS=--max-old-space-size=1536
