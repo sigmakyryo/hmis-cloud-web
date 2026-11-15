@@ -58,9 +58,9 @@ export function OhClinicInjuries({ summary }: { summary: SummaryQuery }) {
               <span className="text-[12.5px] text-dash-muted/80">in 30 days</span>
             </p>
             {iod.recent.length === 0 ? (
-              <p className="border-y border-dash-border/70 py-5 text-[13.5px] text-dash-muted">No open injury cases.</p>
+              <p className="py-4 text-[13.5px] text-dash-muted">No open injury cases.</p>
             ) : (
-              <ul className="border-t border-dash-border/70">
+              <ul>
                 {iod.recent.map((item) => {
                   const days = daysOpen(item.onset_date);
                   return (
@@ -68,15 +68,15 @@ export function OhClinicInjuries({ summary }: { summary: SummaryQuery }) {
                       <Link
                         href={ROUTES.occupationalHealthRecord("iod", item.uuid)}
                         data-testid="oh-home-iod-case"
-                        className="group grid grid-cols-[4.75rem_minmax(0,1fr)_auto] items-center gap-x-3 py-2.5 focus-visible:outline-none"
+                        className="group grid grid-cols-[5.5rem_minmax(0,1fr)_auto] items-center gap-x-3 py-2.5 focus-visible:outline-none"
                       >
                         <span className={cn("justify-self-start rounded-md px-1.5 py-0.5 text-[11.5px] font-semibold", SEVERITY[item.severity] ?? "bg-dash-canvas text-brand-slate")}>
                           {sentence(item.severity) || "Unrated"}
                         </span>
                         <span className="min-w-0">
-                          <span className="block truncate text-[14px] font-medium text-brand-navy group-hover:text-brand-primary group-focus-visible:underline">{item.body_part || sentence(item.mechanism) || "Details not recorded"}</span>
+                          <span className="block truncate text-[14px] font-medium text-brand-navy group-hover:text-brand-primary group-focus-visible:underline">{item.body_part || "Injury"}</span>
                           <span className="block truncate text-[12.5px] text-dash-muted">
-                            {[item.body_part ? item.mechanism : "", `reported ${shortDate(item.onset_date)}`].filter(Boolean).join(" · ")}
+                            {[item.mechanism, shortDate(item.onset_date)].filter((part) => part && part !== "—").join(" · ")}
                           </span>
                         </span>
                         <span className="text-right">
