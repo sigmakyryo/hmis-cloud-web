@@ -18,6 +18,12 @@ const toast = vi.hoisted(() => vi.fn());
 vi.mock("@/features/occupational-health/services/oh-ext.service", () => ext);
 vi.mock("@/features/occupational-health/services/oh.service", () => ({ downloadOhComplianceExtract: vi.fn() }));
 vi.mock("@/providers/toast-provider", () => ({ useToast: () => ({ toast }) }));
+const nav = vi.hoisted(() => ({ search: "" }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
+  usePathname: () => "/occupational-health/surveillance",
+  useSearchParams: () => new URLSearchParams(nav.search),
+}));
 vi.mock("@/features/appointments/components/CreateAppointmentDialog", () => ({
   CreateAppointmentDialog: ({ customer }: { customer: { full_name: string } }) => <div data-testid="appointment-dialog">{customer.full_name}</div>,
 }));
@@ -85,6 +91,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  nav.search = "";
 });
 
 const workerNames = () => screen.getAllByTestId("oh-worklist-row").map((r) => within(r).getAllByRole("button")[0].textContent);
@@ -93,11 +100,12 @@ describe("OhSurveillancePage", () => {
   it("shows KPIs with deltas, the certificate alert strip and the worklist", async () => {
     renderPage();
     expect(screen.getByTestId("oh-surveillance-page")).toBeInTheDocument();
-    expect(await screen.findByText("84%")).toBeInTheDocument();
-    expect(screen.getByLabelText("+3 vs previous 30")).toBeInTheDocument();
-    expect(screen.getByLabelText("+4.2 pts vs prior 3 months")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId("oh-kpi-completed")).toHaveTextContent("12 done in 30 days (+3)"));
+    expect(screen.getByTestId("oh-kpi-compliance")).toHaveTextContent("84% compliance, 3 months (+4.2 pts)");
+    expect(screen.getByTestId("oh-kpi-overdue")).toHaveTextContent("1Overdue1 over 30 days");
+    expect(screen.getByTestId("oh-kpi-due30")).toHaveTextContent("1Next 30 days1 this week");
     expect(screen.getByTestId("oh-fitness-validity-alerts")).toHaveTextContent("Cert Holder");
-    expect(screen.getByText("Due & overdue requirements")).toBeInTheDocument();
+    expect(screen.getByText("Due and overdue checks")).toBeInTheDocument();
     expect(screen.getByTestId("oh-campaign-queue-section")).toBeInTheDocument();
     expect(workerNames()).toEqual(["Jane Doe", "Bob Banda", "Alice Phiri"]);
     expect(screen.getByText("40 days overdue")).toBeInTheDocument();
@@ -176,8 +184,44 @@ describe("OhSurveillancePage", () => {
     ext.fetchComplianceInsights.mockRejectedValue(new Error("Insights offline"));
     renderPage();
     expect(screen.getByText("No due or overdue requirements. Everyone is up to date.")).toBeInTheDocument();
-    expect((await screen.findAllByText("Insights offline")).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole("button", { name: /Try again/ }).length).toBeGreaterThan(0);
+    const alert = await screen.findByText(/Trends could not be loaded/);
+    expect(alert).toHaveTextContent("these counts come from the worklist");
+    expect(screen.getByTestId("oh-kpi-open")).toHaveTextContent("0open checks");
+    fireEvent.click(within(alert).getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(ext.fetchComplianceInsights.mock.calls.length).toBeGreaterThan(1));
+  });
+
+  it("filters the worklist from the due runway", async () => {
+    renderPage();
+    await screen.findAllByTestId("oh-worklist-row");
+
+    fireEvent.click(screen.getByTestId("oh-kpi-due30"));
+
+    expect(screen.getByTestId("oh-kpi-due30").getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByTestId("oh-kpi-open").getAttribute("aria-pressed")).toBe("false");
+    expect(workerNames()).toEqual(["Bob Banda"]);
+  });
+
+  it("plans clinic days by site and exam, and a cell lists exactly who is due", async () => {
+    renderPage();
+    await screen.findAllByTestId("oh-worklist-row");
+    const planner = screen.getByTestId("oh-clinic-day-planner");
+
+    const cell = within(planner).getByRole("button", { name: "Plant A, AUDIO: 1 open, 1 overdue" });
+    fireEvent.click(cell);
+    expect(cell.getAttribute("aria-pressed")).toBe("true");
+    expect(workerNames()).toEqual(["Jane Doe"]);
+
+    fireEvent.click(cell);
+    expect(workerNames()).toHaveLength(3);
+  });
+
+  it("starts the worklist from filters in the link", async () => {
+    nav.search = "site=North%20pit";
+    renderPage();
+
+    await screen.findAllByTestId("oh-worklist-row");
+    expect(workerNames()).toEqual(["Bob Banda"]);
   });
 });
 

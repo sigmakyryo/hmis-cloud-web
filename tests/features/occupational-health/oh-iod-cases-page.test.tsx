@@ -65,11 +65,13 @@ describe("OhIodCasesPage", () => {
     renderPage();
 
     const rows = await screen.findAllByTestId("oh-iod-row");
-    expect(rows[0]).toHaveTextContent("No treatment recorded");
-    expect(rows[0]).not.toHaveTextContent("No root cause");
+    // Worst first: the major and the under-review cases both have a response and a cause recorded.
+    expect(rows[0].querySelector("[data-testid='oh-iod-missing']")).toBeNull();
     expect(rows[1].querySelector("[data-testid='oh-iod-missing']")).toBeNull();
     expect(rows[2]).toHaveTextContent("No treatment recorded");
     expect(rows[2]).toHaveTextContent("No root cause");
+    // A closed case is never nagged about.
+    expect(rows[3].querySelector("[data-testid='oh-iod-missing']")).toBeNull();
   });
 
   it("opens a case from its row", async () => {

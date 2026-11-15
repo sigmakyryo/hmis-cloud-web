@@ -106,7 +106,10 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockApi();
 });
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 describe("IOD case detail page", () => {
   it("shows the case title, status, worker and the actions at the top", async () => {
@@ -124,6 +127,9 @@ describe("IOD case detail page", () => {
   });
 
   it("summarises notices and follow-ups in the facts strip and tab badges", async () => {
+    // Why: "open for" counts days since the incident, so the clock is pinned. Only Date is faked, so waiting still works.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 10, 14, 12, 0));
     renderPage();
     const facts = within(await screen.findByTestId("oh-iod-case-facts"));
     expect(facts.getByText("1 of 2 ready")).toBeTruthy();
