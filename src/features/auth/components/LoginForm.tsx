@@ -11,7 +11,6 @@ import { StatusBanner } from "@/components/ui/status-banner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { portalOrigin } from "@/constants/hosts";
 import { ROUTES } from "@/constants/routes";
 import { AuthOtpStep } from "@/features/auth/components/AuthOtpStep";
 import { AuthSplitLayout } from "@/features/auth/components/AuthSplitLayout";
@@ -67,8 +66,7 @@ function destinationForUser(user: User): string {
 
 async function leaveForCompanyPortal() {
   await logout();
-  const origin = portalOrigin();
-  window.location.assign(origin ? `${origin}/` : ROUTES.employerPortalSignIn);
+  window.location.assign(ROUTES.employerPortalSignIn);
 }
 
 function LoginSplitFrame({ children }: { children: ReactNode }) {

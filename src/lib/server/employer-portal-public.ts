@@ -10,6 +10,7 @@ import { ohServiceRequest } from "@/lib/server/oh-service";
  */
 const UUID = /^[0-9a-fA-F-]{32,36}$/;
 const TOKEN = /^[A-Za-z0-9_-]{20,128}$/;
+const WORKSPACE = /^[a-z0-9]+(?:-[a-z0-9]+)*-\d+$/;
 
 type Resolved = { path: string; method: "GET" | "POST" | "DELETE" };
 
@@ -23,6 +24,9 @@ const portalCookie = {
 
 export function resolvePublicPortalPath(method: string, segments: string[], search: URLSearchParams): Resolved | null {
   const joined = segments.join("/");
+  if (method === "GET" && segments.length === 2 && segments[0] === "workspaces" && WORKSPACE.test(segments[1] ?? "")) {
+    return { path: `/oh-portal-public/workspaces/${segments[1]}`, method: "GET" };
+  }
   if (method === "GET" && segments.length === 2 && segments[0] === "branding" && UUID.test(segments[1])) {
     return { path: `/oh-portal-public/branding/${segments[1]}`, method: "GET" };
   }

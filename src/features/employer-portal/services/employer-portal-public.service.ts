@@ -1,5 +1,5 @@
 import { BFF_OCCUPATIONAL_HEALTH_ROUTES } from "@/constants/api";
-import type { PortalBranding, PortalInviteInfo } from "@/features/employer-portal/services/employer-portal.service";
+import type { PortalBranding, PortalInviteInfo, PortalWorkspace } from "@/features/employer-portal/services/employer-portal.service";
 
 const BASE = BFF_OCCUPATIONAL_HEALTH_ROUTES.employerPortalPublic;
 
@@ -11,8 +11,9 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export type PortalSignInChoice = { tenant_uuid: string; organisation: string };
-export type PortalSignInResult = { email?: string; name?: string; choices?: PortalSignInChoice[] };
+export type PortalSignInResult = { email?: string; name?: string; workspace?: string; choices?: PortalSignInChoice[] };
 
+export const fetchWorkspace = (key: string) => call<PortalWorkspace>(`workspaces/${encodeURIComponent(key)}`);
 export const fetchPublicBranding = (tenantUuid: string) => call<PortalBranding>(`branding/${encodeURIComponent(tenantUuid)}`);
 export const fetchInvitation = (token: string) => call<PortalInviteInfo>(`invitation?token=${encodeURIComponent(token)}`);
 export const acceptInvitation = (body: { token: string; name?: string; password: string }) =>

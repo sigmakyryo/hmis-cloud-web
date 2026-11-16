@@ -10,19 +10,37 @@ import { ROUTES } from "@/constants/routes";
 import { fetchPortalMe, PORTAL_SCOPE_LABEL, type PortalMe, type PortalScope } from "@/features/employer-portal/services/employer-portal.service";
 import { cn } from "@/lib/utils";
 
-const PAGES: Array<{ scope: PortalScope; href: string; label?: string }> = [
-  { scope: "fitness", href: ROUTES.employerPortalFitness },
-  { scope: "fitness", href: ROUTES.employerPortalAnnual, label: "Annual summary" },
-  { scope: "random_compliance", href: ROUTES.employerPortalCompliance },
-  { scope: "invoices", href: ROUTES.employerPortalInvoices },
-  { scope: "requests", href: ROUTES.employerPortalRequests },
-  { scope: "users", href: ROUTES.employerPortalUsers },
+const PAGE_DEFS: Array<{ scope: PortalScope; page: string; label?: string }> = [
+  { scope: "fitness", page: "fitness" },
+  { scope: "fitness", page: "annual-summary", label: "Annual summary" },
+  { scope: "random_compliance", page: "random-compliance" },
+  { scope: "invoices", page: "invoices" },
+  { scope: "requests", page: "requests" },
+  { scope: "users", page: "users" },
 ];
+
+function portalPages(workspace?: string): Array<{ scope: PortalScope; href: string; label?: string }> {
+  if (!workspace) {
+    return [
+      { scope: "fitness", href: ROUTES.employerPortalFitness },
+      { scope: "fitness", href: ROUTES.employerPortalAnnual, label: "Annual summary" },
+      { scope: "random_compliance", href: ROUTES.employerPortalCompliance },
+      { scope: "invoices", href: ROUTES.employerPortalInvoices },
+      { scope: "requests", href: ROUTES.employerPortalRequests },
+      { scope: "users", href: ROUTES.employerPortalUsers },
+    ];
+  }
+  return PAGE_DEFS.map((page) => ({
+    scope: page.scope,
+    href: `/portal/${workspace}/${page.page}`,
+    label: page.label,
+  }));
+}
 
 const PortalContext = createContext<PortalMe | null>(null);
 export const usePortalMe = () => useContext(PortalContext);
 
-async function signOut() {
+async function signOut(destination: string) {
   try {
     await fetch(`${BFF_OCCUPATIONAL_HEALTH_ROUTES.employerPortalPublic}/session`, {
       method: "DELETE",
@@ -30,12 +48,13 @@ async function signOut() {
       cache: "no-store",
     });
   } finally {
-    window.location.replace("/");
+    window.location.replace(destination);
   }
 }
 
-export function PortalShell({ children }: { children: ReactNode }) {
+export function PortalShell({ children, workspace }: { children: ReactNode; workspace?: string }) {
   const pathname = usePathname();
+  const home = workspace ? `/portal/${workspace}` : "/";
   const me = useQuery({ queryKey: ["employer-portal", "me"], queryFn: fetchPortalMe, retry: false });
 
   if (me.isLoading) {
@@ -46,13 +65,13 @@ export function PortalShell({ children }: { children: ReactNode }) {
       <div className="px-5 py-10 text-[13px]" data-testid="employer-portal-no-access">
         <p className="font-medium text-brand-navy">This portal is for employer contacts.</p>
         <p className="mt-1 text-dash-muted">Ask the clinic to give your login access to your company&apos;s page.</p>
-        <button type="button" className="mt-4 text-primary underline" onClick={() => void signOut()}>
+        <button type="button" className="mt-4 text-primary underline" onClick={() => void signOut(home)}>
           Sign out
         </button>
       </div>
     );
   }
-  const pages = PAGES.filter((p) => me.data.scopes.includes(p.scope));
+  const pages = portalPages(workspace).filter((page) => me.data.scopes.includes(page.scope));
 
   return (
     <PortalContext.Provider value={me.data}>
@@ -74,7 +93,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
           </div>
           <div className="flex items-center gap-3 text-[13px] text-dash-muted">
             <span>{me.data.name}</span>
-            <button type="button" className="text-primary hover:underline" onClick={() => void signOut()}>
+            <button type="button" className="text-primary hover:underline" onClick={() => void signOut(home)}>
               Sign out
             </button>
           </div>

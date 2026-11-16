@@ -51,11 +51,19 @@ export type PortalInvitation = {
   created_at: string | null;
 };
 export type PortalInviteResult = { linked: boolean; invite?: PortalInvitation; accept_url?: string };
+export type PortalWorkspace = {
+  id: number;
+  uuid: string;
+  name: string;
+  key: string;
+};
+
 export type PortalInviteInfo = {
   email: string;
   name: string;
   employer_name: string;
   organisation: string;
+  workspace?: string;
   expires_at: string;
   branding: PortalBranding | null;
 };

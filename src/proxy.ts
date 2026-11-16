@@ -65,8 +65,39 @@ function isCompanyPortalRoute(pathname: string) {
     pathname.startsWith(`${ROUTES.employerPortal}/`) ||
     pathname === ROUTES.employerPortalJoin ||
     pathname.startsWith(`${ROUTES.employerPortalJoin}/`) ||
-    pathname === ROUTES.employerPortalSignIn
+    pathname === ROUTES.employerPortalSignIn ||
+    pathname === "/portal" ||
+    pathname.startsWith("/portal/")
   );
+}
+
+function gateCompanyPortal(request: NextRequest, pathname: string, signedIn: boolean) {
+  const match = pathname.match(/^\/portal\/([a-z0-9]+(?:-[a-z0-9]+)*)(\/.*)?$/);
+  if (match) {
+    const workspace = match[1] ?? "";
+    const rest = match[2] ?? "";
+    const isPublic = rest === "" || rest === "/join" || rest.startsWith("/join/");
+    if (!signedIn && !isPublic) {
+      return redirectSameOrigin(request, `/portal/${workspace}`);
+    }
+    if (signedIn && rest === "") {
+      return redirectSameOrigin(request, `/portal/${workspace}/fitness`);
+    }
+    return null;
+  }
+  if (
+    pathname === ROUTES.employerPortalJoin ||
+    pathname.startsWith(`${ROUTES.employerPortalJoin}/`)
+  ) {
+    return null;
+  }
+  if (pathname === ROUTES.employerPortalSignIn) {
+    return signedIn ? redirectSameOrigin(request, ROUTES.employerPortal) : null;
+  }
+  if (!signedIn) {
+    return redirectSameOrigin(request, ROUTES.employerPortalSignIn);
+  }
+  return null;
 }
 
 export function proxy(request: NextRequest) {
@@ -79,47 +110,15 @@ export function proxy(request: NextRequest) {
     request.headers.get("x-forwarded-host") ?? request.headers.get("host"),
   );
   const onPortalHost = Boolean(portalHost && isPortalHostname(host, portalHost));
-  const sessionActive = onPortalHost ? hasPortalSession(request) : hasSession(request);
+  const companyPortal = isCompanyPortalRoute(pathname);
+  const portalSession = hasPortalSession(request);
+  const sessionActive = companyPortal ? portalSession : hasSession(request);
   const hostRouting =
     isHostRoutingEnabled(appHost, marketingHost) &&
     !isPrivateNetworkHostname(host);
 
-  if (portalHost && isPortalHostname(host, portalHost)) {
-    if (pathname.startsWith("/api")) {
-      return applySecurityHeaders(NextResponse.next());
-    }
-    if (pathname === "/" || pathname === ROUTES.employerPortalSignIn) {
-      if (sessionActive) {
-        return redirectSameOrigin(request, ROUTES.employerPortal);
-      }
-      if (pathname === ROUTES.employerPortalSignIn) {
-        return redirectSameOrigin(request, "/");
-      }
-      const destination = request.nextUrl.clone();
-      destination.pathname = ROUTES.employerPortalSignIn;
-      return applySecurityHeaders(NextResponse.rewrite(destination));
-    }
-    if (
-      !sessionActive &&
-      (pathname === ROUTES.employerPortal ||
-        pathname.startsWith(`${ROUTES.employerPortal}/`))
-    ) {
-      return redirectSameOrigin(request, "/");
-    }
-    if (!isCompanyPortalRoute(pathname) && appHost) {
-      return redirectToHost(request, appHost, pathname, 308);
-    }
-  }
-
-  if (
-    portalHost &&
-    appHost &&
-    isAppHostname(host, appHost) &&
-    isCompanyPortalRoute(pathname)
-  ) {
-    const nextPath =
-      pathname === ROUTES.employerPortalSignIn ? "/" : pathname;
-    return redirectToHost(request, portalHost, nextPath, 308);
+  if (onPortalHost && !pathname.startsWith("/api") && appHost) {
+    return redirectToHost(request, appHost, pathname, 308);
   }
 
   if (hostRouting) {
@@ -140,6 +139,14 @@ export function proxy(request: NextRequest) {
         return redirectToHost(request, marketingHost, pathname, 308);
       }
     }
+  }
+
+  if (companyPortal) {
+    const gated = gateCompanyPortal(request, pathname, portalSession);
+    if (gated) {
+      return gated;
+    }
+    return applySecurityHeaders(NextResponse.next());
   }
 
   const isProtectedRoute = matchesRoute(pathname, PROTECTED_ROUTES);
