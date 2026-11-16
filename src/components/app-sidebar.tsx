@@ -1,8 +1,10 @@
 "use client";
 
 import { memo, useMemo, type ComponentProps } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { AppIcon } from "@/components/icons/app-icon";
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
 import { TeamSwitcher } from "@/components/team-switcher";
@@ -12,9 +14,14 @@ import {
   SidebarFooter,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { AppHeaderNotifications } from "@/features/app-shell/components/AppHeaderNotifications";
-import { buildSidebarNavItems } from "@/features/app-shell/utils/build-sidebar-nav";
+import {
+  buildSidebarNavItems,
+  type SidebarNavItem,
+} from "@/features/app-shell/utils/build-sidebar-nav";
 import { useOhWorkspaceLayout } from "@/features/occupational-health/hooks/use-oh-workspace-layout";
 import { useUser } from "@/providers/user-provider";
 
@@ -26,10 +33,24 @@ const SidebarTeamSwitcher = memo(function SidebarTeamSwitcher() {
   );
 });
 
-const SidebarAccount = memo(function SidebarAccount() {
+const SidebarAccount = memo(function SidebarAccount({
+  employers,
+}: {
+  employers?: SidebarNavItem;
+}) {
   return (
     <SidebarFooter className="gap-0.5 px-2 pb-2 pt-1">
       <SidebarMenu>
+        {employers ? (
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={employers.isActive} tooltip={employers.title}>
+              <Link href={employers.url}>
+                {employers.icon ? <AppIcon name={employers.icon} /> : null}
+                <span>{employers.title}</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        ) : null}
         <AppHeaderNotifications />
       </SidebarMenu>
       <NavUser />
@@ -52,6 +73,7 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
     userData?.enabled_modules ?? [],
     layout.isReady ? layout.included : undefined,
   );
+  const employers = navItems.find((item) => item.section === "account");
 
   return (
     <Sidebar collapsible="icon" className="border-r border-dash-border" {...props}>
@@ -59,7 +81,7 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <NavMain items={navItems} />
       </SidebarContent>
-      <SidebarAccount />
+      <SidebarAccount employers={employers} />
     </Sidebar>
   );
 }

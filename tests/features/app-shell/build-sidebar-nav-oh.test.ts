@@ -80,6 +80,29 @@ describe("buildSidebarNavItems occupational health", () => {
     expect(items.some((item) => item.title === "Occupational Health")).toBe(false);
   });
 
+  it("shows Employers when only occupational health is enabled", () => {
+    const employers = build(ROUTES.overview).find((item) => item.title === "Employers");
+
+    expect(employers).toMatchObject({
+      url: ROUTES.employers,
+      flat: true,
+      section: "account",
+    });
+    expect(employers?.url).not.toBe(ROUTES.occupationalHealthHome);
+  });
+
+  it("hides Employers when neither employers nor occupational health is enabled", () => {
+    const items = buildSidebarNavItems(
+      ["OccupationalHealth"],
+      ROUTES.overview,
+      false,
+      false,
+      ["Registration"],
+    );
+
+    expect(items.some((item) => item.title === "Employers")).toBe(false);
+  });
+
   it("keeps every OH page reachable from the command palette", () => {
     const palette = buildCommandPaletteItems(build(ROUTES.overview));
     const ohEntries = palette.filter((item) => item.group === "Occupational Health");

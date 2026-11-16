@@ -97,7 +97,9 @@ function NavMenuItems({ items }: { items: SidebarNavItem[] }) {
 }
 
 export function NavMain({ items }: { items: SidebarNavItem[] }) {
-  const workspaceItems = items.filter((item) => item.section !== "admin");
+  const workspaceItems = items.filter(
+    (item) => item.section !== "admin" && item.section !== "account",
+  );
   const adminItems = items.filter((item) => item.section === "admin");
 
   if (items.length === 0) {

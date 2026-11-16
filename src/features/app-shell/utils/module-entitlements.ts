@@ -141,9 +141,13 @@ export function resolvePortalModuleForPath(
     return "Clinical";
   }
 
+  if (pathname === ROUTES.employers || pathname.startsWith(`${ROUTES.employers}/`)) {
+    // The inbox opens for Occupational health as well. The group check lives
+    // on the nav item, so this path is not gated on the Employers module alone.
+    return null;
+  }
+
   if (
-    pathname === ROUTES.employers ||
-    pathname.startsWith(`${ROUTES.employers}/`) ||
     pathname === ROUTES.settingsModuleEmployers ||
     pathname.startsWith(`${ROUTES.settingsModuleEmployers}/`)
   ) {

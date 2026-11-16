@@ -893,7 +893,16 @@ export function hasNavAccess(
   }
   const portalModule = item.moduleName || item.requiredGroup;
   if (
+    portalModule === "Employers" &&
+    options.enabledModules &&
+    !options.enabledModules.includes("Employers") &&
+    !options.enabledModules.includes("OccupationalHealth")
+  ) {
+    return false;
+  }
+  if (
     portalModule &&
+    portalModule !== "Employers" &&
     PORTAL_NAV_GROUPS.has(portalModule) &&
     options.enabledModules &&
     !options.enabledModules.includes(portalModule)
