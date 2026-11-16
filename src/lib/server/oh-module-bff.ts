@@ -2,6 +2,8 @@ import { bffError, bffSuccess } from "@/lib/server/bff-response";
 import { HmisApiError } from "@/lib/server/hmis-api";
 import { OH_SERVICE_URL, ohServiceRequest } from "@/lib/server/oh-service";
 import { requireAccessToken } from "@/lib/server/require-access-token";
+import { PORTAL_SESSION_COOKIE } from "@/constants/session";
+import { cookies } from "next/headers";
 
 export type OhModuleMethod = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
 
@@ -16,6 +18,8 @@ export type OhModuleConfig = {
   queryKeys: readonly string[];
   /** POST paths (relative) that answer 201 Created. */
   created?: string[];
+  /** Company portal calls use their own session cookie, not the clinic login. */
+  credential?: "clinic" | "portal";
 };
 
 const ID = "[A-Za-z0-9-]{8,64}";
@@ -74,9 +78,9 @@ export function createOhModuleProxy(config: OhModuleConfig) {
       if (!resolved) {
         return Response.json({ message: "Not found." }, { status: 404 });
       }
-      const auth = await requireAccessToken();
-      if ("error" in auth) {
-        return auth.error ?? Response.json({ message: "Please sign in again." }, { status: 401 });
+      const session = await openSession();
+      if ("error" in session) {
+        return session.error;
       }
       const qs = query(request);
       if (resolved.binary) {
@@ -85,7 +89,7 @@ export function createOhModuleProxy(config: OhModuleConfig) {
         }
         const upstream = await fetch(`${OH_SERVICE_URL}${resolved.path}${qs}`, {
           method: "GET",
-          headers: { accept: `${resolved.binary.type}, application/json`, "X-HMIS-Session": auth.accessToken },
+          headers: { accept: `${resolved.binary.type}, application/json`, ...session.headers },
           cache: "no-store",
         });
         if (!upstream.ok) {
@@ -116,7 +120,7 @@ export function createOhModuleProxy(config: OhModuleConfig) {
       }
       const data = await ohServiceRequest<unknown>(`${resolved.path}${qs}`, {
         method,
-        token: auth.accessToken,
+        ...(session.token ? { token: session.token } : { headers: session.headers }),
         ...(method === "GET" ? {} : { body }),
       });
       const status = method === "POST" && created.some((rule) => rule.test(resolved.rel)) ? 201 : 200;
@@ -124,6 +128,21 @@ export function createOhModuleProxy(config: OhModuleConfig) {
     } catch (error) {
       return bffError(error);
     }
+  }
+
+  async function openSession(): Promise<{ headers: Record<string, string>; token?: string } | { error: Response }> {
+    if (config.credential === "portal") {
+      const token = (await cookies()).get(PORTAL_SESSION_COOKIE)?.value;
+      if (!token) {
+        return { error: Response.json({ message: "Please sign in again." }, { status: 401 }) };
+      }
+      return { headers: { "X-OH-Portal-Session": token } };
+    }
+    const auth = await requireAccessToken();
+    if ("error" in auth || !auth.accessToken) {
+      return { error: auth.error ?? Response.json({ message: "Please sign in again." }, { status: 401 }) };
+    }
+    return { headers: { "X-HMIS-Session": auth.accessToken }, token: auth.accessToken };
   }
 
   return { resolve, query, proxy };

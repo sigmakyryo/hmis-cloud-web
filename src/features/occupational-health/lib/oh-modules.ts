@@ -104,10 +104,6 @@ const PAGE_META: Record<string, { description: string; group: OhPageGroup }> = {
     description: "Workplace injuries and incidents on duty.",
     group: "records",
   },
-  [ROUTES.occupationalHealthEmployerPortal]: {
-    description: "What each employer sees in their portal.",
-    group: "oversight",
-  },
   [ROUTES.occupationalHealthCompliance]: {
     description: "Certificates, exams and checks that are overdue.",
     group: "oversight",

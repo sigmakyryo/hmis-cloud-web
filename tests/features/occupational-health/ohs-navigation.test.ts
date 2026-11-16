@@ -18,7 +18,6 @@ describe("OHS navigation", () => {
       "OHS Queue",
       "Employees",
       "Injuries on duty",
-      "Employer portal",
       "OHS Compliance",
       "OHS Surveillance",
       "OHS Audit trail",
@@ -29,7 +28,6 @@ describe("OHS navigation", () => {
       ROUTES.occupationalHealth,
       ROUTES.occupationalHealthEmployees,
       ROUTES.occupationalHealthInjuries,
-      ROUTES.occupationalHealthEmployerPortal,
       ROUTES.occupationalHealthCompliance,
       ROUTES.occupationalHealthSurveillance,
       ROUTES.occupationalHealthAudit,
@@ -50,6 +48,11 @@ describe("OHS navigation", () => {
       "PDCA",
       "Exports & audit",
     ]);
+    expect(navigation.find((item) => item.name === "Employers")).toMatchObject({
+      href: ROUTES.employers,
+      moduleName: "Employers",
+      anyOfGroups: ["Employers", "OccupationalHealth"],
+    });
     expect(imm.every((item) => item.requiredGroup === "OccupationalHealth")).toBe(
       true,
     );

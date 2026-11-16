@@ -1,5 +1,7 @@
-import { EmployerPortalAdminPage } from "./_components/EmployerPortalAdminPage";
+import { redirect } from "next/navigation";
+
+import { ROUTES } from "@/constants/routes";
 
 export default function Page() {
-  return <EmployerPortalAdminPage />;
+  redirect(ROUTES.employers);
 }

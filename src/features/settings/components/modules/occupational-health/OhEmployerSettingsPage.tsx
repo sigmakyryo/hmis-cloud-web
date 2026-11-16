@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { RequiredFieldMarker } from "@/components/ui/required-field-marker";
 import { ROUTES } from "@/constants/routes";
 import {
@@ -81,6 +82,7 @@ export function OhEmployerSettingsPage({ employerUuid }: OhEmployerSettingsPageP
   const [registrationNumber, setRegistrationNumber] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
+  const [isSavingPaysBills, setIsSavingPaysBills] = useState(false);
 
   function replaceParams(mutate: (params: URLSearchParams) => void) {
     const params = new URLSearchParams(searchParams.toString());
@@ -90,7 +92,26 @@ export function OhEmployerSettingsPage({ employerUuid }: OhEmployerSettingsPageP
   }
 
   function leaveEmployer() {
-    router.push(ROUTES.settingsModuleOccupationalHealth);
+    router.push(ROUTES.settingsModuleEmployers);
+  }
+
+  async function handlePaysBills(next: boolean) {
+    if (!employerQuery.data) {
+      return;
+    }
+    setIsSavingPaysBills(true);
+    try {
+      const updated = await updateOhEmployer(employerQuery.data.uuid, { pays_bills: next });
+      queryClient.setQueryData(["oh-employers", "detail", employerUuid], updated);
+    } catch (error) {
+      toast({
+        variant: "error",
+        title: "Could not save who pays the bills",
+        description: error instanceof Error ? error.message : "Something went wrong.",
+      });
+    } finally {
+      setIsSavingPaysBills(false);
+    }
   }
 
   function setSection(next: OhEmployerSectionId) {
@@ -222,6 +243,16 @@ export function OhEmployerSettingsPage({ employerUuid }: OhEmployerSettingsPageP
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-4">
+          <Label htmlFor="employer-pays-bills" className="text-[13px] text-brand-navy">
+            Pays bills
+          </Label>
+          <Switch
+            id="employer-pays-bills"
+            checked={employer.pays_bills === true}
+            disabled={isSavingPaysBills}
+            onCheckedChange={(checked) => void handlePaysBills(checked)}
+            aria-label="Pays bills"
+          />
           <button
             type="button"
             onClick={openEdit}

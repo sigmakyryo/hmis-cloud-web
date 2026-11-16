@@ -172,7 +172,7 @@ function ContactsView({ view, setView }: { view: View; setView: (v: View) => voi
         <EmptyAction
           icon="clipboard"
           title="No employer logins yet"
-          description="Create a normal user for the employer contact first, then give that login access to their company's portal."
+          description="Give a login access with their email and company. An existing login is linked. Otherwise they receive an invitation."
         />
       ) : null}
       {query.isSuccess && rows.length > 0 ? (

@@ -5,6 +5,7 @@ import { AlertCircle, Download, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { AppIcon } from "@/components/icons/app-icon";
+import { EmptyIllustration } from "@/components/illustrations/empty-illustration";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ROUTES } from "@/constants/routes";
 import { getReportTypeLabel } from "@/features/reports/constants/report-catalog";
@@ -144,10 +145,8 @@ export function ReportsRecentExports() {
         </ul>
       ) : jobs.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-dash-border px-4 py-6 text-center">
-          <div className="mx-auto flex size-9 items-center justify-center rounded-full bg-dash-canvas text-brand-muted">
-            <AppIcon name="file" size={16} />
-          </div>
-          <p className="mt-3 text-sm font-medium text-brand-navy">
+          <EmptyIllustration variant="documents" className="mx-auto h-20" />
+          <p className="mt-2 text-sm font-medium text-brand-navy">
             {hasError ? "Exports are unavailable" : "No exports yet"}
           </p>
           <p className="mt-1 text-xs text-brand-muted">

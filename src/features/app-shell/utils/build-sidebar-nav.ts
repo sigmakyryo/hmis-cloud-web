@@ -21,7 +21,7 @@ import {
   type OhWorkspaceArea,
 } from "@/features/occupational-health/lib/oh-workspace-layout";
 
-export type SidebarNavSection = "workspace" | "admin";
+export type SidebarNavSection = "workspace" | "admin" | "account";
 
 export type SidebarNavItem = {
   title: string;
@@ -140,7 +140,8 @@ export function buildSidebarNavItems(
       title: getModuleLabel(moduleName),
       url: activeModuleItem?.href ?? moduleItems[0].href,
       icon: getModuleIcon(moduleName),
-      section: "workspace",
+      section: moduleName === "Employers" ? "account" : "workspace",
+      flat: moduleName === "Employers",
       isActive: moduleItems.some((navItem) =>
         isNavItemActive(pathname, navItem.href),
       ),

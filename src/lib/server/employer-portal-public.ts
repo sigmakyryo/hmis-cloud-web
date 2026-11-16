@@ -1,16 +1,25 @@
 import { NextResponse } from "next/server";
 
+import { AUTH_COOKIE_MAX_AGE_SECONDS, PORTAL_SESSION_COOKIE } from "@/constants/session";
 import { HmisApiError } from "@/lib/server/hmis-api";
 import { ohServiceRequest } from "@/lib/server/oh-service";
 
 /**
- * Unauthenticated employer portal endpoints (invitation accept, sign-in branding).
- * Strict allowlist; no session token is ever forwarded.
+ * Unauthenticated employer portal endpoints (invitation accept, company sign-in).
+ * Strict allowlist. A clinic session is never forwarded.
  */
 const UUID = /^[0-9a-fA-F-]{32,36}$/;
 const TOKEN = /^[A-Za-z0-9_-]{20,128}$/;
 
-type Resolved = { path: string; method: "GET" | "POST" };
+type Resolved = { path: string; method: "GET" | "POST" | "DELETE" };
+
+const portalCookie = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax" as const,
+  path: "/",
+  maxAge: AUTH_COOKIE_MAX_AGE_SECONDS,
+};
 
 export function resolvePublicPortalPath(method: string, segments: string[], search: URLSearchParams): Resolved | null {
   const joined = segments.join("/");
@@ -25,7 +34,27 @@ export function resolvePublicPortalPath(method: string, segments: string[], sear
   if (method === "POST" && joined === "invitation/accept") {
     return { path: "/oh-portal-public/invitation/accept", method: "POST" };
   }
+  if (method === "POST" && joined === "session") {
+    return { path: "/oh-portal-public/session", method: "POST" };
+  }
+  if (method === "DELETE" && joined === "session") {
+    return { path: "/oh-portal-public/session", method: "DELETE" };
+  }
   return null;
+}
+
+function readCookie(request: Request, name: string): string {
+  const header = request.headers.get("cookie") ?? "";
+  const part = header
+    .split(";")
+    .map((item) => item.trim())
+    .find((item) => item.startsWith(`${name}=`));
+  if (!part) return "";
+  try {
+    return decodeURIComponent(part.slice(name.length + 1));
+  } catch {
+    return "";
+  }
 }
 
 export async function handlePublicPortal(request: Request, segments: string[]): Promise<NextResponse> {
@@ -34,17 +63,39 @@ export async function handlePublicPortal(request: Request, segments: string[]): 
   if (!resolved) {
     return NextResponse.json({ detail: "Not found." }, { status: 404 });
   }
+  if (resolved.method === "DELETE") {
+    const token = readCookie(request, PORTAL_SESSION_COOKIE);
+    if (token) {
+      await ohServiceRequest(resolved.path, {
+        method: "DELETE",
+        headers: { "X-OH-Portal-Session": token },
+      }).catch(() => undefined);
+    }
+    const response = NextResponse.json({ data: null });
+    response.cookies.set(PORTAL_SESSION_COOKIE, "", { ...portalCookie, maxAge: 0 });
+    return response;
+  }
   let body: Record<string, unknown> | undefined;
   if (resolved.method === "POST") {
     try {
       const raw = (await request.json()) as Record<string, unknown>;
-      body = { token: raw.token, name: raw.name, password: raw.password };
+      body = resolved.path.endsWith("/session")
+        ? { email: raw.email, password: raw.password, tenant_uuid: raw.tenant_uuid }
+        : { token: raw.token, name: raw.name, password: raw.password };
     } catch {
       return NextResponse.json({ detail: "Invalid request." }, { status: 400 });
     }
   }
   try {
-    const data = await ohServiceRequest<unknown>(resolved.path, { method: resolved.method, body });
+    const data = await ohServiceRequest<Record<string, unknown>>(resolved.path, { method: resolved.method, body });
+    if (resolved.path.endsWith("/session") && typeof data.token === "string" && data.token !== "") {
+      const token = data.token;
+      const safe = { ...data };
+      delete safe.token;
+      const response = NextResponse.json({ data: safe });
+      response.cookies.set(PORTAL_SESSION_COOKIE, token, portalCookie);
+      return response;
+    }
     return NextResponse.json({ data });
   } catch (error) {
     const status = error instanceof HmisApiError && error.status ? error.status : 502;

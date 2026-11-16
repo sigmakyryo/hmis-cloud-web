@@ -56,7 +56,7 @@ describe("employee form setup empty state", () => {
     expect(await screen.findByTestId("oh-employee-form-setup-empty")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Set up the risk profile" })).toHaveAttribute(
       "href",
-      "/settings/modules/occupational-health?employer=employer-1&profile=profile-1",
+      "/settings/modules/employers?employer=employer-1&profile=profile-1",
     );
     expect(screen.queryByRole("button", { name: "Open form" })).toBeNull();
   });
@@ -85,7 +85,7 @@ describe("employee form setup empty state", () => {
     );
     expect(screen.getByRole("link", { name: "Add a risk profile" })).toHaveAttribute(
       "href",
-      "/settings/modules/occupational-health?employer=employer-1&profile=new",
+      "/settings/modules/employers?employer=employer-1&profile=new",
     );
     expect(screen.queryByText(/does not have an employee form yet/)).toBeNull();
   });

@@ -198,6 +198,7 @@ export const ROUTES = {
   drugAlcoholAnomalies: "/drug-alcohol/anomalies",
   drugAlcoholWellbeing: "/drug-alcohol/wellbeing",
   occupationalHealthEmployerPortal: "/occupational-health/employer-portal",
+  employers: "/employers",
   occupationalHealthAudit: "/occupational-health/audit",
   occupationalHealthPrivacy: "/occupational-health/privacy",
   occupationalHealthAnnualReport: "/occupational-health/annual-report",
@@ -291,6 +292,7 @@ export const ROUTES = {
   settingsModuleTheatre: "/settings/modules/theatre",
   settingsModuleRegistration: "/settings/modules/registration",
   settingsModuleOccupationalHealth: "/settings/modules/occupational-health",
+  settingsModuleEmployers: "/settings/modules/employers",
   settingsOccupationalHealthEmployer: (
     employerUuid: string,
     section?: "departments" | "job-titles" | "risk-profiles",
@@ -299,7 +301,7 @@ export const ROUTES = {
     if (section && section !== "risk-profiles") {
       params.set("section", section);
     }
-    return `/settings/modules/occupational-health?${params.toString()}`;
+    return `/settings/modules/employers?${params.toString()}`;
   },
   settingsModule: (slug: string) => `/settings/modules/${slug}`,
   ohTemplateBuilder: (kind: "employee" | "exam" | "certificate", uuid: string) =>
@@ -364,6 +366,7 @@ export const WEB_NEW_ROUTE_PREFIXES = [
   ROUTES.appointments,
   ROUTES.clinicalOpd,
   ROUTES.occupationalHealth,
+  ROUTES.employers,
   "/employer-portal",
   "/clinical",
   "/reports",
@@ -424,6 +427,7 @@ export const APP_ROUTE_PREFIXES = [
   ROUTES.appointments,
   ROUTES.clinicalOpd,
   ROUTES.occupationalHealth,
+  ROUTES.employers,
   "/employer-portal",
   ROUTES.employerPortalJoin,
   ROUTES.employerPortalSignIn,
@@ -486,6 +490,7 @@ export const PROTECTED_ROUTES = [
   ROUTES.appointments,
   ROUTES.clinicalOpd,
   ROUTES.occupationalHealth,
+  ROUTES.employers,
   "/employer-portal",
   "/clinical",
   "/reports",

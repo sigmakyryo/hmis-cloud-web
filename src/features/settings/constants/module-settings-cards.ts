@@ -30,7 +30,8 @@ const MODULE_DESCRIPTIONS: Record<string, string> = {
   Clinical: "Patient records, providers, and clinical documentation.",
   Therapy: "Therapy sessions, plans, and documentation settings.",
   OccupationalHealth:
-    "Employers, job titles, hazard profiles, and worksite catalogs.",
+    "Visit services, dispensing, and injury on duty.",
+  Employers: "Companies, the staff inbox, and whether employers pay bills.",
 };
 
 /** URL slug + whether the module has a real settings surface yet. */
@@ -51,6 +52,7 @@ const MODULE_SETTINGS_META: Record<
   Clinical: { slug: "clinical", hasSettings: true },
   Therapy: { slug: "therapy", hasSettings: false },
   OccupationalHealth: { slug: "occupational-health", hasSettings: true },
+  Employers: { slug: "employers", hasSettings: true },
 };
 
 function hrefForSlug(slug: string): string {
@@ -77,6 +79,9 @@ function hrefForSlug(slug: string): string {
   }
   if (slug === "occupational-health") {
     return ROUTES.settingsModuleOccupationalHealth;
+  }
+  if (slug === "employers") {
+    return ROUTES.settingsModuleEmployers;
   }
   return ROUTES.settingsModule(slug);
 }

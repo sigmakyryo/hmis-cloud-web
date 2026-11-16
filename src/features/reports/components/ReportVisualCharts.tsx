@@ -47,7 +47,7 @@ function ReportChartCard({
             onReady={(instance) => onChartReady(chart.id, instance)}
           />
         ) : (
-          <ChartEmptyState message="Nothing to chart for this period." />
+          <ChartEmptyState message="Nothing to chart for this period." kind={chart.kind} />
         )}
       </div>
     </section>

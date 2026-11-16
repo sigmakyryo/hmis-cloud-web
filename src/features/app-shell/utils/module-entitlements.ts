@@ -18,6 +18,7 @@ export const PORTAL_MODULE_NAMES = [
   "Clinical",
   "Theatre",
   "OccupationalHealth",
+  "Employers",
   "Therapy",
 ] as const;
 
@@ -138,6 +139,19 @@ export function resolvePortalModuleForPath(
     pathname.startsWith(`${ROUTES.settingsModuleClinical}/`)
   ) {
     return "Clinical";
+  }
+
+  if (pathname === ROUTES.employers || pathname.startsWith(`${ROUTES.employers}/`)) {
+    // The inbox opens for Occupational health as well. The group check lives
+    // on the nav item, so this path is not gated on the Employers module alone.
+    return null;
+  }
+
+  if (
+    pathname === ROUTES.settingsModuleEmployers ||
+    pathname.startsWith(`${ROUTES.settingsModuleEmployers}/`)
+  ) {
+    return "Employers";
   }
 
   if (pathname === ROUTES.occupationalHealthForms) {

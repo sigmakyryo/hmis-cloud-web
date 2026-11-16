@@ -5,13 +5,15 @@ import { useState } from "react";
 
 import { PageActionButton, SecondaryButton } from "@/components/ui/app-buttons";
 import { Drawer, DrawerActions } from "@/app/(app)/immunizations/_components/shared/Drawer";
+import { ImmNotice } from "@/app/(app)/immunizations/_components/shared/ImmTabsBar";
 import { errorText } from "@/app/(app)/drug-alcohol/_components/shared/da-format";
 import { fetchCustomers } from "@/features/customers/services/customers.service";
 import {
   PORTAL_SCOPE_LABEL,
-  linkPortalContact,
+  invitePortalContact,
   updatePortalContact,
   type PortalContact,
+  type PortalInviteResult,
   type PortalScope,
 } from "@/features/employer-portal/services/employer-portal.service";
 import { fetchOhEmployers } from "@/features/occupational-health/services/oh.service";
@@ -26,6 +28,7 @@ export function ContactDrawer({ contact, scopes, onClose }: { contact: PortalCon
   const [accounts, setAccounts] = useState<Array<{ uuid: string; name: string }>>(contact?.billing_customers ?? []);
   const [active, setActive] = useState(contact?.is_active ?? true);
   const [search, setSearch] = useState("");
+  const [issuedLink, setIssuedLink] = useState("");
   const employers = useQuery({ queryKey: ["oh", "employers", "all"], queryFn: fetchOhEmployers, enabled: !contact, retry: false });
   const found = useQuery({
     queryKey: ["customers", "portal-billing", search],
@@ -37,12 +40,26 @@ export function ContactDrawer({ contact, scopes, onClose }: { contact: PortalCon
     mutationFn: () => {
       const billing = accounts.map((a) => a.uuid);
       if (contact) return updatePortalContact(contact.uuid, { scopes: chosen, billing_customer_uuids: billing, is_active: active });
+      if (employers.isError) throw new Error(errorText(employers.error, "Could not load employers."));
       if (!email.trim() || !employer) throw new Error("Enter the login email and choose the employer.");
-      return linkPortalContact({ email: email.trim(), employer_uuid: employer, scopes: chosen, billing_customer_uuids: billing });
+      // An existing login is linked. Someone without an account gets an invitation
+      // instead of a failure that only said the user had to be created first.
+      return invitePortalContact({ email: email.trim(), employer_uuid: employer, scopes: chosen, billing_customer_uuids: billing });
     },
-    onSuccess: () => {
-      toast({ variant: "success", title: "Saved" });
-      void client.invalidateQueries({ queryKey: ["oh-portal-admin", "contacts"] });
+    onSuccess: (result) => {
+      void client.invalidateQueries({ queryKey: ["oh-portal-admin"] });
+      if (isNewInvitation(result)) {
+        setIssuedLink(result.accept_url ?? "");
+        toast({
+          variant: "success",
+          title: result.invite?.email_sent ? "Invitation emailed" : "Invitation created",
+          description: result.invite?.email_sent
+            ? "They set a password from the email, then sign in on the company portal."
+            : "Email is not set up. Share the link in this form.",
+        });
+        return;
+      }
+      toast({ variant: "success", title: "Saved", description: "They can sign in on the company portal." });
       onClose();
     },
     onError: (error) => toast({ variant: "error", title: "Not saved", description: errorText(error) }),
@@ -51,7 +68,7 @@ export function ContactDrawer({ contact, scopes, onClose }: { contact: PortalCon
   const toggle = (s: PortalScope) => setChosen((cur) => (cur.includes(s) ? cur.filter((x) => x !== s) : [...cur, s]));
 
   return (
-    <Drawer title={contact ? (contact.name || contact.email) : "Give a login access"} description={contact ? contact.employer_name : "The person must already have a user account"} onClose={onClose}>
+    <Drawer title={contact ? (contact.name || contact.email) : "Give a login access"} description={contact ? contact.employer_name : "An existing login is linked. Otherwise they receive an invitation."} onClose={onClose}>
       <div className="space-y-4 text-[13px]" data-testid="oh-portal-contact-sheet">
         {!contact ? (
           <>
@@ -70,6 +87,12 @@ export function ContactDrawer({ contact, scopes, onClose }: { contact: PortalCon
                 ))}
               </select>
             </label>
+            {employers.isError ? <p className="text-destructive">{errorText(employers.error, "Could not load employers.")}</p> : null}
+            {issuedLink ? (
+              <ImmNotice>
+                One-time link (shown once): <span className="break-all font-mono text-[12px]" data-testid="oh-portal-contact-invite-link">{issuedLink}</span>
+              </ImmNotice>
+            ) : null}
           </>
         ) : null}
         <fieldset className="space-y-1.5">
@@ -125,4 +148,8 @@ export function ContactDrawer({ contact, scopes, onClose }: { contact: PortalCon
       </div>
     </Drawer>
   );
+}
+
+function isNewInvitation(result: PortalContact | PortalInviteResult): result is PortalInviteResult {
+  return "linked" in result && result.linked === false;
 }

@@ -83,7 +83,7 @@ describe("settings navigation config", () => {
     );
 
     expect(employerPath).toBe(
-      "/settings/modules/occupational-health?employer=890cc1e2-b0ec-4cdf-8745-9e5ad1ff09da",
+      "/settings/modules/employers?employer=890cc1e2-b0ec-4cdf-8745-9e5ad1ff09da",
     );
     expect(
       ROUTES.settingsOccupationalHealthEmployer(
@@ -91,7 +91,7 @@ describe("settings navigation config", () => {
         "job-titles",
       ),
     ).toBe(
-      "/settings/modules/occupational-health?employer=890cc1e2-b0ec-4cdf-8745-9e5ad1ff09da&section=job-titles",
+      "/settings/modules/employers?employer=890cc1e2-b0ec-4cdf-8745-9e5ad1ff09da&section=job-titles",
     );
     expect(
       findActiveSettingsNavigationItem(

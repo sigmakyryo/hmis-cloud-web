@@ -1,6 +1,7 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { loadReportVisual } from "@/features/reports/services/report-visuals.service";
 import { ReportExportShell } from "@/features/reports/components/ReportExportShell";
 import { ReportsWorkspace } from "@/features/reports/components/ReportsWorkspace";
 
@@ -48,8 +49,7 @@ describe("ReportsWorkspace", () => {
     renderWorkspace();
 
     expect(screen.getByTestId("reports-nav")).toBeInTheDocument();
-    expect(screen.getByLabelText("From")).toBeInTheDocument();
-    expect(screen.getByLabelText("To")).toBeInTheDocument();
+    expect(screen.getByTestId("report-date-range")).toHaveTextContent(/ to /);
     expect(screen.getByTestId("report-filters-button")).toHaveTextContent("Filters");
     expect(screen.getByTestId("report-export-csv")).toBeInTheDocument();
     expect(screen.getByTestId("report-export-pdf")).toBeInTheDocument();
@@ -58,8 +58,37 @@ describe("ReportsWorkspace", () => {
       "/reports/history",
     );
     expect(screen.queryByText("Pick a report, review the charts, then export CSV or PDF.")).not.toBeInTheDocument();
+    // The report's name lives in the sidebar; the header carries only the filters and actions.
+    expect(screen.getByRole("heading", { level: 2, name: "Sales orders" }).className).toContain("sr-only");
     expect(await screen.findByText("Sales activity")).toBeInTheDocument();
     expect(screen.getByText("4")).toBeInTheDocument();
+  });
+
+  it("shows one illustrated empty state when every chart is empty, and can widen to year to date", async () => {
+    vi.mocked(loadReportVisual).mockResolvedValueOnce({
+      kpis: [{ label: "Orders", value: "0" }],
+      charts: [{ id: "sales-activity", title: "Sales activity", caption: "Totals.", kind: "area", valueFormat: "money", categories: ["Nov 1"], series: [{ name: "Sales orders", values: [0] }] }],
+    });
+    renderWorkspace();
+
+    expect(await screen.findByTestId("report-empty")).toHaveTextContent("Nothing to report for this period");
+    expect(screen.queryByTestId("report-chart-empty")).toBeNull();
+    fireEvent.click(screen.getByTestId("report-empty-widen"));
+    await screen.findByText("Sales activity");
+    expect(screen.queryByTestId("report-empty")).toBeNull();
+  });
+
+  it("changes the period through the date range picker", async () => {
+    renderWorkspace();
+    await screen.findByText("Sales activity");
+
+    fireEvent.click(screen.getByTestId("report-date-range"));
+    const popover = await screen.findByTestId("report-date-range-popover");
+    fireEvent.change(within(popover).getByLabelText("From"), { target: { value: "2026-02-01" } });
+    fireEvent.change(within(popover).getByLabelText("To"), { target: { value: "2026-02-28" } });
+    fireEvent.click(within(popover).getByRole("button", { name: "Apply" }));
+
+    await waitFor(() => expect(screen.getByTestId("report-date-range")).toHaveTextContent("1 Feb 2026 to 28 Feb 2026"));
   });
 
   it("opens extra filters in a popover and switches reports", async () => {
@@ -72,7 +101,7 @@ describe("ReportsWorkspace", () => {
 
     fireEvent.click(screen.getByTestId("report-nav-appointments"));
 
-    expect(screen.getByLabelText("From")).toBeInTheDocument();
+    expect(screen.getByTestId("report-date-range")).toBeInTheDocument();
     expect(screen.getByTestId("report-nav-appointments")).toHaveAttribute(
       "aria-current",
       "page",

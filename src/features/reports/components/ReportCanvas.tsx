@@ -5,10 +5,14 @@ import type { ECharts } from "echarts/core";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ReportEmptyState } from "@/features/reports/components/ReportEmptyState";
 import { ReportFilterBar } from "@/features/reports/components/ReportFilterBar";
 import { ReportVisualCharts } from "@/features/reports/components/ReportVisualCharts";
 import type { ReportCatalogItem } from "@/features/reports/constants/report-catalog";
 import { useReportExport } from "@/features/reports/providers/report-export-provider";
+import { chartHasValues } from "@/features/reports/types/report-visual.types";
+import { getReportDatePresets } from "@/features/reports/utils/report-date-presets";
+import { groupReportDateFields } from "@/features/reports/utils/report-export-summary";
 import { loadReportVisual } from "@/features/reports/services/report-visuals.service";
 import type { ReportVisual } from "@/features/reports/types/report-visual.types";
 import {
@@ -80,6 +84,18 @@ export function ReportCanvas({ report }: ReportCanvasProps) {
     };
   }, [filterValues, report, requestKey]);
 
+  const dateGroup = groupReportDateFields(report.filters);
+  const yearToDate = dateGroup.kind === "range" ? getReportDatePresets().find((preset) => preset.id === "year_to_date") : undefined;
+  // Why: when every chart is empty, one clear message beats a page of identical empty charts.
+  const nothingToShow = visual !== null && visual.charts.length > 0 && visual.charts.every((chart) => !chartHasValues(chart));
+
+  function applyYearToDate(preset: { dateFrom: string; dateTo: string }) {
+    if (dateGroup.kind !== "range") {
+      return;
+    }
+    setFilterValues((current) => ({ ...current, [dateGroup.from.name]: preset.dateFrom, [dateGroup.to.name]: preset.dateTo }));
+  }
+
   async function exportPdf() {
     if (!visual) {
       return;
@@ -126,9 +142,7 @@ export function ReportCanvas({ report }: ReportCanvasProps) {
   return (
     <div className="min-w-0" data-testid="report-canvas">
       <div className="sticky top-0 z-10 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-dash-border bg-white px-8 py-3.5">
-        <h2 className="shrink-0 text-[15px] font-semibold tracking-tight text-brand-navy">
-          {report.title}
-        </h2>
+        <h2 className="sr-only">{report.title}</h2>
         <ReportFilterBar
           report={report}
           values={filterValues}
@@ -186,8 +200,8 @@ export function ReportCanvas({ report }: ReportCanvasProps) {
               <dl
                 className={`grid gap-px bg-dash-border ${kpiColumnClass(visual.kpis.length)}`}
               >
-                {visual.kpis.map((kpi) => (
-                  <div key={kpi.label} className="bg-white py-7 pr-6">
+                {visual.kpis.map((kpi, index) => (
+                  <div key={kpi.label} className={index === 0 ? "bg-white py-7 pr-8" : "bg-white px-8 py-7"}>
                     <dt className="text-xs text-brand-muted">{kpi.label}</dt>
                     <dd className="mt-2 text-2xl font-semibold leading-none tracking-tight text-brand-navy tabular-nums">
                       {kpi.value}
@@ -197,12 +211,16 @@ export function ReportCanvas({ report }: ReportCanvasProps) {
               </dl>
             ) : null}
             <div className="pt-10">
-              <ReportVisualCharts
-                charts={visual.charts}
-                onChartReady={(chartId, chart) => {
-                  chartsRef.current.set(chartId, chart);
-                }}
-              />
+              {nothingToShow ? (
+                <ReportEmptyState onWiden={yearToDate ? () => applyYearToDate(yearToDate) : undefined} />
+              ) : (
+                <ReportVisualCharts
+                  charts={visual.charts}
+                  onChartReady={(chartId, chart) => {
+                    chartsRef.current.set(chartId, chart);
+                  }}
+                />
+              )}
             </div>
           </div>
         ) : null}

@@ -2,6 +2,7 @@
 
 import { useEffect, type ReactNode } from "react";
 
+import { portalOrigin } from "@/constants/hosts";
 import { ROUTES } from "@/constants/routes";
 import { isPortalOnlyUser } from "@/features/employer-portal/services/employer-portal.service";
 import { AppInitializationScreen } from "@/features/app-shell/components/AppInitializationScreen";
@@ -49,7 +50,10 @@ export function AuthGuard({ children, portal = false }: AuthGuardProps) {
   const sendToPortal = !portal && status === "ready" && isPortalOnlyUser(user);
   useEffect(() => {
     if (sendToPortal) {
-      window.location.replace(ROUTES.employerPortal);
+      const origin = portalOrigin();
+      window.location.replace(
+        origin ? `${origin}${ROUTES.employerPortal}` : ROUTES.employerPortal,
+      );
     }
   }, [sendToPortal]);
 

@@ -3,6 +3,7 @@
 import { SlidersHorizontal } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -10,6 +11,7 @@ import {
   ReportFilterControl,
 } from "@/features/reports/components/ReportFilterForm";
 import type { ReportCatalogItem } from "@/features/reports/constants/report-catalog";
+import { getReportDatePresets } from "@/features/reports/utils/report-date-presets";
 import { groupReportDateFields } from "@/features/reports/utils/report-export-summary";
 import { appFont } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
@@ -41,29 +43,22 @@ export function ReportFilterBar({ report, values, onChange }: ReportFilterBarPro
   return (
     <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
       {dateGroup.kind === "range" ? (
-        <div className="inline-flex h-9 items-center rounded-full bg-white px-3 ring-1 ring-dash-border">
-          <Input
-            id={`${report.id}-${dateGroup.from.name}`}
-            type="date"
-            aria-label={dateGroup.from.label}
-            value={values[dateGroup.from.name] ?? ""}
-            onChange={(event) => onChange(dateGroup.from.name, event.target.value)}
-            className={DATE_INPUT_CLASS}
-          />
-          <span className="px-1.5 text-xs text-brand-muted">to</span>
-          <Input
-            id={`${report.id}-${dateGroup.to.name}`}
-            type="date"
-            aria-label={dateGroup.to.label}
-            value={values[dateGroup.to.name] ?? ""}
-            onChange={(event) => onChange(dateGroup.to.name, event.target.value)}
-            className={DATE_INPUT_CLASS}
-          />
-        </div>
+        <DateRangePicker
+          value={{ from: values[dateGroup.from.name] ?? "", to: values[dateGroup.to.name] ?? "" }}
+          onApply={({ from, to }) => {
+            onChange(dateGroup.from.name, from);
+            onChange(dateGroup.to.name, to);
+          }}
+          presets={getReportDatePresets().map((preset) => ({ id: preset.id, label: preset.label, range: { from: preset.dateFrom, to: preset.dateTo } }))}
+          idPrefix={`${report.id}-range`}
+          triggerLabel="Date range"
+          data-testid="report-date-range"
+          contentTestId="report-date-range-popover"
+        />
       ) : null}
 
       {dateGroup.kind === "single" ? (
-        <div className="inline-flex h-9 items-center rounded-full bg-white px-3 ring-1 ring-dash-border">
+        <div className="inline-flex h-9 items-center rounded-lg bg-white px-3 ring-1 ring-dash-border">
           <span className="pr-2 text-xs text-brand-muted">{dateGroup.field.label}</span>
           <Input
             id={`${report.id}-${dateGroup.field.name}`}
@@ -83,7 +78,7 @@ export function ReportFilterBar({ report, values, onChange }: ReportFilterBarPro
               type="button"
               variant="ghost"
               size="sm"
-              className="h-9 gap-1.5 rounded-full px-3 text-brand-slate"
+              className="h-9 gap-1.5 rounded-lg px-3 text-brand-slate"
               data-testid="report-filters-button"
             >
               <SlidersHorizontal className="size-3.5" aria-hidden="true" />

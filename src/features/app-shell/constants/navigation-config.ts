@@ -27,6 +27,7 @@ export const moduleDisplayNames: Record<string, string> = {
   Clinical: "EMR",
   Therapy: "Therapy",
   OccupationalHealth: "OHS",
+  Employers: "Employers",
   Immunizations: "Immunizations",
   DrugAlcohol: "Drug & Alcohol",
   Fitness: "Fitness",
@@ -49,6 +50,7 @@ export const moduleIcons: Record<string, AppIconName> = {
   Clinical: "hospital",
   Therapy: "dumbbell",
   OccupationalHealth: "clipboard",
+  Employers: "building",
   Immunizations: "shield",
   DrugAlcohol: "flask",
   Fitness: "activity",
@@ -71,6 +73,7 @@ export const moduleOrder = [
   "Theatre",
   "Therapy",
   "OccupationalHealth",
+  "Employers",
   "Immunizations",
   "DrugAlcohol",
   "Fitness",
@@ -425,11 +428,12 @@ export const navigation: NavigationItem[] = [
     enabledInWebNew: true,
   },
   {
-    name: "Employer portal",
-    href: ROUTES.occupationalHealthEmployerPortal,
-    icon: "clipboard",
-    requiredGroup: "OccupationalHealth",
-    moduleName: "OccupationalHealth",
+    name: "Employers",
+    href: ROUTES.employers,
+    icon: "building",
+    requiredGroup: null,
+    anyOfGroups: ["Employers", "OccupationalHealth"],
+    moduleName: "Employers",
     enabledInWebNew: true,
   },
   {
@@ -870,6 +874,7 @@ const PORTAL_NAV_GROUPS = new Set([
   "Clinical",
   "Theatre",
   "OccupationalHealth",
+  "Employers",
   "Therapy",
 ]);
 
@@ -888,7 +893,16 @@ export function hasNavAccess(
   }
   const portalModule = item.moduleName || item.requiredGroup;
   if (
+    portalModule === "Employers" &&
+    options.enabledModules &&
+    !options.enabledModules.includes("Employers") &&
+    !options.enabledModules.includes("OccupationalHealth")
+  ) {
+    return false;
+  }
+  if (
     portalModule &&
+    portalModule !== "Employers" &&
     PORTAL_NAV_GROUPS.has(portalModule) &&
     options.enabledModules &&
     !options.enabledModules.includes(portalModule)

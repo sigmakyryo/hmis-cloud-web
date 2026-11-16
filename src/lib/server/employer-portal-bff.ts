@@ -14,6 +14,7 @@ export const employerPortalProxy = createOhModuleProxy({
   ],
   queryKeys: ["status", "q", "year"],
   created: ["requests"],
+  credential: "portal",
 });
 
 /** OH staff side: employer requests (staff) and portal contacts (administrators). */
