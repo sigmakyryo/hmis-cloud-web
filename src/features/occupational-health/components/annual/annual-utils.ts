@@ -47,7 +47,7 @@ const BREAKDOWN_PREFIX: Record<string, string> = {
   fitness: "Outcome: ",
 };
 /** Headline-only sections, or ones whose rows mix units (cases vs days), get a table only. */
-const NO_CHART = new Set(["workforce", "surveillance", "injuries", "sick_leave", "drug_alcohol"]);
+const NO_CHART = new Set(["workforce", "surveillance", "injuries", "sick_leave", "drug_alcohol", "exposure"]);
 
 export type SectionChartRow = { key: string; label: string; value: number };
 
@@ -66,4 +66,21 @@ export function sectionChartRows(section: string, rows: Record<string, number | 
     data.push({ key: label, label: prefix ? label.slice(prefix.length) : label, value: n });
   }
   return { data: data.length >= 2 ? data : [], hidden: data.length >= 2 ? hidden : 0 };
+}
+
+/**
+ * Each breakdown row as a whole-number share of its group, for sections whose rows are parts of one total
+ * (examination types, fitness outcomes). If any part is hidden as "<5" the true total is unknown, so no
+ * shares are given: a share worked out without the hidden part would be wrong.
+ */
+export function breakdownShares(section: string, rows: Record<string, number | string>): Record<string, number> {
+  const prefix = BREAKDOWN_PREFIX[section];
+  if (!prefix) return {};
+  const parts = Object.entries(rows).filter(([label]) => label.startsWith(prefix));
+  if (parts.length < 2 || parts.some(([, value]) => isSuppressed(value))) return {};
+  const values = parts.map(([label, value]) => [label, toNumber(value)] as const);
+  if (values.some(([, value]) => value === null)) return {};
+  const total = values.reduce((sum, [, value]) => sum + (value ?? 0), 0);
+  if (total <= 0) return {};
+  return Object.fromEntries(values.map(([label, value]) => [label, Math.round(((value ?? 0) / total) * 100)]));
 }
