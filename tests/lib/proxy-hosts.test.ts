@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from "@/constants/session";
+import { ACCESS_TOKEN_COOKIE, PORTAL_SESSION_COOKIE, REFRESH_TOKEN_COOKIE } from "@/constants/session";
 import { proxy } from "@/proxy";
 
 function request(
@@ -167,8 +167,7 @@ describe("proxy host routing", () => {
 
     const response = proxy(
       request("https://portal.sigmahmis.com/", "portal.sigmahmis.com", [
-        `${ACCESS_TOKEN_COOKIE}=access`,
-        `${REFRESH_TOKEN_COOKIE}=refresh`,
+        `${PORTAL_SESSION_COOKIE}=portal-token`,
       ].join("; ")),
     );
 

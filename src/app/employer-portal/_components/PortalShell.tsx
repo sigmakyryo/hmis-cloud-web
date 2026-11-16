@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createContext, useContext, type ReactNode } from "react";
 
-import { BFF_AUTH_ROUTES } from "@/constants/api";
+import { BFF_OCCUPATIONAL_HEALTH_ROUTES } from "@/constants/api";
 import { ROUTES } from "@/constants/routes";
 import { fetchPortalMe, PORTAL_SCOPE_LABEL, type PortalMe, type PortalScope } from "@/features/employer-portal/services/employer-portal.service";
 import { cn } from "@/lib/utils";
@@ -24,9 +24,13 @@ export const usePortalMe = () => useContext(PortalContext);
 
 async function signOut() {
   try {
-    await fetch(BFF_AUTH_ROUTES.session, { method: "DELETE", credentials: "include", cache: "no-store" });
+    await fetch(`${BFF_OCCUPATIONAL_HEALTH_ROUTES.employerPortalPublic}/session`, {
+      method: "DELETE",
+      credentials: "include",
+      cache: "no-store",
+    });
   } finally {
-    window.location.replace(ROUTES.auth);
+    window.location.replace("/");
   }
 }
 

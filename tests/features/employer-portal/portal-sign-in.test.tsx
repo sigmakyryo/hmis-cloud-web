@@ -2,51 +2,41 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PortalSignIn } from "@/features/employer-portal/components/PortalSignIn";
+import { ROUTES } from "@/constants/routes";
 
-const auth = vi.hoisted(() => ({
-  requestSigninOtp: vi.fn(),
-  verifySignin: vi.fn(),
-  verifySigninTotp: vi.fn(),
-  logout: vi.fn(),
-  markAuthenticatedSession: vi.fn(),
-}));
-
-vi.mock("@/features/auth/services/auth.service", () => auth);
-vi.mock("@/features/employer-portal/services/employer-portal-public.service", () => ({
+const portal = vi.hoisted(() => ({
+  signInToPortal: vi.fn(),
   fetchPublicBranding: vi.fn(async () => null),
 }));
+const push = vi.hoisted(() => vi.fn());
+
+vi.mock("@/features/employer-portal/services/employer-portal-public.service", () => portal);
+vi.mock("@/features/auth/services/auth.service", () => ({
+  requestSigninOtp: vi.fn(),
+  verifySignin: vi.fn(),
+  logout: vi.fn(),
+}));
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push }),
 }));
 
 describe("portal sign-in", () => {
   beforeEach(() => {
-    auth.requestSigninOtp.mockReset();
-    auth.verifySignin.mockReset();
-    auth.logout.mockReset();
-    auth.logout.mockResolvedValue(undefined);
+    portal.signInToPortal.mockReset();
+    push.mockReset();
   });
 
-  it("refuses a clinic account after the password is accepted", async () => {
-    auth.requestSigninOtp.mockResolvedValue({
-      pending_mfa_token: "token",
-      methods: ["email"],
-      preferred_method: "email",
-      email_otp_sent: true,
-      detail: "sent",
-    });
-    auth.verifySignin.mockResolvedValue({
-      user: { groups: ["OccupationalHealth"], is_admin: false },
-    });
+  it("signs in with the company portal password and not the clinic login", async () => {
+    const auth = await import("@/features/auth/services/auth.service");
+    portal.signInToPortal.mockResolvedValue({ email: "casey@acme.test", name: "Casey" });
 
     render(<PortalSignIn org="" />);
-    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "clinic@sigma.com" } });
-    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "secret" } });
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "casey@acme.test" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "Long-enough-1" } });
     fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
-    fireEvent.change(await screen.findByLabelText("Email code"), { target: { value: "123456" } });
-    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
 
-    expect(await screen.findByText("This sign-in is for company contacts.")).toBeVisible();
-    await waitFor(() => expect(auth.logout).toHaveBeenCalled());
+    await waitFor(() => expect(portal.signInToPortal).toHaveBeenCalledWith({ email: "casey@acme.test", password: "Long-enough-1" }));
+    expect(auth.requestSigninOtp).not.toHaveBeenCalled();
+    expect(push).toHaveBeenCalledWith(ROUTES.employerPortal);
   });
 });

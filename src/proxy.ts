@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from "@/constants/session";
+import { ACCESS_TOKEN_COOKIE, PORTAL_SESSION_COOKIE, REFRESH_TOKEN_COOKIE } from "@/constants/session";
 import {
   getAppHost,
   getMarketingHost,
@@ -25,6 +25,10 @@ function hasSession(request: NextRequest): boolean {
   const access = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
   const refresh = request.cookies.get(REFRESH_TOKEN_COOKIE)?.value;
   return Boolean(access && refresh);
+}
+
+function hasPortalSession(request: NextRequest): boolean {
+  return Boolean(request.cookies.get(PORTAL_SESSION_COOKIE)?.value);
 }
 
 function requestProtocol(request: NextRequest): "http" | "https" {
@@ -74,7 +78,8 @@ export function proxy(request: NextRequest) {
   const host = requestHostname(
     request.headers.get("x-forwarded-host") ?? request.headers.get("host"),
   );
-  const sessionActive = hasSession(request);
+  const onPortalHost = Boolean(portalHost && isPortalHostname(host, portalHost));
+  const sessionActive = onPortalHost ? hasPortalSession(request) : hasSession(request);
   const hostRouting =
     isHostRoutingEnabled(appHost, marketingHost) &&
     !isPrivateNetworkHostname(host);

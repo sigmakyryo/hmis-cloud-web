@@ -9,3 +9,7 @@ export async function GET(request: Request, ctx: Ctx) {
 export async function POST(request: Request, ctx: Ctx) {
   return handlePublicPortal(request, (await ctx.params).path);
 }
+
+export async function DELETE(request: Request, ctx: Ctx) {
+  return handlePublicPortal(request, (await ctx.params).path);
+}

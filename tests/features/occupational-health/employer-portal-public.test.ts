@@ -19,13 +19,14 @@ const TOKEN = "abcDEF0123456789_-abcDEF0123456789_-abcDE";
 beforeEach(() => vi.clearAllMocks());
 
 describe("employer portal public BFF", () => {
-  it("allows only branding, invitation lookup and accept", () => {
+  it("allows branding, invitation lookup, accept and company sign-in", () => {
     const q = (s: string) => new URLSearchParams(s);
     expect(resolvePublicPortalPath("GET", ["branding", UUID], q(""))?.path).toBe(`/oh-portal-public/branding/${UUID}`);
     expect(resolvePublicPortalPath("GET", ["invitation"], q(`token=${TOKEN}`))?.path).toBe(
       `/oh-portal-public/invitation?token=${TOKEN}`,
     );
     expect(resolvePublicPortalPath("POST", ["invitation", "accept"], q(""))?.method).toBe("POST");
+    expect(resolvePublicPortalPath("POST", ["session"], q(""))?.path).toBe("/oh-portal-public/session");
     expect(resolvePublicPortalPath("GET", ["invitation"], q("token=short"))).toBeNull();
     expect(resolvePublicPortalPath("GET", ["branding", "../me"], q(""))).toBeNull();
     expect(resolvePublicPortalPath("POST", ["branding", UUID], q(""))).toBeNull();
@@ -45,6 +46,25 @@ describe("employer portal public BFF", () => {
     expect(path).toBe("/oh-portal-public/invitation/accept");
     expect(opts.token).toBeUndefined();
     expect(opts.body).toEqual({ token: TOKEN, password: "longenough", name: "A" });
+  });
+
+  it("keeps the company portal token in a cookie and off the clinic session", async () => {
+    mocks.ohServiceRequest.mockResolvedValue({ token: "portal-token", email: "a@b.test", name: "A" });
+    const req = new Request("http://web.test/api/employer-portal-public/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "a@b.test", password: "secret", tenant_uuid: UUID, is_admin: true }),
+    });
+    const res = await handlePublicPortal(req, ["session"]);
+    expect(res.status).toBe(200);
+    const [path, opts] = mocks.ohServiceRequest.mock.calls[0];
+    expect(path).toBe("/oh-portal-public/session");
+    expect(opts.token).toBeUndefined();
+    expect(opts.body).toEqual({ email: "a@b.test", password: "secret", tenant_uuid: UUID });
+    const payload = (await res.json()) as { data: { token?: string; email: string } };
+    expect(payload.data.token).toBeUndefined();
+    expect(payload.data.email).toBe("a@b.test");
+    expect(res.headers.get("set-cookie")).toContain("oh_portal_session=portal-token");
   });
 
   it("returns 404 for paths outside the allowlist", async () => {
