@@ -1,5 +1,5 @@
-import { EmployerPortalAdminPage } from "@/app/(app)/occupational-health/employer-portal/_components/EmployerPortalAdminPage";
+import { EmployersOverview } from "@/features/employer-portal/admin/components/EmployersOverview";
 
 export default function Page() {
-  return <EmployerPortalAdminPage />;
+  return <EmployersOverview />;
 }

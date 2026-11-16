@@ -132,48 +132,64 @@ describe("proxy host routing", () => {
     );
   });
 
-  it("sends the company portal on the app host to portal.domain", () => {
+  it("sends an old portal host link to the same path on the app host", () => {
     vi.stubEnv("NEXT_PUBLIC_APP_HOST", "app.sigmahmis.com");
     vi.stubEnv("NEXT_PUBLIC_MARKETING_HOST", "sigmahmis.com");
 
     const response = proxy(
-      request("https://app.sigmahmis.com/employer-portal/fitness", "app.sigmahmis.com"),
+      request("https://portal.sigmahmis.com/employer-portal-join?token=abc", "portal.sigmahmis.com"),
     );
 
     expect(response.status).toBe(308);
     expect(response.headers.get("location")).toBe(
-      "https://portal.sigmahmis.com/employer-portal/fitness",
+      "https://app.sigmahmis.com/employer-portal-join?token=abc",
     );
   });
 
-  it("keeps a portal host request on portal and sends clinic pages to the app host", () => {
+  it("serves a workspace sign-in page on the app host without a portal session", () => {
     vi.stubEnv("NEXT_PUBLIC_APP_HOST", "app.sigmahmis.com");
     vi.stubEnv("NEXT_PUBLIC_MARKETING_HOST", "sigmahmis.com");
 
-    const home = proxy(request("https://portal.sigmahmis.com/", "portal.sigmahmis.com"));
-    expect(home.status).toBe(200);
-    expect(home.headers.get("x-middleware-rewrite")).toContain("/employer-portal-sign-in");
+    const response = proxy(request("https://app.sigmahmis.com/portal/sigma-clinic-12", "app.sigmahmis.com"));
 
-    const clinic = proxy(
-      request("https://portal.sigmahmis.com/customers", "portal.sigmahmis.com"),
-    );
-    expect(clinic.status).toBe(308);
-    expect(clinic.headers.get("location")).toBe("https://app.sigmahmis.com/customers");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("location")).toBeNull();
   });
 
-  it("opens the company home on the portal host when that host already has a session", () => {
+  it("sends a signed-out workspace page back to that workspace sign-in", () => {
     vi.stubEnv("NEXT_PUBLIC_APP_HOST", "app.sigmahmis.com");
     vi.stubEnv("NEXT_PUBLIC_MARKETING_HOST", "sigmahmis.com");
 
     const response = proxy(
-      request("https://portal.sigmahmis.com/", "portal.sigmahmis.com", [
+      request("https://app.sigmahmis.com/portal/sigma-clinic-12/fitness", "app.sigmahmis.com"),
+    );
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("https://app.sigmahmis.com/portal/sigma-clinic-12");
+  });
+
+  it("opens the workspace home on fitness when the portal session exists", () => {
+    vi.stubEnv("NEXT_PUBLIC_APP_HOST", "app.sigmahmis.com");
+    vi.stubEnv("NEXT_PUBLIC_MARKETING_HOST", "sigmahmis.com");
+
+    const response = proxy(
+      request("https://app.sigmahmis.com/portal/sigma-clinic-12", "app.sigmahmis.com", [
         `${PORTAL_SESSION_COOKIE}=portal-token`,
       ].join("; ")),
     );
 
     expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toBe(
-      "https://portal.sigmahmis.com/employer-portal",
+    expect(response.headers.get("location")).toBe("https://app.sigmahmis.com/portal/sigma-clinic-12/fitness");
+  });
+
+  it("keeps the workspace join page public", () => {
+    vi.stubEnv("NEXT_PUBLIC_APP_HOST", "app.sigmahmis.com");
+    vi.stubEnv("NEXT_PUBLIC_MARKETING_HOST", "sigmahmis.com");
+
+    const response = proxy(
+      request("https://app.sigmahmis.com/portal/sigma-clinic-12/join?token=abc", "app.sigmahmis.com"),
     );
+
+    expect(response.status).toBe(200);
   });
 });

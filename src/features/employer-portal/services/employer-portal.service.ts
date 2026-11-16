@@ -14,7 +14,7 @@ export const PORTAL_SCOPE_LABEL: Record<PortalScope, string> = {
   random_compliance: "Random testing",
   invoices: "Invoices",
   requests: "Requests",
-  users: "Users",
+  users: "Employees",
 };
 
 /** Employer contacts only: in the portal group, not OH staff, not an administrator. */
@@ -56,6 +56,8 @@ export type PortalWorkspace = {
   uuid: string;
   name: string;
   key: string;
+  /** Organisation logo from Settings > Organization. Empty when none is set. */
+  logo_url?: string;
 };
 
 export type PortalInviteInfo = {
@@ -150,6 +152,8 @@ export type PortalContact = {
   scopes: PortalScope[];
   billing_customers: Array<{ uuid: string; name: string }>;
   is_active: boolean;
+  /** Latest portal sign-in (ISO). Absent until the OH service reports it. */
+  last_signed_in_at?: string | null;
 };
 
 type Results<T> = { results: T[] };
