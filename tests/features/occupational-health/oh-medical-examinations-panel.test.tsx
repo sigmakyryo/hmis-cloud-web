@@ -356,7 +356,7 @@ describe("OhMedicalExaminationsPanel", () => {
     renderPanel();
     expect(await screen.findByRole("heading", { name: "Set up the medical examination" })).toBeVisible();
     expect(screen.getByRole("link", { name: /Edit risk profile forms/ })).toHaveAttribute(
-      "href", "/settings/modules/occupational-health?employer=employer-uuid&profile=hp-1",
+      "href", "/settings/modules/employers?employer=employer-uuid&profile=hp-1",
     );
     expect(ohService.createOhExamination).not.toHaveBeenCalled();
   });
@@ -366,7 +366,7 @@ describe("OhMedicalExaminationsPanel", () => {
     renderPanel();
     expect(await screen.findByRole("heading", { name: "Set up this examination" })).toBeVisible();
     const link = screen.getByRole("link", { name: /Choose exam template/ });
-    expect(link).toHaveAttribute("href", "/settings/modules/occupational-health?employer=employer-uuid&profile=hp-1");
+    expect(link).toHaveAttribute("href", "/settings/modules/employers?employer=employer-uuid&profile=hp-1");
     expect(link).toHaveAttribute("target", "_blank");
     expect(screen.getByLabelText("Examination setup").querySelector('svg[aria-hidden="true"]')).not.toBeNull();
     expect(ohService.createOhExamination).not.toHaveBeenCalled();

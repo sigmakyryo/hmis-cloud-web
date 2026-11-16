@@ -74,6 +74,54 @@ export function isAppHostname(host: string, appHost = getAppHost()) {
   return stripHostPort(host) === stripHostPort(appHost);
 }
 
+/** Company portal host beside the clinic app host. `app.sigmahmis.com` becomes `portal.sigmahmis.com`. */
+export function getPortalHost(port?: string) {
+  const explicit = explicitHost(process.env.NEXT_PUBLIC_PORTAL_HOST);
+  if (explicit) {
+    return explicit;
+  }
+  if (hostRoutingDisabled()) {
+    return "";
+  }
+
+  const appHost = getAppHost(port);
+  if (!appHost) {
+    if (process.env.NODE_ENV === "development") {
+      return `portal.localhost:${developmentPort(port)}`;
+    }
+    return "";
+  }
+
+  const colon = appHost.lastIndexOf(":");
+  const hasPort = colon > -1 && /^\d+$/.test(appHost.slice(colon + 1));
+  const hostname = hasPort ? appHost.slice(0, colon) : appHost;
+  const portSuffix = hasPort ? appHost.slice(colon) : "";
+  const portalName = hostname.startsWith("app.")
+    ? `portal.${hostname.slice(4)}`
+    : hostname.startsWith("portal.")
+      ? hostname
+      : `portal.${hostname}`;
+  return `${portalName}${portSuffix}`;
+}
+
+export function isPortalHostname(host: string, portalHost = getPortalHost()) {
+  if (!portalHost) {
+    return false;
+  }
+
+  return stripHostPort(host) === stripHostPort(portalHost);
+}
+
+export function portalOrigin(port?: string) {
+  const host = getPortalHost(port);
+  if (!host) {
+    return "";
+  }
+  const name = stripHostPort(host);
+  const protocol = name === "localhost" || name.endsWith(".localhost") ? "http" : "https";
+  return `${protocol}://${host}`;
+}
+
 /** RFC1918 addresses used to open the dev server from another device. */
 export function isPrivateNetworkHostname(host: string) {
   const hostname = stripHostPort(host);

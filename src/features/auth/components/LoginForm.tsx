@@ -11,6 +11,7 @@ import { StatusBanner } from "@/components/ui/status-banner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { portalOrigin } from "@/constants/hosts";
 import { ROUTES } from "@/constants/routes";
 import { AuthOtpStep } from "@/features/auth/components/AuthOtpStep";
 import { AuthSplitLayout } from "@/features/auth/components/AuthSplitLayout";
@@ -21,6 +22,7 @@ import { LoginWebAuthnStep } from "@/features/auth/components/LoginWebAuthnStep"
 import {
   isAccessTokenValid,
   getCurrentUser,
+  logout,
   markAuthenticatedSession,
   requestSigninOtp,
   sendSigninEmailOtp,
@@ -60,8 +62,13 @@ function loginStepForMethod(method: MfaSigninMethod): LoginStep {
 
 function destinationForUser(user: User): string {
   if (user.is_superuser && user.tenant === null) return ROUTES.platformAdmin;
-  // Employer contacts only ever see their own portal.
-  return isPortalOnlyUser(user) ? ROUTES.employerPortal : ROUTES.postAuth;
+  return ROUTES.postAuth;
+}
+
+async function leaveForCompanyPortal() {
+  await logout();
+  const origin = portalOrigin();
+  window.location.assign(origin ? `${origin}/` : ROUTES.employerPortalSignIn);
 }
 
 function LoginSplitFrame({ children }: { children: ReactNode }) {
@@ -115,6 +122,10 @@ export function LoginForm() {
           return;
         }
 
+        if (user && isPortalOnlyUser(user)) {
+          await leaveForCompanyPortal();
+          return;
+        }
         router.replace(user ? destinationForUser(user) : ROUTES.postAuth);
       } catch {
         // Stay on the login form if session lookup fails.
@@ -160,6 +171,10 @@ export function LoginForm() {
         ...values,
         pending_mfa_token: pendingMfaToken,
       });
+      if (isPortalOnlyUser(result.user)) {
+        await leaveForCompanyPortal();
+        return;
+      }
       useSessionStore.getState().hydrate(result.user);
       markAuthenticatedSession();
       router.push(destinationForUser(result.user));
@@ -216,6 +231,10 @@ export function LoginForm() {
   }
 
   async function completeAlternateSignin(user: User) {
+    if (isPortalOnlyUser(user)) {
+      await leaveForCompanyPortal();
+      return;
+    }
     useSessionStore.getState().hydrate(user);
     markAuthenticatedSession();
     router.push(destinationForUser(user));

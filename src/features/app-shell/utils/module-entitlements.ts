@@ -18,6 +18,7 @@ export const PORTAL_MODULE_NAMES = [
   "Clinical",
   "Theatre",
   "OccupationalHealth",
+  "Employers",
   "Therapy",
 ] as const;
 
@@ -138,6 +139,15 @@ export function resolvePortalModuleForPath(
     pathname.startsWith(`${ROUTES.settingsModuleClinical}/`)
   ) {
     return "Clinical";
+  }
+
+  if (
+    pathname === ROUTES.employers ||
+    pathname.startsWith(`${ROUTES.employers}/`) ||
+    pathname === ROUTES.settingsModuleEmployers ||
+    pathname.startsWith(`${ROUTES.settingsModuleEmployers}/`)
+  ) {
+    return "Employers";
   }
 
   if (pathname === ROUTES.occupationalHealthForms) {

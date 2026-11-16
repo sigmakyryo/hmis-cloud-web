@@ -207,6 +207,7 @@ export async function updateOhEmployer(
     name?: string;
     code?: string;
     registration_number?: string;
+    pays_bills?: boolean;
   },
 ) {
   return bffRequest<OhEmployer>(BFF_OCCUPATIONAL_HEALTH_ROUTES.employer(uuid), {

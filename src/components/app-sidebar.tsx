@@ -14,7 +14,6 @@ import {
   SidebarMenu,
 } from "@/components/ui/sidebar";
 import { AppHeaderNotifications } from "@/features/app-shell/components/AppHeaderNotifications";
-import { MemberVisitAutomationStatus } from "@/features/customers/components/MemberVisitAutomationStatus";
 import { buildSidebarNavItems } from "@/features/app-shell/utils/build-sidebar-nav";
 import { useOhWorkspaceLayout } from "@/features/occupational-health/hooks/use-oh-workspace-layout";
 import { useUser } from "@/providers/user-provider";
@@ -31,7 +30,6 @@ const SidebarAccount = memo(function SidebarAccount() {
   return (
     <SidebarFooter className="gap-0.5 px-2 pb-2 pt-1">
       <SidebarMenu>
-        <MemberVisitAutomationStatus />
         <AppHeaderNotifications />
       </SidebarMenu>
       <NavUser />

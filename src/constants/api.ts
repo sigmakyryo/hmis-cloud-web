@@ -370,6 +370,7 @@ export const BFF_OCCUPATIONAL_HEALTH_ROUTES = {
   employmentEpisode: (uuid: string) =>
     `/api/occupational-health/employment-episodes/${uuid}`,
   employers: "/api/occupational-health/employers",
+  employerModuleSettings: "/api/employers/module-settings",
   employer: (uuid: string) => `/api/occupational-health/employers/${uuid}`,
   employerSites: "/api/occupational-health/employer-sites",
   employerSite: (uuid: string) =>

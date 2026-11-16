@@ -131,4 +131,50 @@ describe("proxy host routing", () => {
       "https://sigmahmis.com/pricing",
     );
   });
+
+  it("sends the company portal on the app host to portal.domain", () => {
+    vi.stubEnv("NEXT_PUBLIC_APP_HOST", "app.sigmahmis.com");
+    vi.stubEnv("NEXT_PUBLIC_MARKETING_HOST", "sigmahmis.com");
+
+    const response = proxy(
+      request("https://app.sigmahmis.com/employer-portal/fitness", "app.sigmahmis.com"),
+    );
+
+    expect(response.status).toBe(308);
+    expect(response.headers.get("location")).toBe(
+      "https://portal.sigmahmis.com/employer-portal/fitness",
+    );
+  });
+
+  it("keeps a portal host request on portal and sends clinic pages to the app host", () => {
+    vi.stubEnv("NEXT_PUBLIC_APP_HOST", "app.sigmahmis.com");
+    vi.stubEnv("NEXT_PUBLIC_MARKETING_HOST", "sigmahmis.com");
+
+    const home = proxy(request("https://portal.sigmahmis.com/", "portal.sigmahmis.com"));
+    expect(home.status).toBe(200);
+    expect(home.headers.get("x-middleware-rewrite")).toContain("/employer-portal-sign-in");
+
+    const clinic = proxy(
+      request("https://portal.sigmahmis.com/customers", "portal.sigmahmis.com"),
+    );
+    expect(clinic.status).toBe(308);
+    expect(clinic.headers.get("location")).toBe("https://app.sigmahmis.com/customers");
+  });
+
+  it("opens the company home on the portal host when that host already has a session", () => {
+    vi.stubEnv("NEXT_PUBLIC_APP_HOST", "app.sigmahmis.com");
+    vi.stubEnv("NEXT_PUBLIC_MARKETING_HOST", "sigmahmis.com");
+
+    const response = proxy(
+      request("https://portal.sigmahmis.com/", "portal.sigmahmis.com", [
+        `${ACCESS_TOKEN_COOKIE}=access`,
+        `${REFRESH_TOKEN_COOKIE}=refresh`,
+      ].join("; ")),
+    );
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(
+      "https://portal.sigmahmis.com/employer-portal",
+    );
+  });
 });

@@ -49,6 +49,7 @@ export type OhEmployer = {
   code: string;
   registration_number?: string;
   is_active?: boolean;
+  pays_bills?: boolean;
 };
 
 export type OhJobTitle = {

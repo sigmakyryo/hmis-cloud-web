@@ -5,9 +5,11 @@ import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from "@/constants/session";
 import {
   getAppHost,
   getMarketingHost,
+  getPortalHost,
   isAppHostname,
   isHostRoutingEnabled,
   isMarketingHostname,
+  isPortalHostname,
   isPrivateNetworkHostname,
   requestHostname,
 } from "@/constants/hosts";
@@ -53,11 +55,22 @@ function redirectSameOrigin(request: NextRequest, pathname: string) {
   return applySecurityHeaders(NextResponse.redirect(destination));
 }
 
+function isCompanyPortalRoute(pathname: string) {
+  return (
+    pathname === ROUTES.employerPortal ||
+    pathname.startsWith(`${ROUTES.employerPortal}/`) ||
+    pathname === ROUTES.employerPortalJoin ||
+    pathname.startsWith(`${ROUTES.employerPortalJoin}/`) ||
+    pathname === ROUTES.employerPortalSignIn
+  );
+}
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const requestPort = request.nextUrl.port || undefined;
   const appHost = getAppHost(requestPort);
   const marketingHost = getMarketingHost(requestPort);
+  const portalHost = getPortalHost(requestPort);
   const host = requestHostname(
     request.headers.get("x-forwarded-host") ?? request.headers.get("host"),
   );
@@ -65,6 +78,44 @@ export function proxy(request: NextRequest) {
   const hostRouting =
     isHostRoutingEnabled(appHost, marketingHost) &&
     !isPrivateNetworkHostname(host);
+
+  if (portalHost && isPortalHostname(host, portalHost)) {
+    if (pathname.startsWith("/api")) {
+      return applySecurityHeaders(NextResponse.next());
+    }
+    if (pathname === "/" || pathname === ROUTES.employerPortalSignIn) {
+      if (sessionActive) {
+        return redirectSameOrigin(request, ROUTES.employerPortal);
+      }
+      if (pathname === ROUTES.employerPortalSignIn) {
+        return redirectSameOrigin(request, "/");
+      }
+      const destination = request.nextUrl.clone();
+      destination.pathname = ROUTES.employerPortalSignIn;
+      return applySecurityHeaders(NextResponse.rewrite(destination));
+    }
+    if (
+      !sessionActive &&
+      (pathname === ROUTES.employerPortal ||
+        pathname.startsWith(`${ROUTES.employerPortal}/`))
+    ) {
+      return redirectSameOrigin(request, "/");
+    }
+    if (!isCompanyPortalRoute(pathname) && appHost) {
+      return redirectToHost(request, appHost, pathname, 308);
+    }
+  }
+
+  if (
+    portalHost &&
+    appHost &&
+    isAppHostname(host, appHost) &&
+    isCompanyPortalRoute(pathname)
+  ) {
+    const nextPath =
+      pathname === ROUTES.employerPortalSignIn ? "/" : pathname;
+    return redirectToHost(request, portalHost, nextPath, 308);
+  }
 
   if (hostRouting) {
     if (isMarketingHostname(host, marketingHost) && isAppRoute(pathname)) {

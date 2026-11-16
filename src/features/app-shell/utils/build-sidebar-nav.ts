@@ -141,6 +141,7 @@ export function buildSidebarNavItems(
       url: activeModuleItem?.href ?? moduleItems[0].href,
       icon: getModuleIcon(moduleName),
       section: "workspace",
+      flat: moduleName === "Employers",
       isActive: moduleItems.some((navItem) =>
         isNavItemActive(pathname, navItem.href),
       ),

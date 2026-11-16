@@ -1,21 +1,19 @@
 "use client";
 
-import { Suspense, useMemo } from "react";
+import { Suspense, useEffect, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
+import { ROUTES } from "@/constants/routes";
 import { SettingsContentSkeleton } from "@/features/settings/components/SettingsContentSkeleton";
-import { OhEmployerSettingsPage } from "@/features/settings/components/modules/occupational-health/OhEmployerSettingsPage";
-import { OhEmployersSettingsTab } from "@/features/settings/components/modules/occupational-health/OhEmployersSettingsTab";
 import { OhVisitTypesSettingsTab } from "@/features/settings/components/modules/occupational-health/OhVisitTypesSettingsTab";
 import { OhDispensingSettingsTab } from "@/features/settings/components/modules/occupational-health/OhDispensingSettingsTab";
 import { OhIodSettingsTab } from "@/features/settings/components/modules/occupational-health/OhIodSettingsTab";
 import { OhWorkspaceSettingsTab } from "@/features/settings/components/modules/occupational-health/OhWorkspaceSettingsTab";
 import { cn } from "@/lib/utils";
 
-export type OhModuleTabId = "employers" | "visit-types" | "dispensing" | "workspace" | "iod";
+export type OhModuleTabId = "visit-types" | "dispensing" | "workspace" | "iod";
 
 export const OH_MODULE_TABS: Array<{ id: OhModuleTabId; label: string }> = [
-  { id: "employers", label: "Employers" },
   { id: "visit-types", label: "Visit services" },
   { id: "dispensing", label: "Dispensing" },
   { id: "workspace", label: "Workspace" },
@@ -23,7 +21,7 @@ export const OH_MODULE_TABS: Array<{ id: OhModuleTabId; label: string }> = [
 ];
 
 function parseTab(value: string | null): OhModuleTabId {
-  return OH_MODULE_TABS.find((tab) => tab.id === value)?.id ?? "employers";
+  return OH_MODULE_TABS.find((tab) => tab.id === value)?.id ?? "visit-types";
 }
 
 function OhModuleSettingsTabsInner() {
@@ -36,10 +34,22 @@ function OhModuleSettingsTabsInner() {
   );
 
   const employerUuid = searchParams.get("employer");
+  const employerSection = searchParams.get("section");
+
+  useEffect(() => {
+    if (!employerUuid) {
+      return;
+    }
+    const section =
+      employerSection === "departments" || employerSection === "job-titles"
+        ? employerSection
+        : undefined;
+    router.replace(ROUTES.settingsOccupationalHealthEmployer(employerUuid, section));
+  }, [employerSection, employerUuid, router]);
 
   function setActiveTab(tab: OhModuleTabId) {
     const params = new URLSearchParams(searchParams.toString());
-    if (tab === "employers") {
+    if (tab === "visit-types") {
       params.delete("tab");
     } else {
       params.set("tab", tab);
@@ -49,7 +59,7 @@ function OhModuleSettingsTabsInner() {
   }
 
   if (employerUuid) {
-    return <OhEmployerSettingsPage employerUuid={employerUuid} />;
+    return null;
   }
 
   return (
@@ -79,7 +89,6 @@ function OhModuleSettingsTabsInner() {
         })}
       </nav>
       <div>
-        <OhEmployersSettingsTab isActive={activeTab === "employers"} />
         <OhVisitTypesSettingsTab isActive={activeTab === "visit-types"} />
         <OhDispensingSettingsTab isActive={activeTab === "dispensing"} />
         <OhWorkspaceSettingsTab isActive={activeTab === "workspace"} />
