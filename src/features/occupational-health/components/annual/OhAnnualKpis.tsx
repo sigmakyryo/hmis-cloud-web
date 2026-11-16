@@ -1,7 +1,8 @@
 import { ArrowDownRight, ArrowUpRight, BadgeCheck, BedDouble, CalendarX2, ClipboardCheck, FlaskConical, HardHat, Minus, Stethoscope, Users, type LucideIcon } from "lucide-react";
 
-import { describeChange, type AnnualChange, type AnnualFigureKey } from "@/features/occupational-health/components/annual/annual-changes";
+import { type AnnualChange, type AnnualFigureKey } from "@/features/occupational-health/components/annual/annual-changes";
 import { toNumber } from "@/features/occupational-health/components/annual/annual-utils";
+import { ANNUAL_RULE } from "@/features/occupational-health/components/annual/annual-panel";
 import { cn } from "@/lib/utils";
 
 const ICON: Record<AnnualFigureKey, LucideIcon> = {
@@ -13,18 +14,6 @@ const ICON: Record<AnnualFigureKey, LucideIcon> = {
   days_lost: CalendarX2,
   sick_leave_days: BedDouble,
   da_tests: FlaskConical,
-};
-
-/** One line under each card title saying what the figure counts. */
-const SUBTITLE: Record<AnnualFigureKey, string> = {
-  workers: "Workers on file during the period",
-  examinations: "Medical examinations carried out",
-  certificates: "Fitness certificates signed",
-  surveillance_completion: "Share of due surveillance completed",
-  iod_cases: "Injury on duty cases reported",
-  days_lost: "Working days lost to injury",
-  sick_leave_days: "Days covered by sick-leave certificates",
-  da_tests: "Drug and alcohol tests collected",
 };
 
 type Point = { year: string; value: number | null };
@@ -68,13 +57,13 @@ function Trace({ points, label, active }: { points: Point[]; label: string; acti
   );
 }
 
-function Delta({ change, compareYear }: { change: AnnualChange; compareYear: number }) {
+function Delta({ change }: { change: AnnualChange }) {
   const { delta, good, relative, figure } = change;
   if (delta === null) return null;
   const Icon = delta === 0 ? Minus : delta > 0 ? ArrowUpRight : ArrowDownRight;
   const tone = good === null ? "text-brand-slate" : good ? "text-brand-primary" : "text-red-700";
   return (
-    <span className="flex items-center gap-1.5 text-[12px]">
+    <span className="flex items-center gap-1.5 text-[11.5px]">
       <span className={cn("inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 font-semibold tabular-nums", good === null ? "bg-dash-canvas" : good ? "bg-brand-tint" : "bg-red-50", tone)}>
         <Icon className="size-3" aria-hidden />
         <span className={tone}>
@@ -82,9 +71,7 @@ function Delta({ change, compareYear }: { change: AnnualChange; compareYear: num
           {figure.percent ? " pts" : ""}
         </span>
       </span>
-      <span className="text-dash-muted tabular-nums">
-        {relative !== null && !figure.percent ? `${relative > 0 ? "+" : ""}${relative}% ` : ""}on {compareYear}
-      </span>
+      {relative !== null && !figure.percent ? <span className="text-dash-muted tabular-nums">{`${relative > 0 ? "+" : ""}${relative}%`}</span> : null}
     </span>
   );
 }
@@ -109,8 +96,8 @@ export function OhAnnualKpis({
   onSelect: (key: AnnualFigureKey) => void;
 }) {
   return (
-    <div className="grid grid-cols-1 gap-4 @xl:grid-cols-2 @4xl:grid-cols-4" role="group" aria-label="Headline figures">
-      {changes.map((change) => {
+    <div className="grid grid-cols-2 gap-y-2 @4xl:grid-cols-4" role="group" aria-label="Headline figures">
+      {changes.map((change, index) => {
         const { figure, current } = change;
         const active = figure.key === selected;
         const value = toNumber(current);
@@ -123,29 +110,25 @@ export function OhAnnualKpis({
             aria-pressed={active}
             onClick={() => onSelect(figure.key)}
             className={cn(
-              "flex min-w-0 flex-col rounded-xl border bg-white px-5 py-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary",
-              active ? "border-brand-primary ring-1 ring-brand-primary/25" : "border-dash-border hover:border-brand-navy/25",
+              "group flex min-w-0 flex-col px-6 py-4 text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-primary",
+              ANNUAL_RULE,
+              index % 2 === 0 && "border-l-0 @4xl:border-l",
+              index % 4 === 0 && "@4xl:border-l-0",
             )}
           >
-            <span className="text-[14px] font-semibold text-brand-navy">{figure.label}</span>
-            <span className="mt-0.5 text-[12px] text-dash-muted">{SUBTITLE[figure.key]}</span>
-            <span className="mt-4 flex items-center gap-3">
-              <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", active ? "bg-brand-primary text-white" : "bg-brand-tint text-brand-primary")}>
-                <Icon className="size-[18px]" aria-hidden />
+            <span className="flex items-center gap-2.5">
+              <span className={cn("flex size-7 shrink-0 items-center justify-center rounded-lg transition-colors", active ? "bg-brand-primary text-white" : "bg-brand-tint text-brand-primary")}>
+                <Icon className="size-4" aria-hidden />
               </span>
-              <span className={cn("text-[30px] leading-none font-semibold tracking-tight tabular-nums", value === null || value === 0 ? "text-brand-navy/35" : "text-brand-navy")}>
+              <span className={cn("text-[12.5px] transition-colors", active ? "font-semibold text-brand-primary" : "font-medium text-dash-muted group-hover:text-brand-navy")}>{figure.label}</span>
+            </span>
+            <span className="mt-3 flex items-end justify-between gap-3">
+              <span className={cn("text-[28px] leading-none font-semibold tracking-tight tabular-nums", value === null || value === 0 ? "text-brand-navy/35" : "text-brand-navy")}>
                 {current === undefined || current === null || current === "—" ? "–" : figure.percent && value !== null ? `${current}%` : current}
               </span>
-              <span className="ml-auto">
-                <Trace active={active} label={`${figure.label} by year`} points={[...earlier.map((p) => ({ year: String(p.year), value: toNumber(p[figure.key]) })), { year: currentLabel, value }]} />
-              </span>
+              <Trace active={active} label={`${figure.label} by year`} points={[...earlier.map((p) => ({ year: String(p.year), value: toNumber(p[figure.key]) })), { year: currentLabel, value }]} />
             </span>
-            {compareYear !== null ? (
-              <span className="mt-3 flex flex-col gap-1.5">
-                <Delta change={change} compareYear={compareYear} />
-                <span className="text-[12px] leading-snug text-dash-muted">{describeChange(change)}</span>
-              </span>
-            ) : null}
+            <span className="mt-2 block min-h-5">{compareYear !== null ? <Delta change={change} /> : null}</span>
           </button>
         );
       })}

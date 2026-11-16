@@ -1,7 +1,8 @@
+import { ChevronRight } from "lucide-react";
+
 import type { AnnualChange } from "@/features/occupational-health/components/annual/annual-changes";
 import { isSuppressed, toNumber } from "@/features/occupational-health/components/annual/annual-utils";
 import type { AnnualTrendPoint } from "@/features/occupational-health/services/oh-annual-report.service";
-import { OhAnnualCard } from "@/features/occupational-health/components/annual/OhAnnualCard";
 import { cn } from "@/lib/utils";
 
 const show = (value: unknown, percent?: boolean) =>
@@ -28,11 +29,15 @@ export function OhAnnualKeyFigures({
   const hasHidden = changes.some(({ figure, current }) => isSuppressed(current) || earlier.some((point) => isSuppressed(point[figure.key])));
 
   return (
-    <OhAnnualCard id="oh-annual-numbers-title" testId="oh-annual-numbers" title="The numbers" description="Every earlier year beside this period, and the change on the year before.">
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[36rem] text-[13px]" data-testid="oh-annual-key-figures">
+    <details className="group" data-testid="oh-annual-numbers">
+      <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 text-[12.5px] font-semibold text-brand-navy marker:hidden hover:text-brand-primary focus-visible:underline focus-visible:outline-none">
+        <ChevronRight className="size-4 transition-transform group-open:rotate-90" aria-hidden />
+        Show the numbers
+      </summary>
+      <div className="mt-4 overflow-x-auto">
+        <table className="w-full min-w-[36rem] text-[12px]" data-testid="oh-annual-key-figures">
           <thead>
-            <tr className="text-[12px] text-dash-muted">
+            <tr className="text-[11.5px] text-dash-muted">
               <th scope="col" className="py-2 pr-6 text-left font-medium">
                 Measure
               </th>
@@ -74,6 +79,6 @@ export function OhAnnualKeyFigures({
         </table>
       </div>
       {hasHidden ? <p className="mt-3 text-[11.5px] text-dash-muted">Years with fewer than 5 are left as gaps in the small charts.</p> : null}
-    </OhAnnualCard>
+    </details>
   );
 }

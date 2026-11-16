@@ -8,7 +8,6 @@ import { errorText, isForbidden } from "@/app/(app)/drug-alcohol/_components/sha
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ListPageLayout } from "@/features/app-shell/components/page-layout";
-import { OhAnnualPeriodDialog } from "@/features/occupational-health/components/annual/OhAnnualPeriodDialog";
 import { OhAnnualPreviewDialog } from "@/features/occupational-health/components/annual/OhAnnualPreviewDialog";
 import { OhAnnualReportView } from "@/features/occupational-health/components/annual/OhAnnualReportView";
 import { OhAnnualToolbar } from "@/features/occupational-health/components/annual/OhAnnualToolbar";
@@ -24,11 +23,9 @@ import { fetchOhEmployers } from "@/features/occupational-health/services/oh.ser
 
 export function OhAnnualReportPage() {
   const thisYear = new Date().getFullYear();
-  const years = Array.from({ length: 8 }, (_, i) => thisYear - i);
   const [period, setPeriod] = useState<AnnualPeriod>({ mode: "year", year: thisYear - 1 });
   const [employer, setEmployer] = useState("");
   const [audience, setAudience] = useState<AnnualAudience>("employer");
-  const [periodOpen, setPeriodOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
 
   const params: AnnualParams =
@@ -57,8 +54,8 @@ export function OhAnnualReportPage() {
   return (
     <ListPageLayout data-testid="oh-annual-report-page">
       <OhAnnualToolbar
-        periodText={periodLabel(period)}
-        onChangePeriod={() => setPeriodOpen(true)}
+        period={period}
+        onPeriodChange={setPeriod}
         employers={employers.data ?? []}
         employer={employer}
         onEmployerChange={setEmployer}
@@ -75,7 +72,7 @@ export function OhAnnualReportPage() {
         pdfHref={annualReportFileUrl(params, "pdf")}
       />
 
-      <div data-list-band className="flex-1 px-5 pt-6 pb-16 md:px-8 print:p-0">
+      <div data-list-band className="flex-1 bg-dash-canvas px-4 pt-4 pb-12 md:px-6 print:bg-white print:p-0">
         <div className="w-full">
           {forbidden ? (
             <div className="max-w-md py-10" role="alert">
@@ -123,7 +120,6 @@ export function OhAnnualReportPage() {
         </div>
       </div>
 
-      <OhAnnualPeriodDialog open={periodOpen} onOpenChange={setPeriodOpen} value={period} onApply={setPeriod} years={years} />
       <OhAnnualPreviewDialog open={previewOpen} onOpenChange={setPreviewOpen} pdfUrl={annualReportFileUrl(params, "pdf")} title={`Annual report · ${employerName} · ${label}`} />
     </ListPageLayout>
   );

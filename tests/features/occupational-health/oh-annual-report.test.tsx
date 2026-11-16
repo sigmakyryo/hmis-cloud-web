@@ -13,6 +13,7 @@ vi.mock("@/features/occupational-health/services/oh-annual-report.service", asyn
 });
 
 import { OhAnnualReportPage } from "@/features/occupational-health/pages/OhAnnualReportPage";
+import { rangeToPeriod } from "@/features/occupational-health/components/annual/OhAnnualPeriodPicker";
 import { rowLabel } from "@/features/occupational-health/components/AnnualReportSections";
 import { areaLayout, tickCounts } from "@/features/occupational-health/components/annual/annual-areas";
 import { annualChanges, describeChange, rankChanges } from "@/features/occupational-health/components/annual/annual-changes";
@@ -78,9 +79,9 @@ describe("annual report", () => {
     expect(await screen.findByText("Injury on duty")).toBeTruthy();
     expect(screen.getAllByText("<5").length).toBeGreaterThan(0);
     expect(screen.getByText("Nothing recorded.")).toBeTruthy();
-    expect(screen.getByTestId("oh-annual-copy-hint")).toHaveTextContent("Counts of 1–4 are hidden to protect individuals.");
-    await screen.findByRole("option", { name: "Acme" });
-    fireEvent.change(screen.getByLabelText("Employer"), { target: { value: ACME } });
+    expect(screen.queryByTestId("oh-annual-copy-hint")).toBeNull();
+    fireEvent.keyDown(await screen.findByRole("combobox", { name: "Employer" }), { key: "Enter" });
+    fireEvent.keyDown(await screen.findByRole("option", { name: "Acme" }), { key: "Enter" });
     fireEvent.click(screen.getByRole("radio", { name: "Regulator copy" }));
     await waitFor(() =>
       expect(mocks.report).toHaveBeenLastCalledWith(expect.objectContaining({ employer_uuid: ACME, audience: "regulator" })),
@@ -121,13 +122,7 @@ describe("annual report", () => {
     expect(sectionChartRows("exposure", { "Exposure results recorded": 86, "Overexposure events": 9 }).data).toEqual([]);
   });
 
-  it("tells the period in plain sentences, and points to a year with records when this one is empty", async () => {
-    renderPage();
-    expect(await screen.findByTestId("oh-annual-narrative")).toHaveTextContent(
-      "Across all employers in 2025, 120 workers were on file, 90 examinations were done, 60 fitness certificates were issued and 6 injury on duty cases were reported. 85% of the surveillance that fell due was completed.",
-    );
-    cleanup();
-
+  it("points to a year with records when this one is empty", async () => {
     const zero = { year: 2025, workers: 0, examinations: 0, certificates: 0, surveillance_completion: null, iod_cases: 0, days_lost: 0, sick_leave_days: 0, da_tests: 0 };
     mocks.report.mockImplementation(async (params: { year: number }) => (params.year === 2025 ? { ...REPORT, sections: { workforce: { "Workers on file during the year": 0 } } } : REPORT));
     mocks.trend.mockResolvedValue({ ...TREND, series: [TREND.series[0], zero] });
@@ -151,7 +146,7 @@ describe("annual report", () => {
     renderPage();
     await screen.findByTestId("oh-annual-empty");
     expect(screen.queryByTestId("oh-annual-better")).toBeNull();
-    expect(screen.getByTestId("oh-annual-changes")).toHaveTextContent("Nothing to compare until records are added for 2025.");
+    expect(screen.getByTestId("oh-annual-changes")).toHaveTextContent("Nothing to compare yet.");
     expect(screen.getByTestId("oh-annual-kpi-iod_cases")).not.toHaveTextContent("on 2024");
   });
 
@@ -162,7 +157,7 @@ describe("annual report", () => {
     expect(screen.queryByText("Occupational health annual report")).toBeNull();
     expect(screen.queryByText(/^Generated /)).toBeNull();
     expect(screen.queryByText(/Employer copy · small counts hidden/)).toBeNull();
-    expect(screen.queryByText(/^\d+ \w+ 2025 to /)).toBeNull();
+    expect(within(screen.getByTestId("oh-annual-paper")).queryByText(/^\d+ \w+ 2025 to /)).toBeNull();
     expect(screen.getByRole("heading", { level: 2, name: "All employers, 2025" }).className).toContain("sr-only");
     expect(screen.getByText("2025 in brief")).toBeTruthy();
   });
@@ -271,12 +266,19 @@ describe("annual report", () => {
     expect(breakdownShares("health_programmes", { "hearing · fit": 5, "lung · fit": 5 })).toEqual({});
   });
 
-  it("switches to a custom period through the dialog and validates it", async () => {
+  it("shows the period as a date range and keeps a whole calendar year as the statutory period", async () => {
+    renderPage();
+    await screen.findByText("Injury on duty");
+    expect(screen.getByTestId("oh-annual-period-trigger")).toHaveTextContent("1 Jan 2025 to 31 Dec 2025");
+    expect(rangeToPeriod({ from: "2024-01-01", to: "2024-12-31" })).toEqual({ mode: "year", year: 2024 });
+    expect(rangeToPeriod({ from: "2025-07-01", to: "2026-06-30" })).toEqual({ mode: "custom", from: "2025-07-01", to: "2026-06-30" });
+  });
+
+  it("switches to a custom period through the date range picker and validates it", async () => {
     renderPage();
     await screen.findByText("Injury on duty");
     fireEvent.click(screen.getByRole("button", { name: /Change period/ }));
     const dialog = await screen.findByTestId("oh-annual-period-dialog");
-    fireEvent.click(within(dialog).getByRole("radio", { name: "Custom range" }));
     fireEvent.change(within(dialog).getByLabelText("From"), { target: { value: "2025-07-01" } });
     fireEvent.change(within(dialog).getByLabelText("To"), { target: { value: "2025-03-01" } });
     expect(within(dialog).getByRole("alert").textContent).toMatch(/start date must be on or before/);

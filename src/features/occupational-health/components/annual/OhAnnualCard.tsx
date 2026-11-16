@@ -1,14 +1,15 @@
+import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
 /**
- * The annual dashboard's one surface: a white card with a hairline border and a title with a line of
- * description. Every block on the page is one of these, so the page reads as a single system.
+ * One block of the annual dashboard, set straight on the page: a small heading (with an optional icon)
+ * and its content. Space does the separating, so there is no box, border or fill.
  */
 export function OhAnnualCard({
   title,
-  description,
+  icon: Icon,
   action,
   children,
   className,
@@ -17,7 +18,7 @@ export function OhAnnualCard({
   testId,
 }: {
   title: ReactNode;
-  description?: ReactNode;
+  icon?: LucideIcon;
   action?: ReactNode;
   children: ReactNode;
   className?: string;
@@ -26,17 +27,19 @@ export function OhAnnualCard({
   testId?: string;
 }) {
   return (
-    <section className={cn("flex min-w-0 flex-col rounded-xl border border-dash-border bg-white", className)} aria-labelledby={id} data-testid={testId}>
-      <header className="flex items-start justify-between gap-3 px-5 pt-4">
-        <div className="min-w-0">
-          <h3 id={id} className="text-[15px] font-semibold tracking-tight text-brand-navy">
-            {title}
-          </h3>
-          {description ? <p className="mt-0.5 text-[12.5px] text-dash-muted">{description}</p> : null}
-        </div>
+    <section className={cn("flex min-w-0 flex-col", className)} aria-labelledby={id} data-testid={testId}>
+      <header className="flex items-center justify-between gap-3">
+        <h3 id={id} className="flex items-center gap-2.5 text-[14px] font-semibold tracking-tight text-brand-navy">
+          {Icon ? (
+            <span aria-hidden className="flex size-7 items-center justify-center rounded-lg bg-brand-tint text-brand-primary">
+              <Icon className="size-4" />
+            </span>
+          ) : null}
+          {title}
+        </h3>
         {action}
       </header>
-      <div className={cn("min-w-0 flex-1 px-5 pt-4 pb-5", bodyClassName)}>{children}</div>
+      <div className={cn("min-w-0 flex-1 pt-4", bodyClassName)}>{children}</div>
     </section>
   );
 }

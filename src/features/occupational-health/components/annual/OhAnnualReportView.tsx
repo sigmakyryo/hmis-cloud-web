@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { useState } from "react";
 
 import { annualChanges, rankChanges, type AnnualFigureKey } from "@/features/occupational-health/components/annual/annual-changes";
+import { ANNUAL_SURFACE } from "@/features/occupational-health/components/annual/annual-panel";
 import { annualNarrative, latestActiveYear } from "@/features/occupational-health/components/annual/annual-narrative";
 import { periodLabel, type AnnualPeriod } from "@/features/occupational-health/components/annual/annual-utils";
 import { OhAnnualAreas } from "@/features/occupational-health/components/annual/OhAnnualAreas";
@@ -51,35 +52,30 @@ export function OhAnnualReportView({
   const chosen = changes.find((change) => change.figure.key === selected) ?? changes[0];
 
   return (
-    <article className={cn("@container space-y-5 transition-opacity", isRefreshing && "opacity-60")} aria-labelledby="oh-annual-title" data-testid="oh-annual-paper">
+    <article className={cn("@container space-y-4 transition-opacity", isRefreshing && "opacity-60")} aria-labelledby="oh-annual-title" data-testid="oh-annual-paper">
       <h2 id="oh-annual-title" className="sr-only">
         {employerName}, {label}
       </h2>
 
-      <header>
-        <h3 id="oh-annual-highlights" className="text-[20px] font-semibold tracking-tight text-brand-navy">
+      <header className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 px-1 pb-1">
+        <h3 id="oh-annual-highlights" className="text-[17px] font-semibold tracking-tight text-brand-navy">
           {period.mode === "year" ? `${period.year} in brief` : "The period in brief"}
         </h3>
-        {narrative ? (
-          <p className="mt-1 max-w-4xl text-[13.5px] leading-relaxed text-brand-slate" data-testid="oh-annual-narrative">
-            {narrative}
-          </p>
-        ) : null}
         {audience === "regulator" ? (
-          <p className="mt-2 text-[12.5px] text-amber-900 print:hidden" role="note">
+          <p className="text-[12px] text-amber-900 print:hidden" role="note">
             The layout is generic. Check it against the regulator&apos;s current return form before you submit it.
           </p>
         ) : null}
       </header>
 
       {narrative === null ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dash-border bg-white px-5 py-4" data-testid="oh-annual-empty">
-          <p className="text-[14px] font-medium text-brand-navy">{`Nothing was recorded ${report.employer ? `for ${report.employer.name}` : "across all employers"} in ${label}.`}</p>
+        <div className={cn(ANNUAL_SURFACE, "flex flex-wrap items-center gap-x-5 gap-y-2 px-6 py-4")} data-testid="oh-annual-empty">
+          <p className="text-[13px] text-brand-slate">{`Nothing was recorded ${report.employer ? `for ${report.employer.name}` : "across all employers"} in ${label}.`}</p>
           {activeYear !== null ? (
             <button
               type="button"
               onClick={() => onOpenYear(activeYear)}
-              className="group inline-flex items-center gap-1.5 text-[13px] font-semibold text-brand-primary hover:text-brand-primary-hover focus-visible:underline focus-visible:outline-none"
+              className="group inline-flex items-center gap-1.5 text-[12px] font-semibold text-brand-primary hover:text-brand-primary-hover focus-visible:underline focus-visible:outline-none"
             >
               Open {activeYear}, the latest year with records
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
@@ -88,28 +84,33 @@ export function OhAnnualReportView({
         </div>
       ) : null}
 
-      <OhAnnualKpis changes={changes} earlier={earlier} currentLabel={label} compareYear={compareYear} selected={chosen.figure.key} onSelect={setSelected} />
+      <div className={cn(ANNUAL_SURFACE, "p-2")}>
+        <OhAnnualKpis changes={changes} earlier={earlier} currentLabel={label} compareYear={compareYear} selected={chosen.figure.key} onSelect={setSelected} />
+      </div>
 
-      <div className="grid gap-4 @4xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+      <div className={cn(ANNUAL_SURFACE, "grid gap-x-8 gap-y-8 p-6 @4xl:grid-cols-[minmax(0,1fr)_20rem]")}>
         <OhAnnualTrendPanel change={chosen} earlier={earlier} currentLabel={label} onOpenYear={onOpenYear} />
         <OhAnnualChangesPanel
+          className="@4xl:border-l @4xl:border-dash-border @4xl:pl-8"
           better={ranked.better}
           worse={ranked.worse}
           compareYear={compareYear}
-          noCompareText={narrative === null ? `Nothing to compare until records are added for ${label}.` : "A custom period is not compared with an earlier one."}
+          noCompareText={narrative === null ? "Nothing to compare yet." : "A custom period is not compared."}
         />
       </div>
 
-      <OhAnnualKeyFigures changes={changes} series={series} reportYear={report.year} currentLabel={label} compareYear={compareYear} />
+      <div className={cn(ANNUAL_SURFACE, "px-6 py-4")}>
+        <OhAnnualKeyFigures changes={changes} series={series} reportYear={report.year} currentLabel={label} compareYear={compareYear} />
+      </div>
 
-      <section aria-labelledby="oh-annual-detail" className="space-y-4 pt-3">
-        <h3 id="oh-annual-detail" className="text-[20px] font-semibold tracking-tight text-brand-navy">
+      <section aria-labelledby="oh-annual-detail" className={cn(ANNUAL_SURFACE, "space-y-7 p-6")}>
+        <h3 id="oh-annual-detail" className="text-[17px] font-semibold tracking-tight text-brand-navy">
           Detail by area
         </h3>
         <OhAnnualAreas report={report} />
       </section>
 
-      {report.suppression ? <p className="text-[12px] text-dash-muted">{report.suppression}</p> : null}
+      {report.suppression ? <p className="px-1 text-[11.5px] text-dash-muted">{report.suppression}</p> : null}
     </article>
   );
 }

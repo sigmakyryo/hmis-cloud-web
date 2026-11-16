@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { AppIcon } from "@/components/icons/app-icon";
+import { EmptyIllustration } from "@/components/illustrations/empty-illustration";
 import { FilterSelectField } from "@/components/filter-select-field";
 import { PrimaryButton } from "@/components/ui/app-buttons";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -80,9 +81,7 @@ function HistoryEmptyState({
       className="flex flex-col items-center justify-center px-6 py-16 text-center"
       data-testid="reports-history-empty"
     >
-      <div className="flex size-12 items-center justify-center rounded-xl bg-brand-tint text-brand-primary">
-        <AppIcon name="file" size={22} />
-      </div>
+      <EmptyIllustration variant={hasFilters ? "search" : "documents"} className="h-32" />
       <h2 className="mt-4 text-base font-semibold text-brand-navy">
         {hasFilters ? "No exports match these filters" : "No exports yet"}
       </h2>

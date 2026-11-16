@@ -44,7 +44,6 @@ export function OhAnnualTrendPanel({
       testId="oh-annual-trend"
       className={className}
       title={`${figure.label} by year`}
-      description="Choose a figure above to chart it. Click a ring to open that year."
     >
       {hasData ? (
         <figure className="m-0 min-w-0" aria-label={`${figure.label} by year`}>
@@ -88,7 +87,7 @@ export function OhAnnualTrendPanel({
           <figcaption className="sr-only">{rows.map((row) => `${row.year}: ${row.shown}`).join(", ")}</figcaption>
         </figure>
       ) : (
-        <p className="flex h-72 items-center justify-center text-[13.5px] text-dash-muted">No {figure.label.toLowerCase()} recorded in these years.</p>
+        <p className="flex h-72 items-center justify-center text-[12.5px] text-dash-muted">No {figure.label.toLowerCase()} recorded in these years.</p>
       )}
     </OhAnnualCard>
   );
