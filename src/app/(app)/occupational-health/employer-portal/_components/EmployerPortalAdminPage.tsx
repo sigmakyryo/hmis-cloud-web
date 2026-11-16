@@ -25,12 +25,14 @@ import {
 import { useToast } from "@/providers/toast-provider";
 
 import { ContactDrawer } from "./ContactDrawer";
+import { SendInvoiceDrawer, StaffInvoicesView, StaffPaymentsView } from "./EmployerPortalBilling";
 import { PortalBrandingPanel, PortalInvitationsPanel } from "./PortalInvitesAndBranding";
 
-type View = "pending" | "accepted" | "done" | "declined" | "contacts" | "invitations" | "branding";
+type View = "pending" | "accepted" | "done" | "declined" | "contacts" | "invitations" | "branding" | "invoices" | "payments";
 
 export function EmployerPortalAdminPage() {
   const [view, setView] = useState<View>("pending");
+  const [sending, setSending] = useState(false);
   return (
     <ImmPageShell title="Employer portal" testId="oh-employer-portal-admin">
       {view === "contacts" ? <ContactsView view={view} setView={setView} /> : null}
@@ -46,7 +48,22 @@ export function EmployerPortalAdminPage() {
           <PortalBrandingPanel />
         </>
       ) : null}
-      {view !== "contacts" && view !== "invitations" && view !== "branding" ? <RequestsView view={view} setView={setView} /> : null}
+      {view === "invoices" ? (
+        <>
+          <Tabs view={view} setView={setView} />
+          <StaffInvoicesView onSend={() => setSending(true)} />
+          {sending ? <SendInvoiceDrawer onClose={() => setSending(false)} /> : null}
+        </>
+      ) : null}
+      {view === "payments" ? (
+        <>
+          <Tabs view={view} setView={setView} />
+          <StaffPaymentsView />
+        </>
+      ) : null}
+      {view !== "contacts" && view !== "invitations" && view !== "branding" && view !== "invoices" && view !== "payments" ? (
+        <RequestsView view={view} setView={setView} />
+      ) : null}
     </ImmPageShell>
   );
 }
@@ -60,6 +77,8 @@ function Tabs({ view, setView, actions }: { view: View; setView: (v: View) => vo
         { key: "accepted", label: "Accepted" },
         { key: "done", label: "Done" },
         { key: "declined", label: "Declined" },
+        { key: "invoices", label: "Invoices" },
+        { key: "payments", label: "Payments" },
         { key: "contacts", label: "Employer logins" },
         { key: "invitations", label: "Invitations" },
         { key: "branding", label: "Branding" },
