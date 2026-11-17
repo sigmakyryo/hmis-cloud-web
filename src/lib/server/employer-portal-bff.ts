@@ -4,7 +4,7 @@ import { createOhModuleProxy } from "@/lib/server/oh-module-bff";
 export const employerPortalProxy = createOhModuleProxy({
   base: "/oh-portal",
   rules: {
-    GET: ["me", "fitness", "random-compliance", "invoices", "invoices/{id}/pdf", "users", "employees", "requests", "annual-summary", "annual-summary/pdf", "annual-summary/csv"],
+    GET: ["me", "fitness", "random-compliance", "invoices", "invoices/{id}/pdf", "employees", "requests", "annual-summary", "annual-summary/pdf", "annual-summary/csv"],
     POST: ["requests", "invoices/{id}/payment-notice"],
   },
   binary: [

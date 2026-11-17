@@ -142,7 +142,6 @@ export type PortalEmployees = {
   counts: { all: number; active: number; former: number };
   results: PortalEmployee[];
 };
-export type PortalColleague = { name: string; email: string; scopes: PortalScope[] };
 export type PortalRequestKind = "medical" | "drug_alcohol_test" | "health_check" | "fit_test" | "training" | "other";
 export type PortalRequest = {
   uuid: string;
@@ -221,7 +220,6 @@ export const rejectPortalPaymentNotice = (uuid: string, note?: string) =>
   bffRequest<PortalPaymentNotice>(`${ADMIN}/payment-notices/${uuid}/reject`, { method: "POST", body: { note } });
 export const fetchPortalEmployees = (status?: PortalEmployeeStatus, q?: string) =>
   bffRequest<PortalEmployees>(`${PORTAL}/employees${qs({ status, q })}`);
-export const fetchPortalUsers = () => bffRequest<Results<PortalColleague>>(`${PORTAL}/users`).then((r) => r.results);
 export const fetchPortalRequests = () => bffRequest<Results<PortalRequest>>(`${PORTAL}/requests`).then((r) => r.results);
 export const createPortalRequest = (body: {
   kind: PortalRequestKind;

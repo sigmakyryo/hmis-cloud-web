@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PortalEmployeesPage } from "@/app/employer-portal/_components/PortalEmployeesPage";
 import { employerPortalProxy } from "@/lib/server/employer-portal-bff";
 
-const mocks = vi.hoisted(() => ({ employees: vi.fn(), users: vi.fn() }));
+const mocks = vi.hoisted(() => ({ employees: vi.fn() }));
 
 vi.mock("@/lib/server/oh-service", () => ({ OH_SERVICE_URL: "http://ohs.test/api", ohServiceRequest: vi.fn() }));
 vi.mock("@/lib/server/require-access-token", () => ({ requireAccessToken: vi.fn() }));
@@ -14,7 +14,6 @@ vi.mock("@/features/employer-portal/services/employer-portal.service", async (im
   return {
     ...actual,
     fetchPortalEmployees: (...args: unknown[]) => mocks.employees(...args),
-    fetchPortalUsers: (...args: unknown[]) => mocks.users(...args),
   };
 });
 
@@ -39,7 +38,6 @@ function renderPage() {
 describe("portal employees", () => {
   beforeEach(() => {
     mocks.employees.mockReset().mockResolvedValue(payload);
-    mocks.users.mockReset().mockResolvedValue([{ name: "Casey", email: "casey@acme.test", scopes: ["fitness", "users"] }]);
   });
   afterEach(cleanup);
 
@@ -59,25 +57,18 @@ describe("portal employees", () => {
     expect(screen.getByRole("heading", { name: "Employees" })).toBeTruthy();
   });
 
-  it("filters by employment status and by search", async () => {
+  it("searches employees and has no status filter or portal logins tab", async () => {
     renderPage();
     await screen.findAllByTestId("employer-portal-employee");
-    fireEvent.click(screen.getByRole("button", { name: /^Former/ }));
-    await waitFor(() => expect(mocks.employees).toHaveBeenLastCalledWith("former", undefined));
+    expect(screen.queryByRole("button", { name: /Portal logins/ })).toBeNull();
+    expect(screen.queryByRole("group", { name: "Employment status" })).toBeNull();
     fireEvent.change(screen.getByLabelText("Search employees"), { target: { value: "E2" } });
-    await waitFor(() => expect(mocks.employees).toHaveBeenLastCalledWith("former", "E2"));
-  });
-
-  it("still shows who can sign in under Portal logins", async () => {
-    renderPage();
-    fireEvent.click(screen.getByRole("button", { name: "Portal logins" }));
-    const rows = await screen.findAllByTestId("employer-portal-user");
-    expect(within(rows[0]).getByText("Casey")).toBeTruthy();
+    await waitFor(() => expect(mocks.employees).toHaveBeenLastCalledWith(undefined, "E2"));
   });
 
   it("explains when there are no employees", async () => {
     mocks.employees.mockResolvedValue({ ...payload, counts: { all: 0, active: 0, former: 0 }, results: [] });
     renderPage();
-    expect(await screen.findByText("No employees match this view.")).toBeTruthy();
+    expect(await screen.findByText("No employees match this search.")).toBeTruthy();
   });
 });

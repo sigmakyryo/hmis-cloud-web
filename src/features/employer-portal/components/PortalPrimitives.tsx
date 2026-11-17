@@ -20,7 +20,7 @@ export function PortalPage({ children, testId }: { children: ReactNode; testId?:
 /** Round icon, title and subtitle on the left, page actions on the right. */
 export function PortalPageHeader({ icon, title, subtitle, actions }: { icon: PortalIconSvg; title: string; subtitle: string; actions?: ReactNode }) {
   return (
-    <header className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200/80 pb-5">
+    <header className="flex flex-wrap items-center justify-between gap-3 border-b border-dashed border-neutral-300/80 pb-5">
       <div className="flex min-w-0 items-center gap-3.5">
         <span className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-white text-neutral-600">
           <PortalIcon icon={icon} size={22} />
@@ -40,9 +40,9 @@ export type PortalStat = { label: string; value: string; note?: string; tone?: "
 /** Figures in a row with hairline dividers, like the dashboard reference. */
 export function PortalStatStrip({ stats, loading }: { stats: PortalStat[]; loading?: boolean }) {
   return (
-    <dl className="grid grid-cols-2 gap-y-5 border-b border-dashed border-neutral-200 py-5 sm:grid-cols-3 lg:flex lg:gap-0" data-testid="portal-stats">
+    <dl className="grid grid-cols-2 gap-y-5 border-b border-dashed border-neutral-300/80 py-5 sm:grid-cols-3 lg:flex lg:gap-0" data-testid="portal-stats">
       {stats.map((stat, index) => (
-        <div key={stat.label} className={cn("min-w-0 lg:flex-1 lg:px-6", index === 0 ? "lg:pl-0" : "lg:border-l lg:border-neutral-200/80")}>
+        <div key={stat.label} className={cn("min-w-0 lg:flex-1 lg:px-6", index === 0 ? "lg:pl-0" : "lg:border-l lg:border-neutral-200")}>
           <dt className="text-[14px] text-neutral-700">{stat.label}</dt>
           <dd className="mt-1 flex flex-wrap items-baseline gap-x-2">
             {loading ? (

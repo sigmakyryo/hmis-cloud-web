@@ -11,6 +11,8 @@ import {
   submitPortalPaymentNotice,
   type PortalInvoice,
 } from "@/features/employer-portal/services/employer-portal.service";
+import { PortalPagination } from "@/features/employer-portal/components/PortalPagination";
+import { usePortalPagination } from "@/features/employer-portal/hooks/usePortalPagination";
 import {
   PortalCell,
   PortalPage,
@@ -31,6 +33,7 @@ const TONE = { not_paid: "bad", partially_paid: "warn", paid: "good" } as const;
 export function PortalInvoicesPage() {
   const query = useQuery({ queryKey: ["employer-portal", "invoices"], queryFn: fetchPortalInvoices, retry: false });
   const rows = query.data ?? [];
+  const { pageRows, pagination } = usePortalPagination(rows);
   const totalCents = rows.reduce((sum, invoice) => sum + toCents(invoice.amount_total), 0);
   const paidCents = rows.reduce((sum, invoice) => sum + toCents(invoice.amount_paid), 0);
   const dueCents = rows.reduce((sum, invoice) => sum + toCents(invoice.amount_due), 0);
@@ -51,7 +54,7 @@ export function PortalInvoicesPage() {
       <div className="pt-5">
         <PortalState loading={query.isLoading} error={query.error} empty={query.isSuccess && rows.length === 0 ? "No invoices yet." : null} emptyIcon={Invoice03Icon} emptyTitle="No invoices yet">
           <PortalTable columns={["Invoice", "Date", "Total", "Paid", "Still due", "Status", "Statement"]}>
-            {rows.map((invoice) => (
+            {pageRows.map((invoice) => (
               <PortalRow key={invoice.uuid} testId="employer-portal-invoice">
                 <PortalCell>
                   <p className="text-neutral-900">{invoice.number}</p>
@@ -74,6 +77,7 @@ export function PortalInvoicesPage() {
             ))}
           </PortalTable>
         </PortalState>
+        <PortalPagination {...pagination} />
       </div>
     </PortalPage>
   );

@@ -5,6 +5,8 @@ import { Add01Icon, InboxIcon } from "@hugeicons/core-free-icons";
 import { useState } from "react";
 
 import { PageActionButton, SecondaryButton } from "@/components/ui/app-buttons";
+import { PortalPagination } from "@/features/employer-portal/components/PortalPagination";
+import { usePortalPagination } from "@/features/employer-portal/hooks/usePortalPagination";
 import { PortalIcon } from "@/features/employer-portal/components/PortalIcon";
 import {
   PortalCell,
@@ -36,6 +38,7 @@ export function PortalRequestsPage() {
   const [open, setOpen] = useState(false);
   const query = useQuery({ queryKey: ["employer-portal", "requests"], queryFn: fetchPortalRequests, retry: false });
   const rows = query.data ?? [];
+  const { pageRows, pagination } = usePortalPagination(rows);
   const waiting = rows.filter((request) => request.status === "pending").length;
   const accepted = rows.filter((request) => request.status === "accepted").length;
   const done = rows.filter((request) => request.status === "done").length;
@@ -65,7 +68,7 @@ export function PortalRequestsPage() {
       <div className="pt-5">
         <PortalState loading={query.isLoading} error={query.error} empty={query.isSuccess && rows.length === 0 ? "No requests yet." : null} emptyIcon={InboxIcon} emptyTitle="No requests yet">
           <PortalTable columns={["Request", "Worker", "Preferred date", "Status", "Clinic reply"]}>
-            {rows.map((r) => (
+            {pageRows.map((r) => (
               <PortalRow key={r.uuid} testId="employer-portal-request">
                 <PortalCell>
                   <p className="text-neutral-900">{REQUEST_KIND_LABEL[r.kind] ?? r.kind}</p>
@@ -81,6 +84,7 @@ export function PortalRequestsPage() {
             ))}
           </PortalTable>
         </PortalState>
+        <PortalPagination {...pagination} />
       </div>
       {open ? <NewRequestDrawer onClose={() => setOpen(false)} /> : null}
     </PortalPage>

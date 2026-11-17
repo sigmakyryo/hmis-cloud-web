@@ -4,6 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { SecurityCheckIcon, UserGroupIcon } from "@hugeicons/core-free-icons";
 import { useState } from "react";
 
+import { PortalPagination } from "@/features/employer-portal/components/PortalPagination";
+import { usePortalPagination } from "@/features/employer-portal/hooks/usePortalPagination";
 import {
   PortalCell,
   PortalFootnote,
@@ -33,6 +35,7 @@ export function PortalFitnessPage() {
   const query = useQuery({ queryKey: ["employer-portal", "fitness", view, search], queryFn: () => fetchPortalFitness(view || undefined, search || undefined), retry: false });
   const counts = query.data?.counts;
   const rows = query.data?.results ?? [];
+  const { pageRows, pagination } = usePortalPagination(rows, `${view}|${search}`);
   const total = counts ? counts.fit + counts.fit_with_restrictions + counts.not_fit + counts.awaiting : 0;
 
   const filters: Array<{ key: View; label: string; count?: number }> = [
@@ -69,7 +72,7 @@ export function PortalFitnessPage() {
       </PortalToolbar>
       <PortalState loading={query.isLoading} error={query.error} empty={query.isSuccess && rows.length === 0 ? "No workers match this view." : null} emptyIcon={UserGroupIcon} emptyTitle="No workers to show">
         <PortalTable columns={["Worker", "Site", "Department", "Status", "Valid until"]}>
-          {rows.map((w) => (
+          {pageRows.map((w) => (
             <PortalRow key={w.customer_uuid} testId="employer-portal-worker">
               <PortalCell>
                 <PortalPerson title={w.worker} detail={w.employee_number || undefined} />
@@ -87,6 +90,7 @@ export function PortalFitnessPage() {
           ))}
         </PortalTable>
       </PortalState>
+      <PortalPagination {...pagination} />
       <PortalFootnote>Only fit-for-work status is shown here. Medical details stay with the clinic.</PortalFootnote>
     </PortalPage>
   );
