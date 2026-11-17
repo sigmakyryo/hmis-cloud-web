@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { EmployerPortalAdminPage } from "@/app/(app)/occupational-health/employer-portal/_components/EmployerPortalAdminPage";
+import { EmployersAccessPage } from "@/features/employer-portal/admin/components/EmployersAccessPage";
 import { PortalFitnessPage } from "@/app/employer-portal/_components/PortalFitnessPage";
 import { PortalRequestsPage } from "@/app/employer-portal/_components/PortalRequestsPage";
 import { PortalShell } from "@/app/employer-portal/_components/PortalShell";
@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   createRequest: vi.fn(),
   staffRequests: vi.fn(),
   contacts: vi.fn(),
+  invitations: vi.fn(),
   toast: vi.fn(),
 }));
 
@@ -39,6 +40,7 @@ vi.mock("@/features/employer-portal/services/employer-portal.service", async (im
     createPortalRequest: (...a: unknown[]) => mocks.createRequest(...a),
     fetchStaffPortalRequests: (...a: unknown[]) => mocks.staffRequests(...a),
     fetchPortalContacts: (...a: unknown[]) => mocks.contacts(...a),
+    fetchPortalInvitations: (...a: unknown[]) => mocks.invitations(...a),
   };
 });
 
@@ -64,6 +66,7 @@ beforeEach(() => {
   mocks.createRequest.mockResolvedValue({ uuid: "r" });
   mocks.staffRequests.mockResolvedValue([]);
   mocks.contacts.mockResolvedValue([]);
+  mocks.invitations.mockResolvedValue([]);
 });
 afterEach(() => cleanup());
 
@@ -138,9 +141,7 @@ describe("employer portal", () => {
 
   it("tells staff that only administrators manage employer logins", async () => {
     mocks.contacts.mockRejectedValue(new BffError("Forbidden", 403));
-    wrap(<EmployerPortalAdminPage />);
-    expect(await screen.findByTestId("oh-employer-portal-admin")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Employer logins" }));
+    wrap(<EmployersAccessPage />);
     expect(await screen.findByText("Only an administrator can manage employer logins.")).toBeTruthy();
   });
 });

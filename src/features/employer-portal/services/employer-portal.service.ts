@@ -14,7 +14,7 @@ export const PORTAL_SCOPE_LABEL: Record<PortalScope, string> = {
   random_compliance: "Random testing",
   invoices: "Invoices",
   requests: "Requests",
-  users: "Users",
+  users: "Employees",
 };
 
 /** Employer contacts only: in the portal group, not OH staff, not an administrator. */
@@ -51,11 +51,21 @@ export type PortalInvitation = {
   created_at: string | null;
 };
 export type PortalInviteResult = { linked: boolean; invite?: PortalInvitation; accept_url?: string };
+export type PortalWorkspace = {
+  id: number;
+  uuid: string;
+  name: string;
+  key: string;
+  /** Organisation logo from Settings > Organization. Empty when none is set. */
+  logo_url?: string;
+};
+
 export type PortalInviteInfo = {
   email: string;
   name: string;
   employer_name: string;
   organisation: string;
+  workspace?: string;
   expires_at: string;
   branding: PortalBranding | null;
 };
@@ -96,6 +106,25 @@ export type PortalInvoice = {
   amount_paid: string;
   amount_due: string;
   payment_status: "not_paid" | "partially_paid" | "paid";
+  services?: string[];
+  payment_notice?: {
+    status: "submitted" | "confirmed" | "rejected";
+    payment_reference: string;
+    staff_note?: string;
+  } | null;
+};
+export type PortalPaymentNotice = {
+  uuid: string;
+  employer_uuid: string;
+  employer_name?: string;
+  invoice_uuid: string;
+  invoice_number: string;
+  amount_due: string;
+  payment_reference: string;
+  note: string;
+  status: "submitted" | "confirmed" | "rejected";
+  staff_note: string;
+  submitted_by: string;
 };
 export type PortalColleague = { name: string; email: string; scopes: PortalScope[] };
 export type PortalRequestKind = "medical" | "drug_alcohol_test" | "health_check" | "fit_test" | "training" | "other";
@@ -123,6 +152,8 @@ export type PortalContact = {
   scopes: PortalScope[];
   billing_customers: Array<{ uuid: string; name: string }>;
   is_active: boolean;
+  /** Latest portal sign-in (ISO). Absent until the OH service reports it. */
+  last_signed_in_at?: string | null;
 };
 
 type Results<T> = { results: T[] };
@@ -149,9 +180,29 @@ export const invitePortalContact = (body: {
 export const revokePortalInvitation = (uuid: string) =>
   bffRequest<PortalInvitation>(`${ADMIN}/invitations/${uuid}/revoke`, { method: "POST", body: {} });
 export const fetchPortalBranding = () => bffRequest<PortalBranding>(`${ADMIN}/branding`);
+/** Copies the Settings > Organization logo into the portal branding. */
+export const syncOrganizationLogo = () => bffRequest<PortalBranding>(`${ADMIN}/branding/organization-logo`, { method: "POST" });
 export const savePortalBranding = (body: Partial<PortalBranding>) =>
   bffRequest<PortalBranding>(`${ADMIN}/branding`, { method: "PATCH", body });
 export const fetchPortalInvoices = () => bffRequest<Results<PortalInvoice>>(`${PORTAL}/invoices`).then((r) => r.results);
+export const submitPortalPaymentNotice = (uuid: string, paymentReference: string, note?: string) =>
+  bffRequest<PortalPaymentNotice>(`${PORTAL}/invoices/${uuid}/payment-notice`, {
+    method: "POST",
+    body: { payment_reference: paymentReference, note },
+  });
+export const fetchStaffEmployerInvoices = (employerUuid: string) =>
+  bffRequest<Results<PortalInvoice>>(`${ADMIN}/employers/${employerUuid}/invoices`).then((r) => r.results);
+export const sendPortalInvoice = (body: {
+  employer_uuid: string;
+  customer_uuid: string;
+  lines: Array<{ product_uuid: string; quantity: number; price_unit?: number }>;
+}) => bffRequest<PortalInvoice>(`${ADMIN}/invoices`, { method: "POST", body });
+export const fetchStaffPaymentNotices = (status = "submitted") =>
+  bffRequest<Results<PortalPaymentNotice>>(`${ADMIN}/payment-notices${qs({ status })}`).then((r) => r.results);
+export const markPortalPaymentPaid = (uuid: string) =>
+  bffRequest<PortalPaymentNotice>(`${ADMIN}/payment-notices/${uuid}/mark-paid`, { method: "POST", body: {} });
+export const rejectPortalPaymentNotice = (uuid: string, note?: string) =>
+  bffRequest<PortalPaymentNotice>(`${ADMIN}/payment-notices/${uuid}/reject`, { method: "POST", body: { note } });
 export const fetchPortalUsers = () => bffRequest<Results<PortalColleague>>(`${PORTAL}/users`).then((r) => r.results);
 export const fetchPortalRequests = () => bffRequest<Results<PortalRequest>>(`${PORTAL}/requests`).then((r) => r.results);
 export const createPortalRequest = (body: {

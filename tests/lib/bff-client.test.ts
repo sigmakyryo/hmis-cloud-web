@@ -51,6 +51,22 @@ describe("bffRequest", () => {
     expect(replace).toHaveBeenCalledWith("/auth");
   });
 
+  it("keeps the clinic login when a company portal call is unauthorised", async () => {
+    const replace = vi.fn();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 401, json: async () => ({ message: "Please sign in again." }) })
+      .mockResolvedValueOnce({ ok: true });
+    vi.stubGlobal("location", { pathname: "/employer-portal/fitness", replace });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(bffRequest("/api/employer-portal/fitness")).rejects.toMatchObject({ status: 401 });
+
+    expect(fetchMock.mock.calls.map(([url]) => url)).not.toContain("/api/auth/session");
+    expect(replace).toHaveBeenCalledWith("/employer-portal-sign-in");
+    expect(replace).not.toHaveBeenCalledWith("/auth");
+  });
+
   it("does not redirect on 401 for auth sign-in routes", async () => {
     const replace = vi.fn();
     vi.stubGlobal("location", {

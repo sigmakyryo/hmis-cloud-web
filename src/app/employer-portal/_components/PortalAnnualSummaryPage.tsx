@@ -1,7 +1,10 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { File02Icon } from "@hugeicons/core-free-icons";
 import { useState } from "react";
+
+import { PortalPage, PortalPageHeader } from "@/features/employer-portal/components/PortalPrimitives";
 
 import { AnnualReportSections } from "@/features/occupational-health/components/AnnualReportSections";
 import { fetchPortalAnnualSummary, portalAnnualFileUrl } from "@/features/occupational-health/services/oh-annual-report.service";
@@ -15,26 +18,26 @@ export function PortalAnnualSummaryPage() {
   const years = Array.from({ length: 6 }, (_, i) => thisYear - i);
 
   return (
-    <div data-testid="employer-portal-annual" className="space-y-4 px-5 py-4">
-      <h1 className="sr-only">Annual summary</h1>
-      <div className="flex flex-wrap items-center gap-3 text-[13px]">
-        <select aria-label="Year" className="h-9 rounded-md border border-dash-border px-2.5" value={year} onChange={(e) => setYear(Number(e.target.value))}>
+    <PortalPage testId="employer-portal-annual">
+      <PortalPageHeader icon={File02Icon} title="Annual summary" subtitle="Your company's year at a glance" />
+      <div className="flex flex-wrap items-center gap-3 py-4 text-[13px]">
+        <select aria-label="Year" className="h-9 rounded-lg border border-neutral-200 bg-white px-2.5" value={year} onChange={(e) => setYear(Number(e.target.value))}>
           {years.map((y) => (
             <option key={y} value={y}>
               {y}
             </option>
           ))}
         </select>
-        <a className="text-primary underline" href={portalAnnualFileUrl(year, "pdf")} target="_blank" rel="noreferrer">
+        <a className="font-medium underline" style={{ color: "var(--portal-accent)" }} href={portalAnnualFileUrl(year, "pdf")} target="_blank" rel="noreferrer">
           PDF
         </a>
-        <a className="text-primary underline" href={portalAnnualFileUrl(year, "csv")}>
+        <a className="font-medium underline" style={{ color: "var(--portal-accent)" }} href={portalAnnualFileUrl(year, "csv")}>
           CSV
         </a>
       </div>
       <PortalState loading={query.isLoading} error={query.error}>
         {query.data ? <AnnualReportSections report={query.data} /> : null}
       </PortalState>
-    </div>
+    </PortalPage>
   );
 }

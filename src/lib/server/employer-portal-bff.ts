@@ -5,7 +5,7 @@ export const employerPortalProxy = createOhModuleProxy({
   base: "/oh-portal",
   rules: {
     GET: ["me", "fitness", "random-compliance", "invoices", "invoices/{id}/pdf", "users", "requests", "annual-summary", "annual-summary/pdf", "annual-summary/csv"],
-    POST: ["requests"],
+    POST: ["requests", "invoices/{id}/payment-notice"],
   },
   binary: [
     { path: "invoices/{id}/pdf", type: "application/pdf", filename: "invoice-statement.pdf" },
@@ -13,7 +13,7 @@ export const employerPortalProxy = createOhModuleProxy({
     { path: "annual-summary/csv", type: "text/csv; charset=utf-8", filename: "annual-summary.csv" },
   ],
   queryKeys: ["status", "q", "year"],
-  created: ["requests"],
+  created: ["requests", "invoices/{id}/payment-notice"],
   credential: "portal",
 });
 
@@ -21,10 +21,10 @@ export const employerPortalProxy = createOhModuleProxy({
 export const employerPortalAdminProxy = createOhModuleProxy({
   base: "/oh-portal-admin",
   rules: {
-    GET: ["requests", "contacts", "invitations", "branding"],
-    POST: ["requests/{id}", "contacts", "invitations", "invitations/{id}/revoke"],
+    GET: ["requests", "contacts", "invitations", "branding", "employers/{id}/invoices", "payment-notices"],
+    POST: ["requests/{id}", "contacts", "invitations", "invitations/{id}/revoke", "invoices", "payment-notices/{id}/mark-paid", "payment-notices/{id}/reject"],
     PATCH: ["contacts/{id}", "branding"],
   },
   queryKeys: ["status"],
-  created: ["contacts", "invitations"],
+  created: ["contacts", "invitations", "invoices"],
 });
