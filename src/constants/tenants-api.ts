@@ -2,6 +2,7 @@
 export const TENANTS_API_PATHS = {
   detail: (uuid: string) => `/tenants/${uuid}/`,
   branding: (uuid: string) => `/tenants/${uuid}/branding/`,
+  saml: (uuid: string) => `/tenants/${uuid}/saml/`,
   currency: (uuid: string) => `/tenants/${uuid}/currency/`,
   organizationType: (uuid: string) => `/tenants/${uuid}/organization-type/`,
   activateModule: (uuid: string) => `/tenants/${uuid}/modules/activate/`,

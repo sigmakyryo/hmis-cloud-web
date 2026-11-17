@@ -14,6 +14,7 @@ import {
 import { ROUTES } from "@/constants/routes";
 import { getActiveClinics } from "@/features/app-shell/utils/workspace-clinics";
 import type { UserClinic } from "@/features/app-shell/utils/workspace-clinics";
+import { useOrganizationBranding } from "@/features/settings/hooks/use-organization-branding";
 import { appFont } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
 import { useUser } from "@/providers/user-provider";
@@ -21,6 +22,8 @@ import { useWorkspaceStore } from "@/state/workspace.store";
 
 export function TeamSwitcher() {
   const { userData, isLoading } = useUser();
+  const { data: branding } = useOrganizationBranding(Boolean(userData?.tenant));
+  const brandingLogoUrl = branding?.branding_logo_url?.trim() || null;
   const [open, setOpen] = useState(false);
   const activeClinicId = useWorkspaceStore((state) => state.activeClinicId);
   const setActiveClinicId = useWorkspaceStore((state) => state.setActiveClinicId);
@@ -63,7 +66,8 @@ export function TeamSwitcher() {
         >
           <WorkspaceAvatar
             name={activeClinicLabel}
-            className="size-7 rounded-lg text-[11px]"
+            imageUrl={brandingLogoUrl}
+            className="size-7 text-[11px]"
           />
           <span className="grid min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
             <span className="truncate text-[13px] font-semibold leading-tight text-brand-navy">
@@ -105,7 +109,8 @@ export function TeamSwitcher() {
                   >
                     <WorkspaceAvatar
                       name={clinic.clinic_name}
-                      className="size-7 rounded-lg text-[11px]"
+                      imageUrl={brandingLogoUrl}
+                      className="size-7 text-[11px]"
                     />
                     <span className="min-w-0 flex-1">
                       <span

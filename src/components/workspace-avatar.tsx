@@ -3,6 +3,8 @@ import { cn } from "@/lib/utils";
 type WorkspaceAvatarProps = {
   name: string;
   className?: string;
+  /** When set, prefer the organization logo over letter initials. */
+  imageUrl?: string | null;
   /** Primary uses the brand teal. Color keeps the varied clinic tones. */
   tone?: "color" | "primary";
 };
@@ -78,15 +80,32 @@ export function getWorkspaceAvatarTone(name: string) {
 export function WorkspaceAvatar({
   name,
   className,
+  imageUrl,
   tone = "color",
 }: WorkspaceAvatarProps) {
   const initials = getWorkspaceInitials(name);
   const colorTone = getWorkspaceAvatarTone(name);
+  const logo = imageUrl?.trim() || null;
+
+  if (logo) {
+    return (
+      <span
+        className={cn(
+          "relative flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white ring-1 ring-inset ring-black/5",
+          className,
+        )}
+        aria-hidden="true"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={logo} alt="" className="size-full object-cover" />
+      </span>
+    );
+  }
 
   return (
     <span
       className={cn(
-        "flex size-8 shrink-0 items-center justify-center rounded-md text-[11px] font-semibold",
+        "flex size-8 shrink-0 items-center justify-center rounded-lg text-[11px] font-semibold",
         tone === "primary"
           ? "bg-brand-primary text-white"
           : cn(

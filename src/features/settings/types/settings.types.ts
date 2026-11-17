@@ -412,6 +412,21 @@ export type UpdateTenantCurrencyPayload = {
   currency_code: string;
 };
 
+export type TenantSamlConfig = {
+  enabled: boolean;
+  idp_entity_id: string;
+  idp_sso_url: string;
+  idp_x509_cert: string;
+  email_domains: string[];
+  attribute_email: string;
+  metadata_url: string;
+  updated_at?: string;
+};
+
+export type UpdateTenantSamlConfigPayload = Partial<
+  Omit<TenantSamlConfig, "updated_at">
+>;
+
 export type OrganizationTabId =
   | "general"
   | "branding"

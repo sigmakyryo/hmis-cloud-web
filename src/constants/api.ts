@@ -54,6 +54,9 @@ export const BFF_AUTH_ROUTES = {
   mfaWebAuthnDetail: (id: number) => `/api/auth/mfa/webauthn/${id}`,
   mfaRecoveryCodesReveal: "/api/auth/mfa/recovery-codes/reveal",
   mfaRecoveryCodesRegenerate: "/api/auth/mfa/recovery-codes/regenerate",
+  ssoDiscover: "/api/auth/sso/discover",
+  ssoContinue: "/api/auth/sso/continue",
+  ssoSamlLogin: "/api/auth/sso/saml/login",
 } as const;
 
 /** Browser-facing BFF customer routes (same origin). */
@@ -1066,6 +1069,7 @@ export const BFF_SETTINGS_ROUTES = {
     `/api/pricelists/${id}/products/${itemId}`,
   pricelistDefault: "/api/pricelists/default",
   branding: "/api/tenants/current/branding",
+  saml: "/api/tenants/current/saml",
   currency: "/api/tenants/current/currency",
   organizationType: "/api/tenants/current/organization-type",
   customerIdentifierSettings:

@@ -45,6 +45,10 @@ function organizationTabFromSearch(
   value: string | null,
   tabs: Array<{ id: OrganizationTabId; label: string }>,
 ): OrganizationTabId {
+  // SSO lives under General; keep old ?tab=sso links working.
+  if (value === "sso") {
+    return "general";
+  }
   if (tabs.some((tab) => tab.id === value)) {
     return value as OrganizationTabId;
   }

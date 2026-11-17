@@ -110,6 +110,18 @@ export interface SigninChallengeResponse {
   email_otp_sent: boolean;
 }
 
+export type SsoDiscoverResponse =
+  | { mode: "password" }
+  | { mode: "sso"; redirect_url: string };
+
+export type SsoContinueResponse = {
+  email: string;
+  pending_mfa_token: string;
+  methods: MfaSigninMethod[];
+  preferred_method: MfaSigninMethod;
+  email_otp_sent: boolean;
+};
+
 export interface SigninOtpRequest {
   email: string;
   password: string;

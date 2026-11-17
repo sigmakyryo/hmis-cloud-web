@@ -21,6 +21,7 @@ import { LoginTotpStep } from "@/features/auth/components/LoginTotpStep";
 import { LoginWebAuthnStep } from "@/features/auth/components/LoginWebAuthnStep";
 import {
   isAccessTokenValid,
+  discoverSso,
   getCurrentUser,
   logout,
   markAuthenticatedSession,
@@ -34,11 +35,17 @@ import {
 } from "@/features/auth/services/auth.service";
 import {
   signinCredentialsSchema,
+  signinEmailSchema,
   signinOtpSchema,
   type SigninCredentialsValues,
+  type SigninEmailValues,
   type SigninOtpValues,
 } from "@/features/auth/schemas/login.schema";
-import type { MfaSigninMethod, User } from "@/features/auth/types/auth.types";
+import type {
+  MfaSigninMethod,
+  SigninChallengeResponse,
+  User,
+} from "@/features/auth/types/auth.types";
 import {
   getWebAuthnAssertion,
   webAuthnErrorMessage,
@@ -47,7 +54,8 @@ import { isPortalOnlyUser } from "@/features/employer-portal/services/employer-p
 import { useSessionStore } from "@/state/session.store";
 
 type LoginStep =
-  | "credentials"
+  | "email"
+  | "password"
   | "otp"
   | "methods"
   | "totp"
@@ -84,9 +92,17 @@ function LoginSplitFrame({ children }: { children: ReactNode }) {
   );
 }
 
-export function LoginForm() {
+type LoginFormProps = {
+  /** When set (SSO ACS continue), jump straight into MFA. */
+  ssoChallenge?: Pick<
+    SigninChallengeResponse,
+    "pending_mfa_token" | "methods" | "preferred_method" | "email_otp_sent"
+  > & { email?: string };
+};
+
+export function LoginForm({ ssoChallenge }: LoginFormProps = {}) {
   const router = useRouter();
-  const [step, setStep] = useState<LoginStep>("credentials");
+  const [step, setStep] = useState<LoginStep>(ssoChallenge ? "otp" : "email");
   const [pendingEmail, setPendingEmail] = useState("");
   const [pendingMfaToken, setPendingMfaToken] = useState("");
   const [methods, setMethods] = useState<MfaSigninMethod[]>(["email"]);
@@ -96,7 +112,13 @@ export function LoginForm() {
   const [recoveryCode, setRecoveryCode] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isAlternateSubmitting, setIsAlternateSubmitting] = useState(false);
+  const [isDiscovering, setIsDiscovering] = useState(false);
   const [pickerFrom, setPickerFrom] = useState<MfaSigninMethod>("email");
+
+  const emailForm = useForm<SigninEmailValues>({
+    resolver: zodResolver(signinEmailSchema),
+    defaultValues: { email: "" },
+  });
 
   const credentialsForm = useForm<SigninCredentialsValues>({
     resolver: zodResolver(signinCredentialsSchema),
@@ -107,6 +129,36 @@ export function LoginForm() {
     resolver: zodResolver(signinOtpSchema),
     defaultValues: { email: "", code: "" },
   });
+
+  function applyMfaChallenge(
+    email: string,
+    challenge: Pick<
+      SigninChallengeResponse,
+      "pending_mfa_token" | "methods" | "preferred_method" | "email_otp_sent"
+    >,
+  ) {
+    setPendingEmail(email);
+    setPendingMfaToken(challenge.pending_mfa_token);
+    setMethods(challenge.methods);
+    setEmailOtpSent(challenge.email_otp_sent);
+    otpForm.setValue("email", email);
+    otpForm.setValue("code", "");
+    setOtpCode("");
+    const preferred = challenge.methods.includes(challenge.preferred_method)
+      ? challenge.preferred_method
+      : "email";
+    setPickerFrom(preferred);
+    setStep(loginStepForMethod(preferred));
+  }
+
+  useEffect(() => {
+    if (!ssoChallenge) {
+      return;
+    }
+    applyMfaChallenge(ssoChallenge.email?.trim().toLowerCase() ?? "", ssoChallenge);
+    // Only on mount when continuing from SSO ACS.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -138,24 +190,37 @@ export function LoginForm() {
     };
   }, [router]);
 
+  async function handleEmailContinue(values: SigninEmailValues) {
+    setSubmitError(null);
+    setIsDiscovering(true);
+    try {
+      const email = values.email.trim().toLowerCase();
+      const discovery = await discoverSso(email);
+      if (discovery.mode === "sso") {
+        window.location.assign(discovery.redirect_url);
+        return;
+      }
+      setPendingEmail(email);
+      credentialsForm.setValue("email", email);
+      credentialsForm.setValue("password", "");
+      setStep("password");
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "Unable to continue. Please try again.",
+      );
+    } finally {
+      setIsDiscovering(false);
+    }
+  }
+
   async function handleCredentialsSubmit(values: SigninCredentialsValues) {
     setSubmitError(null);
 
     try {
       const challenge = await requestSigninOtp(values);
-      const email = values.email.trim().toLowerCase();
-      setPendingEmail(email);
-      setPendingMfaToken(challenge.pending_mfa_token);
-      setMethods(challenge.methods);
-      setEmailOtpSent(challenge.email_otp_sent);
-      otpForm.setValue("email", email);
-      otpForm.setValue("code", "");
-      setOtpCode("");
-      const preferred = challenge.methods.includes(challenge.preferred_method)
-        ? challenge.preferred_method
-        : "email";
-      setPickerFrom(preferred);
-      setStep(loginStepForMethod(preferred));
+      applyMfaChallenge(values.email.trim().toLowerCase(), challenge);
     } catch (error) {
       setSubmitError(
         error instanceof Error ? error.message : "Sign in failed. Please try again.",
@@ -218,7 +283,7 @@ export function LoginForm() {
     setStep(loginStepForMethod(method));
   }
 
-  function handleBack() {
+  function handleBackToEmail() {
     setSubmitError(null);
     setOtpCode("");
     setTotpCode("");
@@ -227,7 +292,11 @@ export function LoginForm() {
     setMethods(["email"]);
     setEmailOtpSent(false);
     setPickerFrom("email");
-    setStep("credentials");
+    setStep("email");
+  }
+
+  function handleBack() {
+    handleBackToEmail();
   }
 
   async function completeAlternateSignin(user: User) {
@@ -448,42 +517,26 @@ export function LoginForm() {
     );
   }
 
-  return (
-    <LoginSplitFrame>
-      <h2 className="font-[family-name:var(--font-bricolage)] text-xl font-semibold tracking-[-0.02em] text-brand-navy sm:text-[1.5rem]">
-        Sign in
-      </h2>
-      <p className="mt-1.5 text-sm leading-relaxed text-brand-muted">
-        Use your clinic email to continue.
-      </p>
+  if (step === "password") {
+    return (
+      <LoginSplitFrame>
+        <h2 className="font-[family-name:var(--font-bricolage)] text-xl font-semibold tracking-[-0.02em] text-brand-navy sm:text-[1.5rem]">
+          Enter your password
+        </h2>
+        <p className="mt-1.5 text-sm leading-relaxed text-brand-muted">
+          Signing in as {pendingEmail}
+        </p>
 
-      <form
-        method="post"
-        className="mt-6 space-y-4"
-        data-testid="login-credentials-form"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void submitCredentials(event);
-        }}
-      >
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              data-testid="login-email"
-              type="email"
-              autoComplete="email"
-              className="mt-1.5 h-10 rounded-full px-4"
-              disabled={credentialsForm.formState.isSubmitting}
-              {...credentialsForm.register("email")}
-            />
-            {credentialsForm.formState.errors.email && (
-              <p className="mt-1.5 text-sm text-destructive">
-                {credentialsForm.formState.errors.email.message}
-              </p>
-            )}
-          </div>
+        <form
+          method="post"
+          className="mt-6 space-y-4"
+          data-testid="login-credentials-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void submitCredentials(event);
+          }}
+        >
+          <input type="hidden" {...credentialsForm.register("email")} />
           <div>
             <Label htmlFor="password">Password</Label>
             <PasswordInput
@@ -500,6 +553,67 @@ export function LoginForm() {
               </p>
             )}
           </div>
+
+          {submitError ? (
+            <StatusBanner variant="error" message={submitError} />
+          ) : null}
+
+          <Button
+            type="submit"
+            data-testid="login-continue"
+            className="h-10 w-full rounded-full text-sm font-semibold"
+            disabled={credentialsForm.formState.isSubmitting}
+          >
+            {credentialsForm.formState.isSubmitting
+              ? "Signing in..."
+              : "Continue"}
+          </Button>
+          <button
+            type="button"
+            className="flex h-10 w-full items-center justify-center text-sm font-medium text-brand-muted hover:text-brand-navy"
+            onClick={handleBackToEmail}
+          >
+            Use a different email
+          </button>
+        </form>
+      </LoginSplitFrame>
+    );
+  }
+
+  return (
+    <LoginSplitFrame>
+      <h2 className="font-[family-name:var(--font-bricolage)] text-xl font-semibold tracking-[-0.02em] text-brand-navy sm:text-[1.5rem]">
+        Sign in
+      </h2>
+      <p className="mt-1.5 text-sm leading-relaxed text-brand-muted">
+        Use your clinic email to continue.
+      </p>
+
+      <form
+        method="post"
+        className="mt-6 space-y-4"
+        data-testid="login-email-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void emailForm.handleSubmit(handleEmailContinue)(event);
+        }}
+      >
+        <div>
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            data-testid="login-email"
+            type="email"
+            autoComplete="email"
+            className="mt-1.5 h-10 rounded-full px-4"
+            disabled={isDiscovering}
+            {...emailForm.register("email")}
+          />
+          {emailForm.formState.errors.email && (
+            <p className="mt-1.5 text-sm text-destructive">
+              {emailForm.formState.errors.email.message}
+            </p>
+          )}
         </div>
 
         {submitError ? (
@@ -510,11 +624,9 @@ export function LoginForm() {
           type="submit"
           data-testid="login-continue"
           className="h-10 w-full rounded-full text-sm font-semibold"
-          disabled={credentialsForm.formState.isSubmitting}
+          disabled={isDiscovering}
         >
-          {credentialsForm.formState.isSubmitting
-            ? "Sending code..."
-            : "Continue"}
+          {isDiscovering ? "Checking..." : "Continue"}
         </Button>
       </form>
 

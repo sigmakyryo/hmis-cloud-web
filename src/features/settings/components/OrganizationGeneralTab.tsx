@@ -1,5 +1,6 @@
 import { OrganizationContactForm } from "@/features/settings/components/OrganizationContactForm";
 import { OrganizationCurrencySection } from "@/features/settings/components/OrganizationCurrencySection";
+import { OrganizationSsoSection } from "@/features/settings/components/OrganizationSsoTab";
 import { OrganizationTypeSection } from "@/features/settings/components/OrganizationTypeSection";
 import { OrganizationFieldRow } from "@/features/settings/components/OrganizationTabContent";
 import { SettingsSection } from "@/features/settings/components/SettingsPageLayout";
@@ -76,6 +77,8 @@ export function OrganizationGeneralTab({
           onUpdated={onTenantUpdated}
         />
       </SettingsSection>
+
+      <OrganizationSsoSection />
     </div>
   );
 }

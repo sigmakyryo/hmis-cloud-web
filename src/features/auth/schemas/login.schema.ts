@@ -2,12 +2,15 @@ import { z } from "zod";
 
 const otpCodeRegex = /^\d{6}$/;
 
-export const signinCredentialsSchema = z.object({
+export const signinEmailSchema = z.object({
   email: z
     .string()
     .trim()
     .min(1, "Email is required")
     .email("Please enter a valid email address"),
+});
+
+export const signinCredentialsSchema = signinEmailSchema.extend({
   password: z.string().min(1, "Password is required"),
 });
 
@@ -32,6 +35,7 @@ export const signinRecoverySchema = z.object({
     .regex(/^\d{8}$/, "Enter the 8-digit recovery code"),
 });
 
+export type SigninEmailValues = z.infer<typeof signinEmailSchema>;
 export type SigninCredentialsValues = z.infer<typeof signinCredentialsSchema>;
 export type SigninOtpValues = z.infer<typeof signinOtpSchema>;
 export type SigninTotpValues = z.infer<typeof signinTotpSchema>;

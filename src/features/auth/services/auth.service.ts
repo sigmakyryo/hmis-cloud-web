@@ -10,6 +10,8 @@ import type {
   SignupVerifyEmailRequest,
   SignupVerifyEmailResponse,
   SignupVerifyRequest,
+  SsoContinueResponse,
+  SsoDiscoverResponse,
   User,
 } from "@/features/auth/types/auth.types";
 import { bffRequest } from "@/lib/bff-client";
@@ -50,6 +52,22 @@ export async function requestSigninOtp(
       email: payload.email.trim().toLowerCase(),
       password: payload.password,
     },
+  });
+}
+
+export async function discoverSso(email: string): Promise<SsoDiscoverResponse> {
+  return bffRequest<SsoDiscoverResponse>(BFF_AUTH_ROUTES.ssoDiscover, {
+    method: "POST",
+    body: { email: email.trim().toLowerCase() },
+  });
+}
+
+export async function exchangeSsoContinueCode(
+  code: string,
+): Promise<SsoContinueResponse> {
+  return bffRequest<SsoContinueResponse>(BFF_AUTH_ROUTES.ssoContinue, {
+    method: "POST",
+    body: { code },
   });
 }
 

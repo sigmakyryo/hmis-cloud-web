@@ -1,6 +1,7 @@
 export const ROUTES = {
   home: "/",
   auth: "/auth",
+  authSsoContinue: "/auth/sso/continue",
   signup: "/auth/register",
   register: "/auth/register",
   onboarding: "/onboarding",
@@ -387,6 +388,7 @@ export const WEB_NEW_ROUTE_PREFIXES = [
 export const PUBLIC_ROUTES = [
   ROUTES.home,
   ROUTES.auth,
+  ROUTES.authSsoContinue,
   ROUTES.signup,
   ROUTES.contacts,
   ROUTES.ourProducts,
@@ -401,7 +403,11 @@ export const PUBLIC_ROUTES = [
   ROUTES.blog,
 ] as const;
 
-export const AUTH_ROUTES = [ROUTES.auth, ROUTES.signup] as const;
+export const AUTH_ROUTES = [
+  ROUTES.auth,
+  ROUTES.authSsoContinue,
+  ROUTES.signup,
+] as const;
 
 /** Paths that belong on the app host (app.example.com). */
 export const APP_ROUTE_PREFIXES = [

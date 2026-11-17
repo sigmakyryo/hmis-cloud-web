@@ -28,6 +28,8 @@ import type {
   TenantCustomerIdentifierSettings,
   TenantDetail,
   TenantEmailConfiguration,
+  TenantSamlConfig,
+  UpdateTenantSamlConfigPayload,
   UpdateOrganizationClinicPayload,
   UpdateOrganizationContactPayload,
   UpdateOrganizationContractorPayload,
@@ -512,6 +514,26 @@ export async function fetchOrganizationBranding(): Promise<TenantBranding> {
   );
 
   return data.branding;
+}
+
+export async function fetchOrganizationSamlConfig(): Promise<TenantSamlConfig> {
+  const data = await bffRequest<{ saml: TenantSamlConfig }>(
+    BFF_SETTINGS_ROUTES.saml,
+  );
+  return data.saml;
+}
+
+export async function updateOrganizationSamlConfig(
+  payload: UpdateTenantSamlConfigPayload,
+): Promise<TenantSamlConfig> {
+  const data = await bffRequest<{ saml: TenantSamlConfig }>(
+    BFF_SETTINGS_ROUTES.saml,
+    {
+      method: "PUT",
+      body: payload,
+    },
+  );
+  return data.saml;
 }
 
 export async function updateOrganizationBranding(

@@ -25,4 +25,7 @@ export const AUTH_API_PATHS = {
   mfaWebAuthnDetail: (id: number) => `/auth/mfa/webauthn/${id}/`,
   mfaRecoveryCodesReveal: "/auth/mfa/recovery-codes/reveal/",
   mfaRecoveryCodesRegenerate: "/auth/mfa/recovery-codes/regenerate/",
+  ssoDiscover: "/auth/sso/discover/",
+  ssoContinue: "/auth/sso/continue/",
+  ssoSamlLogin: "/auth/sso/saml/login/",
 } as const;
