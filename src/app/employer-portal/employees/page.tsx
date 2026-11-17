@@ -1,5 +1,5 @@
-import { PortalUsersPage } from "../_components/PortalUsersPage";
+import { PortalEmployeesPage } from "../_components/PortalEmployeesPage";
 
 export default function Page() {
-  return <PortalUsersPage />;
+  return <PortalEmployeesPage />;
 }

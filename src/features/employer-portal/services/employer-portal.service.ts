@@ -126,6 +126,22 @@ export type PortalPaymentNotice = {
   staff_note: string;
   submitted_by: string;
 };
+export type PortalEmployeeStatus = "active" | "former";
+export type PortalEmployee = {
+  customer_uuid: string | null;
+  worker: string;
+  employee_number: string;
+  site: string;
+  department: string;
+  employment_type: string;
+  start_date: string | null;
+  status: PortalEmployeeStatus;
+};
+export type PortalEmployees = {
+  employer_name: string;
+  counts: { all: number; active: number; former: number };
+  results: PortalEmployee[];
+};
 export type PortalColleague = { name: string; email: string; scopes: PortalScope[] };
 export type PortalRequestKind = "medical" | "drug_alcohol_test" | "health_check" | "fit_test" | "training" | "other";
 export type PortalRequest = {
@@ -203,6 +219,8 @@ export const markPortalPaymentPaid = (uuid: string) =>
   bffRequest<PortalPaymentNotice>(`${ADMIN}/payment-notices/${uuid}/mark-paid`, { method: "POST", body: {} });
 export const rejectPortalPaymentNotice = (uuid: string, note?: string) =>
   bffRequest<PortalPaymentNotice>(`${ADMIN}/payment-notices/${uuid}/reject`, { method: "POST", body: { note } });
+export const fetchPortalEmployees = (status?: PortalEmployeeStatus, q?: string) =>
+  bffRequest<PortalEmployees>(`${PORTAL}/employees${qs({ status, q })}`);
 export const fetchPortalUsers = () => bffRequest<Results<PortalColleague>>(`${PORTAL}/users`).then((r) => r.results);
 export const fetchPortalRequests = () => bffRequest<Results<PortalRequest>>(`${PORTAL}/requests`).then((r) => r.results);
 export const createPortalRequest = (body: {

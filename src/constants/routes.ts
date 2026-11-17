@@ -211,6 +211,8 @@ export const ROUTES = {
   employerPortalCompliance: "/employer-portal/random-compliance",
   employerPortalInvoices: "/employer-portal/invoices",
   employerPortalRequests: "/employer-portal/requests",
+  employerPortalEmployees: "/employer-portal/employees",
+  /** Old address. Redirects to the employees page. */
   employerPortalUsers: "/employer-portal/users",
   employerPortalAnnual: "/employer-portal/annual-summary",
   employerPortalJoin: "/employer-portal-join",

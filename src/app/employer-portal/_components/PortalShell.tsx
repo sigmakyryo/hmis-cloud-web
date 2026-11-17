@@ -33,7 +33,7 @@ const NAV_ICON: Record<string, PortalIconSvg> = {
   "random-compliance": CheckListIcon,
   invoices: Invoice03Icon,
   requests: InboxIcon,
-  users: UserGroupIcon,
+  employees: UserGroupIcon,
 };
 
 function iconFor(href: string): PortalIconSvg {
@@ -49,7 +49,7 @@ const PAGE_DEFS: Array<{ scope: PortalScope; page: string; label?: string }> = [
   { scope: "random_compliance", page: "random-compliance" },
   { scope: "invoices", page: "invoices" },
   { scope: "requests", page: "requests" },
-  { scope: "users", page: "users" },
+  { scope: "users", page: "employees" },
 ];
 
 function portalPages(workspace?: string): Array<{ scope: PortalScope; href: string; label?: string }> {
@@ -60,7 +60,7 @@ function portalPages(workspace?: string): Array<{ scope: PortalScope; href: stri
       { scope: "random_compliance", href: ROUTES.employerPortalCompliance },
       { scope: "invoices", href: ROUTES.employerPortalInvoices },
       { scope: "requests", href: ROUTES.employerPortalRequests },
-      { scope: "users", href: ROUTES.employerPortalUsers },
+      { scope: "users", href: ROUTES.employerPortalEmployees },
     ];
   }
   return PAGE_DEFS.map((page) => ({
