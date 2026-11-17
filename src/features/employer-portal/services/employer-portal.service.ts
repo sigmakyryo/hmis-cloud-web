@@ -180,6 +180,8 @@ export const invitePortalContact = (body: {
 export const revokePortalInvitation = (uuid: string) =>
   bffRequest<PortalInvitation>(`${ADMIN}/invitations/${uuid}/revoke`, { method: "POST", body: {} });
 export const fetchPortalBranding = () => bffRequest<PortalBranding>(`${ADMIN}/branding`);
+/** Copies the Settings > Organization logo into the portal branding. */
+export const syncOrganizationLogo = () => bffRequest<PortalBranding>(`${ADMIN}/branding/organization-logo`, { method: "POST" });
 export const savePortalBranding = (body: Partial<PortalBranding>) =>
   bffRequest<PortalBranding>(`${ADMIN}/branding`, { method: "PATCH", body });
 export const fetchPortalInvoices = () => bffRequest<Results<PortalInvoice>>(`${PORTAL}/invoices`).then((r) => r.results);

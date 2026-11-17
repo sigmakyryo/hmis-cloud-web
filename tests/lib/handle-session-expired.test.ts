@@ -95,8 +95,10 @@ describe("company portal sessions", () => {
   });
 
   it("still ends the clinic session for clinic routes", async () => {
+    vi.resetModules();
+    const fresh = await import("@/lib/handle-session-expired");
     vi.stubGlobal("location", { pathname: "/customers", replace });
-    await handleBffUnauthorized("/api/customers");
+    await fresh.handleBffUnauthorized("/api/customers");
     expect(replace).toHaveBeenCalledWith(ROUTES.auth);
   });
 });

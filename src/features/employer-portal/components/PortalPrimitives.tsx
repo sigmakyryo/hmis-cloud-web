@@ -22,7 +22,7 @@ export function PortalPageHeader({ icon, title, subtitle, actions }: { icon: Por
   return (
     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200/80 pb-5">
       <div className="flex min-w-0 items-center gap-3.5">
-        <span className="flex size-11 shrink-0 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-600">
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-white text-neutral-600">
           <PortalIcon icon={icon} size={22} />
         </span>
         <div className="min-w-0">
@@ -171,7 +171,7 @@ export function PortalPerson({ title, detail }: { title: string; detail?: string
     .join("");
   return (
     <div className="flex items-center gap-3">
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-[12px] font-medium text-neutral-600" aria-hidden="true">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-[12px] font-medium text-neutral-600" aria-hidden="true">
         {initials || "?"}
       </span>
       <div className="min-w-0">
@@ -200,7 +200,7 @@ export function PortalTableSkeleton({ columns = 5, rows = 6 }: { columns?: numbe
 export function PortalEmpty({ icon, title, description }: { icon: PortalIconSvg; title: string; description: string }) {
   return (
     <div className="flex flex-col items-center gap-2 py-16 text-center">
-      <span className="flex size-11 items-center justify-center rounded-full bg-neutral-100 text-neutral-500">
+      <span className="flex size-11 items-center justify-center rounded-xl bg-neutral-100 text-neutral-500">
         <PortalIcon icon={icon} size={22} />
       </span>
       <p className="text-[15px] font-medium text-neutral-900">{title}</p>

@@ -23,7 +23,9 @@ describe("portal logo", () => {
   it("prefers the portal logo, then the organisation logo, and ignores unsafe addresses", () => {
     expect(pickPortalLogo("data:image/png;base64,AA", "https://x/y.png")).toBe("data:image/png;base64,AA");
     expect(pickPortalLogo(null, "https://x/y.png")).toBe("https://x/y.png");
-    expect(pickPortalLogo("javascript:alert(1)", "")).toBeNull();
+    expect(pickPortalLogo("", "/media/tenants/t/branding/logo.jpg")).toBe("/media/tenants/t/branding/logo.jpg");
+    expect(pickPortalLogo("javascript:alert(1)", "//evil.example/logo.png")).toBeNull();
+    expect(pickPortalLogo("/etc/passwd", "")).toBeNull();
     expect(pickPortalLogo(undefined, undefined)).toBeNull();
   });
 

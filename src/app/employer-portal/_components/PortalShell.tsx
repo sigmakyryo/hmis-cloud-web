@@ -101,7 +101,7 @@ function SidebarSkeleton() {
     <div className="flex min-h-svh bg-white" role="status" aria-label="Loading your portal">
       <div className="hidden w-[272px] shrink-0 flex-col gap-4 border-r border-neutral-200/80 p-6 lg:flex">
         <div className="flex items-center gap-3">
-          <span className="size-11 animate-pulse rounded-full bg-neutral-100" />
+          <span className="size-11 animate-pulse rounded-xl bg-neutral-100" />
           <span className="h-4 w-28 animate-pulse rounded bg-neutral-100" />
         </div>
         {Array.from({ length: 5 }, (_, index) => (
@@ -176,9 +176,9 @@ export function PortalShell({ children, workspace }: { children: ReactNode; work
     <div className="flex h-full flex-col px-6 py-6">
       <div className="flex items-center gap-3 border-b border-neutral-200/80 pb-5">
         {logo ? (
-          <Image src={logo} alt="" width={44} height={44} unoptimized className="size-11 rounded-full object-cover" data-testid="employer-portal-logo" />
+          <Image src={logo} alt="" width={44} height={44} unoptimized className="size-11 object-contain" data-testid="employer-portal-logo" />
         ) : (
-          <span className="flex size-11 items-center justify-center rounded-full bg-[#2b2f3a] text-[15px] font-medium text-white" aria-hidden="true">
+          <span className="flex size-11 items-center justify-center rounded-xl bg-[#2b2f3a] text-[15px] font-medium text-white" aria-hidden="true">
             {initialsOf(clinicName)}
           </span>
         )}
@@ -190,7 +190,7 @@ export function PortalShell({ children, workspace }: { children: ReactNode; work
       <p className="mt-6 mb-2 text-[12px] tracking-wide text-neutral-400">MAIN</p>
       {nav}
       <div className="mt-auto flex items-center gap-3 border-t border-neutral-200/80 pt-5">
-        <span className="flex size-10 items-center justify-center rounded-full bg-neutral-100 text-[13px] font-medium text-neutral-600" aria-hidden="true">
+        <span className="flex size-10 items-center justify-center rounded-xl bg-neutral-100 text-[13px] font-medium text-neutral-600" aria-hidden="true">
           {initialsOf(me.data.name)}
         </span>
         <p className="min-w-0 flex-1 truncate text-[14px] font-medium text-neutral-900">{me.data.name}</p>

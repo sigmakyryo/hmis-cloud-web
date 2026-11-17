@@ -10,6 +10,7 @@ import { SecondaryButton } from "@/components/ui/app-buttons";
 import {
   fetchPortalBranding,
   savePortalBranding,
+  syncOrganizationLogo,
   type PortalBranding,
 } from "@/features/employer-portal/services/employer-portal.service";
 import { useToast } from "@/providers/toast-provider";
@@ -40,6 +41,15 @@ export function PortalBrandingPanel() {
     },
     onError: (error) => toast({ variant: "error", title: "Not saved", description: errorText(error) }),
   });
+  const copyLogo = useMutation({
+    mutationFn: syncOrganizationLogo,
+    onSuccess: () => {
+      toast({ variant: "success", title: "Organization logo applied", description: "The portal sign-in, invitations and sidebar now show it." });
+      setEdits((cur) => Object.fromEntries(Object.entries(cur).filter(([key]) => key !== "logo_data_uri")));
+      void client.invalidateQueries({ queryKey: ["oh-portal-admin", "branding"] });
+    },
+    onError: (error) => toast({ variant: "error", title: "Logo not copied", description: errorText(error) }),
+  });
   const set = (k: keyof PortalBranding, v: string | null) => setEdits((cur) => ({ ...cur, [k]: v }));
 
   async function pickLogo(file: File | undefined) {
@@ -67,6 +77,12 @@ export function PortalBrandingPanel() {
         <span className="text-dash-muted">Logo (PNG, JPEG or SVG, under 200 KB)</span>
         <input aria-label="Logo" type="file" accept="image/png,image/jpeg,image/svg+xml" onChange={(e) => void pickLogo(e.target.files?.[0])} />
       </label>
+      <div>
+        <SecondaryButton disabled={copyLogo.isPending} onClick={() => copyLogo.mutate()}>
+          {copyLogo.isPending ? "Copying…" : "Use the organization logo"}
+        </SecondaryButton>
+        <p className="mt-1 text-[12px] text-dash-muted">Copies the logo from Settings, Organization, Branding.</p>
+      </div>
       {form.logo_data_uri ? (
         <Image src={form.logo_data_uri} alt="Logo preview" width={160} height={40} unoptimized className="h-10 w-auto" />
       ) : null}
