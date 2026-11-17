@@ -157,46 +157,49 @@ it("training courses tab offers example courses when empty", async () => {
   await waitFor(() => expect(mocks.seed).toHaveBeenCalled());
 });
 
-it("visit panel leads with the verdict and a merged readiness checklist", async () => {
+it("visit panel shows a decision summary and grouped requirement cards", async () => {
   const onOpenPanel = vi.fn();
   renderWith(<OhFitnessVisitPanel customerUuid={CU} onOpenPanel={onOpenPanel} />);
   expect(await screen.findByTestId("oh-fit-verdict")).toHaveTextContent("Not fit");
   expect(mocks.worker).toHaveBeenCalledWith(CU);
-  expect(screen.getByText("Not cleared until the readiness items below are resolved.")).toBeTruthy();
+  expect(screen.getByTestId("oh-fit-decision-badge")).toHaveTextContent("Not fit");
+  expect(screen.getByTestId("oh-fit-summary-headline").textContent).toMatch(/required item/);
+  expect(screen.getByTestId("oh-fit-progress-label").textContent).toContain("1 of 6 required done");
   expect(screen.queryByText("Holding this up")).toBeNull();
   expect(screen.queryByText("Checks on file")).toBeNull();
-  expect(screen.queryByRole("img", { name: /checks clear/ })).toBeNull();
 
-  const hero = screen.getByTestId("oh-fit-hero");
-  const checklist = screen.getByTestId("oh-fit-checklist");
-  expect(hero.compareDocumentPosition(checklist) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  expect(checklist.textContent).toContain("1 of 6 done");
-  expect(checklist.textContent).toContain("1 flagged");
+  expect(screen.getByTestId("oh-fit-needs-attention")).toBeTruthy();
+  expect(screen.getByTestId("oh-fit-completed")).toBeTruthy();
+  expect(screen.getByTestId("oh-fit-locked")).toBeTruthy();
 
   const medical = screen.getByTestId("oh-fit-check-medical");
   const training = screen.getByTestId("oh-fit-check-training");
   const fitTest = screen.getByTestId("oh-fit-check-fit_test");
-  expect(medical.textContent).toContain("Done");
+  expect(medical.getAttribute("data-group")).toBe("completed");
   expect(medical.textContent).toContain("Medical: fit");
-  expect(training.textContent).toContain("Flagged");
+  expect(training.getAttribute("data-group")).toBe("needs_attention");
+  expect(training.textContent).toContain("Blocking");
   expect(training.textContent).toContain("Training missing: Working at height");
   expect(training.getAttribute("data-blocker")).toBe("true");
-  expect(fitTest.textContent).toContain("Missing");
+  expect(fitTest.getAttribute("data-group")).toBe("needs_attention");
   expect(fitTest.textContent).toContain("Nothing recorded yet");
 
   expect(screen.queryByTestId("oh-fit-restrictions")).toBeNull();
   expect(screen.queryByText("No work at height")).toBeNull();
   expect(screen.getByTestId("oh-fit-areas").textContent).toContain("Laboratories");
 
-  const exam = screen.getByRole("button", { name: "Exam" });
-  fireEvent.click(exam);
+  fireEvent.click(within(medical).getByRole("button", { name: "View" }));
   expect(onOpenPanel).toHaveBeenCalledWith("medical-examinations");
-  fireEvent.click(within(screen.getByTestId("oh-fit-check-certificate")).getByRole("button", { name: "Open" }));
-  expect(onOpenPanel).toHaveBeenCalledWith("certificate");
-  expect(within(screen.getByTestId("oh-fit-check-fit_test")).getByRole("link", { name: /Board/ })).toHaveAttribute("href", "/fitness/board");
-  expect(screen.getByRole("link", { name: /Training/ })).toHaveAttribute("href", "/fitness/training");
+  expect(
+    within(screen.getByTestId("oh-fit-check-certificate")).getByRole("button", { name: "Open certificate" }),
+  ).toBeDisabled();
+  expect(
+    within(screen.getByTestId("oh-fit-check-fit_test")).getByRole("link", { name: /Open fit-test board/ }),
+  ).toHaveAttribute("href", "/fitness/board");
+  expect(
+    within(training).getByRole("link", { name: /Open training system/ }),
+  ).toHaveAttribute("href", "/fitness/training");
 });
-
 it("visit panel shows certificate history at the bottom and a download when it is issued", async () => {
   mocks.worker.mockResolvedValue({
     ...WORKER,
@@ -251,11 +254,13 @@ it("visit panel shows certificate history at the bottom and a download when it i
   );
   expect(await screen.findByTestId("oh-fit-verdict")).toHaveTextContent("Fit");
   expect(screen.getByTestId("oh-fit-download-certificate")).toHaveAttribute("href", expect.stringContaining("cert-2"));
-  fireEvent.click(within(screen.getByTestId("oh-fit-check-certificate")).getByRole("button", { name: "Open" }));
+  fireEvent.click(
+    within(screen.getByTestId("oh-fit-check-certificate")).getByRole("button", { name: "Open certificate" }),
+  );
   expect(onOpenPanel).toHaveBeenCalledWith("certificate");
   const history = screen.getByTestId("oh-fit-cert-history");
-  const hero = screen.getByTestId("oh-fit-hero");
-  expect(hero.compareDocumentPosition(history) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  const summary = screen.getByTestId("oh-fit-summary-card");
+  expect(summary.compareDocumentPosition(history) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(history.textContent).toContain("v2");
   expect(history.textContent).toContain("v1");
   expect(history.textContent).toMatch(/Superseded/i);
@@ -263,7 +268,7 @@ it("visit panel shows certificate history at the bottom and a download when it i
   expect(screen.getByTestId("oh-fit-hero-meta").textContent).toMatch(/v2/);
 });
 
-it("visit panel shows a Go to exam action and empty checklist when nothing is on file", async () => {
+it("visit panel shows a Record medical exam CTA when nothing is on file", async () => {
   mocks.worker.mockResolvedValue({
     ...WORKER,
     overall: "unknown",
@@ -277,16 +282,18 @@ it("visit panel shows a Go to exam action and empty checklist when nothing is on
   const onOpenPanel = vi.fn();
   renderWith(<OhFitnessVisitPanel customerUuid={CU} onOpenPanel={onOpenPanel} />);
   expect(await screen.findByTestId("oh-fit-verdict")).toHaveTextContent("Not yet known");
-  expect(screen.getByText("Not enough on file to decide yet.")).toBeTruthy();
-  expect(screen.getByTestId("oh-fit-checklist").textContent).toContain("0 of 6 done");
-  fireEvent.click(within(screen.getByTestId("oh-fit-check-medical")).getByRole("button", { name: "Exam" }));
+  expect(screen.getByTestId("oh-fit-decision-badge")).toHaveTextContent("Decision pending");
+  expect(screen.getByTestId("oh-fit-progress-label").textContent).toContain("0 of 6 required done");
+  fireEvent.click(screen.getByTestId("oh-fit-summary-cta"));
+  expect(onOpenPanel).toHaveBeenCalledWith("medical-examinations");
+  fireEvent.click(within(screen.getByTestId("oh-fit-check-medical")).getByRole("button", { name: "Record exam" }));
   expect(onOpenPanel).toHaveBeenCalledWith("medical-examinations");
   expect(screen.queryByTestId("oh-fit-restrictions")).toBeNull();
   expect(screen.queryByTestId("oh-fit-check-iod")).toBeNull();
   expect(screen.queryByTestId("oh-fit-cert-history")).toBeNull();
 });
 
-it("visit panel shows injury on duty before the certificate when the visit allows it", async () => {
+it("visit panel shows injury on duty in needs attention before the locked certificate", async () => {
   const onOpenPanel = vi.fn();
   renderWith(
     <OhFitnessVisitPanel
@@ -295,17 +302,17 @@ it("visit panel shows injury on duty before the certificate when the visit allow
       iod={{ status: null }}
     />,
   );
-  const checklist = await screen.findByTestId("oh-fit-checklist");
-  const iod = within(checklist).getByTestId("oh-fit-check-iod");
-  const certificate = within(checklist).getByTestId("oh-fit-check-certificate");
+  const needs = await screen.findByTestId("oh-fit-needs-attention");
+  const iod = within(needs).getByTestId("oh-fit-check-iod");
+  const locked = screen.getByTestId("oh-fit-locked");
+  const certificate = within(locked).getByTestId("oh-fit-check-certificate");
   expect(iod.compareDocumentPosition(certificate) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(iod).toHaveTextContent("Not started");
   expect(iod).toHaveTextContent("Open to record the injury.");
-  expect(checklist).toHaveTextContent("1 of 6 done");
+  expect(screen.getByTestId("oh-fit-progress-label")).toHaveTextContent("1 of 6 required done");
   fireEvent.click(within(iod).getByRole("button", { name: "Open" }));
   expect(onOpenPanel).toHaveBeenCalledWith("injuries");
 });
-
 it("visit panel marks injury on duty recorded when a case exists", async () => {
   renderWith(<OhFitnessVisitPanel customerUuid={CU} iod={{ status: "under_review" }} />);
   const iod = await screen.findByTestId("oh-fit-check-iod");

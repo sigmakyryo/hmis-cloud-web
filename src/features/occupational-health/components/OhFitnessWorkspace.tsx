@@ -100,6 +100,8 @@ export function OhFitnessWorkspace({
     <>
       <OhFitnessVisitPanel
         customerUuid={customer.uuid}
+        customer={customer}
+        encounter={encounter}
         onOpenPanel={openPanel}
         preEmployment={
           preEmployment

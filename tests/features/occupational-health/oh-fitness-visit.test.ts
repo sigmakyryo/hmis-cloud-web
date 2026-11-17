@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   CHECKLIST_BADGE,
+  buildFitAssessment,
   checklistProgress,
   fitVisitChecklist,
   fitVisitPrimaryAction,
@@ -155,5 +156,57 @@ describe("fitVisitPrimaryAction", () => {
       ],
     };
     expect(fitVisitPrimaryAction(worker, [cert()], now)?.key).toBe("exam");
+  });
+});
+
+describe("buildFitAssessment", () => {
+  it("groups incomplete required items under needs attention and locks the certificate", () => {
+    const model = buildFitAssessment({
+      worker: {
+        ...BASE,
+        overall: "not_fit",
+        reasons: [{ source: "training", status: "blocked", message: "Training missing: Working at height" }],
+        items: [
+          { source: "medical", label: "Medical", status: "ok", message: "Medical: fit", expires_on: "2027-01-01", restriction: null },
+          { source: "immunisation", label: "Vaccinations", status: "ok", message: "Up to date", expires_on: "2029-11-15", restriction: null },
+          { source: "training", label: "Working at height", status: "blocked", message: "Training missing: Working at height", expires_on: null, restriction: null },
+        ],
+      },
+      certificates: [],
+      preEmployment: { status: "not_started" },
+    });
+
+    expect(model.summary.progress).toEqual({ done: 2, total: 6, flagged: 1 });
+    expect(model.summary.headline).toContain("4 required items outstanding");
+    expect(model.summary.cta?.href).toBe("fitnessTraining");
+    expect(model.needsAttention.some((card) => card.source === "training" && card.uiStatus === "blocking")).toBe(true);
+    expect(model.needsAttention.some((card) => card.kind === "pre_employment" && card.uiStatus === "optional")).toBe(true);
+    expect(model.completed.map((card) => card.source)).toEqual(["medical", "immunisation"]);
+    expect(model.locked).toHaveLength(1);
+    expect(model.locked[0]?.kind).toBe("certificate");
+    expect(model.locked[0]?.actionDisabled).toBe(true);
+  });
+
+  it("unlocks certificate issue when required items are complete and the worker is cleared", () => {
+    const model = buildFitAssessment({
+      worker: {
+        ...BASE,
+        overall: "fit",
+        items: [
+          { source: "medical", label: "Medical", status: "ok", message: "Medical: fit", expires_on: "2027-01-01", restriction: null },
+          { source: "immunisation", label: "Vaccinations", status: "ok", message: "Up to date", expires_on: "2029-11-15", restriction: null },
+          { source: "drug_alcohol", label: "Drug & alcohol", status: "ok", message: "Clear", expires_on: null, restriction: null },
+          { source: "fit_test", label: "Fit test", status: "ok", message: "Passed", expires_on: null, restriction: null },
+          { source: "training", label: "Training", status: "ok", message: "Current", expires_on: null, restriction: null },
+          { source: "programme", label: "Fatigue", status: "ok", message: "Fatigue: fit", expires_on: "2027-11-15", restriction: null },
+        ],
+      },
+      certificates: [],
+    });
+
+    expect(model.summary.progress.done).toBe(6);
+    expect(model.locked).toHaveLength(0);
+    expect(model.needsAttention.some((card) => card.kind === "certificate" && card.actionLabel === "Issue certificate")).toBe(true);
+    expect(model.summary.cta?.panel).toBe("certificate");
   });
 });

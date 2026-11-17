@@ -347,6 +347,7 @@ export function OhEncounterWorkspacePage({
           customer={customer}
           encounter={encounter}
           visitTypeName={encounter.visit_type?.name}
+          assessmentLayout={shownPanel === "fitness"}
           jump={
             showJump
               ? {
@@ -416,7 +417,9 @@ export function OhEncounterWorkspacePage({
               className="flex shrink-0 flex-wrap items-center justify-end gap-3 border-b border-dash-border px-5 py-2 empty:hidden"
             />
             <section
-              className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto bg-white"
+              className={`flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto ${
+                shownPanel === "fitness" ? "bg-slate-50" : "bg-white"
+              }`}
               aria-label="Occupational health content"
               data-testid="oh-encounter-context-panel"
             >
