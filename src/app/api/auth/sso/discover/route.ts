@@ -20,6 +20,8 @@ export async function POST(request: Request) {
       {
         method: "POST",
         body: { email },
+        // Local Windows↔WSL localhost can take 30–60s on a cold hop.
+        timeoutMs: 90_000,
       },
     );
 

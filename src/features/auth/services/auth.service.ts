@@ -59,6 +59,22 @@ export async function discoverSso(email: string): Promise<SsoDiscoverResponse> {
   return bffRequest<SsoDiscoverResponse>(BFF_AUTH_ROUTES.ssoDiscover, {
     method: "POST",
     body: { email: email.trim().toLowerCase() },
+    // Match BFF→Django allowance for cold Windows↔WSL localhost.
+    timeoutMs: 90_000,
+  });
+}
+
+/** Fire-and-forget: warm the BFF→Django hop before the user submits. */
+export function warmAuthApiConnection(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  void fetch("/api/auth/warmup", {
+    method: "GET",
+    credentials: "include",
+    cache: "no-store",
+  }).catch(() => {
+    // Best-effort; discover still has a longer timeout.
   });
 }
 
@@ -212,13 +228,21 @@ export async function refreshAccessToken(): Promise<boolean> {
   }
 }
 
-export async function logout(): Promise<void> {
+/** Clears clinic auth cookies without navigating (used before portal handoff). */
+export async function clearClinicSession(): Promise<void> {
   try {
     await bffRequest<{ ok: boolean }>(BFF_AUTH_ROUTES.logout, {
       method: "POST",
     });
   } finally {
     await bffRequest(BFF_AUTH_ROUTES.session, { method: "DELETE" });
+  }
+}
+
+export async function logout(): Promise<void> {
+  try {
+    await clearClinicSession();
+  } finally {
     if (typeof window !== "undefined") {
       window.location.href = "/auth";
     }

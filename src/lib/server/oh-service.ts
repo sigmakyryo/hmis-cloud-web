@@ -64,6 +64,15 @@ function normalizePath(path: string): string {
   return `${cleaned || "/"}${query}`;
 }
 
+/**
+ * Upstream OH 401 must not look like a clinic session expiry to the browser.
+ * Local JWTs against a remote OH host (or a user OH has not provisioned) are
+ * authorization failures — map them to 403 so handleSessionExpired stays put.
+ */
+function remapOhUnauthorizedStatus(status: number): number {
+  return status === 401 ? 403 : status;
+}
+
 export async function ohServiceRequest<T>(
   path: string,
   options: OhRequestOptions = {},
@@ -120,7 +129,7 @@ export async function ohServiceRequestWithMeta<T>(
             : response.status >= 500
               ? "Something went wrong. Try again later."
               : "Request failed.",
-          response.status,
+          remapOhUnauthorizedStatus(response.status),
         );
       }
 
@@ -138,7 +147,11 @@ export async function ohServiceRequestWithMeta<T>(
           envelope.errors.length > 0
             ? envelope.errors.map((error) => error.message).join(" ")
             : envelope.message || "Request failed.";
-        throw new HmisApiError(message, response.status, envelope.errors);
+        throw new HmisApiError(
+          message,
+          remapOhUnauthorizedStatus(response.status),
+          envelope.errors,
+        );
       }
 
       return {
@@ -156,7 +169,7 @@ export async function ohServiceRequestWithMeta<T>(
         (typeof record?.detail === "string" && record.detail) ||
         (typeof record?.message === "string" && record.message) ||
         "Request failed.";
-      throw new HmisApiError(message, response.status);
+      throw new HmisApiError(message, remapOhUnauthorizedStatus(response.status));
     }
 
     return {

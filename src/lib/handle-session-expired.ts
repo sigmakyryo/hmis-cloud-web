@@ -9,6 +9,7 @@ const AUTH_BFF_PREFIXES = [
   "/api/auth/logout",
   "/api/auth/me",
   "/api/auth/mfa",
+  "/api/auth/sso",
 ] as const;
 
 export function isAuthBffPath(path: string): boolean {

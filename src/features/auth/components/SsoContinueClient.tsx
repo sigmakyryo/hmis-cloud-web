@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { StatusBanner } from "@/components/ui/status-banner";
 import { AuthSplitLayout } from "@/features/auth/components/AuthSplitLayout";
@@ -9,11 +10,42 @@ import { LoginForm } from "@/features/auth/components/LoginForm";
 import { exchangeSsoContinueCode } from "@/features/auth/services/auth.service";
 import type { SsoContinueResponse } from "@/features/auth/types/auth.types";
 import { ROUTES } from "@/constants/routes";
-import Link from "next/link";
+
+/** Share one exchange per continue code across Strict Mode remounts. */
+const continueExchanges = new Map<string, Promise<SsoContinueResponse>>();
+
+function exchangeContinueCodeOnce(code: string): Promise<SsoContinueResponse> {
+  const existing = continueExchanges.get(code);
+  if (existing) {
+    return existing;
+  }
+  const pending = exchangeSsoContinueCode(code).catch((error) => {
+    continueExchanges.delete(code);
+    throw error;
+  });
+  continueExchanges.set(code, pending);
+  return pending;
+}
+
+function readContinueCode(searchParams: URLSearchParams): string {
+  const fromParams = searchParams.get("code")?.trim() ?? "";
+  if (fromParams) {
+    return fromParams;
+  }
+  if (typeof window === "undefined") {
+    return "";
+  }
+  return new URLSearchParams(window.location.search).get("code")?.trim() ?? "";
+}
 
 export function SsoContinueClient() {
   const searchParams = useSearchParams();
-  const code = searchParams.get("code")?.trim() ?? "";
+  const codeRef = useRef<string | null>(null);
+  if (codeRef.current === null) {
+    codeRef.current = readContinueCode(searchParams);
+  }
+  const code = codeRef.current;
+
   const [challenge, setChallenge] = useState<SsoContinueResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(Boolean(code));
@@ -28,7 +60,7 @@ export function SsoContinueClient() {
     let cancelled = false;
     void (async () => {
       try {
-        const payload = await exchangeSsoContinueCode(code);
+        const payload = await exchangeContinueCodeOnce(code);
         if (!cancelled) {
           setChallenge(payload);
         }

@@ -20,9 +20,9 @@ import { LoginTotpStep } from "@/features/auth/components/LoginTotpStep";
 import { LoginWebAuthnStep } from "@/features/auth/components/LoginWebAuthnStep";
 import {
   isAccessTokenValid,
+  clearClinicSession,
   discoverSso,
   getCurrentUser,
-  logout,
   markAuthenticatedSession,
   requestSigninOtp,
   sendSigninEmailOtp,
@@ -73,8 +73,9 @@ function destinationForUser(user: User): string {
 }
 
 async function leaveForCompanyPortal() {
-  await logout();
-  window.location.assign(ROUTES.employerPortalSignIn);
+  // Clear clinic cookies without bouncing through /auth first.
+  await clearClinicSession();
+  window.location.replace(ROUTES.employerPortalSignIn);
 }
 
 function LoginSplitFrame({ children }: { children: ReactNode }) {

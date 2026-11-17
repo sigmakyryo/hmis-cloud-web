@@ -5,7 +5,7 @@ import {
   isAccessTokenValid,
   setAuthCookies,
 } from "@/lib/server/auth-cookies";
-import { hmisApiRequest } from "@/lib/server/hmis-api";
+import { HmisApiError, hmisApiRequest } from "@/lib/server/hmis-api";
 import { withBrowserAvatar } from "@/lib/server/media-url";
 import type { User } from "@/features/auth/types/auth.types";
 
@@ -13,6 +13,10 @@ export type SessionState = {
   authenticated: boolean;
   user?: User;
 };
+
+function isDefinitiveAuthFailure(error: unknown): boolean {
+  return error instanceof HmisApiError && error.status === 401;
+}
 
 export async function resolveSession(): Promise<SessionState> {
   const tokens = await getAuthTokensFromCookies();
@@ -33,8 +37,11 @@ export async function resolveSession(): Promise<SessionState> {
       );
       access = refreshed.access;
       await setAuthCookies({ access, refresh: tokens.refresh });
-    } catch {
-      await clearAuthCookies();
+    } catch (error) {
+      // Only wipe cookies when refresh is explicitly rejected — not on timeouts.
+      if (isDefinitiveAuthFailure(error)) {
+        await clearAuthCookies();
+      }
       return { authenticated: false };
     }
   }
@@ -42,8 +49,10 @@ export async function resolveSession(): Promise<SessionState> {
   try {
     const user = await hmisApiRequest<User>(AUTH_API_PATHS.me, { token: access });
     return { authenticated: true, user: withBrowserAvatar(user) };
-  } catch {
-    await clearAuthCookies();
+  } catch (error) {
+    if (isDefinitiveAuthFailure(error)) {
+      await clearAuthCookies();
+    }
     return { authenticated: false };
   }
 }
